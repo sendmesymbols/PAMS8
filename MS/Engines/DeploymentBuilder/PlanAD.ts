@@ -131,8 +131,8 @@ export function vpsOf(r: Recipe, doc: DoctrineSet): { role: string; what: string
 const SITE_DEG = [-40, 40, 180, -100, 100, 0];
 
 /**
- * The AD sited round the plan's VPs (a new recipe `-ad`; the one passed in is not changed): the VPs in priority take one
- * FU each in turn until the FUs are used, each FU a quarter of its slant range from the VP (held to `siteM`). A plan
+ * The AD sited round the plan's VPs (a new recipe `-ad`; the one passed in is not changed): the first-priority VPs take
+ * FUs in turn until each has `ad.minFus`, then the others in priority, round again while FUs are left, each FU a quarter of its slant range from the VP (held to `siteM`). A plan
  * with no VP, or with its AD already, is left as it is.
  */
 export function withAd(r: Recipe, doc: DoctrineSet, a: AdOnPlan): Recipe {
@@ -142,8 +142,13 @@ export function withAd(r: Recipe, doc: DoctrineSet, a: AdOnPlan): Recipe {
   const out: Recipe = JSON.parse(JSON.stringify(r));
   const at = new Map<string, number>();
   const where: string[] = [];
+  // the order the FUs go: the first-priority VPs (bridges, gun areas) in turn until each has `minFus` (the AD cover row
+  // wants that many over each), then every VP in priority, round again while FUs are left
+  const first = vps.filter((v) => v.pri === 1);
+  const order = [...Array.from({ length: a.minFus }, () => first).flat(), ...vps.filter((v) => v.pri > 1)];
+  const seq = order.length ? order : vps;
   a.fus.forEach((f, i) => {
-    const v = vps[i % vps.length];
+    const v = i < seq.length ? seq[i] : vps[(i - seq.length) % vps.length];
     const k = at.get(v.role) ?? 0;
     at.set(v.role, k + 1);
     const d = Math.min(a.siteM[1], Math.max(a.siteM[0], Math.round(f.effM / 4)));

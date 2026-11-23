@@ -97,6 +97,8 @@ export function findAttackSpots(res: SolveResult, f: FitFrame, g: PlanGround, do
   let best: { F: XY; cost: number; seen: number | null; dA: number; dR: number } | null = null;
   const band = resolveRange(doc, doctrineAt(doc, 'attack.fupFromObjM')) ?? [1000, 1200];
   const gapOf = (pts: XY[]) => Math.min(...pts.map((p) => Math.hypot(Math.max(0, ob.x0 - p.x, p.x - ob.x1), Math.max(0, ob.y0 - p.y, p.y - ob.y1))));
+  let fupNogo = 0, fupTried = 0;
+  const fupPts = 1 + fup.pts.length;
   for (const dAdeg of [0, -5, 5, -10, 10, -15, 15, -20, 20].filter((d) => Math.abs(d) <= sw)) for (const dR of [0, -100, 100]) {
     const a = a0 + (dAdeg * Math.PI) / 180;
     let R = R0 + dR, F = P(O.x + R * Math.sin(a), O.y + R * Math.cos(a));
@@ -106,18 +108,20 @@ export function findAttackSpots(res: SolveResult, f: FitFrame, g: PlanGround, do
     if (gap0 < band[0]) { R += band[0] - gap0 + 1; F = P(O.x + R * Math.sin(a), O.y + R * Math.cos(a)); pts = [F, ...fup.pts.map((p) => P(p.x + F.x - F0.x, p.y + F.y - F0.y))]; }
     if (gapOf(pts) > band[1] + 50) continue;
     const nogo = pts.filter(bad).length;
-    if (nogo >= 2) continue;
+    if (nogo >= 2) { fupNogo++; continue; }
+    fupTried++;
     const seen = sightFrac(O, 2, pts, 1.7);
     const cost = (seen ?? 0.5) * 10 + Math.abs(dAdeg) / 10 + Math.abs(dR) / 200 + nogo * 3;
     if (!best || cost < best.cost) best = { F, cost, seen, dA: dAdeg, dR };
   }
   const F1 = best ? best.F : F0;
-  if (!best || best.seen === null) out.rows.push({ name: 'FUP finder', st: 'unchecked', reason: g.sight ? 'the ground round the FUP is not loaded' : 'no sight data in the bundle: the FUP stays where the recipe put it' });
+  if (!best && fupNogo && !fupTried) out.rows.push({ name: 'FUP finder', st: 'warn', reason: `every place within ${sw}° and 100 m of the FUP is NO-GO on foot: the FUP stays where the recipe put it; find one on the ground` });
+  else if (!best || best.seen === null) out.rows.push({ name: 'FUP finder', st: 'unchecked', reason: g.sight ? 'the ground round the FUP is not loaded' : 'no sight data in the bundle: the FUP stays where the recipe put it' });
   else {
     const d = P(F1.x - F0.x, F1.y - F0.y);
     if (dist(F1, F0) > 1) move(['fup', 'asltL', 'asltR', 'res', 'hq', 'fu1', 'fu2'], d);
     out.rows.push(best.seen < 0.5
-      ? { name: 'FUP finder', st: 'pass', reason: `${dist(F1, F0) > 1 ? `moved ${fmtM(dist(F1, F0))} (${best.dA ? `${Math.abs(best.dA)}° ${best.dA > 0 ? 'clockwise' : 'anti-clockwise'} round the Obj` : ''}${best.dA && best.dR ? ', ' : ''}${best.dR ? `${Math.abs(best.dR)} m ${best.dR > 0 ? 'further out' : 'nearer'}` : ''}) ` : ''}into ground likely hidden from the Obj (${Math.round(best.seen * 5)} of 5 points seen); IBB p173: not observed` }
+      ? { name: 'FUP finder', st: 'pass', reason: `${dist(F1, F0) > 1 ? `moved ${fmtM(dist(F1, F0))} (${best.dA ? `${Math.abs(best.dA)}° ${best.dA > 0 ? 'clockwise' : 'anti-clockwise'} round the Obj` : ''}${best.dA && best.dR ? ', ' : ''}${best.dR ? `${Math.abs(best.dR)} m ${best.dR > 0 ? 'further out' : 'nearer'}` : ''}) ` : ''}into ground likely hidden from the Obj (${Math.round(best.seen * fupPts)} of ${fupPts} points seen); IBB p173: not observed` }
       : { name: 'FUP finder', st: 'warn', reason: `no ground within ${sw}° and 100 m of it is hidden from the Obj (${Math.round(best.seen * 100)} % seen at best): form up by night or under smoke` });
   }
 
@@ -181,7 +185,8 @@ export function findAttackSpots(res: SolveResult, f: FitFrame, g: PlanGround, do
       if (view === null) continue;
       const w = W(p); const e = g.elev(w.x, w.y);
       const rise = Number.isFinite(e) && Number.isFinite(eO) ? e - eO : 0;
-      const score = view * 10 + Math.max(-2, Math.min(3, rise / 10)) - Math.abs(r - 850) / 500;
+      // nearer the middle of the BOF band is better (its middle, not a fixed 850 m)
+      const score = view * 10 + Math.max(-2, Math.min(3, rise / 10)) - Math.abs(r - (rr[0] + rr[1]) / 2) / 500;
       if (!bb || score > bb.score) bb = { p, score, view, rise, off: offDeg };
     }
     if (!bb) out.rows.push({ name: 'BOF siter', st: 'unchecked', reason: g.sight ? 'the ground round the Obj is not loaded' : 'no sight data: the BOF stays where the recipe put it' });
@@ -202,12 +207,15 @@ export function findAttackSpots(res: SolveResult, f: FitFrame, g: PlanGround, do
     const band = resolveRange(doc, doctrineAt(doc, 'attack.assyFromObjM')) ?? [1600, 8000];
     const access = num(doc, 'attack.assyAccessM', 300);
     let ba: { A: XY; cost: number; seen: number | null; road: boolean; dd: number } | null = null;
-    for (const dd of [2500, 3500, 4500, 5500, 7000].filter((x) => x >= band[0] && x <= band[1])) for (const offDeg of [0, -15, 15, -30, 30]) {
+    // the distances tried: every 1 km across the band (its ends included), so a narrowed band is still searched
+    const dds = [...new Set([band[0], ...[2500, 3500, 4500, 5500, 7000].filter((x) => x > band[0] && x < band[1]), band[1]].map((x) => Math.round(x)))];
+    let assyNogo = 0;
+    for (const dd of dds) for (const offDeg of [0, -15, 15, -30, 30]) {
       const a = back + (offDeg * Math.PI) / 180;
       const A = P(O.x + dd * Math.sin(a), O.y + dd * Math.cos(a));
       const cells = [A, P(A.x - 300, A.y), P(A.x + 300, A.y), P(A.x, A.y - 200), P(A.x, A.y + 200)];
       const nb = cells.filter(bad).length;
-      if (nb >= 2) continue;
+      if (nb >= 2) { assyNogo++; continue; }
       const seen = sightFrac(O, 5, cells, 3);
       let road = false;
       for (let k = 0; k < 8 && !road; k++) for (let r = 0; r <= access; r += 50) {
@@ -219,7 +227,8 @@ export function findAttackSpots(res: SolveResult, f: FitFrame, g: PlanGround, do
       const cost = (seen ?? 0.5) * 10 + (road ? 0 : 3) + nb * 4 + dd / 4000 + (dd < num(doc, 'attack.assyPreferM', 4000) ? 2 : 0);
       if (!ba || cost < ba.cost) ba = { A, cost, seen, road, dd };
     }
-    if (!ba || ba.seen === null) out.rows.push({ name: 'Assy finder', st: 'unchecked', reason: g.sight ? 'the ground behind is not loaded' : 'no sight data: the Assy Area stays where the recipe put it' });
+    if (!ba && assyNogo) out.rows.push({ name: 'Assy finder', st: 'warn', reason: `every place tried ${fmtM(dds[0])}-${fmtM(dds[dds.length - 1])} behind the Obj is NO-GO: the Assy Area stays where the recipe put it; find one on the ground` });
+    else if (!ba || ba.seen === null) out.rows.push({ name: 'Assy finder', st: 'unchecked', reason: g.sight ? 'the ground behind is not loaded' : 'no sight data: the Assy Area stays where the recipe put it' });
     else {
       move(['assy'], P(ba.A.x - A0.x, ba.A.y - A0.y));
       const st: CheckState = ba.seen < 0.5 && ba.road ? 'pass' : 'warn';
@@ -416,7 +425,7 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
     }
   }
   const br = res.recipe.enMfAtk ? attackBreach(res.recipe, doc, night) : null;
-  if (br) steps.unshift({ label: `Engineers begin the lanes through his minefield (${br.by})`, distM: 0, min: Math.round(br.h * 60), at: -Math.round(br.h * 60) });
+  if (br) steps.unshift({ label: br.feasible ? `Engineers begin the lanes through his minefield (${br.by})` : `Lanes through his minefield: no engineer Pls grouped that breach (a Pl's time shown; group more engineers)`, distM: 0, min: Math.round(br.h * 60), at: -Math.round(br.h * 60) });
   steps.sort((a, b) => a.at - b.at);
   return {
     steps, lifts: rings.map(([label, r]) => ({ label, rM: r, at: atD(D - r) })),
@@ -449,10 +458,13 @@ export function withAttackMinefield(r: Recipe, doc: DoctrineSet): Recipe {
   const W = 600;
   const out: Recipe = JSON.parse(JSON.stringify(r));
   out.slots.push({ role: 'enMfA', kind: 'obstacle', sym: '25270706', label: 'En MF', order: 1, hostile: true, shape: { pts: [at(-W / 2, -Dm / 2), at(W / 2, -Dm / 2), at(W / 2, Dm / 2), at(-W / 2, Dm / 2)] } });
-  for (const [k, a] of [['L', -60], ['R', 60]] as const) out.slots.push({ role: `laneAtk${k}`, kind: 'line', sym: '25340200', label: '', order: 2, shape: { base: [at(a - 15, -Dm / 2 - 20), at(a + 15, -Dm / 2 - 20)], ctrl: at(a, Dm / 2 + 20) } });
+  // a lane for each assault Coy: two (L, R) as the Bn layouts have, else one a Coy, 120 m apart across the axis
+  const aslt = Math.max(1, r.slots.filter((x) => /^aslt/.test(x.role)).length);
+  const lanes: (readonly [string, number])[] = aslt === 2 ? [['L', -60], ['R', 60]] : Array.from({ length: aslt }, (_, i) => [String(i + 1), (i - (aslt - 1) / 2) * 120] as const);
+  for (const [k, a] of lanes) out.slots.push({ role: `laneAtk${k}`, kind: 'line', sym: '25340200', label: '', order: 2, shape: { base: [at(a - 15, -Dm / 2 - 20), at(a + 15, -Dm / 2 - 20)], ctrl: at(a, Dm / 2 + 20) } });
   out.id = `${r.id}-amf`;
   out.name = `${r.name}, his minefield`;
-  out.enMfAtk = { depthM: Dm, lanes: 2 };
+  out.enMfAtk = { depthM: Dm, lanes: lanes.length };
   out.note = `${r.note ?? ''} His protective minefield ${Dm} m deep about ${Math.round(off)} m in front of the Obj (IC s111.5, s107), a lane for each assault Coy (PlanAttack.withAttackMinefield).`.trim();
   return out;
 }
@@ -473,7 +485,7 @@ function handBreachTable(engrData: any[] | undefined, depthM: number): { yds: nu
  * dark night; SO's Hbk p 450 by depth) with the engineers grouped (their Pls: lanes at once, or one after the other),
  * or by TAM (p 451). The quickest way the plan has, its hours and a row; without engineers grouped, the Pls it needs.
  */
-export function attackBreach(r: Recipe & { engr?: EngrType & { engrData?: any[] } }, doc: DoctrineSet, night: boolean, engrData?: any[]): { h: number; by: string; row: Check } | null {
+export function attackBreach(r: Recipe & { engr?: EngrType & { engrData?: any[] } }, doc: DoctrineSet, night: boolean, engrData?: any[]): { h: number; by: string; row: Check; feasible: boolean } | null {
   const mf = r.enMfAtk;
   if (!mf) return null;
   const li = night ? 2 : 0;
@@ -496,7 +508,9 @@ export function attackBreach(r: Recipe & { engr?: EngrType & { engrData?: any[] 
     : useTam ? `; the ${e.name}'s TAMs: about ${Math.round(tam!.h * 60)} min a lane, begun that long before H`
     : e.pls >= need ? `; the ${e.name}'s ${e.pls} Pls do the lanes at once: begun ${handH} h before H`
     : e.pls ? `; the ${e.name} has ${e.pls} Pls for ${need}: the lanes in ${rounds} turns, ${handH} h: begun that long before H, or more engineers` : `; the ${e.name} has no engineer Pls that breach: more engineers`;
-  return { h, by: e ? `${e.name}, ${by}` : 'engineers to be grouped', row: { name: 'Breach', st, reason: head + who } };
+  // grouped engineers with no Pls that breach and no TAM cannot begin the lanes: the time is what a Pl would need, said so
+  const feasible = !e || useTam || e.pls > 0;
+  return { h, by: e ? `${e.name}, ${by}` : 'engineers to be grouped', row: { name: 'Breach', st, reason: head + who }, feasible };
 }
 
 /** Phase 2's timing as a check row: H2 against the time he has to react after Obj 1 falls (IBB p176 c). */
@@ -658,7 +672,10 @@ export function atOnObj(ca: CounterRead, res: SolveResult, atgm: { name: string;
   const launchers = atgm.reduce((s, w) => s + (Number(w.count) || 0), 0);
   if (!obj || !launchers) return null;
   const pairs = Math.floor(launchers / 2);
-  const range = Math.max(...atgm.map((w) => Number(w.rangeM) || 0), 0) || num(doc, 'atFramework.atgmRangeM', 3000);
+  const ormRange = Math.max(...atgm.map((w) => Number(w.rangeM) || 0), 0);
+  // the ATGM's range from the ORBAT; when the ORBAT prints none, the doctrine's figure, said as assumed (never silent)
+  const range = ormRange || num(doc, 'atFramework.atgmRangeM', 3000);
+  const rangeNote = ormRange ? '' : ` (the ORBAT prints no range for ${atgm[0]?.name ?? 'the ATGM'}: ${fmtM(range)} assumed, E: confirm it)`;
   const sp = resolveRange(doc, doctrineAt(doc, 'atFramework.atgmDetSpacingM')) ?? [400, 500];
   const half = (sp[0] + sp[1]) / 4;
   const ob = ext(obj.pts), label = obj.label || 'the Obj';
@@ -685,7 +702,7 @@ export function atOnObj(ca: CounterRead, res: SolveResult, atgm: { name: string;
   if (ways.length > pairs) { st = 'warn'; parts.push(`${ways.length - pairs} way${ways.length - pairs === 1 ? '' : 's'} in left without a pair (${launchers} launchers: ${pairs} pairs): more AT Coys (the AT row), or the tanks onto it`); }
   return {
     pts,
-    row: { name: 'AT on the Obj', st, reason: `${launchers} ATGM launchers (${atgm.map((w) => `${w.count} ${w.name}`).join(', ')}) onto ${label} as it is reorganised, a pair facing each of his ${ways.length} way${ways.length === 1 ? '' : 's'} in (IBB p 189 paras 22-23, p 191): ${parts.join('; ')}` },
+    row: { name: 'AT on the Obj', st, reason: `${launchers} ATGM launchers (${atgm.map((w) => `${w.count} ${w.name}`).join(', ')}) onto ${label} as it is reorganised, a pair facing each of his ${ways.length} way${ways.length === 1 ? '' : 's'} in (IBB p 189 paras 22-23, p 191): ${parts.join('; ')}${rangeNote}` },
   };
 }
 
@@ -707,7 +724,7 @@ export function attackFactors(layout: string, rows: Check[], res: SolveResult, f
   const loe = res.items.find((i) => i.role === 'loe');
   if (choke && loe) {
     const d = Math.min(...loe.pts.map((p) => dist(p, choke.at)), dist(centre(loe.pts), choke.at));
-    fs.push({ key: 'msrChoke', label: 'Chokes his MSR', w: Wt.msrChoke ?? 0.2, v: d <= 1000 ? 1 : d <= 2500 ? 0.5 : 0, reason: `the LOE ${fmtM(d)} from the ${choke.kind === 'bridge' ? 'bridge' : 'road'} behind the Obj (${choke.label})` });
+    fs.push({ key: 'msrChoke', label: 'Chokes his MSR', w: Wt.msrChoke ?? 0.2, v: d <= num(doc, 'attack.msrChoke.fullM', 1000) ? 1 : d <= num(doc, 'attack.msrChoke.halfM', 2500) ? 0.5 : 0, reason: `the LOE ${fmtM(d)} from the ${choke.kind === 'bridge' ? 'bridge' : 'road'} behind the Obj (${choke.label})` });
   } else fs.push({ key: 'msrChoke', label: 'Chokes his MSR', w: Wt.msrChoke ?? 0.2, v: 0.5, reason: g ? 'no bridge or metalled road found 0.3-3 km behind the Obj' : 'needs terrain data' });
   fs.push({ key: 'going', label: 'Going', w: Wt.going ?? 0.1, v: stV(row('Approach going')?.st), reason: row('Approach going')?.reason ?? 'not read' });
   fs.push({ key: 'fupHidden', label: 'FUP hidden', w: Wt.fupHidden ?? 0.15, v: stV(row('FUP unseen')?.st), reason: row('FUP unseen')?.reason ?? 'not read' });
@@ -768,7 +785,7 @@ export function nightBrief(route: XY[], objective: XY, f: FitFrame, kind: Terrai
   // grid bearings in the 1:50k sheets' grid when the bundle's reader is given (else UTM)
   const chart: NightMarchChart = nightMarchChart({ path, objective: tw(objective), echelon: 'battalion', gmaDeg: null, hHourMin: null, terrainKind: kind === 'obstacle' ? 'plains' : kind, grid }, R);
   return {
-    legs: chart.legs.map((l) => ({ i: l.i, bearingDeg: Math.round(l.bearingDeg) % 360, gridDeg: Math.round(l.gridDeg) % 360, distM: Math.round(l.distM), paces: l.paces, min: l.minNight, sight: l.sight })),
+    legs: chart.legs.map((l) => ({ i: l.i, bearingDeg: ((Math.round(l.bearingDeg) % 360) + 360) % 360, gridDeg: ((Math.round(l.gridDeg) % 360) + 360) % 360, distM: Math.round(l.distM), paces: l.paces, min: l.minNight, sight: l.sight })),
     grid: chart.grid.name,
     leaveBeforeH: chart.timing.leaveBeforeH, marchMin: chart.timing.marchMin,
     thermalAtM: chart.sights?.thermal.enterAtM ?? null, nightAtM: chart.sights?.night.enterAtM ?? null,

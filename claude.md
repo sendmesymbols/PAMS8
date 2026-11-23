@@ -221,7 +221,10 @@ MS/
   span, vegetation, roads in close country, season rules), never filled from GROTBC: what the bundle cannot tell is "not
   assessed". Book's marking (crosshatch / parallel lines) as one MediaLayer `ms-ground-guide-ipb`; only while F is on.
   Pure engine `GroundGuideIpb.ts`, painter `GroundGuideIpbMap.ts`, figures `MS/Data/IpbDoctrine.json` (D / T / E / U, page
-  cited); `guide.ipbCodingAround()`, `ipbReasonAt()`; `node tools/ipb-test/run.mjs` runs its 40 checks.
+  cited); `guide.ipbCodingAround()`, `ipbReasonAt()`; `node tools/ipb-test/run.mjs` runs its 43 checks. Obstacle symbols
+  drawn on the map (minefields, DCB / AT ditch / wall, wire; lanes, breaches and bridges open them) join the coding as
+  man-made NO-GO for the movers they stop (`IpbDoctrine coding.manMade.symbols`), part of the area's code key; own
+  obstacles no own weapon reaches are named "not covered by own fire" (ATP 4-14).
   With F on, **`extended.ipb.apchs`** (Phase 2) reads the HQ's area facing the threat (Bde HQ: Bn avenues of Coy 500 m
   corridors, 2 km apart, 14 x 28 km; Div HQ: Bde of Bn 1.5 km, 6 km, 30 x 48 km; a Bn reads with the Bde row) for mobility
   corridors and avenues of approach: least-cost ways from strips of the area, an avenue = two corridors side by side,
@@ -246,13 +249,19 @@ MS/
   range rings (`ipb.mapFire`), rail line 1. **Proforma** (`ipb.proforma`, `GroundGuideIpbProforma.ts`, book p 21): rows a-l,
   this side's avenues and the other side's over the same area, suggested signs (median), user signs by click; tab 3.
   `node tools/ipb-test/fire.mjs` (21 checks).
+  Tab 3's **Left or Right** (your options onto an Obj; `GroundGuideIpbCompare.ts`, `node tools/ipb-test/compare.mjs` 8
+  checks): the left flanking approach against the right by the IC s15.12 b factors (`ownAttack.factors`, weights 0-3 the
+  user sets, `ipb.lrWeights`), cells 0-100 with reasons, frontal for reference; unread factors score 0.5 and never decide.
   Phase 5: **decision support** (`ipb.decision`, `GroundGuideIpbDecision.ts`): the enemy's time along each avenue at the
   book's rates (p 18; earliest day + unassessed as GO, latest night + SLOW-GO; from the Threat marker's place), NAIs,
   TAIs (crossings, narrows under a corridor), DPs 2 h before each TAI (p 30, + `ipb.reactionH`) and a counter-attack DP
   before the depth localities; new tab **5 Decision** (time ladder, decision support picture, decisions, event matrix),
   map stars (`ipb.mapDecision`), rail line 5, Create on Map NAI / TAI / Decision Pt; **Annex A** weather (`annexA`: GSOD
   visibility, WorldClim temperature / wind; tiles Wx for Fire in tab 1, Wx for Mnvr in tab 3). `node
-  tools/ipb-test/decision.mjs` (23 checks).
+  tools/ipb-test/decision.mjs` (25 checks). On foot the times add the MW p 81 climb (30-60 min per 300 m of ascent from
+  the grid's elevation along the avenue; vehicles pay nothing), the same figure the Intelligent Deployment tab's moves pay.
+  With F on the Gr Scope rail draws at the area read's scale (`scope.extScale: area`): centred on the area, the symbol and
+  its rings where the symbol is (`ScopeFrame.spot`).
   Phase 6: **air** (`ipb.air`, `GroundGuideIpbAir.ts`; tab **4 Air** `GroundGuideIpbAirView.ts`): least-cost low-level air
   avenues (seen from the other side's Posns at the top of the band, masts, power lines, valleys, features along the flight),
   LZ (landing points of `lzClass` x `lzPoints`, slope 7° / 4° in mountains, 10 : 1 approach, existing helipads first) and DZ
@@ -418,7 +427,12 @@ MS/
   with the book's heads, the obj's ITG heads, his localities on the lines facing the attk; the dir of attk from
   `ipbApproachesAround(start, { readFor: 'attack', objective })` (turning and flanks before frontal, Lt vs Rt weighed, FUP,
   blocking posn at his MSR choke); ratio own to en (3 : 1); Course A, AP-1 and the tasks tables from an attack Check my
-  plan; decks by kind (`DECK_IDS`). Pure writers `AprcWrite.ts`; `node tools/aprc-test/run.mjs` (200 checks).
+  plan; decks by kind (`DECK_IDS`). Review fixes (23 Nov 2026): every draft carries its source (`src`: gr / map / plan / en /
+  orbat / time), so a Read that cannot read the ground keeps the earlier reading (`keepUnread`) and an H change re-times
+  only the times (`retime`); typed cells keyed by the row's first column (old "r,c" migrated); Cancel while reading, a
+  Changed filter with "Before this Read", Undo (Ctrl+Z) for Clear / Give back / Open / kind, a message history (M);
+  light times in `groundAppreciation.utcOffsetH` (5, PKT), never the browser's zone; JSON saved without pictures by
+  default. Pure writers `AprcWrite.ts`; `node tools/aprc-test/run.mjs` (244 checks).
 - **Deployment Mgr Intelligent Deployment tab** (was "Build"; `PlanBuilder_Plan.md`; Phases 0–8 built 15 Nov 2026: geometry, terrain fit, Auto /
   Compare / J) — on by default (`features.planBuilder`; it loads nothing until the tab is opened), `planBuilder.*`.
   J while the plan rests moves the worst posn to better ground (never leaving the plan worse), Shift+J takes it back;
@@ -508,6 +522,12 @@ MS/
   the Mf chip adds his minefield 900-1000 m out with Breach lanes timed from Annex Q (`withMinefield`, `breachRow`). The
   mirror, **canal defence** (`bn-def-canal`, IC s85 pp 449-458, IBB S57 pp 316-318): laid along the canal (`canalPrep`),
   rows Canal / Higher bank / Bridges in sector / Marsh / Obstacle value. `node tools/planbuilder-test/crossing.mjs` (58).
+  Review fixes (23 Nov 2026), checked by `node tools/planbuilder-fixes/run.mjs` (18): the ground's kind needs class data
+  (elevation alone is never "plains"); no approach found is grey, never a Pass; Check my plan faces each posn by its drawn
+  open face and times the drawn Sup / C Pen posns; the alternate's move one way (foot rate x under-fire factor + settle);
+  fit thresholds read `fit.*` doctrine paths. The Mgr: keep placing re-fits each copy, Esc restores the Templates
+  options and says nothing was placed, a key notice says why a key does nothing, one threat (the tab's marker, else the
+  Ground Guide's via the host's `threat`, else the enemy symbols with `threat.fromEnemySymbols`), an Options fold.
   Templates (was Samples) / Intelligent Deployment tabs in the Deployment Mgr; Intelligent Deployment = Task →
   Enemy → Place → Check → Create. Doctrinal baseline plans (Bn / Coy Def two up, three up, one up, all round; Bn Attk
   frontal) from recipes (`MS/Data/Deployments/Recipes/`: slots with a geometry `seed` or `shape`, `rule` and

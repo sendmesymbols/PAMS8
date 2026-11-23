@@ -207,7 +207,8 @@ function readCrossing(c: Ctx): Read {
   // as drawn: how far each symbol lies along the obstacle from H (not its straight distance: a gun area 4 km back would
   // stretch the reach far past the plan's front), as the build does
   const alongOf = (q: MercXY) => Math.abs(groundDist(click, q) * Math.cos((bearingOf(click, q) - r.axisDeg) * D2R));
-  const halfX = dr ? Math.max(...Object.values(dr).flatMap((g) => [...g.pts, ...(g.base ? [g.base.start, g.base.end] : [])]).map(alongOf)) + 600 : Math.max(Math.abs(Math.min(...xs)), Math.abs(Math.max(...xs))) + 600;
+  const drPts = dr ? Object.values(dr).flatMap((g) => [...g.pts, ...(g.base ? [g.base.start, g.base.end] : [])]) : [];
+  const halfX = dr && drPts.length ? Math.max(...drPts.map(alongOf)) + 600 : Math.max(Math.abs(Math.min(...xs)), Math.abs(Math.max(...xs))) + 600;
   const a = offsetPt(r.at[0], r.at[1], r.axisDeg + 180, halfX), b = offsetPt(r.at[0], r.at[1], r.axisDeg, halfX);
   const reach = readReach(mov, WR, a, b, opts);
   const path = reach && reach.path.length >= 2 ? reach.path : r.line && r.line.length >= 2 ? r.line : [a, b];
@@ -435,9 +436,9 @@ function readCrossing(c: Ctx): Read {
     const t = bridgeTime(m2), held = m2.heldM?.[holder] ?? 84;
     if (!t) rows.push({ name: 'Bridge', st: 'fail', reason: `${Math.round(need)} m to span: longer than any M2 span in Annex Q (195 m)`, detail: { head: `${Math.round(need)} m: no M2 bridge spans it`, why: 'The gap is wider than the bridging equipment Annex Q lists.', fix: ['Rafts and ferries only (Class 50 OBM raft for tanks)', 'Corps engineers\' hollow plate bridge (252 m) or track-way', 'Cross where it is narrower'] } });
     else {
-      times.push({ label: `${m2.label} open`, atMin: t.h * 60 });
       const short = t.span > held;
-      rows.push({ name: 'Bridge', st: short ? 'warn' : 'pass', reason: `${m2.label}: ${Math.round(need)} m to span (the ${Math.round(gapW)} m gap at the bridge site and its seats) takes the ${t.span} m set, ${t.pls} engineer Pls, ${t.h} h ${LIGHT_WORD[light]}: open about ${hRel(t.h * 60)} if the engineers start at H (IBB Fig 21: as soon as possible after H; the lanes needed by H+${lanes[0]}-${lanes[1]}); ${gapW <= layerMax ? `${Math.round(gapW)} m: bridge-layer tanks can span it in a rush` : `over ${layerMax} m (80 ft): too wide for bridge-layer tanks (IBB S47 para 5 p242)`}`,
+      times.push({ label: `${m2.label} open${short ? ' (Corps set)' : ''}`, atMin: t.h * 60 });
+      rows.push({ name: 'Bridge', st: short ? 'warn' : 'pass', reason: `${m2.label}: ${Math.round(need)} m to span (the ${Math.round(gapW)} m gap at the bridge site and its seats) takes the ${t.span} m set, ${t.pls} engineer Pls, ${t.h} h ${LIGHT_WORD[light]}: open about ${hRel(t.h * 60)} if the engineers start at H (IBB Fig 21: as soon as possible after H; the lanes needed by H+${lanes[0]}-${lanes[1]})${short ? `; longer than the ${held} m the ${holder === 'armdDiv' ? 'armoured' : 'infantry'} division holds (Annex Q para 1): Corps bridging, the ${t.span} m set from Corps engineers, asked for early` : ''}; ${gapW <= layerMax ? `${Math.round(gapW)} m: bridge-layer tanks can span it in a rush` : `over ${layerMax} m (80 ft): too wide for bridge-layer tanks (IBB S47 para 5 p242)`}`,
         detail: short ? { head: `${t.span} m set needed, the division holds ${held} m`, why: 'Annex Q para 1: an Inf or Armd Div holds 84 m of M2 bridge.', fix: ['Corps engineers\' bridging', 'Rafts until the bridge is up', 'Cross where it is narrower (Bridge site)'] } : undefined });
     }
   }
@@ -734,6 +735,8 @@ export function fitCrossing(inp: FitLayoutInput): FittedLayout | null {
 export interface CrossCheck { rows: Check[]; confirm: string[]; crossing?: CrossingReading; pending: boolean; read: string[]; missing: string[] }
 export function checkCrossing(inp: FitLayoutInput, drawn: CrossDrawn): CrossCheck | null {
   const { recipe, ctx, ground } = inp;
+  // nothing of the crossing drawn: nothing to read (never a reach of -Infinity)
+  if (!Object.values(drawn).some((g) => g?.pts?.length)) return null;
   const base = solveRecipe(recipe, ctx, inp.opts);
   const pivot = base.items.find((i) => i.id === base.pivotId);
   if (!pivot) return null;

@@ -2,8 +2,8 @@
 //   node tools/planbuilder-test/whatif.mjs          (add --quiet to print only failures and the summary)
 // Synthetic ground round 0,0 (a metre is a metre), the plan facing north, the enemy 8 km out: moves to the alternates,
 // to a supplementary posn facing a secondary approach and to the C Pen posn astride the main one, with times on foot
-// at the IPB rates against the enemy's lead tanks; a canal across a route forces a detour; a lake under an alternate
-// fails it; Copy as Text carries the trigger table.
+// at the IPB rates against the enemy's lead tanks (the IPB rates to his FUP, then his assault pace: IC s114 p 684); a
+// canal across a route forces a detour; a lake under an alternate fails it; Copy as Text carries the trigger table.
 import { register } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -42,8 +42,13 @@ function ground({ canalY = null, lakes = [], avenues = [0, 3600], from = 8000 } 
     pending: () => false, dataLine: () => 'synthetic',
   };
 }
-const inp = (g, opts = { alternates: 'visible' }) => ({ recipe: r2, ctx, opts, ground: g, anchor: { x: 0, y: 0 }, bearing: 0, threat: { x: 0, y: 8000 } });
-const run = (g, opts) => { const i = inp(g, opts); const fl = F.fitLayout(i); return W.withMoves(fl, i); };
+const inp = (g, opts = { alternates: 'visible' }, c = ctx) => ({ recipe: r2, ctx: c, opts, ground: g, anchor: { x: 0, y: 0 }, bearing: 0, threat: { x: 0, y: 8000 } });
+const run = (g, opts, c = ctx) => { const i = inp(g, opts, c); const fl = F.fitLayout(i); return W.withMoves(fl, i); };
+// the En type set (as the Enemy step sets it)
+const runEn = (g, enemy) => { const i = { ...inp(g), enemy }; return W.withMoves(F.fitLayout(i), i); };
+const INF = { echelon: '15', type: 'inf', source: 'user' };
+// the En infantry assault pace from the En FUP (IC s114 p 684; PlanDoctrine moves.enemyAssaultMinPer100m)
+const bookPace = Number(doc.plan.moves?.enemyAssaultMinPer100m?.value ?? 2);
 
 // open ground
 const a = run(ground());
@@ -52,7 +57,15 @@ check('a trigger for each shelled forward posn', !!t('shell-fwdL') && !!t('shell
 const sh = t('shell-fwdL');
 const want = Math.round(((sh.route.lengthM / 1000) / 4) * 60 * 1.5 + 5);
 check('shelled move: on foot at 4 km/h (IPB p 18), half as long again under fire, + 5 min', Math.abs(sh.min - want) <= 1, `${sh.min} min for ${Math.round(sh.route.lengthM)} m`);
-check('the enemy\'s lead tanks to the FDL: about 6 km at 24 km/h (IPB p 18)', a.whatIf.enemyToFdlMin >= 12 && a.whatIf.enemyToFdlMin <= 18, `${a.whatIf.enemyToFdlMin} min`);
+// the FDL's world y (the plan's pivot is not its origin): the En way to it is measured from there
+const fyA = Math.max(...a.raw.slots.filter((s) => r2.slots.find((x) => x.role === s.role)?.kind === 'fwd').map((s) => s.centre.y + s.hM / 2));
+const yFdlA = F.toWorld(a.frame, { x: 0, y: fyA }).y;
+{
+  // En mech from 8 km out: 24 km/h (IPB p 18) all the way: no assault pace for a mounted attack is printed (the user,
+  // 23 Nov 2026: the IC s114 p 684 pace for En infantry only)
+  const exp = ((8000 - yFdlA) / 1000 / 24) * 60;
+  check('the En lead tanks to the FDL: 24 km/h (IPB p 18) all the way (no mounted assault pace printed)', Math.abs(a.whatIf.enemyToFdlMin - exp) <= 2, `${a.whatIf.enemyToFdlMin} min, ${Math.round(exp)} wanted over ${Math.round(8000 - yFdlA)} m`);
+}
 check('a supplementary posn faces the secondary approach', a.whatIf.sups.length === 1 && a.whatIf.sups[0].apch === 'A2', JSON.stringify(a.whatIf.sups.map((s) => s.label + ' ' + s.apch)));
 check('the reserve moves to it', t('sup-A2')?.who === 'D Coy' && t('sup-A2')?.to === 'Sup 1');
 check('a C Pen posn astride the main approach behind the FDL', !!a.whatIf.cpen && t('cpen-main')?.who === 'D Coy', JSON.stringify(a.whatIf.cpen));
@@ -63,19 +76,20 @@ const none = run(ground(), { alternates: 'none' });
 check('alternates none: no Sup or C Pen posn created (the trigger table still says who would move)', !none.raw.items.some((i) => i.planned) && none.whatIf.triggers.length > 0);
 
 // a canal across the reserve's route to the Sup posn: the route goes round it, or reports no route
-const dY = a.raw.slots.find((s) => s.role === 'res').centre.y;
-const supY = a.whatIf.sups[0].centre.y;
-const midY = (dY + supY) / 2;
+// in world metres: the frame pivot sits off the anchor, so plan metres are not world metres
+const resW = F.toWorld(a.frame, a.raw.slots.find((s) => s.role === 'res').centre), supW = F.toWorld(a.frame, a.whatIf.sups[0].centre);
+const dY = resW.y, supY = supW.y;
+const midY = (resW.y + supW.y) / 2;
 const c = run(ground({ canalY: midY, lakes: [] }));
 const cs = c.whatIf.triggers.find((x) => x.id === 'sup-A2');
 check('a canal across the route: no way round within 1.5 km is reported, not drawn through', cs.route.blocked === true && cs.st === 'fail', cs.reason);
 // a canal with a gap (a bridge) 600 m off the line: the route detours through it
-const gapX = (a.raw.slots.find((s) => s.role === 'res').centre.x + a.whatIf.sups[0].centre.x) / 2 + 600;
+const gapX = (resW.x + supW.x) / 2 + 600;
 const gB = ground({ canalY: midY });
 const gBr = { ...gB, cls: (x, y) => (Math.abs(x - gapX) < 200 && Math.abs(y - midY) < 40 ? 39 : gB.cls(x, y)) };
 const cb = W.withMoves(F.fitLayout(inp(gBr)), inp(gBr)).whatIf.triggers.find((x) => x.id === 'sup-A2');
 check('a bridge 600 m off the line: the route goes round through it', cb.route.detour === true && !cb.route.blocked, `${Math.round(cb.route.lengthM)} m, ${cb.min} min`);
-check('the detour takes longer than the straight move would', cb.route.lengthM > Math.hypot(a.whatIf.sups[0].centre.x - a.raw.slots.find((s) => s.role === 'res').centre.x, supY - dY));
+check('the detour takes longer than the straight move would', cb.route.lengthM > Math.hypot(supW.x - resW.x, supY - dY));
 
 // a lake under Alt A
 const altA = a.raw.alternates.find((x) => x.of === 'fwdL');
@@ -87,7 +101,15 @@ check('an alternate on a lake fails its trigger', lkT.st === 'fail' && /NO-GO/.t
 const far = run(ground({ from: 30000 }));
 check('the enemy 30 km out: the shelled move is in time', far.whatIf.triggers.find((x) => x.id === 'shell-fwdL').st === 'pass', far.whatIf.triggers.find((x) => x.id === 'shell-fwdL').reason);
 const near = run(ground({ from: 2500 }));
-check('the enemy 2.5 km out: the move is too late', ['fail', 'warn'].includes(near.whatIf.triggers.find((x) => x.id === 'shell-fwdL').st), near.whatIf.triggers.find((x) => x.id === 'shell-fwdL').reason);
+const nearMv = near.res.rows.find((r) => r.name === 'Moves in time');
+check('the En mech 2.5 km out: the move is too late, and the Moves row reads "Too late", not "Fail" (the user, 23 Nov 2026)', near.whatIf.triggers.find((x) => x.id === 'shell-fwdL').st === 'fail' && nearMv?.st === 'fail' && nearMv.word === 'Too late', `${near.whatIf.triggers.find((x) => x.id === 'shell-fwdL').reason} / ${nearMv?.word}`);
+check('...Copy as Text: the row and the trigger table say "Too late"', /\n {2}Moves in time {8}Too late/.test(S.planText(near.res, '', W.triggerLines(near.whatIf))) && W.triggerLines(near.whatIf).some((l) => /\[Too late\]/.test(l)));
+const noWay = W.movesRow({ ...near.whatIf, triggers: near.whatIf.triggers.map((x, k) => (k ? x : { ...x, st: 'fail', min: null, route: { ...x.route, blocked: true } })) });
+check('...a move with no route on foot keeps "Fail" (it is not late, it cannot go)', noWay.st === 'fail' && !noWay.word);
+// En infantry 2.5 km out: 4 km/h on foot to the En FUP (1 km out, IBB p201), then the En assault pace (IC s114 p 684)
+const infN = runEn(ground({ from: 2500 }), INF);
+const infExp = ((2500 - yFdlA - 1000) / 1000 / 4) * 60 + (1000 / 100) * bookPace;
+check(`En infantry 2.5 km out: on foot to the En FUP, then 100 m in ${bookPace} min (IC s114 p 684) to the FDL; the shelled move is not too late`, Math.abs(infN.whatIf.enemyToFdlMin - infExp) <= 2 && infN.whatIf.triggers.find((x) => x.id === 'shell-fwdL').st !== 'fail', `${infN.whatIf.enemyToFdlMin} min (${Math.round(infExp)} wanted); ${infN.whatIf.triggers.find((x) => x.id === 'shell-fwdL').reason}`);
 
 // Copy as Text
 const txt = S.planText(a.res, '', W.triggerLines(a.whatIf));
@@ -108,24 +130,24 @@ check('attack: no trigger table (defence only)', at.whatIf.triggers.length === 0
   // a threat marker 400 m in front of the FDL: inside his FUP distance, so his times start from his FUP
   const near = (enemy) => { const g = ground({ from: Math.round(yFdl + 400), avenues: [0] }); const i = { ...inp(g), threat: { x: 0, y: yFdl + 400 }, enemy }; return W.withMoves(F.fitLayout(i), i); };
   const mech = near(null);
-  check('Threat marker inside his FUP distance: his times start from his FUP (tanks 2.5 km, IBB p214), not the marker', mech.whatIf.enemyFromFup && Math.abs(mech.whatIf.enemyFromFup.markerM - 400) <= 100 && mech.whatIf.enemyFromFup.fupM === 2500 && Math.abs(mech.whatIf.enemyToFdlMin - Math.round((2500 / 1000 / 24) * 60)) <= 1, `${JSON.stringify(mech.whatIf.enemyFromFup)}, ${mech.whatIf.enemyToFdlMin} min to the FDL`);
+  check('Threat marker inside the En FUP distance: En times start from the En FUP (tanks 2.5 km, IBB p214), not the marker', mech.whatIf.enemyFromFup && Math.abs(mech.whatIf.enemyFromFup.markerM - 400) <= 100 && mech.whatIf.enemyFromFup.fupM === 2500 && Math.abs(mech.whatIf.enemyToFdlMin - Math.round((2500 / 1000 / 24) * 60)) <= 1, `${JSON.stringify(mech.whatIf.enemyFromFup)}, ${mech.whatIf.enemyToFdlMin} min to the FDL`);
   const inf = near({ echelon: '15', type: 'inf', source: 'user' });
-  check('...infantry from theirs, 1 km out (IBB p201): 1 km at 4 km/h', inf.whatIf.enemyFromFup?.fupM === 1000 && Math.abs(inf.whatIf.enemyToFdlMin - 15) <= 1, `${inf.whatIf.enemyToFdlMin} min`);
+  check(`...En infantry from theirs, 1 km out (IBB p201): 1 km at the En assault pace, 100 m in ${bookPace} min (IC s114 p 684)`, inf.whatIf.enemyFromFup?.fupM === 1000 && Math.abs(inf.whatIf.enemyToFdlMin - 10 * bookPace) <= 1, `${inf.whatIf.enemyToFdlMin} min`);
   const mr = mech.res.rows.find((r) => r.name === 'Moves in time');
-  check('...the Moves row and the trigger table say so', /his FUP 2\.5 km out \(the threat marker lies [3-5]\d0 m in front of the FDL/.test(mr?.reason ?? '') && W.triggerLines(mech.whatIf).some((l) => /his FUP 2\.5 km out/.test(l)), mr?.reason);
-  check('...a fail names each move\'s times', mr?.st !== 'fail' || /\d+ min against his \d+ min|no route on foot/.test(mr.reason));
+  check('...the Moves row and the trigger table say so', /the En FUP 2\.5 km out \(the threat marker lies [3-5]\d0 m in front of the FDL/.test(mr?.reason ?? '') && W.triggerLines(mech.whatIf).some((l) => /the En FUP 2\.5 km out/.test(l)), mr?.reason);
+  check('...a fail names each move\'s times', mr?.st !== 'fail' || /\d+ min against En \d+ min|no route on foot/.test(mr.reason));
   // the row laid out for the reader (the user, 15 Nov 2026: "keep it honest, format it well, suggest why and how to fix")
   const d = mr?.detail;
-  check('Moves in time laid out: a headline, one line per move with both times', d && /^\d+ of \d+ in time$/.test(d.head) && d.items.length === mech.whatIf.triggers.length && d.items.every((x) => /: (\d+ min (on foot|mounted)|no route on foot|not timed), his lead vehicles [\d-]+ min \((in time|little to spare|too late|not timed)\)$/.test(x)), d?.items.join(' | '));
-  check('...why: his speed and start against yours on foot, half as long again under shelling', /^His lead vehicles come at 24 km\/h on GO \(IPB p 18\) from his FUP 2\.5 km out/.test(d?.why ?? '') && /your Coys move on foot at 4 km\/h, half as long again under shelling/.test(d?.why ?? ''), d?.why);
-  check('...fixes tied to the cause: start on the first shelling, mount the Bn, set the enemy if he is infantry', d?.fix[0]?.startsWith('Start the move on the first shelling') && d.fix.some((x) => /MIB or ABIB/.test(x)) && d.fix.some((x) => /En type: Inf/.test(x)), d?.fix.join(' | '));
-  check('...the card\'s short forms: a move a line with both times, a one-line why', d?.short?.length === d?.items?.length && d.short.every((x) => /^[A-D] Coy → (alt \(shelled\)|C Pen|Sup \d): (\d+ vs [\d-]+ min|no route|not timed)$/.test(x)) && /^His lead vehicles at 24 km\/h beat Coys on foot at 4 km\/h under shelling$/.test(d.whyShort ?? ''), `${d?.short?.join(' | ')} / ${d?.whyShort}`);
+  check('Moves in time laid out: a headline, one line per move with both times', d && /^\d+ of \d+ in time$/.test(d.head) && d.items.length === mech.whatIf.triggers.length && d.items.every((x) => /: (\d+ min (on foot|mounted)|no route on foot|not timed), En lead vehicles [\d-]+ min \((in time|little to spare|too late|not timed)\)$/.test(x)), d?.items.join(' | '));
+  check('...why: the En speed and start against Own Coys on foot, half as long again under shelling; no mounted assault pace printed', /^En lead vehicles come from the En FUP 2\.5 km out .* at 24 km\/h on GO \(IPB p 18\) all the way \(no assault pace for a mounted attack is printed: IC s114 p 684/.test(d?.why ?? '') && /Own Coys move on foot at 4 km\/h, half as long again under shelling/.test(d?.why ?? ''), d?.why);
+  check('...fixes tied to the cause: start on the first shelling, mount the Bn, set the En type if En is infantry', d?.fix[0]?.startsWith('Start the move on the first shelling') && d.fix.some((x) => /MIB or ABIB/.test(x)) && d.fix.some((x) => /En type: Inf/.test(x)), d?.fix.join(' | '));
+  check('...the card\'s short forms: a move a line with both times, a one-line why', d?.short?.length === d?.items?.length && d.short.every((x) => /^[A-D] Coy → (alt \(shelled\)|C Pen|Sup \d): (\d+ vs [\d-]+ min|no route|not timed)$/.test(x)) && /^En lead vehicles \(24 km\/h\) beat Own Coys on foot at 4 km\/h under shelling$/.test(d.whyShort ?? ''), `${d?.short?.join(' | ')} / ${d?.whyShort}`);
   const infRow = inf.res.rows.find((r) => r.name === 'Moves in time');
   check('...against infantry set by the user: no "set En type" or "mount" fix offered', !infRow?.detail?.fix?.some((x) => /En type|MIB or ABIB/.test(x)), infRow?.detail?.fix?.join(' | '));
   const passRow = W.movesRow({ ...a.whatIf, triggers: a.whatIf.triggers.map((x) => ({ ...x, st: 'pass' })) });
   check('...all in time: the headline and the moves, no why or fix', passRow.st === 'pass' && passRow.detail.items.length && !passRow.detail.why && !passRow.detail.fix);
   const txt = S.planText(mech.res, null, null);
-  check('...Copy as Text carries the moves, Why and Fix under the row', /Moves in time[^\n]*\n {6}- [^\n]+too late\)[\s\S]*\n {6}Why: His lead vehicles[\s\S]*\n {6}Fix:\n {8}- Start the move on the first shelling/.test(txt), txt.split('\n').filter((l) => /Moves in time|^ {6}/.test(l)).slice(0, 6).join(' / '));
+  check('...Copy as Text carries the moves, Why and Fix under the row, the row as "Too late"', /Moves in time {8}Too late[^\n]*\n {6}- [^\n]+too late\)[\s\S]*\n {6}Why: En lead vehicles[\s\S]*\n {6}Fix:\n {8}- Start the move on the first shelling/.test(txt), txt.split('\n').filter((l) => /Moves in time|^ {6}/.test(l)).slice(0, 6).join(' / '));
   const resChk = mech.res.slots.flatMap((s) => s.checks).find((c) => c.name === 'Moves in time');
   check('...the reserve\'s own check is laid out the same way', !resChk || (resChk.detail && /^D Coy: \d+ of \d+ in time$/.test(resChk.detail.head)), resChk?.detail?.head);
   check('A marker beyond his FUP is his start, as before', a.whatIf.enemyFromFup === null && /the threat marker/.test(a.res.rows.find((r) => r.name === 'Moves in time')?.reason ?? ''));
@@ -140,7 +162,7 @@ check('attack: no trigger table (defence only)', at.whatIf.triggers.length === 0
   check('...nor his infantry on plains ground (the climb figure is the mountains\')', W.enemyMinutesTo(f0, doc, path, 100, T0, infE, 'plains', { g: rising }) === 45);
   const hill = (g) => ({ ...g, elev: (x, y) => 200 + Math.max(0, 3000 - y) * 0.1 });
   const up = (() => { const i = { ...inp(hill(ground())), terrain: 'mountain', enemy: infE }; return W.withMoves(F.fitLayout(i), i); })();
-  check('...and the plan says so: the Moves row names it', up.whatIf.enemyClimbs && /his infantry pay the climb as yours do \(MW p 81\)/.test(up.res.rows.find((r) => r.name === 'Moves in time')?.reason ?? ''), up.res.rows.find((r) => r.name === 'Moves in time')?.reason);
+  check('...and the plan says so: the Moves row names it', up.whatIf.enemyClimbs && /En infantry pay the climb as Own troops do \(MW p 81\)/.test(up.res.rows.find((r) => r.name === 'Moves in time')?.reason ?? ''), up.res.rows.find((r) => r.name === 'Moves in time')?.reason);
   // broken ground: a NO-GO wall between A Coy and its alternate, its only gap 4 km aside (beyond the 1.5 km detour)
   const sh0 = a.whatIf.triggers.find((x) => x.id === 'shell-fwdL');
   const mid = { x: (sh0.route.pts[0].x + sh0.route.pts[sh0.route.pts.length - 1].x) / 2, y: (sh0.route.pts[0].y + sh0.route.pts[sh0.route.pts.length - 1].y) / 2 };

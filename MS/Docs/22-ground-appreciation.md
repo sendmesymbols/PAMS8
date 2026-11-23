@@ -13,9 +13,11 @@ Nothing is read until **Read** is pressed.
 
 | From | Through | Gives |
 | --- | --- | --- |
-| The ground | `GroundGuide.aorAround()` (the Gr Scope AOR reading, the rail need not be open), `sectionsAround`, `coverAround`, `extendedAround` at the MITG and at one point on each approach | Gr and Weather: Gen Description, Apchs (twelve heads each), ITGs, Obs, Cover, Met Conditions, Deductions; the DP 1 tasks table and what it needs (Assessment of Tasks, Basic Deductions) |
-| The IPB reading | `GroundGuide.ipbApproachesAround(mitg, { readFor: 'defence', extras: true })`: the en's avenues onto the position with the decision support (his time along each at the book's rates, TAIs, DPs), the Annex A weather and the doctrinal template (F need not be on) | Options Aval to the En (Option 1 and 2 with places, times, template phase names, advs / disadvs; Most Dangerous when the two differ by 15 min or more), En Reactions and Own Ctr Actions (TAIs against DPs), the Annex A values in Met Conditions |
-| Symbols on the map | `SerializationEngine.planRecordsOf()` → `PlanCheck.readSymbols` | En Forces, En Composn and Disposn, Own Forces, Composn, Disposns, the relative strength table (counted by echelon), obstacle symbols in Obs |
+| The ground | `GroundGuide.aorAround()` (the Gr Scope AOR reading, the rail need not be open), `sectionsAround`, `coverAround`, `extendedAround` at the MITG and at three points along the home side of each approach | Gr and Weather: Gen Description, Apchs (twelve heads each; Obsn as the mean, spread and worst place of the three points), ITGs, Obs, Cover, Met Conditions, Deductions (lines of def: as many as the reading gives, front first by depth), DP 1 and DP 2 (the def stepped back to the depth line); the DP 1 tasks table and what it needs (Assessment of Tasks, Basic Deductions) |
+| The IPB reading | `GroundGuide.ipbApproachesAround(mitg, { readFor: 'defence', threatDeg, extras: true })`: the en's avenues onto the position with the decision support (his time along each at the book's rates, TAIs, DPs), the Annex A weather and the doctrinal template (F need not be on). `threatDeg` is the bearing to the Threat marker when the host passes one (`host.threat`), else the AOR's facing | Options Aval to the En (Option 1 and 2 with places, times, template phase names, advs / disadvs; Most Dangerous when the two differ by 15 min or more; Most Probable: the reading's main avenue, a proposal), En Reactions and Own Ctr Actions (TAIs against DPs), the Annex A values in Met Conditions, Time Data (D Day, def occupied by H less the Time Req, ready by H with his earliest at the FDLs) |
+| The Extended View's IPB fire and air | the fire / air on the host view when it carries them, else the Extended View's live reading (`ipbApproaches().fire`, `ipbAir()`) when its area is anchored within 2.5 km of the MITG (F on, `extended.ipb.fire` / `air`) | DP 1 Killing Areas (OoW Vol I pp 42-45), DF, Surv and Obs Plans; En Sit Common Deductions: his likeliest LZs / DZs and air avenues (IPB pp 5-6; LZ sizes FM 3-21.38, US, to confirm). Without them the four DP heads say how to get them |
+| Symbols on the map | `SerializationEngine.planRecordsOf()` → `PlanCheck.readSymbols` | En Forces, En Composn and Disposn, Own Forces, Composn, Disposns, the relative strength table (counted by echelon), obstacle symbols in Obs, own HQ symbols in Comd and Sig (attack: Loc of HQ) |
+| The Admin Area finder | `host.adminArea()?.result` (when the host passes the finder) | Adm and Log: its best sites, a proposal to walk |
 | A checked plan | the Intelligent Deployment tab's last Check my plan (`DeploymentBuilderEngine.planCheck`) | Own Disposns, Course A, advs / disadvs, en reactions against own moves (replacing the IPB table), the general outline |
 | The ORBAT | `groundAppreciation.orbatUrl` (default `/MS/Data/Orbat/PK`, as the Intelligent Deployment tab reads it), `PlanOrbat.brief`, `PlanEngr.ownEngrTypes` / `minesByEngr` | Own Str as Related to that of the En (manoeuvre Coys, all ranks, ATGM, mortars, ratio en to own), Composn of Own Forces, the Pls held against DP 1 and the ATGM pairs, the protective minefield's hours in Time Req |
 | Doctrine files | `PlanDoctrine.json` (`readyBy.coyPosnH`: IC s75 p 399; `enemy.defaultUp` / `defaultType`), `MoveDoctrine.json` (`road.speeds`: SO's Hbk Sec 9 / SD Vol II) | Improvement of def posns, the move in, the en assumed when none is marked |
@@ -27,6 +29,14 @@ echelon frame, as the Gr Scope AOR setting says (`groundGuide.aor.source`).
 sheet still opens, takes the planner's words and exports; the Gr paragraphs stay ruled and the sheet says why, with a
 button to turn the guide on.
 
+**A reading is never lost** (23 Nov 2026). Every draft carries the reading it came from (`src`: `gr`, `map`, `plan`,
+`en`, `orbat`, `time`). A Read that cannot take a reading again (the guide off, outside the terrain data, a time-out, no
+IPB avenue, no ORBAT) keeps what the sheet held from it (`keepUnread`): the Gr paragraphs, the frame, the data list, the
+figures, their Confirm on Gr items, and says so ("Gr not read this time: the reading of 2027-02-15 11:00 kept"); only what
+was read again is replaced. A sheet kept before `src` existed has it told from the paragraph ids on open. A Read writes
+nothing to the sheet until it is done: an overtaken or cancelled Read changes nothing. **Cancel** (the Read button while it
+runs) stops it; the header shows the step and the seconds ("Obsn along the Lt apch 2/3 … 14 s").
+
 ## The sheet
 
 Redesigned 22 Nov 2026 (the impeccable design pass): one workflow, Read → settle each paragraph → export.
@@ -34,8 +44,14 @@ Redesigned 22 Nov 2026 (the impeccable design pass): one workflow, Read → sett
 - **Header**: the kind, what the reading was taken with (echelon, place, mover, month, when), **Read** / **Read again**
   (a thin bar runs under the header while it reads), **Export** (Word, PDF, Copy as text; Slides in the Briefing - PPTX, one
   item per deck) and **⋯** (Save to a file, Open a file, Clear: asks twice, in the menu, not a dialog).
+- **Header** also carries a state dot (busy, a failure, read), the **messages** button (the last ten with their times, M)
+  and, while Read runs, **Cancel** in place of Read. A question (change of kind with words written, H on a sheet from an
+  earlier session) comes as a bar under the header with two buttons, not the browser's confirm; Esc answers no.
 - **Outline** (left): how many paragraphs are ready for the fair copy and a bar by state; filters **All / To do /
-  Proposals / Gr changed / Written** (To do = yours to write + proposals open + Gr changed); *Accept all n proposals*.
+  Proposals / Look again / Changed / Written** (To do = yours to write + proposals open + look again); *Accept all n
+  proposals*; under them the last Read's time, how many it changed and *Confirm on Gr n* (they stay after the toast).
+  **Changed**: what the last Read (or a new H) changed in a draft carries a blue dot in the outline and, in the inspector,
+  what it said before ("Before this Read: …").
   Each top-level paragraph carries the worst state under it as a shape and a word, never colour alone: ✓ written by you,
   ● drafted from Gr, ■ from the map, ◇ proposal open, ◆ proposal accepted, dashed ○ yours to write, red ! Gr changed. Under a
   filter a row goes to the first paragraph it shows.
@@ -45,8 +61,13 @@ Redesigned 22 Nov 2026 (the impeccable design pass): one workflow, Read → sett
   mine / Use the new reading), the box (*Save as mine*, Ctrl+Enter; what is typed is saved when the planner moves to another
   paragraph, reads, exports or closes, so nothing typed is lost), the table, the sub-paragraphs, To consider, Rests on,
   Confirm on Gr. With nothing selected: the three steps, what the marks mean, the keys.
-- **Keys** (in the sheet, never reaching the map): ↑ ↓ (or J K) paragraph, N next to do, A accept, Enter write, Ctrl+Enter
-  save, [ ] fold the outline / the paragraph panel, Esc leaves a box, then closes.
+- **Keys** (in the sheet, never reaching the map): ↑ ↓ (or J K) paragraph, N next to do, A accept, Shift+A accept and go to
+  the next to do, Enter write, Ctrl+Enter save, F fair / draft copy, X Export, C Confirm on Gr, M messages, Ctrl+Z undo,
+  [ ] fold the outline / the paragraph panel, Esc leaves a box, then closes. In a table cell Enter saves it and goes down a
+  row, Tab across. Tab stays inside the sheet while it is a window (not folded to its bar). Alt+A (global) opens / closes it.
+- **Undo**: Clear, *Use the new reading* / *Give back to the tool*, opening a file and a change of kind can be undone
+  (the toast's Undo, Ctrl+Z) until the next change; a Read that the change started keeps the Undo. Words given back stay
+  on the paragraph (*Put back*).
 - **Folding**: the outline and the paragraph panel each fold to a slim rail (the buttons at the ends of the bar over the
   page, a click on the rail, or `[` / `]`), so the page can take the whole width; the outline rail keeps the to-do count,
   the paragraph rail the selected number. Writing in a paragraph (Enter, double-click) opens the panel again. Which panels
@@ -57,8 +78,9 @@ Redesigned 22 Nov 2026 (the impeccable design pass): one workflow, Read → sett
 - Scrollbars are thin and dark, in the sheet only.
 - **Window**: Minimize, Maximize / Restore down and Close at the right of the header. The Aprc button launches the
   sheet **maximized**: the whole page, edge to edge, as the Briefing's edit view (user, 22 Nov 2026). Restore down (or a
-  double-click on the title bar) docks it under the host's bar, and back. Minimized, it folds to a bar at
-  the foot of the map with the progress (ready, to do); a click on the bar, its Restore button or the top bar's Aprc
+  double-click on the title bar) docks it under the host's bar, and back. Minimized, it folds to a bar at the right under
+  the host's bar (clear of the Ground Guide key notice and the Platoon Guide answer bar at the foot) with the state dot,
+  Read (Retry after a failed Read) and the progress (ready, to do); a click on the bar, its Restore button or the top bar's Aprc
   button brings it back as it was. The bar can be dragged anywhere (a click without moving restores); its place is kept
   in this browser and held inside the window. What was typed is kept, and the keys go back to the map. A read carries on while it is
   minimized. Hosts: `windowState`, `setWindow('normal' | 'max' | 'min')`.
@@ -70,7 +92,8 @@ Redesigned 22 Nov 2026 (the impeccable design pass): one workflow, Read → sett
 1. **Four states.** A paragraph is drafted from the ground (GR), read from the map (MAP), proposed for judgement
    (YOU JUDGE) or left to the planner (YOURS, a ruled line with the heads to consider).
 2. **What the planner writes is his.** *Save as mine* on a paragraph; Read never overwrites it. When the reading under
-   it has changed since, the sheet says so and shows the new reading; it does not replace his words.
+   it has changed since, the sheet says so, says **what** changed (Gr, the map, the plan check, the en options, the
+   ORBAT, the timings, or H: "H changed since you wrote this"), and shows the new reading; it does not replace his words.
 3. **A proposal is never printed as fact.** Deductions, the list of ITGs, advs and disadvs are proposals. The fair copy
    prints one only once accepted (or rewritten); until then it prints a ruled line.
 4. **Nothing is guessed.** What the data cannot tell prints a ruled line. "Ref to whites" is never printed.
@@ -83,7 +106,16 @@ Redesigned 22 Nov 2026 (the impeccable design pass): one workflow, Read → sett
 **Tables.** Click a paragraph with a table (relative strength, tasks, time required, reactions) and the right pane shows
 it as cells: type into any cell, add rows. What you type is yours (`cells`, `addRows`), kept on a new Read and printed in
 every copy; empty a cell, or type the tool's own value, to give it back. A proposed table prints in the fair copy only
-its first column and your cells until you accept it.
+its first column and your cells until you accept it. Typed cells are kept by the **row** (its naming cell, the first that
+is not a serial, times taken out; `rowKeys`), not its index, so a new reading that adds, drops or reorders rows leaves
+them on their rows; a row of his that is gone keeps his cells as an added row, named, and the paragraph asks to be looked
+at again (*Keep my rows* / *Use the new reading*). Cells kept as "row,col" before are re-keyed on open.
+
+**H** changes re-time only what carries a time: his times and phases, the reactions table when it is the en options'
+(a table a plan check settled stays), the Time Data and the attack's Time Calc (`retime`).
+
+**First and last light** are in the place's zone, `groundAppreciation.utcOffsetH` (default 5, PKT), said in the text
+("UTC+5, PKT"), never the computer's.
 
 **Units for the strength.** Own: a built plan's unit (`pbMeta.unit`), else the own symbols of the AOR's echelon taken as
 the standard type, else a standard unit of that echelon (both said "assumed"). En: his unit symbols marked (by echelon,
@@ -128,8 +160,14 @@ Differences under 15 min or 5 % of GO between the avenues are not called better 
 - **Word** (`toDocx`, `exportWord`): WordprocessingML written by `AprcDocx.ts`, zipped with the JSZip that the
   PowerPoint bundle already carries. **No new dependency.** A4, Arial 12, the page number and the marking's ruled line
   in the header, the ruled line again in the footer, numbered paragraphs with hanging indents, ruled tables, pictures inline.
-- **PDF** (`exportPrint`): the same page through the browser's print (Save as PDF).
+- **PDF** (`exportPrint`): the same page through the browser's print (Save as PDF). The marking's ruled line heads and
+  foots every page from a repeating table head and foot (Chrome and Firefox; no margin boxes needed); the page number
+  sits in the top margin where the browser draws margin boxes. The print title is the file name
+  (`Aprc_<place>_<date>[_draft]`, `aprcFileBase`), so Save as PDF offers it. The print frame goes on `afterprint`.
 - **Text** (`toText`, `copyText`), **file** (`toJSON` / `fromJSON`, Save to a file / Open a file in the sheet's ⋯ menu).
+  Save to a file leaves the pictures out by default (a few KB; Read makes them again); *Save with the pictures* keeps
+  them. Opening a file (or a plan) makes it safe (`normalizeDoc`: missing arrays given), and the sheet's kind and its
+  setting follow it.
 - **Figures** (`groundAppreciation.figures`: `both` / `trace` / `map`): the trace is `aorMapSvg` (vector in the page
   and PDF, a PNG in Word and the slides); the map shot is the view as on screen when read.
 
@@ -188,8 +226,13 @@ a.planExtra(); a.loadPlanExtra(data);              // what Save Plan / Load Plan
 symbolEngine.serializationEngine.registerPlanExtra(key, { save, load });   // any engine's data in the plan file
 a.toText('fair'); a.toHtml('draft'); await a.toDocx('fair');   // string, string, Blob
 a.toDeck('decision'); a.makeSlides('full');
-a.toJSON(); a.fromJSON(doc);
+a.toJSON({ pictures: false }); a.fromJSON(doc);    // fromJSON: the kind follows the doc; Undo brings the old sheet back
+a.cancelRead(); a.undo(); a.giveBack(id); a.putBack(id);
+a.setH('06:00');                                   // re-times only what carries a time
 ```
+
+Host: `adminArea?: () => engine` (its `result`) feeds Adm and Log; `threat` (the Threat marker) is read for the en's
+direction and said in the frame.
 
 Events on `document`: `aprc-read`, `aprc-changed` (detail `{ doc }`).
 
@@ -197,14 +240,14 @@ Events on `document`: `aprc-read`, `aprc-changed` (detail `{ doc }`).
 
 | File | Kind | Job |
 | --- | --- | --- |
-| `AprcModel.ts` | pure | The outlines (defence; attack from Mechs of Aprc (Attk), `MA` cites its sheet), numbering, states, whose words print in which copy, typed table cells (`tableOf`, `setCell`, `addRow`), carry-over between readings |
-| `AprcWrite.ts` | pure | The words: `writeGround` (its attack branch from own side), `writeAttkDir`, `writeAttkPlan`, `writeSymbols`, `writeEnemy` (with his phases and clock times), `writeTasks`, `writeStrength`, `writeTimeReq`, `writePlan`, `writeCoyTasks`; first / last light, `parseHHour`, `clockAt`, `whenText` |
+| `AprcModel.ts` | pure | The outlines (defence; attack from Mechs of Aprc (Attk), `MA` cites its sheet), numbering, states, whose words print in which copy, typed table cells by row (`tableOf`, `setCell`, `addRow`, `rowKeys`, `keepMoved` / `dropMoved`), carry-over between readings, `keepUnread`, `markChanges`, `retime`, `staleWhy`, `normalizeDoc`, `uniqueId` |
+| `AprcWrite.ts` | pure | The words: `writeGround` (its attack branch from own side), `writeAttkDir`, `writeAttkPlan`, `writeSymbols`, `writeEnemy` (with his phases and clock times), `writeTasks`, `writeStrength`, `writeTimeReq`, `writePlan`, `writeCoyTasks`, `writeFire`, `writeAir`, `writeTimeData`, `writeTimeCalcAttk`, `writeAdm`; first / last light, `parseHHour`, `clockAt`, `whenText` |
 | `AprcHtml.ts` | pure | The page and the print document |
 | `AprcDocx.ts` | pure | The Word package |
 | `AprcDeck.ts` | pure | The slides (`DECK_IDS` by kind) and the refresh merge |
 | `GroundAppreciation.ts` | engine | Collects the readings, the sheet, exports |
 
-`node tools/aprc-test/run.mjs` runs 192 checks on the pure files (the attack's outline, numbering, copies, drafting, slides among them).
+`node tools/aprc-test/run.mjs` runs 244 checks on the pure files (the attack's outline, numbering, copies, drafting, slides, readings kept, changes, typed cells by row among them).
 
 ## The attack
 
@@ -248,8 +291,12 @@ skeleton (its row names, nothing drafted or typed) makes no slide.
 ## Not built yet
 
 - The attack: the en's option against AP-1 (his sec disposns, killing areas, C attk objs) is not read from the ground; the
-  Backward Calc of Timings is not filled (the H-hour sum of a built attack is not in Check my plan's report); the
-  reactions by stage are the planner's.
-- More than four lines of def (the reading gives W to Z).
+  Time Calc takes H, and the plan's march, assault and Phase 2 only when the check carries an "H-hour sum" row (Check my
+  plan's report does not yet: `PlanCheck` would have to add `hSumRow`); the reactions by stage are the planner's.
+- More than four lines of def: the sheet takes as many as the AOR reading gives, but `GroundGuideAor` still picks at most
+  three lines plus Z.
+- The fire and air paragraphs need the Extended View's live reading at the place (F with IPB fire / air on);
+  `ipbApproachesAround(..., { extras: true })` does not return them for a host.
+- Adm and Log from the Admin Area finder needs the host to pass `adminArea` (SymbolEngine does not yet).
 - The move in by road: the straight line is a floor; the Move Planner's road engine is not called.
 - Live-map slides (all slides are screen-only).

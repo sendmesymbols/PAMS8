@@ -70,6 +70,18 @@ check('book rates: vehicles 24 / 16 / 1 by day, 24 / 8 / 0.1 by night; foot 4 / 
   check('counter-attack DP: 1 h before he reaches the depth localities', !!d && near(d.earliestH, (48 + 18) / 24 - 1) && /counter-attack/.test(d.decision), d ? `${d.id} ${hPlus(d.earliestH)}` : 'none');
 }
 {
+  // The climb on foot (MW p 81): 600 m of ascent costs 60 min at his earliest, 120 at his latest; vehicles pay nothing.
+  const flat = decide(args([aa('A', [[0, 8000, 'go']])], { rates: foot }));
+  const hill = decide(args([aa('A', [[0, 4000, 'go'], [4000, 8000, 'go']].map(([f, t, c], i) => [f, t, c]))], { rates: foot }));
+  hill.profiles; // same ground, no rise recorded: the same times
+  const climbAa = { ...aa('A', [[0, 4000, 'go'], [4000, 8000, 'go']]) };
+  climbAa.going[1].riseM = 600;
+  const up = decide(args([climbAa], { rates: foot }));
+  const pe = (r) => prof(r, 'A').endH;
+  check('foot: 600 m of climb adds 60 min at the earliest and 120 at the latest (MW p 81)', near(pe(up)[0] - pe(flat)[0], 1, 0.01) && near(pe(up)[1] - pe(flat)[1], 2, 0.01) && near(pe(hill)[0], pe(flat)[0], 0.001), `flat ${pe(flat).map((h) => h.toFixed(2))} up ${pe(up).map((h) => h.toFixed(2))}`);
+  const vehAa = { ...aa('A', [[0, 8000, 'go']]) };
+  vehAa.going[0].riseM = 600;
+  check('vehicles pay no climb; foot rates carry the climb figure, vehicle rates do not', near(prof(decide(args([vehAa])), 'A').endH[0], prof(decide(args([aa('A', [[0, 8000, 'go']])])), 'A').endH[0], 0.001) && Array.isArray(foot.climbMinPer300) && veh.climbMinPer300 === null);
   const r = decide(args([aa('A', [[0, 8000, 'go']])], { rates: foot }));
   check('dismounted: 8 km of GO in 2 h by day, 2.5 h by night', near(prof(r, 'A').endH[0], 2) && near(prof(r, 'A').endH[1], 2.5));
 }

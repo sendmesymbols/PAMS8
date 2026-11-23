@@ -1,5 +1,5 @@
 {
- "when": "2026-11-17T17:18:33.853Z",
+ "when": "2026-11-23T17:50:16.947Z",
  "node": "v24.18.0",
  "results": [
   {
@@ -150,37 +150,37 @@
   {
    "name": "the crest sees more than the valley floor",
    "ok": true,
-   "detail": "17 % against 4 %"
+   "detail": "7 % against 0 %"
   },
   {
    "name": "the crest is open country with poor fields of fire (the slope below a summit is dead ground)",
    "ok": true,
-   "detail": "reach 4002 m, clear 32 m, dead ground 98 %"
+   "detail": "reach 1810 m, clear 32 m, dead ground 83 %"
   },
   {
    "name": "the valley floor is overlooked from most directions",
    "ok": true,
-   "detail": "61 % of the arc"
+   "detail": "54 % of the arc"
   },
   {
    "name": "Cholistan is open country",
    "ok": true,
-   "detail": "reach 3368 m"
+   "detail": "reach 3402 m"
   },
   {
    "name": "Lahore centre: the ground alone says open, the buildings make it close or very close country",
    "ok": true,
-   "detail": "18 % alone, 0.2 % expected, reach 98 m (veryClose)"
+   "detail": "13 % alone, 0.2 % expected, reach 98 m (veryClose)"
   },
   {
    "name": "dense towns are very close country: the view ends within a block",
    "ok": true,
-   "detail": "Lahore centre 98 m, Karachi 35 m, Quetta 33 m"
+   "detail": "Lahore centre 98 m, Karachi 35 m, Quetta 132 m"
   },
   {
    "name": "farmland: less is seen in August (tall crops) than in November",
    "ok": true,
-   "detail": "August 11.0 % (reach 854 m), November 15.0 % (reach 1248 m)"
+   "detail": "August 11.4 % (reach 821 m), November 15.9 % (reach 1215 m)"
   },
   {
    "name": "expected never exceeds what the ground alone allows, and sure never exceeds expected",
@@ -195,7 +195,7 @@
   {
    "name": "canal bank: the canal is the nearest NO-GO toward it, inside rifle range",
    "ok": true,
-   "detail": "class 20 at 65 m, chance seen 73 %"
+   "detail": "class 20 at 65 m, chance seen 61 %"
   },
   {
    "name": "the grade follows the weapon: a tank asks for more than a rifle on the same ground",
@@ -205,7 +205,7 @@
   {
    "name": "everything the cursor card needs fits a mouse move (under 4 ms in Node)",
    "ok": true,
-   "detail": "1.27 ms hills, 1.69 ms town"
+   "detail": "1.21 ms hills, 2.13 ms town"
   },
   {
    "name": "the fine picture fits a Detail refresh (under 20 ms)",
@@ -215,72 +215,69 @@
   {
    "name": "step 1 px agrees with the independent check on 98 % or more of the samples",
    "ok": true,
-   "detail": "99.32 %"
+   "detail": "99.28 %"
   },
   {
    "name": "step 0.5 px agrees on 99.5 % or more",
    "ok": true,
-   "detail": "99.58 %"
+   "detail": "99.66 %"
   },
   {
    "name": "crosscheck",
    "detail": {
     "1": {
      "samples": 2640,
-     "agree": 2622,
-     "agreePct": 99.31818181818181,
-     "tsSeenRefHidden": 18,
+     "agree": 2621,
+     "agreePct": 99.28030303030303,
+     "tsSeenRefHidden": 19,
      "tsHiddenRefSeen": 0,
      "missDistM": [
-      64,
-      95,
-      318,
-      635,
-      667,
-      762,
-      1048,
-      1080,
+      159,
+      222,
+      349,
+      413,
+      603,
+      889,
+      953,
+      1175,
       1271,
-      1302,
-      1334,
-      1493,
+      1525,
+      1747,
+      1842,
+      1938,
+      1969,
+      2096,
+      2128,
       2160,
-      2287,
-      2890,
-      3017,
-      3176,
-      3462
+      2192,
+      2890
      ]
     },
     "0.5": {
      "samples": 5280,
-     "agree": 5258,
-     "agreePct": 99.58333333333333,
-     "tsSeenRefHidden": 22,
+     "agree": 5262,
+     "agreePct": 99.6590909090909,
+     "tsSeenRefHidden": 18,
      "tsHiddenRefSeen": 0,
      "missDistM": [
-      95,
-      318,
-      667,
+      48,
+      159,
+      349,
+      413,
       683,
-      746,
-      762,
-      1001,
-      1048,
-      1064,
-      1080,
-      1096,
-      1128,
+      889,
+      953,
       1271,
-      1286,
-      1334,
-      1350,
-      1493,
+      1445,
+      1826,
+      1842,
+      1953,
+      1969,
+      1985,
+      2096,
       2160,
-      2890,
-      2970,
-      3002,
-      3462
+      2176,
+      2192
      ]
     }
    }
@@ -290,56 +287,59 @@
   {
    "id": "Margalla crest",
    "lon": 73.0747,
-   "lat": 33.7901,
-   "elevM": 1435,
+   "lat": 33.7904,
+   "elevM": 1431,
    "threat": 0,
    "rifle": {
     "obs": {
-     "seenPct": 17.012746509798625,
-     "terrainPct": 18.664055522840115,
-     "surePct": 14.49564135677674,
-     "reachMedianM": 4002.09423828125,
-     "clearMedianM": 31.762653350830078,
+     "seenPct": 6.541245158061537,
+     "terrainPct": 23.33120467804864,
+     "surePct": 0,
+     "reachMedianM": 1810.4652099609375,
+     "clearMedianM": 31.76254653930664,
      "country": "open",
      "overlook": {
-      "riseM": 140.49977111816406,
-      "distM": 3620.9423828125,
+      "riseM": 146.24362182617188,
+      "distM": 3589.167724609375,
       "bearingDeg": 58
      },
-     "overlookArcPct": 5.555555555555555,
+     "overlookArcPct": 6.111111111111111,
      "ownScreenPct": 20.000000298023224
     },
     "fire": {
      "grade": "poor",
      "limitedBy": "clear",
-     "clearMedianM": 31.762653350830078,
-     "clearP20M": 31.762653350830078,
-     "clearMaxM": 31.762653350830078,
-     "ge200Pct": 0,
-     "ge270Pct": 0,
+     "clearMedianM": 31.76254653930664,
+     "clearP20M": 31.76254653930664,
+     "clearMaxM": 300,
+     "ge200Pct": 9.67741935483871,
+     "ge270Pct": 9.67741935483871,
      "primaryOk": false,
-     "seenPct": 2.22240048227139,
-     "deadPct": 97.61198420719703,
-     "screenedPct": 0.16561531053158454,
-     "usesPctOfEff": 10.58755111694336,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 13.690433291039248,
+     "deadPct": 82.8869586377555,
+     "screenedPct": 3.4226080712052527,
+     "usesPctOfEff": 10.587515513102213,
      "bands": [
       {
        "fromM": 0,
        "toM": 100,
-       "seenPct": 16.668043245688956,
-       "terrainPct": 17.910158055306734
+       "seenPct": 22.769302862866677,
+       "terrainPct": 28.461628684611167
       },
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 0,
-       "terrainPct": 0
+       "seenPct": 12.293682529182421,
+       "terrainPct": 15.367103218724946
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 2.191277201700528,
-       "terrainPct": 3.9832717343773507
+       "seenPct": 34.78857895058185,
+       "terrainPct": 43.48572385022429
       },
       {
        "fromM": 600,
@@ -362,14 +362,14 @@
      ]
     },
     "obst": {
-     "nogoM": 63.525306701660156,
+     "nogoM": 31.76254653930664,
      "nogoClass": 9,
-     "seenP": 0,
+     "seenP": 0.800000011920929,
      "inRange": true,
-     "covered": false,
+     "covered": true,
      "blockedInRangePct": 100,
      "acrossPct": 100,
-     "cautionM": 31.762653350830078,
+     "cautionM": 31.76254653930664,
      "cautionClass": 10
     },
     "ways": {
@@ -401,30 +401,30 @@
       "nogo"
      ],
      "distM": {
-      "0": 63.525306701660156,
-      "1": 95.28795623779297,
-      "2": 127.05061340332031,
-      "3": 349.3891906738281,
-      "4": 889.354248046875,
-      "5": 349.3891906738281,
-      "6": 317.62652587890625,
-      "7": 95.28795623779297,
-      "8": 95.28795623779297,
-      "9": 95.28795623779297,
-      "10": 222.33856201171875,
-      "11": 381.1518249511719,
-      "12": 730.541015625,
-      "13": 381.1518249511719,
-      "14": 317.62652587890625,
-      "15": 1206.9808349609375,
-      "16": 190.57591247558594,
-      "17": 127.05061340332031,
-      "18": 127.05061340332031,
-      "19": 127.05061340332031,
-      "20": 127.05061340332031,
-      "21": 95.28795623779297,
-      "22": 63.525306701660156,
-      "23": 63.525306701660156
+      "0": 31.76254653930664,
+      "1": 31.76254653930664,
+      "2": 63.52509307861328,
+      "3": 95.28764343261719,
+      "4": 762.3011474609375,
+      "5": 412.9131164550781,
+      "6": 349.38800048828125,
+      "7": 317.6254577636719,
+      "8": 127.05018615722656,
+      "9": 95.28764343261719,
+      "10": 158.81272888183594,
+      "11": 444.6756591796875,
+      "12": 762.3011474609375,
+      "13": 381.15057373046875,
+      "14": 698.7760009765625,
+      "15": 698.7760009765625,
+      "16": 158.81272888183594,
+      "17": 127.05018615722656,
+      "18": 63.52509307861328,
+      "19": 63.52509307861328,
+      "20": 63.52509307861328,
+      "21": 31.76254653930664,
+      "22": 31.76254653930664,
+      "23": 31.76254653930664
      },
      "stopClass": {
       "0": 9,
@@ -458,10 +458,10 @@
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -94,
+     "aboveMaxM": -98,
      "maxM": 1529,
-     "distM": 2475.4499905338575,
-     "bearingDeg": 56.513831184487
+     "distM": 2458.0599599452967,
+     "bearingDeg": 57.131321066632495
     },
     "weapon": {
      "channel": "dir",
@@ -478,63 +478,66 @@
    },
    "tank": {
     "obs": {
-     "seenPct": 17.394127050809413,
-     "terrainPct": 19.036931129196507,
-     "surePct": 14.8111564459394,
-     "reachMedianM": 4002.09423828125,
-     "clearMedianM": 31.762653350830078,
+     "seenPct": 6.681147149279056,
+     "terrainPct": 23.82651731873965,
+     "surePct": 0,
+     "reachMedianM": 1810.4652099609375,
+     "clearMedianM": 31.76254653930664,
      "country": "open",
      "overlook": {
-      "riseM": 140.49977111816406,
-      "distM": 3620.9423828125,
+      "riseM": 146.24362182617188,
+      "distM": 3589.167724609375,
       "bearingDeg": 58
      },
-     "overlookArcPct": 5.555555555555555,
+     "overlookArcPct": 6.111111111111111,
      "ownScreenPct": 20.000000298023224
     },
     "fire": {
      "grade": "poor",
      "limitedBy": "clear",
-     "clearMedianM": 31.762653350830078,
-     "clearP20M": 31.762653350830078,
-     "clearMaxM": 63.525306701660156,
-     "ge200Pct": 0,
-     "ge270Pct": 0,
+     "clearMedianM": 31.76254653930664,
+     "clearP20M": 31.76254653930664,
+     "clearMaxM": 952.8764038085938,
+     "ge200Pct": 10,
+     "ge270Pct": 10,
      "primaryOk": false,
-     "seenPct": 3.5568859629668705,
-     "deadPct": 95.44694517928177,
-     "screenedPct": 0.99616885775136,
-     "usesPctOfEff": 1.588132667541504,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 22.958429931266227,
+     "deadPct": 48.83967080948375,
+     "screenedPct": 28.201899259250023,
+     "usesPctOfEff": 1.588127326965332,
      "bands": [
       {
        "fromM": 0,
        "toM": 100,
-       "seenPct": 17.268655216437597,
-       "terrainPct": 18.726690693359135
+       "seenPct": 23.56959139457345,
+       "terrainPct": 29.46198935297135
       },
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 0,
-       "terrainPct": 0
+       "seenPct": 11.74740442425993,
+       "terrainPct": 14.684255585028037
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 2.017010385848512,
-       "terrainPct": 3.511743828552927
+       "seenPct": 34.574012051877695,
+       "terrainPct": 43.21751522584475
       },
       {
        "fromM": 600,
        "toM": 1000,
-       "seenPct": 12.17610931946153,
-       "terrainPct": 14.97616154399636
+       "seenPct": 44.09944272492998,
+       "terrainPct": 61.673988909468044
       },
       {
        "fromM": 1000,
        "toM": 2000,
-       "seenPct": 1.806183425610288,
-       "terrainPct": 2.381623514790517
+       "seenPct": 17.53575984574062,
+       "terrainPct": 50.567749495705314
       },
       {
        "fromM": 2000,
@@ -545,14 +548,14 @@
      ]
     },
     "obst": {
-     "nogoM": 63.525306701660156,
+     "nogoM": 31.76254653930664,
      "nogoClass": 9,
-     "seenP": 0,
+     "seenP": 0.800000011920929,
      "inRange": true,
-     "covered": false,
+     "covered": true,
      "blockedInRangePct": 100,
      "acrossPct": 100,
-     "cautionM": 31.762653350830078,
+     "cautionM": 31.76254653930664,
      "cautionClass": 10
     },
     "ways": {
@@ -584,30 +587,30 @@
       "nogo"
      ],
      "distM": {
-      "0": 63.525306701660156,
-      "1": 95.28795623779297,
-      "2": 127.05061340332031,
-      "3": 349.3891906738281,
-      "4": 889.354248046875,
-      "5": 349.3891906738281,
-      "6": 317.62652587890625,
-      "7": 95.28795623779297,
-      "8": 95.28795623779297,
-      "9": 95.28795623779297,
-      "10": 222.33856201171875,
-      "11": 381.1518249511719,
-      "12": 730.541015625,
-      "13": 381.1518249511719,
-      "14": 317.62652587890625,
-      "15": 1206.9808349609375,
-      "16": 190.57591247558594,
-      "17": 127.05061340332031,
-      "18": 127.05061340332031,
-      "19": 127.05061340332031,
-      "20": 127.05061340332031,
-      "21": 95.28795623779297,
-      "22": 63.525306701660156,
-      "23": 63.525306701660156
+      "0": 31.76254653930664,
+      "1": 31.76254653930664,
+      "2": 63.52509307861328,
+      "3": 95.28764343261719,
+      "4": 762.3011474609375,
+      "5": 412.9131164550781,
+      "6": 349.38800048828125,
+      "7": 317.6254577636719,
+      "8": 127.05018615722656,
+      "9": 95.28764343261719,
+      "10": 158.81272888183594,
+      "11": 444.6756591796875,
+      "12": 762.3011474609375,
+      "13": 381.15057373046875,
+      "14": 698.7760009765625,
+      "15": 698.7760009765625,
+      "16": 158.81272888183594,
+      "17": 127.05018615722656,
+      "18": 63.52509307861328,
+      "19": 63.52509307861328,
+      "20": 63.52509307861328,
+      "21": 31.76254653930664,
+      "22": 31.76254653930664,
+      "23": 31.76254653930664
      },
      "stopClass": {
       "0": 9,
@@ -641,10 +644,10 @@
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -94,
+     "aboveMaxM": -98,
      "maxM": 1529,
-     "distM": 2475.4499905338575,
-     "bearingDeg": 56.513831184487
+     "distM": 2458.0599599452967,
+     "bearingDeg": 57.131321066632495
     },
     "weapon": {
      "channel": "at",
@@ -662,8 +665,8 @@
      "fromSymbol": true
     }
    },
-   "augSeenPct": 17.011809711295776,
-   "augReachM": 4002.09423828125,
+   "augSeenPct": 6.530782795461018,
+   "augReachM": 1810.4652099609375,
    "vis": {
     "fogPct": 4,
     "hazePct": 39,
@@ -674,57 +677,60 @@
   },
   {
    "id": "Islamabad valley floor",
-   "lon": 73.1118,
-   "lat": 33.7313,
-   "elevM": 566,
+   "lon": 73.1173,
+   "lat": 33.7305,
+   "elevM": 563,
    "threat": 0,
    "rifle": {
     "obs": {
-     "seenPct": 3.551935829985461,
-     "terrainPct": 7.26770187272445,
-     "surePct": 1.7492632270024369,
-     "reachMedianM": 158.9222412109375,
-     "clearMedianM": 127.1377944946289,
+     "seenPct": 0.35898263906122363,
+     "terrainPct": 11.566916867650603,
+     "surePct": 0,
+     "reachMedianM": 63.56953048706055,
+     "clearMedianM": 63.56953048706055,
      "country": "veryClose",
      "overlook": {
-      "riseM": 681.53173828125,
-      "distM": 4990.158203125,
-      "bearingDeg": 12
+      "riseM": 680.75537109375,
+      "distM": 4958.42333984375,
+      "bearingDeg": 6
      },
-     "overlookArcPct": 61.111111111111114,
-     "ownScreenPct": 0.4380479920655489
+     "overlookArcPct": 53.888888888888886,
+     "ownScreenPct": 17.159615457057953
     },
     "fire": {
-     "grade": "marginal",
+     "grade": "poor",
      "limitedBy": "clear",
-     "clearMedianM": 127.1377944946289,
-     "clearP20M": 127.1377944946289,
-     "clearMaxM": 300,
-     "ge200Pct": 22.580645161290324,
-     "ge270Pct": 16.129032258064516,
+     "clearMedianM": 63.56953048706055,
+     "clearP20M": 63.56953048706055,
+     "clearMaxM": 63.56953048706055,
+     "ge200Pct": 0,
+     "ge270Pct": 0,
      "primaryOk": false,
-     "seenPct": 38.645574557044455,
-     "deadPct": 56.28359285884256,
-     "screenedPct": 5.070832584112987,
-     "usesPctOfEff": 42.37926483154297,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 13.534921324740985,
+     "deadPct": 46.990378832831375,
+     "screenedPct": 39.47469984242764,
+     "usesPctOfEff": 21.189843495686848,
      "bands": [
       {
        "fromM": 0,
        "toM": 100,
-       "seenPct": 95.77457985502586,
-       "terrainPct": 99.99999999999999
+       "seenPct": 47.91679622577112,
+       "terrainPct": 99.84238629995663
       },
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 29.856497179375207,
-       "terrainPct": 35.05739322923311
+       "seenPct": 8.245402290488725,
+       "terrainPct": 45.804580368629
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 13.420983465372625,
-       "terrainPct": 24.31983259517861
+       "seenPct": 6.921731070867942,
+       "terrainPct": 41.05695493277491
       },
       {
        "fromM": 600,
@@ -747,30 +753,19 @@
      ]
     },
     "obst": {
-     "nogoM": null,
-     "nogoClass": 0,
+     "nogoM": 222.4933624267578,
+     "nogoClass": 4,
      "seenP": 0,
-     "inRange": false,
+     "inRange": true,
      "covered": false,
-     "blockedInRangePct": 0,
-     "acrossPct": 0,
-     "cautionM": 31.784448623657227,
+     "blockedInRangePct": 12.903225806451612,
+     "acrossPct": 22.580645161290324,
+     "cautionM": 31.784765243530273,
      "cautionClass": 3
     },
     "ways": {
      "sectors": 24,
      "state": [
-      "slow",
-      "nogo",
-      "nogo",
-      "slow",
-      "slow",
-      "slow",
-      "go",
-      "go",
-      "go",
-      "go",
-      "nogo",
       "nogo",
       "slow",
       "slow",
@@ -782,13 +777,24 @@
       "go",
       "go",
       "go",
+      "nogo",
+      "nogo",
       "go",
-      "slow"
+      "slow",
+      "slow",
+      "nogo",
+      "go",
+      "go",
+      "go",
+      "go",
+      "nogo",
+      "slow",
+      "nogo"
      ],
      "distM": {
-      "0": 2000,
-      "1": 1462.0845947265625,
-      "2": 1303.162353515625,
+      "0": 1303.1754150390625,
+      "1": 2000,
+      "2": 2000,
       "3": 2000,
       "4": 2000,
       "5": 2000,
@@ -796,25 +802,25 @@
       "7": 2000,
       "8": 2000,
       "9": 2000,
-      "10": 1684.5758056640625,
-      "11": 1779.9290771484375,
-      "12": 2000,
+      "10": 2000,
+      "11": 95.35429382324219,
+      "12": 63.56953048706055,
       "13": 2000,
       "14": 2000,
       "15": 2000,
-      "16": 2000,
+      "16": 63.56953048706055,
       "17": 2000,
       "18": 2000,
       "19": 2000,
       "20": 2000,
-      "21": 2000,
+      "21": 254.2781219482422,
       "22": 2000,
-      "23": 2000
+      "23": 1907.0859375
      },
      "stopClass": {
-      "0": 0,
-      "1": 41,
-      "2": 4,
+      "0": 4,
+      "1": 0,
+      "2": 0,
       "3": 0,
       "4": 0,
       "5": 0,
@@ -822,31 +828,31 @@
       "7": 0,
       "8": 0,
       "9": 0,
-      "10": 6,
-      "11": 6,
-      "12": 0,
+      "10": 0,
+      "11": 4,
+      "12": 4,
       "13": 0,
       "14": 0,
       "15": 0,
-      "16": 0,
+      "16": 4,
       "17": 0,
       "18": 0,
       "19": 0,
       "20": 0,
-      "21": 0,
+      "21": 4,
       "22": 0,
-      "23": 0
+      "23": 4
      },
      "go": 13,
-     "slow": 7,
-     "blocked": 4,
+     "slow": 5,
+     "blocked": 6,
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -197,
-     "maxM": 763,
-     "distM": 2968.912484677587,
-     "bearingDeg": 344.47588900324575
+     "aboveMaxM": -189,
+     "maxM": 752,
+     "distM": 2782.9372941830825,
+     "bearingDeg": 13.877529803208006
     },
     "weapon": {
      "channel": "dir",
@@ -863,63 +869,66 @@
    },
    "tank": {
     "obs": {
-     "seenPct": 3.699266974147461,
-     "terrainPct": 7.56261982824404,
-     "surePct": 1.8194075581917903,
-     "reachMedianM": 190.70669555664062,
-     "clearMedianM": 127.1377944946289,
+     "seenPct": 0.38197287049469775,
+     "terrainPct": 12.466041460822815,
+     "surePct": 0,
+     "reachMedianM": 63.56953048706055,
+     "clearMedianM": 63.56953048706055,
      "country": "veryClose",
      "overlook": {
-      "riseM": 681.53173828125,
-      "distM": 4990.158203125,
-      "bearingDeg": 12
+      "riseM": 682.9434814453125,
+      "distM": 4990.2080078125,
+      "bearingDeg": 6
      },
-     "overlookArcPct": 62.77777777777778,
-     "ownScreenPct": 0.4380479920655489
+     "overlookArcPct": 53.888888888888886,
+     "ownScreenPct": 17.159615457057953
     },
     "fire": {
      "grade": "poor",
-     "limitedBy": "coverage",
-     "clearMedianM": 158.9222412109375,
-     "clearP20M": 127.1377944946289,
-     "clearMaxM": 476.7667236328125,
-     "ge200Pct": 24,
-     "ge270Pct": 24,
+     "limitedBy": "clear",
+     "clearMedianM": 63.56953048706055,
+     "clearP20M": 63.56953048706055,
+     "clearMaxM": 63.56953048706055,
+     "ge200Pct": 0,
+     "ge270Pct": 0,
      "primaryOk": false,
-     "seenPct": 4.211449564517331,
-     "deadPct": 89.03175856937739,
-     "screenedPct": 6.7567918661052815,
-     "usesPctOfEff": 7.946112060546875,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 1.399788857830094,
+     "deadPct": 86.74062632501196,
+     "screenedPct": 11.859584817157947,
+     "usesPctOfEff": 3.1784765243530275,
      "bands": [
       {
        "fromM": 0,
        "toM": 100,
-       "seenPct": 95.7763800954563,
+       "seenPct": 48.00185666234326,
        "terrainPct": 100
       },
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 36.67657583927635,
-       "terrainPct": 43.675827522252355
+       "seenPct": 12.121200002725194,
+       "terrainPct": 66.8281825063907
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 17.4956801445323,
-       "terrainPct": 31.454375339933712
+       "seenPct": 7.802158388775183,
+       "terrainPct": 48.11942569241772
       },
       {
        "fromM": 600,
        "toM": 1000,
-       "seenPct": 1.3292394522397266,
-       "terrainPct": 4.969111400787048
+       "seenPct": 1.9474456543617644,
+       "terrainPct": 23.577292700285714
       },
       {
        "fromM": 1000,
        "toM": 2000,
-       "seenPct": 2.4594772861523766,
-       "terrainPct": 9.292660542609262
+       "seenPct": 0.24506103423852452,
+       "terrainPct": 6.152083966602862
       },
       {
        "fromM": 2000,
@@ -930,30 +939,19 @@
      ]
     },
     "obst": {
-     "nogoM": 858.1801147460938,
+     "nogoM": 222.4933624267578,
      "nogoClass": 4,
      "seenP": 0,
      "inRange": true,
      "covered": false,
-     "blockedInRangePct": 28,
-     "acrossPct": 28,
-     "cautionM": 31.784448623657227,
+     "blockedInRangePct": 53,
+     "acrossPct": 53,
+     "cautionM": 31.784765243530273,
      "cautionClass": 3
     },
     "ways": {
      "sectors": 24,
      "state": [
-      "slow",
-      "nogo",
-      "nogo",
-      "slow",
-      "slow",
-      "slow",
-      "go",
-      "go",
-      "go",
-      "go",
-      "nogo",
       "nogo",
       "slow",
       "slow",
@@ -965,13 +963,24 @@
       "go",
       "go",
       "go",
+      "nogo",
+      "nogo",
       "go",
-      "slow"
+      "slow",
+      "slow",
+      "nogo",
+      "go",
+      "go",
+      "go",
+      "go",
+      "nogo",
+      "slow",
+      "nogo"
      ],
      "distM": {
-      "0": 2000,
-      "1": 1462.0845947265625,
-      "2": 1303.162353515625,
+      "0": 1303.1754150390625,
+      "1": 2000,
+      "2": 2000,
       "3": 2000,
       "4": 2000,
       "5": 2000,
@@ -979,25 +988,25 @@
       "7": 2000,
       "8": 2000,
       "9": 2000,
-      "10": 1684.5758056640625,
-      "11": 1779.9290771484375,
-      "12": 2000,
+      "10": 2000,
+      "11": 95.35429382324219,
+      "12": 63.56953048706055,
       "13": 2000,
       "14": 2000,
       "15": 2000,
-      "16": 2000,
+      "16": 63.56953048706055,
       "17": 2000,
       "18": 2000,
       "19": 2000,
       "20": 2000,
-      "21": 2000,
+      "21": 254.2781219482422,
       "22": 2000,
-      "23": 2000
+      "23": 1907.0859375
      },
      "stopClass": {
-      "0": 0,
-      "1": 41,
-      "2": 4,
+      "0": 4,
+      "1": 0,
+      "2": 0,
       "3": 0,
       "4": 0,
       "5": 0,
@@ -1005,31 +1014,31 @@
       "7": 0,
       "8": 0,
       "9": 0,
-      "10": 6,
-      "11": 6,
-      "12": 0,
+      "10": 0,
+      "11": 4,
+      "12": 4,
       "13": 0,
       "14": 0,
       "15": 0,
-      "16": 0,
+      "16": 4,
       "17": 0,
       "18": 0,
       "19": 0,
       "20": 0,
-      "21": 0,
+      "21": 4,
       "22": 0,
-      "23": 0
+      "23": 4
      },
      "go": 13,
-     "slow": 7,
-     "blocked": 4,
+     "slow": 5,
+     "blocked": 6,
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -197,
-     "maxM": 763,
-     "distM": 2968.912484677587,
-     "bearingDeg": 344.47588900324575
+     "aboveMaxM": -189,
+     "maxM": 752,
+     "distM": 2782.9372941830825,
+     "bearingDeg": 13.877529803208006
     },
     "weapon": {
      "channel": "at",
@@ -1047,8 +1056,8 @@
      "fromSymbol": true
     }
    },
-   "augSeenPct": 3.543125074603298,
-   "augReachM": 158.9222412109375,
+   "augSeenPct": 0.3579829757757127,
+   "augReachM": 63.56953048706055,
    "vis": {
     "fogPct": 5,
     "hazePct": 54,
@@ -1061,22 +1070,22 @@
    "id": "Cholistan flat",
    "lon": 71.9,
    "lat": 28.2,
-   "elevM": 120,
+   "elevM": 139,
    "threat": 0,
    "rifle": {
     "obs": {
-     "seenPct": 16.327885415116395,
-     "terrainPct": 16.327885415116395,
-     "surePct": 13.942096019031675,
-     "reachMedianM": 3368.2109375,
-     "clearMedianM": 572.5958251953125,
+     "seenPct": 17.008310985478538,
+     "terrainPct": 17.008310985478538,
+     "surePct": 14.513674363328935,
+     "reachMedianM": 3401.89306640625,
+     "clearMedianM": 606.2779541015625,
      "country": "open",
      "overlook": {
-      "riseM": 23.402597427368164,
+      "riseM": 23.55385398864746,
       "distM": 4008.1708984375,
       "bearingDeg": 194
      },
-     "overlookArcPct": 10,
+     "overlookArcPct": 10.555555555555555,
      "ownScreenPct": 0
     },
     "fire": {
@@ -1088,8 +1097,11 @@
      "ge200Pct": 100,
      "ge270Pct": 100,
      "primaryOk": true,
-     "seenPct": 100,
-     "deadPct": 0,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 99.63725720401379,
+     "deadPct": 0.36274279598621256,
      "screenedPct": 0,
      "usesPctOfEff": 100,
      "bands": [
@@ -1102,14 +1114,14 @@
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 100,
-       "terrainPct": 100
+       "seenPct": 99.6042805807754,
+       "terrainPct": 99.6042805807754
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 85.57235881922118,
-       "terrainPct": 85.57235881922118
+       "seenPct": 87.05357713527918,
+       "terrainPct": 87.05357713527918
       },
       {
        "fromM": 600,
@@ -1139,8 +1151,8 @@
      "covered": false,
      "blockedInRangePct": 0,
      "acrossPct": 0,
-     "cautionM": null,
-     "cautionClass": 0
+     "cautionM": 572.5958251953125,
+     "cautionClass": 10
     },
     "ways": {
      "sectors": 24,
@@ -1228,8 +1240,8 @@
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -18.554082841120305,
-     "maxM": 139,
+     "aboveMaxM": -18.705338835949078,
+     "maxM": 158,
      "distM": 1388.7489081907825,
      "bearingDeg": 247.16634582208246
     },
@@ -1248,18 +1260,18 @@
    },
    "tank": {
     "obs": {
-     "seenPct": 19.03317367084474,
-     "terrainPct": 19.03317367084474,
-     "surePct": 16.785476200461417,
-     "reachMedianM": 3435.574951171875,
+     "seenPct": 19.84299571015817,
+     "terrainPct": 19.84299571015817,
+     "surePct": 17.498437542861797,
+     "reachMedianM": 3502.939208984375,
      "clearMedianM": 639.9600830078125,
      "country": "open",
      "overlook": {
-      "riseM": 23.402597427368164,
+      "riseM": 23.55385398864746,
       "distM": 4008.1708984375,
       "bearingDeg": 194
      },
-     "overlookArcPct": 10,
+     "overlookArcPct": 10.555555555555555,
      "ownScreenPct": 0
     },
     "fire": {
@@ -1271,8 +1283,11 @@
      "ge200Pct": 100,
      "ge270Pct": 100,
      "primaryOk": true,
-     "seenPct": 22.574668318409778,
-     "deadPct": 77.42533168159022,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 21.066651497939603,
+     "deadPct": 78.9333485020604,
      "screenedPct": 0,
      "usesPctOfEff": 28.629791259765625,
      "bands": [
@@ -1291,20 +1306,20 @@
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 89.90770943177698,
-       "terrainPct": 89.90770943177698
+       "seenPct": 91.99560683391076,
+       "terrainPct": 91.99560683391076
       },
       {
        "fromM": 600,
        "toM": 1000,
-       "seenPct": 28.1978338550684,
-       "terrainPct": 28.1978338550684
+       "seenPct": 29.811202668269296,
+       "terrainPct": 29.811202668269296
       },
       {
        "fromM": 1000,
        "toM": 2000,
-       "seenPct": 13.397881366632962,
-       "terrainPct": 13.397881366632962
+       "seenPct": 10.874702189476368,
+       "terrainPct": 10.874702189476368
       },
       {
        "fromM": 2000,
@@ -1322,8 +1337,8 @@
      "covered": false,
      "blockedInRangePct": 0,
      "acrossPct": 0,
-     "cautionM": null,
-     "cautionClass": 0
+     "cautionM": 572.5958251953125,
+     "cautionClass": 10
     },
     "ways": {
      "sectors": 24,
@@ -1411,8 +1426,8 @@
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -18.554082841120305,
-     "maxM": 139,
+     "aboveMaxM": -18.705338835949078,
+     "maxM": 158,
      "distM": 1388.7489081907825,
      "bearingDeg": 247.16634582208246
     },
@@ -1432,8 +1447,8 @@
      "fromSymbol": true
     }
    },
-   "augSeenPct": 16.327885415116395,
-   "augReachM": 3368.2109375,
+   "augSeenPct": 17.008310985478538,
+   "augReachM": 3401.89306640625,
    "vis": {
     "fogPct": 35,
     "hazePct": 40,
@@ -1446,55 +1461,58 @@
    "id": "Lahore centre",
    "lon": 74.3436,
    "lat": 31.5497,
-   "elevM": 224,
+   "elevM": 225,
    "threat": 0,
    "rifle": {
     "obs": {
-     "seenPct": 0.174934422955896,
-     "terrainPct": 17.831152095695607,
-     "surePct": 0.02937875401778197,
+     "seenPct": 0.18749505733778946,
+     "terrainPct": 12.537718030200326,
+     "surePct": 0,
      "reachMedianM": 97.70791625976562,
-     "clearMedianM": 65.13861083984375,
+     "clearMedianM": 97.70791625976562,
      "country": "veryClose",
      "overlook": {
-      "riseM": 19.460172653198242,
-      "distM": 4266.5791015625,
-      "bearingDeg": 326
+      "riseM": 18.586822509765625,
+      "distM": 4494.564453125,
+      "bearingDeg": 330
      },
-     "overlookArcPct": 0.5555555555555556,
+     "overlookArcPct": 1.1111111111111112,
      "ownScreenPct": 20.000000298023224
     },
     "fire": {
-     "grade": "poor",
+     "grade": "marginal",
      "limitedBy": "clear",
-     "clearMedianM": 32.569305419921875,
-     "clearP20M": 32.569305419921875,
-     "clearMaxM": 97.70791625976562,
-     "ge200Pct": 0,
+     "clearMedianM": 162.84652709960938,
+     "clearP20M": 97.70791625976562,
+     "clearMaxM": 227.98513793945312,
+     "ge200Pct": 10,
      "ge270Pct": 0,
      "primaryOk": false,
-     "seenPct": 19.963386212022765,
-     "deadPct": 50.824260841770744,
-     "screenedPct": 29.21235294620649,
-     "usesPctOfEff": 10.856435139973959,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 38.90877563424903,
+     "deadPct": 2.658980864139168,
+     "screenedPct": 58.4322435016118,
+     "usesPctOfEff": 54.28217569986979,
      "bands": [
       {
        "fromM": 0,
        "toM": 100,
-       "seenPct": 26.16879952310864,
-       "terrainPct": 44.1941393162192
+       "seenPct": 60.57224923151042,
+       "terrainPct": 100
       },
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 19.008707496881048,
-       "terrainPct": 49.94213904072709
+       "seenPct": 35.575933266662815,
+       "terrainPct": 96.93194519444297
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 5.372125234640958,
-       "terrainPct": 45.653877045904686
+       "seenPct": 7.388167806046337,
+       "terrainPct": 82.34239173721983
       },
       {
        "fromM": 600,
@@ -1524,7 +1542,7 @@
      "covered": false,
      "blockedInRangePct": 0,
      "acrossPct": 0,
-     "cautionM": 227.98513793945312,
+     "cautionM": 65.13861083984375,
      "cautionClass": 3
     },
     "ways": {
@@ -1548,7 +1566,7 @@
       "slow",
       "slow",
       "slow",
-      "go",
+      "slow",
       "go",
       "go",
       "go",
@@ -1565,9 +1583,9 @@
       "6": 1139.9256591796875,
       "7": 2000,
       "8": 2000,
-      "9": 846.8019409179688,
-      "10": 911.9405517578125,
-      "11": 1074.787109375,
+      "9": 879.3712768554688,
+      "10": 944.5098876953125,
+      "11": 1107.3564453125,
       "12": 2000,
       "13": 2000,
       "14": 2000,
@@ -1607,14 +1625,14 @@
       "22": 0,
       "23": 0
      },
-     "go": 6,
-     "slow": 14,
+     "go": 5,
+     "slow": 15,
      "blocked": 4,
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -8.42577950994604,
-     "maxM": 232,
+     "aboveMaxM": -16.994900595053366,
+     "maxM": 242,
      "distM": 2873.676092038286,
      "bearingDeg": 35.31121343963321
     },
@@ -1633,63 +1651,66 @@
    },
    "tank": {
     "obs": {
-     "seenPct": 0.21061155884078958,
-     "terrainPct": 24.26977788509643,
-     "surePct": 0.043101414649075874,
+     "seenPct": 0.1991532117726103,
+     "terrainPct": 17.350468112423183,
+     "surePct": 0,
      "reachMedianM": 97.70791625976562,
-     "clearMedianM": 65.13861083984375,
+     "clearMedianM": 97.70791625976562,
      "country": "veryClose",
      "overlook": {
-      "riseM": 19.460172653198242,
-      "distM": 4266.5791015625,
-      "bearingDeg": 326
+      "riseM": 18.586822509765625,
+      "distM": 4494.564453125,
+      "bearingDeg": 330
      },
-     "overlookArcPct": 0.5555555555555556,
+     "overlookArcPct": 1.1111111111111112,
      "ownScreenPct": 20.000000298023224
     },
     "fire": {
      "grade": "poor",
-     "limitedBy": "clear",
-     "clearMedianM": 32.569305419921875,
-     "clearP20M": 32.569305419921875,
-     "clearMaxM": 162.84652709960938,
-     "ge200Pct": 0,
+     "limitedBy": "coverage",
+     "clearMedianM": 162.84652709960938,
+     "clearP20M": 97.70791625976562,
+     "clearMaxM": 227.98513793945312,
+     "ge200Pct": 10.309278350515465,
      "ge270Pct": 0,
      "primaryOk": false,
-     "seenPct": 1.133689663738494,
-     "deadPct": 65.94209607670209,
-     "screenedPct": 32.92421425955942,
-     "usesPctOfEff": 1.6284652709960938,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 1.6648070526314385,
+     "deadPct": 37.88541485069896,
+     "screenedPct": 60.449778096669604,
+     "usesPctOfEff": 8.142326354980469,
      "bands": [
       {
        "fromM": 0,
        "toM": 100,
-       "seenPct": 28.543673413532254,
-       "terrainPct": 48.59489222887068
+       "seenPct": 61.017013127523974,
+       "terrainPct": 100
       },
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 21.905624955449902,
-       "terrainPct": 57.77535946115725
+       "seenPct": 36.555297479024965,
+       "terrainPct": 99.65158068698214
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 6.363998149739776,
-       "terrainPct": 53.12455759685586
+       "seenPct": 8.170145742587284,
+       "terrainPct": 92.74052563235837
       },
       {
        "fromM": 600,
        "toM": 1000,
-       "seenPct": 0.9857945733970487,
-       "terrainPct": 33.89588873048743
+       "seenPct": 1.0463672826503685,
+       "terrainPct": 84.71048676162707
       },
       {
        "fromM": 1000,
        "toM": 2000,
-       "seenPct": 0.01860856280511112,
-       "terrainPct": 31.696774637390202
+       "seenPct": 0.013547901370855478,
+       "terrainPct": 53.56387007046854
       },
       {
        "fromM": 2000,
@@ -1707,7 +1728,7 @@
      "covered": false,
      "blockedInRangePct": 0,
      "acrossPct": 0,
-     "cautionM": 227.98513793945312,
+     "cautionM": 65.13861083984375,
      "cautionClass": 3
     },
     "ways": {
@@ -1731,7 +1752,7 @@
       "slow",
       "slow",
       "slow",
-      "go",
+      "slow",
       "go",
       "go",
       "go",
@@ -1748,9 +1769,9 @@
       "6": 1139.9256591796875,
       "7": 2000,
       "8": 2000,
-      "9": 846.8019409179688,
-      "10": 911.9405517578125,
-      "11": 1074.787109375,
+      "9": 879.3712768554688,
+      "10": 944.5098876953125,
+      "11": 1107.3564453125,
       "12": 2000,
       "13": 2000,
       "14": 2000,
@@ -1790,14 +1811,14 @@
       "22": 0,
       "23": 0
      },
-     "go": 6,
-     "slow": 14,
+     "go": 5,
+     "slow": 15,
      "blocked": 4,
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -8.42577950994604,
-     "maxM": 232,
+     "aboveMaxM": -16.994900595053366,
+     "maxM": 242,
      "distM": 2873.676092038286,
      "bearingDeg": 35.31121343963321
     },
@@ -1817,7 +1838,7 @@
      "fromSymbol": true
     }
    },
-   "augSeenPct": 0.17492467850157653,
+   "augSeenPct": 0.18745657855972853,
    "augReachM": 97.70791625976562,
    "vis": {
     "fogPct": 35,
@@ -1830,56 +1851,55 @@
   {
    "id": "Lahore canal bank",
    "lon": 74.3541,
-   "lat": 31.548,
-   "elevM": 220,
-   "threat": 307,
+   "lat": 31.5477,
+   "elevM": 227,
+   "threat": 321,
    "rifle": {
     "obs": {
-     "seenPct": 0.17981510805590126,
-     "terrainPct": 6.156033593183211,
-     "surePct": 0.015561780251108565,
-     "reachMedianM": 130.27964782714844,
-     "clearMedianM": 130.27964782714844,
+     "seenPct": 0.1885228066420733,
+     "terrainPct": 23.491149906118828,
+     "surePct": 0.007073536529885889,
+     "reachMedianM": 97.71003723144531,
+     "clearMedianM": 97.71003723144531,
      "country": "veryClose",
-     "overlook": {
-      "riseM": 25.66214942932129,
-      "distM": 4722.63720703125,
-      "bearingDeg": 316
-     },
-     "overlookArcPct": 0.5555555555555556,
+     "overlook": null,
+     "overlookArcPct": 0,
      "ownScreenPct": 6.559599936008453
     },
     "fire": {
-     "grade": "marginal",
+     "grade": "poor",
      "limitedBy": "clear",
-     "clearMedianM": 162.8495635986328,
-     "clearP20M": 130.27964782714844,
-     "clearMaxM": 293.12921142578125,
-     "ge200Pct": 10,
-     "ge270Pct": 10,
+     "clearMedianM": 97.71003723144531,
+     "clearP20M": 65.14002990722656,
+     "clearMaxM": 162.85006713867188,
+     "ge200Pct": 0,
+     "ge270Pct": 0,
      "primaryOk": false,
-     "seenPct": 35.748955342957174,
-     "deadPct": 39.75399700194749,
-     "screenedPct": 24.497047655095336,
-     "usesPctOfEff": 54.28318786621094,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 35.37062916053375,
+     "deadPct": 0.07949595110613376,
+     "screenedPct": 64.54987488836011,
+     "usesPctOfEff": 32.57001241048177,
      "bands": [
       {
        "fromM": 0,
        "toM": 100,
-       "seenPct": 79.93505815828206,
-       "terrainPct": 100
+       "seenPct": 59.6303184016034,
+       "terrainPct": 99.85182601858331
       },
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 28.951094115456094,
-       "terrainPct": 54.13000391358548
+       "seenPct": 31.638367309600817,
+       "terrainPct": 99.9310698969731
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 4.626748358458901,
-       "terrainPct": 30.6037878038672
+       "seenPct": 7.430260350532151,
+       "terrainPct": 99.29330202304524
       },
       {
        "fromM": 600,
@@ -1902,14 +1922,14 @@
      ]
     },
     "obst": {
-     "nogoM": 65.13982391357422,
+     "nogoM": 65.14002990722656,
      "nogoClass": 20,
-     "seenP": 0.7250812649726868,
+     "seenP": 0.605899453163147,
      "inRange": true,
      "covered": true,
      "blockedInRangePct": 100,
      "acrossPct": 100,
-     "cautionM": 32.56991195678711,
+     "cautionM": 32.57001495361328,
      "cautionClass": 3
     },
     "ways": {
@@ -1930,8 +1950,8 @@
       "slow",
       "slow",
       "slow",
-      "nogo",
-      "nogo",
+      "go",
+      "go",
       "nogo",
       "nogo",
       "nogo",
@@ -1941,9 +1961,9 @@
       "nogo"
      ],
      "distM": {
-      "0": 130.27964782714844,
-      "1": 162.8495635986328,
-      "2": 553.6884765625,
+      "0": 130.28005981445312,
+      "1": 162.85006713867188,
+      "2": 618.8302612304688,
       "3": 2000,
       "4": 2000,
       "5": 2000,
@@ -1956,19 +1976,19 @@
       "12": 2000,
       "13": 2000,
       "14": 2000,
-      "15": 1628.49560546875,
-      "16": 130.27964782714844,
-      "17": 130.27964782714844,
-      "18": 97.70973205566406,
-      "19": 97.70973205566406,
-      "20": 65.13982391357422,
-      "21": 65.13982391357422,
-      "22": 65.13982391357422,
-      "23": 65.13982391357422
+      "15": 2000,
+      "16": 2000,
+      "17": 130.28005981445312,
+      "18": 130.28005981445312,
+      "19": 97.71003723144531,
+      "20": 97.71003723144531,
+      "21": 97.71003723144531,
+      "22": 97.71003723144531,
+      "23": 97.71003723144531
      },
      "stopClass": {
-      "0": 20,
-      "1": 20,
+      "0": 4,
+      "1": 4,
       "2": 41,
       "3": 0,
       "4": 0,
@@ -1982,8 +2002,8 @@
       "12": 0,
       "13": 0,
       "14": 0,
-      "15": 20,
-      "16": 20,
+      "15": 0,
+      "16": 0,
       "17": 20,
       "18": 20,
       "19": 20,
@@ -1992,16 +2012,16 @@
       "22": 20,
       "23": 20
      },
-     "go": 0,
+     "go": 2,
      "slow": 12,
-     "blocked": 12,
+     "blocked": 10,
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -11.990506666479632,
-     "maxM": 232,
-     "distM": 2630.91510976916,
-     "bearingDeg": 15.068488159492233
+     "aboveMaxM": -15,
+     "maxM": 242,
+     "distM": 2662.386940967577,
+     "bearingDeg": 14.886266849017545
     },
     "weapon": {
      "channel": "dir",
@@ -2018,63 +2038,62 @@
    },
    "tank": {
     "obs": {
-     "seenPct": 0.20392099565723001,
-     "terrainPct": 9.030433936490027,
-     "surePct": 0.015561780251108565,
-     "reachMedianM": 130.27964782714844,
-     "clearMedianM": 130.27964782714844,
+     "seenPct": 0.19367920207610054,
+     "terrainPct": 31.138581273205677,
+     "surePct": 0.007073536529885889,
+     "reachMedianM": 97.71003723144531,
+     "clearMedianM": 97.71003723144531,
      "country": "veryClose",
-     "overlook": {
-      "riseM": 25.66214942932129,
-      "distM": 4722.63720703125,
-      "bearingDeg": 316
-     },
-     "overlookArcPct": 0.5555555555555556,
+     "overlook": null,
+     "overlookArcPct": 0,
      "ownScreenPct": 6.559599936008453
     },
     "fire": {
      "grade": "poor",
-     "limitedBy": "coverage",
-     "clearMedianM": 162.8495635986328,
-     "clearP20M": 130.27964782714844,
-     "clearMaxM": 293.12921142578125,
-     "ge200Pct": 20.61855670103093,
-     "ge270Pct": 13.402061855670103,
+     "limitedBy": "clear",
+     "clearMedianM": 97.71003723144531,
+     "clearP20M": 65.14002990722656,
+     "clearMaxM": 162.85006713867188,
+     "ge200Pct": 0,
+     "ge270Pct": 0,
      "primaryOk": false,
-     "seenPct": 1.8096273558682068,
-     "deadPct": 84.8072710241019,
-     "screenedPct": 13.3831016200299,
-     "usesPctOfEff": 8.14247817993164,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 1.6071288562356898,
+     "deadPct": 23.867991126106197,
+     "screenedPct": 74.5248800176581,
+     "usesPctOfEff": 4.885501861572266,
      "bands": [
       {
        "fromM": 0,
        "toM": 100,
-       "seenPct": 80.08318181116115,
+       "seenPct": 60.18105118005906,
        "terrainPct": 100
       },
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 36.636515192405064,
-       "terrainPct": 69.35951645067583
+       "seenPct": 32.30904192834068,
+       "terrainPct": 100
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 7.071179617797348,
-       "terrainPct": 46.44936145828081
+       "seenPct": 7.9218667171656065,
+       "terrainPct": 100
       },
       {
        "fromM": 600,
        "toM": 1000,
-       "seenPct": 1.9016921306379535,
-       "terrainPct": 37.44494330684612
+       "seenPct": 1.2114201242584486,
+       "terrainPct": 96.16677571787622
       },
       {
        "fromM": 1000,
        "toM": 2000,
-       "seenPct": 0.04390867766005069,
-       "terrainPct": 6.004905016130531
+       "seenPct": 0.04462317428045817,
+       "terrainPct": 69.13926903733675
       },
       {
        "fromM": 2000,
@@ -2085,14 +2104,14 @@
      ]
     },
     "obst": {
-     "nogoM": 65.13982391357422,
+     "nogoM": 65.14002990722656,
      "nogoClass": 20,
-     "seenP": 0.7250812649726868,
+     "seenP": 0.605899453163147,
      "inRange": true,
      "covered": true,
      "blockedInRangePct": 100,
      "acrossPct": 100,
-     "cautionM": 32.56991195678711,
+     "cautionM": 32.57001495361328,
      "cautionClass": 3
     },
     "ways": {
@@ -2113,8 +2132,8 @@
       "slow",
       "slow",
       "slow",
-      "nogo",
-      "nogo",
+      "go",
+      "go",
       "nogo",
       "nogo",
       "nogo",
@@ -2124,9 +2143,9 @@
       "nogo"
      ],
      "distM": {
-      "0": 130.27964782714844,
-      "1": 162.8495635986328,
-      "2": 553.6884765625,
+      "0": 130.28005981445312,
+      "1": 162.85006713867188,
+      "2": 618.8302612304688,
       "3": 2000,
       "4": 2000,
       "5": 2000,
@@ -2139,19 +2158,19 @@
       "12": 2000,
       "13": 2000,
       "14": 2000,
-      "15": 1628.49560546875,
-      "16": 130.27964782714844,
-      "17": 130.27964782714844,
-      "18": 97.70973205566406,
-      "19": 97.70973205566406,
-      "20": 65.13982391357422,
-      "21": 65.13982391357422,
-      "22": 65.13982391357422,
-      "23": 65.13982391357422
+      "15": 2000,
+      "16": 2000,
+      "17": 130.28005981445312,
+      "18": 130.28005981445312,
+      "19": 97.71003723144531,
+      "20": 97.71003723144531,
+      "21": 97.71003723144531,
+      "22": 97.71003723144531,
+      "23": 97.71003723144531
      },
      "stopClass": {
-      "0": 20,
-      "1": 20,
+      "0": 4,
+      "1": 4,
       "2": 41,
       "3": 0,
       "4": 0,
@@ -2165,8 +2184,8 @@
       "12": 0,
       "13": 0,
       "14": 0,
-      "15": 20,
-      "16": 20,
+      "15": 0,
+      "16": 0,
       "17": 20,
       "18": 20,
       "19": 20,
@@ -2175,16 +2194,16 @@
       "22": 20,
       "23": 20
      },
-     "go": 0,
+     "go": 2,
      "slow": 12,
-     "blocked": 12,
+     "blocked": 10,
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -11.990506666479632,
-     "maxM": 232,
-     "distM": 2630.91510976916,
-     "bearingDeg": 15.068488159492233
+     "aboveMaxM": -15,
+     "maxM": 242,
+     "distM": 2662.386940967577,
+     "bearingDeg": 14.886266849017545
     },
     "weapon": {
      "channel": "at",
@@ -2202,8 +2221,8 @@
      "fromSymbol": true
     }
    },
-   "augSeenPct": 0.17980126017361217,
-   "augReachM": 130.27964782714844,
+   "augSeenPct": 0.18847913494394514,
+   "augReachM": 97.71003723144531,
    "vis": {
     "fogPct": 35,
     "hazePct": 20,
@@ -2216,14 +2235,14 @@
    "id": "Punjab farmland",
    "lon": 72.9872,
    "lat": 30.7789,
-   "elevM": 165,
+   "elevM": 166,
    "threat": 0,
    "rifle": {
     "obs": {
-     "seenPct": 14.961374413488858,
-     "terrainPct": 48.12367424323548,
-     "surePct": 1.1343309015936676,
-     "reachMedianM": 1247.7447509765625,
+     "seenPct": 15.850120591028778,
+     "terrainPct": 61.9676258599927,
+     "surePct": 0.5044815168396749,
+     "reachMedianM": 1214.909423828125,
      "clearMedianM": 1116.4031982421875,
      "country": "open",
      "overlook": null,
@@ -2239,28 +2258,31 @@
      "ge200Pct": 100,
      "ge270Pct": 100,
      "primaryOk": true,
-     "seenPct": 83.82189407954218,
-     "deadPct": 0.057149843576484095,
-     "screenedPct": 16.120956076881335,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 83.55638513191057,
+     "deadPct": 0.382002830972684,
+     "screenedPct": 16.061612037116745,
      "usesPctOfEff": 100,
      "bands": [
       {
        "fromM": 0,
        "toM": 100,
-       "seenPct": 89.70337173268605,
+       "seenPct": 88.92672175195123,
        "terrainPct": 99.99999999999999
       },
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 82.91705077892152,
-       "terrainPct": 99.93405787292946
+       "seenPct": 82.73017933268517,
+       "terrainPct": 99.55922748516421
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 75.75843179750375,
-       "terrainPct": 99.18601824569402
+       "seenPct": 76.087650785938,
+       "terrainPct": 99.8693259388352
       },
       {
        "fromM": 600,
@@ -2290,7 +2312,7 @@
      "covered": true,
      "blockedInRangePct": 13.333333333333334,
      "acrossPct": 23.333333333333332,
-     "cautionM": 197.0123291015625,
+     "cautionM": 295.51849365234375,
      "cautionClass": 5
     },
     "ways": {
@@ -2325,8 +2347,8 @@
       "0": 2000,
       "1": 2000,
       "2": 2000,
-      "3": 262.68310546875,
-      "4": 65.6707763671875,
+      "3": 197.0123291015625,
+      "4": 164.17694091796875,
       "5": 98.50616455078125,
       "6": 98.50616455078125,
       "7": 886.5554809570312,
@@ -2379,10 +2401,10 @@
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -7,
-     "maxM": 172,
-     "distM": 2943.4870357692844,
-     "bearingDeg": 38.65980825409008
+     "aboveMaxM": -5,
+     "maxM": 171,
+     "distM": 2485.9663982965385,
+     "bearingDeg": 347.7995312726192
     },
     "weapon": {
      "channel": "dir",
@@ -2399,10 +2421,10 @@
    },
    "tank": {
     "obs": {
-     "seenPct": 17.789075732573046,
-     "terrainPct": 62.55129567093965,
-     "surePct": 1.7439704842981145,
-     "reachMedianM": 1346.2509765625,
+     "seenPct": 17.888712469785833,
+     "terrainPct": 77.20869619637746,
+     "surePct": 0.5105014654642145,
+     "reachMedianM": 1247.7447509765625,
      "clearMedianM": 1182.073974609375,
      "country": "open",
      "overlook": null,
@@ -2412,46 +2434,49 @@
     "fire": {
      "grade": "good",
      "limitedBy": null,
-     "clearMedianM": 1510.4278564453125,
+     "clearMedianM": 1543.2633056640625,
      "clearP20M": 1182.073974609375,
      "clearMaxM": 1970.123291015625,
      "ge200Pct": 100,
      "ge270Pct": 100,
      "primaryOk": true,
-     "seenPct": 50.96772042289849,
-     "deadPct": 2.641157979457435,
-     "screenedPct": 46.39112159764408,
-     "usesPctOfEff": 75.52139282226562,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 50.61427831170234,
+     "deadPct": 1.7792920694739334,
+     "screenedPct": 47.60642961882372,
+     "usesPctOfEff": 77.16316528320313,
      "bands": [
       {
        "fromM": 0,
        "toM": 100,
-       "seenPct": 89.7033717326854,
+       "seenPct": 88.92672175195052,
        "terrainPct": 100
       },
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 83.35728275965226,
-       "terrainPct": 100
+       "seenPct": 83.40440713227929,
+       "terrainPct": 99.90356221671931
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 76.6996937344718,
+       "seenPct": 76.73044953529818,
        "terrainPct": 100
       },
       {
        "fromM": 600,
        "toM": 1000,
-       "seenPct": 67.14486942609877,
-       "terrainPct": 99.95269465896789
+       "seenPct": 67.22201855089585,
+       "terrainPct": 99.92418991491739
       },
       {
        "fromM": 1000,
        "toM": 2000,
-       "seenPct": 44.012469527883354,
-       "terrainPct": 96.46929573323614
+       "seenPct": 43.52123582776367,
+       "terrainPct": 97.63365912924712
       },
       {
        "fromM": 2000,
@@ -2469,7 +2494,7 @@
      "covered": true,
      "blockedInRangePct": 22.68041237113402,
      "acrossPct": 22.68041237113402,
-     "cautionM": 197.0123291015625,
+     "cautionM": 295.51849365234375,
      "cautionClass": 5
     },
     "ways": {
@@ -2504,8 +2529,8 @@
       "0": 2000,
       "1": 2000,
       "2": 2000,
-      "3": 262.68310546875,
-      "4": 65.6707763671875,
+      "3": 197.0123291015625,
+      "4": 164.17694091796875,
       "5": 98.50616455078125,
       "6": 98.50616455078125,
       "7": 886.5554809570312,
@@ -2558,10 +2583,10 @@
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -7,
-     "maxM": 172,
-     "distM": 2943.4870357692844,
-     "bearingDeg": 38.65980825409008
+     "aboveMaxM": -5,
+     "maxM": 171,
+     "distM": 2485.9663982965385,
+     "bearingDeg": 347.7995312726192
     },
     "weapon": {
      "channel": "at",
@@ -2579,8 +2604,8 @@
      "fromSymbol": true
     }
    },
-   "augSeenPct": 10.981087046876072,
-   "augReachM": 853.7200927734375,
+   "augSeenPct": 11.394136756602574,
+   "augReachM": 820.8847045898438,
    "vis": {
     "fogPct": 36,
     "hazePct": 22,
@@ -2593,22 +2618,22 @@
    "id": "Skardu valley",
    "lon": 75.63,
    "lat": 35.3,
-   "elevM": 2240,
+   "elevM": 2261,
    "threat": 0,
    "rifle": {
     "obs": {
-     "seenPct": 19.881374125635336,
-     "terrainPct": 30.121068355225308,
-     "surePct": 18.69621263953252,
-     "reachMedianM": 1403.6204833984375,
-     "clearMedianM": 31.191566467285156,
+     "seenPct": 13.186966257250504,
+     "terrainPct": 30.99675800996207,
+     "surePct": 12.82604362930138,
+     "reachMedianM": 873.3638305664062,
+     "clearMedianM": 0,
      "country": "open",
      "overlook": {
-      "riseM": 1357.756103515625,
-      "distM": 4865.88427734375,
+      "riseM": 1369.502685546875,
+      "distM": 4928.267578125,
       "bearingDeg": 196
      },
-     "overlookArcPct": 67.77777777777777,
+     "overlookArcPct": 66.66666666666667,
      "ownScreenPct": 46.90907597541809
     },
     "fire": {
@@ -2616,32 +2641,35 @@
      "limitedBy": "clear",
      "clearMedianM": 31.191566467285156,
      "clearP20M": 31.191566467285156,
-     "clearMaxM": 62.38313293457031,
+     "clearMaxM": 93.57469940185547,
      "ge200Pct": 0,
      "ge270Pct": 0,
      "primaryOk": false,
-     "seenPct": 3.2052877133221713,
-     "deadPct": 76.873026932313,
-     "screenedPct": 19.921685354364833,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 3.130394998876554,
+     "deadPct": 54.63953659972765,
+     "screenedPct": 42.2300684013958,
      "usesPctOfEff": 10.397188822428385,
      "bands": [
       {
        "fromM": 0,
        "toM": 100,
-       "seenPct": 17.14584581380545,
-       "terrainPct": 90.89677000327207
+       "seenPct": 22.166073650844343,
+       "terrainPct": 96.15763764563552
       },
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 1.0605855735653014,
-       "terrainPct": 12.70084986297905
+       "seenPct": 0.2018281982204483,
+       "terrainPct": 37.545513250655034
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 11.980358577545417,
-       "terrainPct": 22.460374043071894
+       "seenPct": 15.937285977004807,
+       "terrainPct": 35.44804836830211
       },
       {
        "fromM": 600,
@@ -2664,13 +2692,13 @@
      ]
     },
     "obst": {
-     "nogoM": 467.8735046386719,
+     "nogoM": 499.0650634765625,
      "nogoClass": 9,
-     "seenP": 0,
+     "seenP": 0.0036496908869594336,
      "inRange": false,
      "covered": false,
      "blockedInRangePct": 0,
-     "acrossPct": 67.74193548387096,
+     "acrossPct": 70.96774193548387,
      "cautionM": 31.191566467285156,
      "cautionClass": 3
     },
@@ -2697,7 +2725,7 @@
       "nogo",
       "nogo",
       "nogo",
-      "go",
+      "slow",
       "nogo",
       "nogo",
       "nogo"
@@ -2705,11 +2733,11 @@
      "distM": {
       "0": 561.4481811523438,
       "1": 499.0650634765625,
-      "2": 530.2566528320312,
+      "2": 561.4481811523438,
       "3": 655.0228881835938,
       "4": 873.3638305664062,
       "5": 1091.704833984375,
-      "6": 1621.96142578125,
+      "6": 1278.854248046875,
       "7": 2000,
       "8": 2000,
       "9": 2000,
@@ -2717,16 +2745,16 @@
       "11": 2000,
       "12": 2000,
       "13": 2000,
-      "14": 717.406005859375,
+      "14": 623.831298828125,
       "15": 467.8735046386719,
       "16": 405.4903564453125,
-      "17": 436.6819152832031,
+      "17": 405.4903564453125,
       "18": 467.8735046386719,
       "19": 530.2566528320312,
       "20": 2000,
-      "21": 1372.428955078125,
-      "22": 904.555419921875,
-      "23": 655.0228881835938
+      "21": 1310.0457763671875,
+      "22": 842.1723022460938,
+      "23": 623.831298828125
      },
      "stopClass": {
       "0": 9,
@@ -2754,14 +2782,14 @@
       "22": 9,
       "23": 9
      },
-     "go": 1,
-     "slow": 7,
+     "go": 0,
+     "slow": 8,
      "blocked": 16,
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -450.7298476398273,
-     "maxM": 2691,
+     "aboveMaxM": -451.81151414105216,
+     "maxM": 2713,
      "distM": 1187.739448458668,
      "bearingDeg": 346.3286928678042
     },
@@ -2780,18 +2808,18 @@
    },
    "tank": {
     "obs": {
-     "seenPct": 22.00203945052788,
-     "terrainPct": 31.618978875033424,
-     "surePct": 20.193883407340003,
-     "reachMedianM": 1403.6204833984375,
-     "clearMedianM": 93.57469940185547,
+     "seenPct": 13.499661131649166,
+     "terrainPct": 32.337838872122354,
+     "surePct": 12.96846942711166,
+     "reachMedianM": 873.3638305664062,
+     "clearMedianM": 0,
      "country": "open",
      "overlook": {
-      "riseM": 1357.756103515625,
-      "distM": 4865.88427734375,
+      "riseM": 1369.502685546875,
+      "distM": 4928.267578125,
       "bearingDeg": 196
      },
-     "overlookArcPct": 67.77777777777777,
+     "overlookArcPct": 66.66666666666667,
      "ownScreenPct": 46.90907597541809
     },
     "fire": {
@@ -2799,44 +2827,47 @@
      "limitedBy": "clear",
      "clearMedianM": 31.191566467285156,
      "clearP20M": 31.191566467285156,
-     "clearMaxM": 187.14939880371094,
+     "clearMaxM": 93.57469940185547,
      "ge200Pct": 0,
      "ge270Pct": 0,
      "primaryOk": false,
-     "seenPct": 16.652437471499358,
-     "deadPct": 80.79624290629654,
-     "screenedPct": 2.551319622204102,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 17.842388171692146,
+     "deadPct": 78.75898062758483,
+     "screenedPct": 3.3986312007230217,
      "usesPctOfEff": 1.5595783233642577,
      "bands": [
       {
        "fromM": 0,
        "toM": 100,
-       "seenPct": 24.518373687324882,
-       "terrainPct": 97.0529756264561
+       "seenPct": 28.91298906901993,
+       "terrainPct": 98.92324035750755
       },
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 1.8199075870323351,
-       "terrainPct": 17.25764417733315
+       "seenPct": 0.7454729176944138,
+       "terrainPct": 47.19119163343499
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 12.570434024872858,
-       "terrainPct": 23.185512086777656
+       "seenPct": 16.510497214767717,
+       "terrainPct": 38.648340384450314
       },
       {
        "fromM": 600,
        "toM": 1000,
-       "seenPct": 63.56893469326659,
-       "terrainPct": 70.0431586961664
+       "seenPct": 69.93622515294133,
+       "terrainPct": 74.75196796083216
       },
       {
        "fromM": 1000,
        "toM": 2000,
-       "seenPct": 7.158486970097505,
-       "terrainPct": 7.507708257565616
+       "seenPct": 7.00847337689736,
+       "terrainPct": 7.00847337689736
       },
       {
        "fromM": 2000,
@@ -2847,9 +2878,9 @@
      ]
     },
     "obst": {
-     "nogoM": 467.8735046386719,
+     "nogoM": 499.0650634765625,
      "nogoClass": 9,
-     "seenP": 0,
+     "seenP": 0.0036496908869594336,
      "inRange": true,
      "covered": false,
      "blockedInRangePct": 100,
@@ -2880,7 +2911,7 @@
       "nogo",
       "nogo",
       "nogo",
-      "go",
+      "slow",
       "nogo",
       "nogo",
       "nogo"
@@ -2888,11 +2919,11 @@
      "distM": {
       "0": 561.4481811523438,
       "1": 499.0650634765625,
-      "2": 530.2566528320312,
+      "2": 561.4481811523438,
       "3": 655.0228881835938,
       "4": 873.3638305664062,
       "5": 1091.704833984375,
-      "6": 1621.96142578125,
+      "6": 1278.854248046875,
       "7": 2000,
       "8": 2000,
       "9": 2000,
@@ -2900,16 +2931,16 @@
       "11": 2000,
       "12": 2000,
       "13": 2000,
-      "14": 717.406005859375,
+      "14": 623.831298828125,
       "15": 467.8735046386719,
       "16": 405.4903564453125,
-      "17": 436.6819152832031,
+      "17": 405.4903564453125,
       "18": 467.8735046386719,
       "19": 530.2566528320312,
       "20": 2000,
-      "21": 1372.428955078125,
-      "22": 904.555419921875,
-      "23": 655.0228881835938
+      "21": 1310.0457763671875,
+      "22": 842.1723022460938,
+      "23": 623.831298828125
      },
      "stopClass": {
       "0": 9,
@@ -2937,14 +2968,14 @@
       "22": 9,
       "23": 9
      },
-     "go": 1,
-     "slow": 7,
+     "go": 0,
+     "slow": 8,
      "blocked": 16,
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -450.7298476398273,
-     "maxM": 2691,
+     "aboveMaxM": -451.81151414105216,
+     "maxM": 2713,
      "distM": 1187.739448458668,
      "bearingDeg": 346.3286928678042
     },
@@ -2964,8 +2995,8 @@
      "fromSymbol": true
     }
    },
-   "augSeenPct": 19.876516588430068,
-   "augReachM": 1403.6204833984375,
+   "augSeenPct": 13.186937555262807,
+   "augReachM": 873.3638305664062,
    "vis": {
     "fogPct": 2,
     "hazePct": 33,
@@ -2978,55 +3009,58 @@
    "id": "Quetta",
    "lon": 67,
    "lat": 30.19,
-   "elevM": 1673,
+   "elevM": 1670,
    "threat": 0,
    "rifle": {
     "obs": {
-     "seenPct": 2.159900559725221,
-     "terrainPct": 34.58130963359965,
-     "surePct": 2.0957263170543765,
-     "reachMedianM": 33.03465270996094,
-     "clearMedianM": 33.03465270996094,
+     "seenPct": 0.15412705338152619,
+     "terrainPct": 50.45140929624598,
+     "surePct": 0.01413578046873596,
+     "reachMedianM": 132.13861083984375,
+     "clearMedianM": 132.13861083984375,
      "country": "veryClose",
      "overlook": {
-      "riseM": 611.8858032226562,
+      "riseM": 612.4152221679688,
       "distM": 4723.95556640625,
       "bearingDeg": 114
      },
-     "overlookArcPct": 50,
-     "ownScreenPct": 51.62712801247835
+     "overlookArcPct": 63.333333333333336,
+     "ownScreenPct": 3.254256024956703
     },
     "fire": {
-     "grade": "poor",
+     "grade": "marginal",
      "limitedBy": "clear",
-     "clearMedianM": 33.03465270996094,
+     "clearMedianM": 165.1732635498047,
      "clearP20M": 33.03465270996094,
-     "clearMaxM": 33.03465270996094,
+     "clearMaxM": 165.1732635498047,
      "ge200Pct": 0,
      "ge270Pct": 0,
      "primaryOk": false,
-     "seenPct": 14.758112684225537,
-     "deadPct": 0,
-     "screenedPct": 85.24188731577446,
-     "usesPctOfEff": 11.011550903320312,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 31.064957449542803,
+     "deadPct": 1.3387287649740234,
+     "screenedPct": 67.59631378548318,
+     "usesPctOfEff": 55.05775451660156,
      "bands": [
       {
        "fromM": 0,
        "toM": 100,
-       "seenPct": 34.28309308821289,
+       "seenPct": 61.216363822136564,
        "terrainPct": 100
       },
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 11.75426707075361,
-       "terrainPct": 100
+       "seenPct": 26.426277893951013,
+       "terrainPct": 98.45531290619972
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 2.8973994440438533,
-       "terrainPct": 99.07289032488461
+       "seenPct": 6.657452879013184,
+       "terrainPct": 99.01521215878238
       },
       {
        "fromM": 600,
@@ -3049,13 +3083,13 @@
      ]
     },
     "obst": {
-     "nogoM": null,
-     "nogoClass": 0,
-     "seenP": 0,
-     "inRange": false,
+     "nogoM": 165.1732635498047,
+     "nogoClass": 4,
+     "seenP": 0.2127162665128708,
+     "inRange": true,
      "covered": false,
-     "blockedInRangePct": 0,
-     "acrossPct": 0,
+     "blockedInRangePct": 3.3333333333333335,
+     "acrossPct": 3.3333333333333335,
      "cautionM": 33.03465270996094,
      "cautionClass": 3
     },
@@ -3064,8 +3098,8 @@
      "state": [
       "slow",
       "slow",
-      "slow",
-      "slow",
+      "nogo",
+      "nogo",
       "slow",
       "slow",
       "slow",
@@ -3090,8 +3124,8 @@
      "distM": {
       "0": 2000,
       "1": 2000,
-      "2": 2000,
-      "3": 2000,
+      "2": 1453.5247802734375,
+      "3": 1486.5594482421875,
       "4": 2000,
       "5": 2000,
       "6": 2000,
@@ -3116,8 +3150,8 @@
      "stopClass": {
       "0": 0,
       "1": 0,
-      "2": 0,
-      "3": 0,
+      "2": 4,
+      "3": 4,
       "4": 0,
       "5": 0,
       "6": 0,
@@ -3140,15 +3174,15 @@
       "23": 0
      },
      "go": 0,
-     "slow": 24,
-     "blocked": 0,
+     "slow": 22,
+     "blocked": 2,
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -175.85555555555038,
-     "maxM": 1849,
-     "distM": 2969.4460363303047,
-     "bearingDeg": 122.27564431457762
+     "aboveMaxM": -168.85555555555038,
+     "maxM": 1839,
+     "distM": 2971.282996627451,
+     "bearingDeg": 118.55962047831986
     },
     "weapon": {
      "channel": "dir",
@@ -3165,63 +3199,66 @@
    },
    "tank": {
     "obs": {
-     "seenPct": 2.203238155580688,
-     "terrainPct": 38.790788450615736,
-     "surePct": 2.135422680602818,
-     "reachMedianM": 33.03465270996094,
-     "clearMedianM": 33.03465270996094,
+     "seenPct": 0.15946536799644412,
+     "terrainPct": 56.891621159805936,
+     "surePct": 0.01413578046873596,
+     "reachMedianM": 132.13861083984375,
+     "clearMedianM": 132.13861083984375,
      "country": "veryClose",
      "overlook": {
-      "riseM": 611.8858032226562,
+      "riseM": 612.4152221679688,
       "distM": 4723.95556640625,
       "bearingDeg": 114
      },
-     "overlookArcPct": 52.77777777777778,
-     "ownScreenPct": 51.62712801247835
+     "overlookArcPct": 64.44444444444444,
+     "ownScreenPct": 3.254256024956703
     },
     "fire": {
      "grade": "poor",
-     "limitedBy": "clear",
-     "clearMedianM": 33.03465270996094,
+     "limitedBy": "coverage",
+     "clearMedianM": 165.1732635498047,
      "clearP20M": 33.03465270996094,
-     "clearMaxM": 33.03465270996094,
+     "clearMaxM": 165.1732635498047,
      "ge200Pct": 0,
      "ge270Pct": 0,
      "primaryOk": false,
-     "seenPct": 0.6081823106244357,
-     "deadPct": 41.73141805504752,
-     "screenedPct": 57.660399634328044,
-     "usesPctOfEff": 1.6517326354980468,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 1.3617230028525,
+     "deadPct": 24.365638340247525,
+     "screenedPct": 74.27263865689997,
+     "usesPctOfEff": 8.258663177490234,
      "bands": [
       {
        "fromM": 0,
        "toM": 100,
-       "seenPct": 34.780934386847825,
+       "seenPct": 61.3684223059718,
        "terrainPct": 100
       },
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 11.879215059010841,
+       "seenPct": 27.129387890785576,
        "terrainPct": 100
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 2.96201432945589,
-       "terrainPct": 99.90256231593979
+       "seenPct": 6.898180667344437,
+       "terrainPct": 99.99866474776599
       },
       {
        "fromM": 600,
        "toM": 1000,
-       "seenPct": 0.22861131357640646,
-       "terrainPct": 81.63211690235518
+       "seenPct": 0.656289362811673,
+       "terrainPct": 91.33675725016106
       },
       {
        "fromM": 1000,
        "toM": 2000,
-       "seenPct": 0.0004152886484466799,
-       "terrainPct": 48.017536372247335
+       "seenPct": 0.00261609050723913,
+       "terrainPct": 69.20003090972033
       },
       {
        "fromM": 2000,
@@ -3232,13 +3269,13 @@
      ]
     },
     "obst": {
-     "nogoM": 1420.4901123046875,
+     "nogoM": 165.1732635498047,
      "nogoClass": 4,
-     "seenP": 0,
+     "seenP": 0.1063581332564354,
      "inRange": true,
      "covered": false,
-     "blockedInRangePct": 34.375,
-     "acrossPct": 34.375,
+     "blockedInRangePct": 42.708333333333336,
+     "acrossPct": 42.708333333333336,
      "cautionM": 33.03465270996094,
      "cautionClass": 3
     },
@@ -3247,8 +3284,8 @@
      "state": [
       "slow",
       "slow",
-      "slow",
-      "slow",
+      "nogo",
+      "nogo",
       "slow",
       "slow",
       "slow",
@@ -3273,8 +3310,8 @@
      "distM": {
       "0": 2000,
       "1": 2000,
-      "2": 2000,
-      "3": 2000,
+      "2": 1453.5247802734375,
+      "3": 1486.5594482421875,
       "4": 2000,
       "5": 2000,
       "6": 2000,
@@ -3299,8 +3336,8 @@
      "stopClass": {
       "0": 0,
       "1": 0,
-      "2": 0,
-      "3": 0,
+      "2": 4,
+      "3": 4,
       "4": 0,
       "5": 0,
       "6": 0,
@@ -3323,15 +3360,15 @@
       "23": 0
      },
      "go": 0,
-     "slow": 24,
-     "blocked": 0,
+     "slow": 22,
+     "blocked": 2,
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -175.85555555555038,
-     "maxM": 1849,
-     "distM": 2969.4460363303047,
-     "bearingDeg": 122.27564431457762
+     "aboveMaxM": -168.85555555555038,
+     "maxM": 1839,
+     "distM": 2971.282996627451,
+     "bearingDeg": 118.55962047831986
     },
     "weapon": {
      "channel": "at",
@@ -3349,8 +3386,8 @@
      "fromSymbol": true
     }
    },
-   "augSeenPct": 2.159900559725221,
-   "augReachM": 33.03465270996094,
+   "augSeenPct": 0.15412705338152619,
+   "augReachM": 132.13861083984375,
    "vis": {
     "fogPct": 0,
     "hazePct": 5,
@@ -3363,22 +3400,18 @@
    "id": "Karachi",
    "lon": 67.01,
    "lat": 24.86,
-   "elevM": 10,
+   "elevM": 6,
    "threat": 0,
    "rifle": {
     "obs": {
-     "seenPct": 0.06373067693208839,
-     "terrainPct": 1.520363190102011,
-     "surePct": 0.009578544017701321,
+     "seenPct": 0.07812016197366446,
+     "terrainPct": 2.458397263991539,
+     "surePct": 0,
      "reachMedianM": 34.677101135253906,
      "clearMedianM": 34.677101135253906,
      "country": "veryClose",
-     "overlook": {
-      "riseM": 25.12428092956543,
-      "distM": 1907.240478515625,
-      "bearingDeg": 258
-     },
-     "overlookArcPct": 3.888888888888889,
+     "overlook": null,
+     "overlookArcPct": 0,
      "ownScreenPct": 17.159615457057953
     },
     "fire": {
@@ -3390,28 +3423,31 @@
      "ge200Pct": 0,
      "ge270Pct": 0,
      "primaryOk": false,
-     "seenPct": 25.606213276506764,
-     "deadPct": 9.870305745820392,
-     "screenedPct": 64.52348097767285,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 26.841694476901466,
+     "deadPct": 2.446856363252118,
+     "screenedPct": 70.71144915984641,
      "usesPctOfEff": 34.677101135253906,
      "bands": [
       {
        "fromM": 0,
        "toM": 100,
-       "seenPct": 70.48957592377896,
+       "seenPct": 65.36144313458277,
        "terrainPct": 100
       },
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 21.525906970258536,
-       "terrainPct": 89.23239376648621
+       "seenPct": 23.33989823367654,
+       "terrainPct": 97.33070215423305
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 1.2075880897283828,
-       "terrainPct": 65.53179396515581
+       "seenPct": 1.0564234024690349,
+       "terrainPct": 50.13546790905169
       },
       {
        "fromM": 600,
@@ -3530,10 +3566,10 @@
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -29.014098034877243,
-     "maxM": 39,
-     "distM": 1816.828543782398,
-     "bearingDeg": 256.7594800848128
+     "aboveMaxM": -15.898224934442478,
+     "maxM": 22,
+     "distM": 2250.006733937334,
+     "bearingDeg": 24.590117166196023
     },
     "weapon": {
      "channel": "dir",
@@ -3550,18 +3586,18 @@
    },
    "tank": {
     "obs": {
-     "seenPct": 0.06855665961062396,
-     "terrainPct": 1.8281818823963887,
-     "surePct": 0.009578544017701321,
+     "seenPct": 0.07990354280969146,
+     "terrainPct": 3.1899131536991474,
+     "surePct": 0,
      "reachMedianM": 34.677101135253906,
      "clearMedianM": 34.677101135253906,
      "country": "veryClose",
      "overlook": {
-      "riseM": 25.12428092956543,
-      "distM": 1907.240478515625,
-      "bearingDeg": 258
+      "riseM": 15.614645957946777,
+      "distM": 4993.50244140625,
+      "bearingDeg": 346
      },
-     "overlookArcPct": 3.888888888888889,
+     "overlookArcPct": 0,
      "ownScreenPct": 17.159615457057953
     },
     "fire": {
@@ -3573,40 +3609,43 @@
      "ge200Pct": 0,
      "ge270Pct": 0,
      "primaryOk": false,
-     "seenPct": 0.6858175157069137,
-     "deadPct": 83.69225632342028,
-     "screenedPct": 15.621926160872805,
+     "ge200M": 200,
+     "ge270M": 270,
+     "primaryM": 200,
+     "seenPct": 0.6750194824190778,
+     "deadPct": 82.94132896698292,
+     "screenedPct": 16.383651550598,
      "usesPctOfEff": 5.201565170288086,
      "bands": [
       {
        "fromM": 0,
        "toM": 100,
-       "seenPct": 70.38521605239764,
+       "seenPct": 65.26461503091076,
        "terrainPct": 100
       },
       {
        "fromM": 100,
        "toM": 300,
-       "seenPct": 22.817721860992787,
-       "terrainPct": 95.33016890981197
+       "seenPct": 23.468214788776432,
+       "terrainPct": 98.61321436125333
       },
       {
        "fromM": 300,
        "toM": 600,
-       "seenPct": 1.4177118782016567,
-       "terrainPct": 76.9673941959414
+       "seenPct": 1.2308623452644665,
+       "terrainPct": 60.22506620878561
       },
       {
        "fromM": 600,
        "toM": 1000,
-       "seenPct": 0.01440122030898849,
-       "terrainPct": 44.19650111866525
+       "seenPct": 0.0061293683532287774,
+       "terrainPct": 37.24650288851603
       },
       {
        "fromM": 1000,
        "toM": 2000,
-       "seenPct": 6.934245829246065e-7,
-       "terrainPct": 2.66552171210766
+       "seenPct": 2.5089908393186484e-7,
+       "terrainPct": 6.554971048868232
       },
       {
        "fromM": 2000,
@@ -3713,10 +3752,10 @@
      "radiusM": 2000
     },
     "dom": {
-     "aboveMaxM": -29.014098034877243,
-     "maxM": 39,
-     "distM": 1816.828543782398,
-     "bearingDeg": 256.7594800848128
+     "aboveMaxM": -15.898224934442478,
+     "maxM": 22,
+     "distM": 2250.006733937334,
+     "bearingDeg": 24.590117166196023
     },
     "weapon": {
      "channel": "at",
@@ -3734,7 +3773,7 @@
      "fromSymbol": true
     }
    },
-   "augSeenPct": 0.06373067693208839,
+   "augSeenPct": 0.07812016197366446,
    "augReachM": 34.677101135253906,
    "vis": {
     "fogPct": 4,
@@ -3748,106 +3787,106 @@
  "timing": {
   "Margalla crest": {
    "fire wedge 90 deg to 600 m (rifle)": {
-    "median": 0.024400000000014188,
-    "p95": 0.040300000000002
+    "median": 0.02519999999992706,
+    "p95": 0.03899999999998727
    },
    "fire wedge 90 deg to 2 km (tank)": {
-    "median": 0.23059999999998126,
-    "p95": 0.3201000000000249
+    "median": 0.23450000000002547,
+    "p95": 0.29739999999992506
    },
    "observation all round, 2 deg, to 5 km": {
-    "median": 0.9828999999999724,
-    "p95": 1.1391999999999598
+    "median": 0.9189000000000078,
+    "p95": 0.991800000000012
    },
    "straight ways out, 24 sectors to 2 km": {
-    "median": 0.0030000000000427463,
-    "p95": 0.003400000000056025
+    "median": 0.0027000000000043656,
+    "p95": 0.003199999999992542
    },
    "highest ground within 3 km": {
-    "median": 0.03269999999997708,
-    "p95": 0.03530000000000655
+    "median": 0.03240000000005239,
+    "p95": 0.03350000000000364
    },
    "sight to 3 ITG candidates 3 km away": {
-    "median": 0.01670000000001437,
-    "p95": 0.028900000000021464
+    "median": 0.01749999999992724,
+    "p95": 0.024100000000089494
    },
    "picture: all round, fine, to 5 km, with the trace": {
-    "median": 5.51949999999988,
-    "p95": 6.514599999999973
+    "median": 5.481800000000021,
+    "p95": 5.782500000000027
    },
    "going flood to 5 km (ways round)": {
-    "median": 2.5097999999998137,
-    "p95": 2.850199999999859
+    "median": 2.063499999999749,
+    "p95": 2.553400000000238
    },
    "sight tables for a month": {
-    "median": 0.00430000000005748,
-    "p95": 0.015899999999874126
+    "median": 0.0048000000001593435,
+    "p95": 0.01470000000017535
    },
    "map: avenue from 4 km east, 300 m frontage": {
-    "median": 3.6523999999999432,
-    "p95": 3.9414999999999054
+    "median": 2.2483000000001994,
+    "p95": 2.587199999999939
    },
    "map: better position within 300 m": {
-    "median": 1.129699999999957,
-    "p95": 1.270799999999781
+    "median": 0.470299999999952,
+    "p95": 0.6299000000003616
    },
    "map: fan runs of the tank wedge": {
-    "median": 0.3067000000000917,
-    "p95": 0.37290000000029977
+    "median": 0.3247000000001208,
+    "p95": 0.39350000000013097
    },
-   "perMove": 1.2658999999999878
+   "perMove": 1.2060000000000173
   },
   "Lahore centre": {
    "fire wedge 90 deg to 600 m (rifle)": {
-    "median": 0.03319999999985157,
-    "p95": 0.04539999999997235
+    "median": 0.03440000000000509,
+    "p95": 0.041999999999916326
    },
    "fire wedge 90 deg to 2 km (tank)": {
-    "median": 0.3506000000002132,
-    "p95": 0.43010000000003856
+    "median": 0.3777999999997519,
+    "p95": 0.4411000000000058
    },
    "observation all round, 2 deg, to 5 km": {
-    "median": 1.2851000000000568,
-    "p95": 1.6959999999999127
+    "median": 1.6739999999999782,
+    "p95": 1.7791000000001986
    },
    "straight ways out, 24 sectors to 2 km": {
-    "median": 0.011199999999917054,
-    "p95": 0.011599999999816646
+    "median": 0.014099999999871216,
+    "p95": 0.016299999999773718
    },
    "highest ground within 3 km": {
-    "median": 0.03110000000015134,
-    "p95": 0.03209999999944557
+    "median": 0.0433999999995649,
+    "p95": 0.04400000000032378
    },
    "sight to 3 ITG candidates 3 km away": {
-    "median": 0.015499999999519787,
-    "p95": 0.0169000000005326
+    "median": 0.018299999999726424,
+    "p95": 0.02029999999967913
    },
    "picture: all round, fine, to 5 km, with the trace": {
-    "median": 7.517699999999422,
-    "p95": 9.200699999999415
+    "median": 8.978899999999157,
+    "p95": 10.086299999999937
    },
    "going flood to 5 km (ways round)": {
-    "median": 4.621799999999894,
-    "p95": 5.076100000000224
+    "median": 2.6789000000007945,
+    "p95": 4.738900000000285
    },
    "sight tables for a month": {
-    "median": 0.0052999999998064595,
-    "p95": 0.014400000000023283
+    "median": 0.004500000000007276,
+    "p95": 0.014000000000123691
    },
    "map: avenue from 4 km east, 300 m frontage": {
-    "median": 2.266599999999926,
-    "p95": 2.5807999999997264
+    "median": 2.548599999999169,
+    "p95": 2.9855999999999767
    },
    "map: better position within 300 m": {
-    "median": 3.6528000000007523,
-    "p95": 3.9434000000001106
+    "median": 3.971799999999348,
+    "p95": 4.188600000000406
    },
    "map: fan runs of the tank wedge": {
-    "median": 0.31679999999960273,
-    "p95": 0.36819999999988795
+    "median": 0.43919999999980064,
+    "p95": 0.5261000000000422
    },
-   "perMove": 1.6934999999998581
+   "perMove": 2.1275999999988926
   },
-  "buildGridMs": 1.3949000000002343
+  "buildGridMs": 1.4084000000002561
  }
 }

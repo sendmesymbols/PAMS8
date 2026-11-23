@@ -1213,6 +1213,62 @@ unchanged, a lake off a flank, setting out from a place, no room at the area's e
 app (3D, Pl, threat N): Rt flank on the main trunk, Lt flank branching 4.5 km out, frontal 1.7 km out; your options against a
 Threat marker place.
 
+**Obstacles you draw join the coding** (2026-11-23; user: "Obstacles you draw: minefields and AT ditches don't yet feed
+into the GO / SLOW-GO / NO-GO coding... I want to do these"). The obstacle symbols on the map inside the area read go into
+the IPB coding as man-made obstacles (IPB p 10: minefields, tank ditches, barriers are NO-GO), so the approaches route round
+them, a gap or lane shows as a narrows, and the fire, decision, template and proforma follow. Who each symbol stops is a
+table in `IpbDoctrine.json` `coding.manMade.symbols` (E, decided and searched): the seven minefield types, mined area, UXO,
+decoy mined areas, the obstacle line and fortified line stop everyone (AT-only minefields, DCB and AT wall stop armour and
+mech, not men on foot; the nine wire types stop men, not vehicles); lanes (`lanes`: Safe Lane, Breach, Bridge, Assault
+Crossing, Bridge - gap) clear the cells they cross. Sides (`coding.manMade.sides`, E): an obstacle stops whoever crosses it,
+whichever side laid it; a lane is used only by the side that made it (its identity digit); a decoy minefield works only on
+the other side. Block / Turn / Fix / Disrupt, obstacle zones and bypass marks are intentions, not obstacles: left out. Lines
+are burnt three cells (90 m) wide so a 30 m sample cannot slip between two cells; areas by point-in-polygon. The obstacles
+are part of the area's coding key (a new or moved obstacle recodes the area). The cards: a note *N obstacles from the map
+coded NO-GO (M not for this mover), K lanes through*, a Read As row *Obstacles* naming each (*Minefield - AT: stops armour,
+mech*), Copy as Text the same. **Covered by fire** (ATP 2-01.3 para 4-14, `coding.manMade.coveredByFire`): in the en's
+options each own obstacle is checked against own Posns' weapon reach (catalogue `Rng`, as the fire corridors): *NOT covered
+by own fire* when none reaches it (still coded NO-GO as the book says; the note adds "an obstacle not covered by fire is only
+a delay"). Engine `IpbObstacle.stops / lane / halfCells` (`GroundGuideIpb.ts`), reader `GroundGuide._ipbObstacles` /
+`_ipbObstacleNotes`, view `obstacles`. Checks: `node tools/ipb-test/run.mjs` (43: an AT ditch stops armour not infantry and
+wire the other way round; a lane through a minefield is GO whichever order they come in). Verified in the app (3D,
+Sialkot, Pl, threat N): two 5 km AT minefields 3 km in front of the Pl were read, the frontal approach lengthened from 15.6
+to 17.5 km going round them, the note said both were not covered by the Pl's 300 m.
+
+**The climb on foot in the Decision tab** (2026-11-23). The enemy's (or your) times along each avenue add the Mountain
+Warfare figure, 30 to 60 minutes per 300 m of ascent (MW p 81; `IpbDoctrine rates.mountain`, now with its ref): the
+ascent is read from the grid's 30 m elevation every 100 m along the avenue (`_aaAlong` `riseM` per stretch) and charged
+at 30 min per 300 m at his earliest and 60 at his latest (`DecRates.climbMinPer300`, foot only; vehicles pay nothing),
+wherever the ground is: on the plains the rise is a few metres and costs nothing. Descents are not charged (E: the book's
+descent figure is for 600 m). The same figure the Intelligent Deployment tab's own moves pay (`PlanDoctrine
+terrain.kinds.mountain.ascentMinPer300m` 45, its midpoint), so both tools agree. Tab 5's *Rates & Times* gets a *Climb*
+row with each avenue's ascent. Checks: `node tools/ipb-test/decision.mjs` (25: 600 m of climb adds 60 min at the earliest
+and 120 at the latest; vehicles pay nothing). Verified in the app (Sialkot, your options on foot): 30-60 min per 300 m,
+A climbs 75 m, B 67 m.
+
+**The rail at the area read's scale** (`scope.extScale`, `area` default | `spot`; 2026-11-23, user: "Gr Scope rail: its
+IPB view still draws at the spot scale, not over the whole area read"). With F on and the IPB avenues read, the rail's
+frame is centred on the area read and sized to hold all of it (the approaches, the objective and FUPs, the MSR choke, NAIs
+/ TAIs / DPs, air routes and LZs), while the symbol, its range rings and its frontage are drawn where the symbol is
+(`ScopeFrame.spot`, ground metres from the frame's centre; the reading, fan and better Posn stay the symbol's). `spot`
+keeps the ground round the symbol as without F. Verified in the app: a 7 x 24.5 km Bn area, radius 20 km, the symbol 3.6 km
+south of the frame's centre, approaches A and B, the bridge, DZ / LZ, AD sites and the 9 km rings all on the rail.
+
+**Left or Right** (tab 3, your options onto an objective; 2026-11-23; user, 14 Nov: "can go right/left approach by weighing
+different factors"). The left flanking approach against the right, factor by factor: the IPB book's own-attack factors
+(`IpbDoctrine ownAttack.factors`, IC s15.12 b: choke the en MSR (your rule, weight 3), FUP cover, obstacles FUP to the
+Obj, distance FUP to the Obj, the route to the FUP, the fire base, going, surprise), each weighed 0-3 (the doctrine's
+weights; click a chip to set yours, kept in `extended.ipb.lrWeights`). Each cell is 0-100 with its reason on hover, read
+off the approaches onto the objective and his fire on them (`GroundGuideIpbCompare.ts`, `coding.ownAttack.reading`, E):
+the MSR factor credits the side the turning approach goes round (frontal never), FUP cover is his fire at the FUP, the
+route is the share of the way under his fire, surprise the share he may not watch, going the GO share, obstacles the
+NO-GO share of the assault and the narrows. The fire base is not read here (no BOF is sited in the Ext View: the
+Intelligent Deployment tab does that) and scores 0.5 both sides, as does anything not read, so it never decides; left and
+right within 3 points are level. Frontal is scored for reference only (IC s15.12 b: it may be safely discarded). Copy as
+Text carries the table. Checks: `node tools/ipb-test/compare.mjs` (8). Verified in the app (Sialkot, your options, the
+Threat marker on the en): *Left or Right · Left by 16 points* (left C 87, right B 71, frontal D 66; the turning approach went
+round the left to the MSR choke); setting the MSR weight to 0 levelled them at 84.
+
 **Key notice** (`card.keyNotice`, on; 2026-11-14, user: "X key and all the available keys, we can give user a notification
 bottom center on the screen about modes, keys and what will they do, 5 seconds"). When a key changes a mode, a card at the
 foot of the screen, in the middle, says the mode now and what it shows, then the keys that work in it and what each does,

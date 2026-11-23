@@ -19,13 +19,15 @@ import { solveRecipe, BP_SHAPE } from './PlanSolve';
 import { atgmPairs, type UnitBrief } from './PlanOrbat';
 import { attackBreach, attackFactors, attackTimes, atOnObj, counterAttack, findAttackSpots, findMsrChoke, hSumRow, nightBrief, nightRow, phase2Row, type AttackFind, type CounterApch, type Factor, type HSum, type MsrChoke, type NightBrief } from './PlanAttack';
 import { findPhase2, goingRow, type Phase2Find } from './PlanPhase';
-import { addTankTimes, defTankRows, findTankSpots, type TankFind, type TankMode } from './PlanTanks';
+import { addTankTimes, defTankRows, findTankSpots, type TankFind, type TankMode, tankFupVsEnAtgm } from './PlanTanks';
 import { artyRows } from './PlanArty';
 import { adRows } from './PlanAD';
 import type { ForceSides } from './PlanContext';
 import { fitSmallOp, type Mover, type SmallProbe, type SmallReading } from './PlanSmallOps';
 import { canalPrep, fitCrossing, type CrossingReading, type Light } from './PlanCrossing';
 import { fitAdvance } from './PlanAdvance';
+import { fitWithdrawal, type WithdrawalFind } from './PlanWithdrawal';
+import { findReverseSlope, type RevSlopeFind } from './PlanRevSlope';
 import type { PlFootSpeeds } from '../PlatoonGuide/PlatoonGuideRead';
 import { footKmh, approachCarries, applyContext, echelonLabel, enemyCorridorM, enemyFupM, enemyProfile, levelOf, type EnemySpec, type TerrainKind, type TerrainSpec } from './PlanContext';
 
@@ -109,6 +111,10 @@ export interface FitResult {
   small?: SmallReading;
   /** A crossing (PlanCrossing): the obstacle, his observers, the drift entries, the bridges, the timeline. */
   crossing?: CrossingReading;
+  /** A withdrawal (PlanWithdrawal): the routes back, the programme from last light, the rows' reading. */
+  withdrawal?: Pick<WithdrawalFind, 'paths' | 'times' | 'routes' | 'confirm'>;
+  /** A reverse slope defence (PlanRevSlope): the crest found (plan metres), how far the FDL lies behind it. */
+  revSlope?: Pick<RevSlopeFind, 'crest' | 'fdlBehindM' | 'crestRiseM'>;
   /** Plan-metre centre of the killing ground, when the main approach gives one. */
   killingGr: XY | null;
   slots: Record<string, Check[]>;
@@ -123,6 +129,8 @@ export interface FitResult {
   /** The enemy's start: the threat marker, or assumed along the front. */
   from: XY | null;
   fromAssumed: boolean;
+  /** When the start is assumed: how far in front of the FDL it was put (m). */
+  fromAssumedM?: number;
   /** The enemy's likely (or drawn) FUP on the main approach, plan metres. */
   enFup?: XY | null;
 }
@@ -187,13 +195,27 @@ function readGround(g: PlanGround, f: FitFrame, b: Box, going: { nogo: ReadonlyS
   if (all.length >= 5) { all.sort((a, b) => b - a); r.hi = (all[0] + all[1] + all[2] + all[3] + all[4]) / 5; }
   return r;
 }
+/**
+ * The fit's thresholds, read from PlanDoctrine.json `fit.*` (the figures the code always used are the fallbacks, basis E
+ * until the doctrine file cites them): set at the start of each fit.
+ */
+const TH = { nogoFail: 0.3, nogoWarn: 0.1, buaWarn: 0.3, fofWantM: 270, overlookM: 10, killBand: [400, 1000] as [number, number], chokeM: 300, deadWarnPct: 40, mgReachM: 457, fupSnapM: 400 };
+function readThresholds(doc: DoctrineSet): void {
+  const one = (p: string, fb: number) => { const r = resolveRange(doc, doctrineAt(doc, p)); return r ? (r[0] + r[1]) / 2 : fb; };
+  const two = (p: string, fb: [number, number]) => resolveRange(doc, doctrineAt(doc, p)) ?? fb;
+  TH.nogoFail = one('fit.ground.nogoFailShare', 0.3); TH.nogoWarn = one('fit.ground.nogoWarnShare', 0.1); TH.buaWarn = one('fit.ground.buaWarnShare', 0.3);
+  TH.fofWantM = one('fit.fieldOfFire.wantM', 270); TH.overlookM = one('fit.overlookedM', 10);
+  TH.killBand = two('fit.killingGr.aheadM', [400, 1000]); TH.chokeM = one('fit.killingGr.chokeM', 300);
+  TH.deadWarnPct = one('fit.deadGroundWarnPct', 40); TH.mgReachM = one('fit.mgReachM', 457); TH.fupSnapM = one('fit.enFupSnapM', 400);
+}
+
 function groundCheck(g: PlanGround, gr: GroundRead, kind: string): Check {
   if (!gr.known) return { name: 'Ground', st: 'unchecked', reason: 'no ground data here' };
   const share = (n: number) => Math.round((100 * n) / gr.known);
   const top = gr.top !== null ? g.label(gr.top) : 'unknown';
-  if (gr.centreNogo || gr.nogo / gr.known > 0.3) return { name: 'Ground', st: 'fail', reason: `${share(gr.nogo)} % NO-GO on foot (${top}): move it` };
-  if (gr.nogo / gr.known > 0.1) return { name: 'Ground', st: 'warn', reason: `${share(gr.nogo)} % NO-GO on foot at its edge (${top})` };
-  if (gr.bua / gr.known > 0.3 && (kind === 'fwd' || kind === 'round')) return { name: 'Ground', st: 'warn', reason: `${share(gr.bua)} % built-up: short fields of fire, but cover; in a built-up area a Pl holds 100 m at most, ideally one house (IC s55), so the posn's frontage shrinks: hold the edge that covers the approach` };
+  if (gr.centreNogo || gr.nogo / gr.known > TH.nogoFail) return { name: 'Ground', st: 'fail', reason: `${share(gr.nogo)} % NO-GO on foot (${top}): move it` };
+  if (gr.nogo / gr.known > TH.nogoWarn) return { name: 'Ground', st: 'warn', reason: `${share(gr.nogo)} % NO-GO on foot at its edge (${top})` };
+  if (gr.bua / gr.known > TH.buaWarn && (kind === 'fwd' || kind === 'round')) return { name: 'Ground', st: 'warn', reason: `${share(gr.bua)} % built-up: short fields of fire, but cover; in a built-up area a Pl holds 100 m at most, ideally one house (IC s55), so the posn's frontage shrinks: hold the edge that covers the approach` };
   if (gr.slow / gr.known > 0.5) return { name: 'Ground', st: 'warn', reason: `${share(gr.slow)} % SLOW-GO on foot (${top})` };
   return { name: 'Ground', st: 'pass', reason: `mostly ${top}` };
 }
@@ -221,6 +243,7 @@ export interface FitInput {
 }
 
 export function fitPlan(inp: FitInput): FitResult {
+  readThresholds(inp.doc);
   if (inp.recipe.task === 'attack') return fitAttack(inp);
   const { res, recipe, doc, frame: f, ground: g } = inp;
   const num = (path: string, fb: number) => { const r = resolveRange(doc, doctrineAt(doc, path)); return r ? (r[0] + r[1]) / 2 : fb; };
@@ -316,7 +339,7 @@ export function fitPlan(inp: FitInput): FitResult {
   // 2. posn by posn: ground, fields of fire, what overlooks it
   const eye = 1.7, tgt = 1.7;
   const sight = g.sight ? (a: XY, b: XY, e = eye, t = tgt) => { const wa = toWorld(f, a), wb = toWorld(f, b); return g.sight!(wa.x, wa.y, e, wb.x, wb.y, t); } : null;
-  const fofMin = num('fieldOfFire.minimum', 200);
+  const fofMin = num('fieldOfFire.minimumM', 200); // IBB p279 (PlanDoctrine.fieldOfFire.minimumM once added)
   let deadShare: number[] = [];
   let overlooked: string[] = [];
   for (const b of boxes) {
@@ -349,7 +372,7 @@ export function fitPlan(inp: FitInput): FitResult {
         if (known >= 3) {
           clear.sort((x, y) => x - y);
           const med = clear[Math.floor(clear.length / 2)];
-          const st: CheckState = med >= 270 ? 'pass' : med >= fofMin ? 'warn' : med >= 100 ? 'warn' : 'fail';
+          const st: CheckState = med >= TH.fofWantM ? 'pass' : med >= fofMin ? 'warn' : 'fail';
           checks.push({ name: 'Fd of fire', st, reason: `about ${med >= 500 ? '500 m or more' : fmtM(med)} clear across its front (IBB p279: ${fofMin} m minimum; IC s72: 270-500 m wanted)` });
           // dead ground 300-1200 m out
           let seen = 0, n = 0;
@@ -372,7 +395,7 @@ export function fitPlan(inp: FitInput): FitResult {
           const e = g.elev(w.x, w.y);
           if (Number.isFinite(e)) hi = Math.max(hi, e);
         }
-        if (Number.isFinite(hi) && hi - gr.elev >= 10) { overlooked.push(b.label); checks.push({ name: 'Overlooked', st: 'warn', reason: `ground in front is ${Math.round(hi - gr.elev)} m higher` }); }
+        if (Number.isFinite(hi) && hi - gr.elev >= TH.overlookM) { overlooked.push(b.label); checks.push({ name: 'Overlooked', st: 'warn', reason: `ground in front is ${Math.round(hi - gr.elev)} m higher` }); }
       }
     }
     out.slots[b.role] = checks;
@@ -387,17 +410,21 @@ export function fitPlan(inp: FitInput): FitResult {
   const fdlX = fdl.length && !boxes.some((b) => b.kind === 'round') ? (Math.min(...fdl.map((b) => b.c.x - (turned(b) ? b.h : b.w) / 2)) + Math.max(...fdl.map((b) => b.c.x + (turned(b) ? b.h : b.w) / 2))) / 2 : null;
   const centre = fdlX !== null ? toWorld(f, P(fdlX, frontY)) : toWorld(f, P(0, 0));
   let from = inp.threat ?? null;
-  if (!from) { from = toWorld(f, P(fdlX ?? 0, frontY + (bn ? 5000 : 3000))); out.fromAssumed = true; }
+  if (!from) {
+    const startM = num(bn ? 'fit.assumedStartM.bn' : 'fit.assumedStartM.coy', bn ? 5000 : 3000);
+    from = toWorld(f, P(fdlX ?? 0, frontY + startM)); out.fromAssumed = true; out.fromAssumedM = startM;
+  }
   out.from = from;
   // the enemy's approaches: his own going (Inf on foot, Mech / Armd tracked), chokes narrower than his corridors
   const profile = en ? enemyProfile(doc, en.type) : 'tracked';
   const corridor = en ? enemyCorridorM(doc, en.echelon) : num('alt.spacingM.coy', 500);
   const avs = inp.approaches !== undefined ? inp.approaches : g.avenues ? g.avenues(from, centre, corridor, profile) : null;
-  const reach = bn ? num('attack.bofRangeMaxM', 1189) : 457;
+  const reach = bn ? num('attack.bofRangeMaxM', 1189) : TH.mgReachM;
   const moverWord = profile === 'dismounted' ? 'foot' : 'tracked';
   const narrowOf = (a: { chokes: { widthM: number }[]; minWidthM: number }) => (a.chokes.length ? Math.min(...a.chokes.map((c) => c.widthM)) : null);
   if (avs === null) out.rows.push({ name: 'Approaches covered', st: 'unchecked', reason: g.avenues ? 'the ground between is not loaded yet' : 'no road / going grid in the bundle' });
-  else if (!avs.length) out.rows.push({ name: 'Approaches covered', st: 'pass', reason: `no ${moverWord} approach found from ${out.fromAssumed ? 'the front' : 'the threat'} to the plan: confirm the ground is NO-GO ${profile === 'dismounted' ? 'on foot' : 'for tanks'}` });
+  // none found is not proof none exist (the search box, a start on NO-GO): grey, never a Pass
+  else if (!avs.length) out.rows.push({ name: 'Approaches covered', st: 'unchecked', reason: `no ${moverWord} approach found from ${out.fromAssumed ? 'the front' : 'the threat'} to the plan: confirm the ground is NO-GO ${profile === 'dismounted' ? 'on foot' : 'for tanks'}` });
   else {
     avs.slice(0, 3).forEach((a, i) => {
       // posns that have the approach under direct fire inside 2 km of the plan
@@ -426,10 +453,10 @@ export function fitPlan(inp: FitInput): FitResult {
     for (const w of main.path) {
       const l = toLocal(f, w);
       const ahead = l.y - frontY;
-      if (ahead < 400 || ahead > 1000) continue;
+      if (ahead < TH.killBand[0] || ahead > TH.killBand[1]) continue;
       const inRange = fwdBoxes.filter((b) => boxDist(b, l) <= reach).length;
       if (!inRange) continue;
-      const choke = main.chokes.some((c) => Math.hypot(c.at.x - w.x, c.at.y - w.y) / f.k < 300) ? 1 : 0;
+      const choke = main.chokes.some((c) => Math.hypot(c.at.x - w.x, c.at.y - w.y) / f.k < TH.chokeM) ? 1 : 0;
       const sc = inRange + choke * 2;
       if (!best || sc > best.score) best = { p: l, score: sc };
     }
@@ -445,7 +472,7 @@ export function fitPlan(inp: FitInput): FitResult {
       const want = (band[0] + band[1]) / 2;
       let bd = Infinity;
       for (const w of mainA.path) { const l = toLocal(f, w); const d = Math.abs(l.y - frontY - want); if (d < bd) { bd = d; fp = l; } }
-      if (bd > 400) fp = null;
+      if (bd > TH.fupSnapM) fp = null;
     }
     out.enFup = fp;
     const what = inp.enFup ? 'The drawn en FUP' : `The likely en FUP on ${mainA?.id ?? 'the main approach'}`;
@@ -465,7 +492,8 @@ export function fitPlan(inp: FitInput): FitResult {
   }
 
   // 4. plan rows: flanks, fields of fire / dead ground, exposure
-  if (fwdBoxes.length && boxes.every((b) => !turned(b))) {
+  // a plan with any posn turned off the front (all round: 90 / 180 / 270, or 120 / 240) has no flanks
+  if (fwdBoxes.length && boxes.every((b) => ((b.turn % 360) + 360) % 360 === 0)) {
     const left = Math.min(...fwdBoxes.map((b) => b.c.x - b.w / 2)), right = Math.max(...fwdBoxes.map((b) => b.c.x + b.w / 2));
     const side = (x0: number, dir: number) => {
       // every 50 m out to 1 km, so a canal or drain 60 m wide is not stepped over
@@ -484,7 +512,7 @@ export function fitPlan(inp: FitInput): FitResult {
   if (fof.length && fof.every((c) => c.st !== 'unchecked')) {
     const worst = fof.some((c) => c.st === 'fail') ? 'fail' : fof.some((c) => c.st === 'warn') ? 'warn' : 'pass';
     const dead = deadShare.length ? Math.round((100 * deadShare.reduce((a, b) => a + b, 0)) / deadShare.length) : null;
-    out.rows.push({ name: 'Fields of fire', st: worst === 'pass' && dead !== null && dead > 40 ? 'warn' : worst, reason: `${fof.filter((c) => c.st === 'pass').length} of ${fof.length} forward posns clear 270 m or more${dead !== null ? `; about ${dead} % of the ground 300-1200 m out is dead ground: cover it with DF and patrols` : ''}` });
+    out.rows.push({ name: 'Fields of fire', st: worst === 'pass' && dead !== null && dead > TH.deadWarnPct ? 'warn' : worst, reason: `${fof.filter((c) => c.st === 'pass').length} of ${fof.length} forward posns clear ${fmtM(TH.fofWantM)} or more${dead !== null ? `; about ${dead} % of the ground 300-1200 m out is dead ground: cover it with DF and patrols` : ''}` });
   } else out.rows.push({ name: 'Fields of fire', st: 'unchecked', reason: 'the ground in front is not loaded' });
   out.rows.push(overlooked.length
     ? { name: 'Exposure', st: 'warn', reason: `${overlooked.join(', ')} overlooked from the front` }
@@ -554,7 +582,8 @@ export function fitPlan(inp: FitInput): FitResult {
   const groundAvg = boxes.length ? boxes.reduce((a, b) => a + v(out.slots[b.role]?.[0]?.st), 0) / boxes.length : 0.5;
   out.score = Math.round(100 * (
     (W.approaches ?? 0.25) * v(row('Approaches covered')) +
-    (W.depth ?? 0.2) * (v(row('Depth')) + v(row('Reserve reach') ?? 'pass')) / 2 +
+    // a layout with no reserve is not scored as if its reserve were in time
+    (W.depth ?? 0.2) * (v(row('Depth')) + v(row('Reserve reach') ?? (recipe.slots.some((x) => x.kind === 'res') ? 'pass' : 'warn'))) / 2 +
     (W.obstacle ?? 0.15) * (v(row('Fields of fire')) + groundAvg) / 2 +
     (W.gaps ?? 0.15) * v(row('Gaps')) +
     (W.flanks ?? 0.1) * v(row('Flanks')) +
@@ -720,7 +749,8 @@ export function detectTerrain(g: PlanGround, f: FitFrame, res: SolveResult, reci
   }
   known += n;
   if (n >= 20 && sand / n >= (Number(de.share) || 0.5)) return { kind: 'desert', source: 'auto', why: `${Math.round((100 * sand) / n)} % of the ground within ${fmtM(dw)} is bare, sand or dunes` };
-  if (!known && !ne) return null;
+  // no class sample read yet (elevation alone cannot tell plains from an obstacle or desert): not known, never a Pass
+  if (!known) return null;
   return { kind: 'plains', source: 'auto', why: 'no high ground, obstacle in front or desert found round it' };
 }
 
@@ -818,6 +848,14 @@ export interface FitLayoutInput {
   force?: ForceSides;
   /** An attack by night (Night March rates and chart). */
   night?: boolean;
+  /** A two-phase attack: Obj 2 marked by the user on the map (Web Mercator); it is taken before any posn drawn or high ground. */
+  obj2At?: XY | null;
+  /** Tanks with an attack: the longest En ATGM range (m) from the En unit's weapons (ORBAT) and its source; null: the doctrine's 3 km. */
+  enAtgmM?: number | null;
+  enAtgmSrc?: string | null;
+  /** A withdrawal: the reach of the En field artillery (m) and its source, from the ORBAT when it is loaded. */
+  enFieldArtyM?: number | null;
+  enFieldArtySrc?: string | null;
   /** NightMarchDoctrine rules (nmRulesFrom), for the night attack's march chart. */
   nmRules?: Record<string, any> | null;
   /** Hostile units and posns drawn on the map (Web Mercator): a two-phase attack lays Obj 2 on one behind Obj 1. */
@@ -868,12 +906,15 @@ function axisOnGround(res: SolveResult, f: FitFrame, g: PlanGround, role = 'axis
 
 /** Solve, fit, and solve again with the fit's slides and killing ground. Null when the recipe has no pivot. */
 export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
+  readThresholds(inp.ctx.doc);
   // ambush, patrol, recce: laid over the Movement / Platoon Guide engines (PlanSmallOps)
   if (SMALL_TASKS.includes(inp.recipe.task)) return fitSmallOp(inp);
   // a crossing: re-laid along the obstacle over the Movement Guide's Water engine (PlanCrossing)
   if (inp.recipe.task === 'crossing') return fitCrossing(inp);
   // an advance to contact: the echelons along the axis, the going for tracks on it (PlanAdvance)
   if (inp.recipe.task === 'advance') return fitAdvance(inp);
+  // a withdrawal: the routes back, the embussing points, the intermediate posn against the En guns (PlanWithdrawal)
+  if (inp.recipe.task === 'withdrawal') return fitWithdrawal(inp);
   // a canal defence: laid along the canal first (PlanCrossing.canalPrep: the posns' seeds moved, the shapes re-laid),
   // then fitted and checked as any defence; the canal's own rows join the defence's
   const canal = inp.recipe.layout === 'canal' ? canalPrep(inp) : null;
@@ -906,7 +947,7 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
     // a second phase (PlanPhase): Obj 2, the side round Obj 1, FUP 2, SL 2, the phase 2 axis, the follow-up Coys' way
     if (recipe.phases === 2) {
       const enemyAt = (inp.enemyAt ?? []).map((w) => toLocal(frame, w));
-      ph2 = findPhase2(fitBase, frame, ground, ctx.doc, enemyAt, findMsrChoke(fitBase, frame, ground, ctx.doc));
+      ph2 = findPhase2(fitBase, frame, ground, ctx.doc, enemyAt, findMsrChoke(fitBase, frame, ground, ctx.doc), inp.obj2At ? toLocal(frame, inp.obj2At) : null);
       if (ph2) {
         find.nudges = addNudges(find.nudges, ph2.nudges);
         find.geom = { ...find.geom, ...ph2.geom };
@@ -923,6 +964,8 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
       if (tk) {
         find.nudges = addNudges(find.nudges, tk.nudges);
         find.rows.push(...tk.rows);
+        const vs = tankFupVsEnAtgm(solveRecipe(recipe, ctx, { ...inp.opts, nudges: addNudges(manual, find.nudges), geom: find.geom, paths }), ctx.doc, inp.enAtgmM ?? null, inp.enAtgmSrc ?? null);
+        if (vs) find.rows.push(vs);
         const o4 = { ...inp.opts, nudges: addNudges(manual, find.nudges), geom: find.geom, paths };
         const b4 = solveRecipe(recipe, ctx, o4);
         paths = { ...(paths ?? {}), ...(axisOnGround(b4, frame, ground, 'tkAxis', 'tracked') ?? {}) };
@@ -930,6 +973,9 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
       }
     }
   }
+  // a reverse slope defence (PlanRevSlope): the crest in front read, the plan moved behind it, OPs and FPF on the crest
+  const rs: RevSlopeFind | null = recipe.layout === 'rev-slope' ? findReverseSlope(base, frame, ground, ctx.doc) : null;
+  if (rs && (Object.keys(rs.nudges).length || Object.keys(rs.geom).length)) fitBase = solveRecipe(recipe, ctx, { ...inp.opts, nudges: addNudges(manual, rs.nudges), geom: { ...(inp.opts.geom ?? {}), ...rs.geom } });
   const terrain: TerrainSpec = inp.terrain && inp.terrain !== 'auto'
     ? { kind: inp.terrain, source: 'user' }
     : detectTerrain(ground, frame, base, recipe, ctx.doc) ?? { kind: 'plains', source: 'assumed', why: 'the ground round it is not loaded yet' };
@@ -941,10 +987,11 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   const fit = fitPlan({ res: fitBase, recipe, doc: ctx.doc, frame, ground, threat: recipe.task === 'attack' ? null : inp.threat ?? null, enemy: recipe.task === 'attack' ? null : enemy, terrain });
   fit.paths = paths;
   if (find) fit.nudges = addNudges(fit.nudges, find.nudges);
+  if (rs) { fit.nudges = addNudges(fit.nudges, rs.nudges); fit.revSlope = { crest: rs.crest, fdlBehindM: rs.fdlBehindM, crestRiseM: rs.crestRiseM }; }
   const unit = inp.unit ?? null;
   // the reserve's pace on foot: the ground's in desert and mountains (IBB p 18, MW p 81), else cpen.footKmPerH (as Check my plan)
   const reserveKmh = terrain.kind === 'desert' || terrain.kind === 'mountain' ? footKmh(ctx.doc, terrain.kind).go : undefined;
-  const solveOpts = { ...inp.opts, nudges: addNudges(manual, fit.nudges), placed: fit.killingGr ? { killingGr: fit.killingGr } : undefined, outlines: fit.outlines, paths, mountedReserve: !!unit?.mounted, reserveKmh, geom: find?.geom ?? inp.opts.geom };
+  const solveOpts = { ...inp.opts, nudges: addNudges(manual, fit.nudges), placed: fit.killingGr ? { killingGr: fit.killingGr } : undefined, outlines: fit.outlines, paths, mountedReserve: !!unit?.mounted, reserveKmh, geom: find?.geom ?? (rs ? { ...(inp.opts.geom ?? {}), ...rs.geom } : inp.opts.geom) };
   let raw = solveRecipe(recipe, ctx, solveOpts);
   // the unit's other ATGM pairs (ORBAT) on the tank approaches: uncovered ones first, then the main one (density)
   fit.atExtras = recipe.task === 'attack' ? [] : atgmExtras(raw, recipe, unit, fit.approaches, frame, ctx.doc);
@@ -961,6 +1008,8 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   // AD over its vulnerable points (PlanAD)
   if (recipe.ad) merged.rows.push(...adRows(raw.items, recipe));
   if (canal) { merged.rows.push(...canal.rows); fit.crossing = canal.reading ?? undefined; fit.pending = fit.pending || canal.pending; }
+  // the reverse slope's rows replace the solver's grey ones of the same name; its confirm list joins
+  if (rs) { const fresh = new Set(rs.rows.map((r) => r.name)); merged.rows = merged.rows.filter((r) => !fresh.has(r.name)); merged.rows.push(...rs.rows); raw.confirm = [...raw.confirm, ...rs.confirm.filter((c) => !raw.confirm.includes(c))]; }
   // an attack: the finders' rows, the H-hour sum, his MSR choke, the night march, the factors that score it
   if (find) {
     const route = find.route;
@@ -1093,8 +1142,10 @@ export function atCoverRow(res: SolveResult, recipe: Recipe, unit: UnitBrief | n
 export function nextBestSpot(inp: FitLayoutInput, current: FittedLayout, skip: ReadonlySet<string> = new Set(), refit: (i: FitLayoutInput) => FittedLayout | null = fitLayout): { role: string; label: string; move: XY; distM: number; to: FittedLayout } | null {
   const rank: Record<CheckState, number> = { fail: 0, warn: 1, unchecked: 2, pass: 3 };
   const slots = current.res.slots.filter((s) => !skip.has(s.role) && (s.st === 'fail' || s.st === 'warn')).sort((a, b) => rank[a.st] - rank[b.st]);
-  const bn = inp.recipe.echelon === '16';
-  const lim = (bn ? 700 : 400) * 1.5;
+  // the fit's own slide limit (Bn and above, else Coy), 1.5 times
+  const bn = (levelOf(inp.recipe.echelon) ?? 2) >= 2;
+  const sl = resolveRange(inp.ctx.doc, doctrineAt(inp.ctx.doc, bn ? 'fit.slideMaxM.bn' : 'fit.slideMaxM.coy'));
+  const lim = (sl ? (sl[0] + sl[1]) / 2 : bn ? 700 : 400) * 1.5;
   const posnBad = (f: FittedLayout, role: string) => {
     const s = f.res.slots.find((x) => x.role === role);
     return s ? s.checks.filter((c) => c.st === 'fail').length * 10 + s.checks.filter((c) => c.st === 'warn').length : 99;

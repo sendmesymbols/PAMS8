@@ -25,14 +25,15 @@ import type { AorReading, AorSide, AorXY } from '../GroundGuide/GroundGuideAor';
 import { dockBelowBar } from '../SiteScan/SitePanel';
 import { shortDate, sourceName } from '../SiteScan/SiteScan';
 import {
-  accept, acceptAll, addRow, applyPatches, aprcKinds, attkHeads, carryOver, counts, find, isStale, lines, newDoc, numberOf, setCell, setMine, shown, tableOf, toText, walk,
-  type AprcCopy, type AprcDoc, type AprcFigure, type AprcKind, type AprcPara,
+  STALE_MARK, accept, acceptAll, addRow, applyPatches, aprcKinds, attkHeads, carryOver, cellTyped, counts, dropMoved, find, isStale, keepMoved, keepUnread, lines, markChanges, newDoc, normalizeDoc, numberOf, restoreDiscarded, retime, setCell, setMine, shown, staleWhy, tableOf, toText, walk,
+  type AprcConfirm, type AprcCopy, type AprcDoc, type AprcFigure, type AprcKind, type AprcPara, type AprcSrc,
 } from './AprcModel';
 import {
-  lightTimes, parseHHour, writeAttkDir, writeAttkPlan, writeCoyTasks, writeEnemy, writeGround, writePlan, writeStrength, writeSymbols, writeTasks, writeTimeReq,
-  type AprcAttkIn, type AprcAttkPlanIn, type AprcAvenueIn, type AprcCheckIn, type AprcCoyIn, type AprcEnemyIn, type AprcForceUnit, type AprcGroundIn, type AprcObsn, type AprcStrengthIn, type AprcSymbolIn, type AprcTimeIn,
+  hSumFromText, lightTimes, parseHHour, writeAdm, writeAir, writeAttkDir, writeAttkPlan, writeCoyTasks, writeEnemy, writeFire, writeGround, writePlan, writeStrength, writeSymbols, writeTasks, writeTimeCalcAttk, writeTimeData, writeTimeReq, zoneWord,
+  type AprcAdmIn, type AprcAirIn, type AprcAttkIn, type AprcAttkPlanIn, type AprcAvenueIn, type AprcCheckIn, type AprcCoyIn, type AprcEnemyIn, type AprcFireIn, type AprcForceUnit, type AprcGroundIn, type AprcHSumIn, type AprcObsn, type AprcStrengthIn, type AprcSymbolIn, type AprcTimeDataIn, type AprcTimeIn,
 } from './AprcWrite';
-import { APRC_DOC_CSS, bodyHtml, esc, printHtml } from './AprcHtml';
+import { APRC_DOC_CSS, aprcFileBase, bodyHtml, esc, printHtml } from './AprcHtml';
+import { setSetting } from '../../Support/SettingsBus';
 import { DOCX_MIME, docxFiles, type DocxImage } from './AprcDocx';
 import { APRC_DECKS, DECK_THEME, buildDeck, deckSideOfReading, mergeDeck, type AprcDeckKind, type DeckMap, type DeckOptions } from './AprcDeck';
 
@@ -64,6 +65,8 @@ export interface GroundAppreciationOptions {
   hHour: string;
   /** Where the ORBAT is served (relative strength, Pls held, the engineers' mine laying). */
   orbatUrl: string;
+  /** Hours east of UTC for first / last light and the read time: the place's zone, never the computer's (5: Pakistan Standard Time). */
+  utcOffsetH: number;
 }
 
 export const DEFAULT_GROUND_APPRECIATION_OPTIONS: GroundAppreciationOptions = {
@@ -77,6 +80,7 @@ export const DEFAULT_GROUND_APPRECIATION_OPTIONS: GroundAppreciationOptions = {
   keep: true,
   hHour: '',
   orbatUrl: '/MS/Data/Orbat/PK',
+  utcOffsetH: 5,
 };
 
 export interface GroundAppreciationHost {
@@ -90,6 +94,8 @@ export interface GroundAppreciationHost {
   /** The last Check my plan report of the Intelligent Deployment tab, or null. */
   planCheck?: () => any | null;
   briefing?: () => any | null;
+  /** The Admin Area finder (its `result`), when the host passes it: Adm and Log from its best sites. */
+  adminArea?: () => any | null;
 }
 
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -115,12 +121,12 @@ ${P}{--ap-bg:var(--gg-card,#1b1f25);--ap-pane:var(--gg-strip,#20262e);--ap-head:
 ${P}.ms-open{display:flex}
 ${P}.win-max{inset:0;width:auto;height:auto;transform:none;border:0;border-radius:0;box-shadow:none}
 ${P}.win-max .ap-head{border-radius:0}
-${P}.win-min{top:auto;bottom:14px;height:auto;width:min(600px,calc(100vw - 20px))}
+${P}.win-min{top:132px;bottom:auto;left:auto;right:16px;transform:none;height:auto;width:min(540px,calc(100vw - 20px))}
 ${P}.win-min>:not(.ap-head):not(.ap-busy):not(.ap-toast){display:none!important}
 ${P}.win-min .ap-head{border-radius:12px;border-bottom:0;cursor:grab;touch-action:none}
 ${P}.win-min.dragging{user-select:none;box-shadow:0 18px 44px rgba(0,0,0,.6)}
 ${P}.win-min.dragging .ap-head{cursor:grabbing}
-${P}.win-min .ap-head :is(.ap-select,[data-a="menu"],[data-a="read"]){display:none}
+${P}.win-min .ap-head :is(.ap-select,[data-a="menu"]){display:none}
 ${P}.win-min .ap-toast{bottom:calc(100% + 10px)}
 ${P}.win-min.toast-below .ap-toast{bottom:auto;top:calc(100% + 10px)}
 ${P} .ap-minprog{display:none;flex:none;color:var(--ap-label);font-size:12.5px;font-variant-numeric:tabular-nums}
@@ -338,11 +344,30 @@ ${P} .ap-toast.err svg{color:var(--ap-stale)}
 }
 @media (max-width:720px){${P} .ap-frame{display:none}${P} .ap-head .ap-select{margin-right:auto}}
 @media (prefers-reduced-motion:reduce){${P} *,${P} *::before,${P} *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}${P} .ap-busy.on i{width:100%;transform:none}}
+${P} .ap-dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--ap-gr)}
+${P} .ap-dot.busy{background:var(--ap-accent);animation:ap-pulse 1s ease-in-out infinite alternate}
+${P} .ap-dot.err{background:var(--ap-stale)}
+${P} .ap-dot.idle{background:var(--ap-yours)}
+@keyframes ap-pulse{from{opacity:.35}to{opacity:1}}
+${P} .ap-ask{flex:none;display:flex;align-items:center;gap:10px;margin:10px 12px 0;padding:8px 10px 8px 12px;border-radius:8px;border:1px solid var(--ap-accent);background:var(--ap-accent-bg);color:var(--ap-strong);font-size:13.5px}
+${P} .ap-ask .ap-note-t{flex:1;min-width:0}
+${P} .ap-chg{display:inline-block;width:7px;height:7px;margin-right:4px;border-radius:50%;background:var(--ap-accent)}
+${P} .ap-lastread{margin-top:10px;color:var(--ap-label);font-size:12.5px;line-height:1.45}
+${P} .ap-lastread button{padding:0;border:0;background:none;color:var(--ap-accent);font:inherit;font-weight:650;cursor:pointer;text-decoration:underline}
+${P} .ap-call.chg{border-color:rgba(142,193,234,.45);background:rgba(142,193,234,.08)}
+${P} .ap-call.chg .ap-call-t .ap-chg{width:9px;height:9px}
+${P} .ap-toast.act{pointer-events:auto}
+${P} .ap-toast .ap-btn{height:26px;padding:0 10px;font-size:12.5px}
+${P} .ap-log{padding:4px 10px 6px;font-size:13px;line-height:1.4;color:var(--ap-tx)}
+${P} .ap-log time{display:inline-block;min-width:44px;color:var(--ap-soft);font-variant-numeric:tabular-nums}
+${P} .ap-log.err{color:#ffb4b5}
 ${APRC_DOC_CSS}
 ${P} .ap-page .aprc-doc{font-size:10.5pt}
 `;
 
 let cssDone = false;
+/** Sheets holding the style: the last one destroyed takes it out of <head>. */
+let cssUsers = 0;
 function ensureCss(): void {
   if (cssDone || typeof document === 'undefined') return;
   cssDone = true;
@@ -351,6 +376,12 @@ function ensureCss(): void {
   st.id = 'ms-aprc-css';
   st.textContent = STYLE;
   document.head.appendChild(st);
+}
+function releaseCss(): void {
+  cssUsers = Math.max(0, cssUsers - 1);
+  if (cssUsers || typeof document === 'undefined') return;
+  document.getElementById('ms-aprc-css')?.remove();
+  cssDone = false;
 }
 
 /**
@@ -365,6 +396,7 @@ const WORST: ParaStatus[] = ['stale', 'yours', 'open', 'map', 'gr', 'accepted', 
 
 function statusOf(p: AprcPara): ParaStatus {
   if (p.mine) return isStale(p) ? 'stale' : 'written';
+  if (p.moved) return 'stale';
   if (p.draft === '' && !p.table) return 'head';
   if (p.draft === null && !p.table) return 'yours';
   if (p.state === 'judge') return p.accepted ? 'accepted' : 'open';
@@ -374,7 +406,7 @@ function statusOf(p: AprcPara): ParaStatus {
 
 const WORD: Record<ParaStatus, string> = {
   head: 'Heading',
-  stale: 'Gr changed since you wrote it',
+  stale: 'Changed under your words',
   yours: 'Yours to write',
   open: 'Proposal: you judge',
   accepted: 'Proposal accepted',
@@ -389,8 +421,22 @@ const MEANS: Array<[ParaStatus, string]> = [
   ['open', 'Prints in the fair copy once you accept it.'],
   ['accepted', 'Prints as it stands.'],
   ['yours', 'Prints a ruled line until you write it.'],
-  ['stale', 'Look again: keep yours or take the new reading.'],
+  ['stale', 'Look again: keep yours or take the new reading. It says what changed: Gr, map, plan check, en options, ORBAT, timings or H.'],
 ];
+
+/** What changed under the planner's words, in the paragraph panel. */
+const STALE_WORD: Record<AprcSrc | 'rows', string> = {
+  gr: 'The Gr reading changed after you wrote this',
+  map: 'The symbols on the map changed after you wrote this',
+  plan: 'The plan check changed after you wrote this',
+  en: 'The en options (the IPB reading) changed after you wrote this',
+  orbat: 'The ORBAT figures changed after you wrote this',
+  time: 'The timings worked out from H and the Time Req changed after you wrote this',
+  h: 'H changed since you wrote this',
+  rows: 'Rows you typed in are gone from the new reading: your figures are kept as added rows',
+};
+/** What a reading is called in the sheet. */
+const SRC_WORD: Record<AprcSrc, string> = { gr: 'Gr', map: 'map', plan: 'plan check', en: 'en options', orbat: 'ORBAT', time: 'timings', h: 'H' };
 
 const svg = (body: string, size = 14): string => `<svg width="${size}" height="${size}" viewBox="0 0 14 14" aria-hidden="true">${body}</svg>`;
 const ICON: Record<ParaStatus, string> = {
@@ -420,7 +466,12 @@ const UI = {
   warn: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 15 14H1Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.2v3.6M8 11.8v.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
   ok: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="currentColor" opacity=".2"/><path d="M4.6 8.3 7 10.6l4.4-4.9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   err: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="currentColor" opacity=".22"/><path d="M8 4.4v4.4M8 11.2v.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>',
+  log: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.6V8l2.3 1.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  stop: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="2" width="8" height="8" rx="1.5" fill="currentColor"/></svg>',
 };
+
+/** Messages that read as a failure or a refusal (the toast's red, the history's mark). */
+const ERR_RE = /fail|refused|need|cannot|not available|type HH:MM|no open|nothing to undo/i;
 
 /** Part titles are held in capitals for the page; the outline shows them as words. */
 const SMALL_WORDS = new Set(['of', 'and', 'the', 'to', 'in', 'on']);
@@ -441,12 +492,13 @@ interface Tally {
   map: number;
 }
 
-type AprcFilter = 'all' | 'todo' | 'open' | 'stale' | 'written';
+type AprcFilter = 'all' | 'todo' | 'open' | 'stale' | 'written' | 'changed';
 const FILTERS: Array<{ f: AprcFilter; label: string }> = [
   { f: 'all', label: 'All' },
   { f: 'todo', label: 'To do' },
   { f: 'open', label: 'Proposals' },
-  { f: 'stale', label: 'Gr changed' },
+  { f: 'stale', label: 'Look again' },
+  { f: 'changed', label: 'Changed' },
   { f: 'written', label: 'Written' },
 ];
 const inFilter = (s: ParaStatus, f: AprcFilter): boolean =>
@@ -470,13 +522,37 @@ export default class GroundAppreciation {
   private set _msg(v: string) {
     this._msgText = v;
     this._msgSeq++;
+    if (!v) return;
+    const err = ERR_RE.test(v);
+    this._dotErr = err;
+    this._log.unshift({ at: new Date(), msg: v, err });
+    this._log.length = Math.min(this._log.length, 10);
   }
+  /** The last ten messages, newest first (the toast fades; these stay, under the clock button). */
+  private _log: Array<{ at: Date; msg: string; err: boolean }> = [];
+  /** The last message was a failure: the minimized bar's dot shows it. */
+  private _dotErr = false;
+  /** What Read is doing now, and since when (shown in the header while busy). */
+  private _step = '';
+  private _busyAt = 0;
+  private _busyTick: ReturnType<typeof setInterval> | null = null;
+  /** Timers the sheet set (print, downloads): cleared on destroy. */
+  private _timers = new Set<ReturnType<typeof setTimeout>>();
+  private _printFrame: HTMLIFrameElement | null = null;
+  /** The last change that can be undone, until the next change: the document before it. */
+  private _undo: { label: string; json: string; ver: number; seq: number } | null = null;
+  /** A question in the sheet (its own style, not the browser's confirm). */
+  private _askState: { text: string; yes: string; no: string; resolve: (v: boolean) => void } | null = null;
+  private _cssHeld = false;
+  /** The en options' and timings' inputs of the last Read, so a new H re-times them without reading again. */
+  private _lastTime: AprcTimeDataIn | null = null;
+  private _lastHSum: AprcHSumIn | null = null;
   private _note = '';
   private _sel: string | null = null;
   /** The outline's filter. */
   private _filter: AprcFilter = 'all';
   /** The menu open under the header, if any. */
-  private _menu: 'export' | 'more' | null = null;
+  private _menu: 'export' | 'more' | 'log' | null = null;
   /** Clear asks twice: the first click arms it. */
   private _clearArmed = false;
   private _outside: ((e: Event) => void) | null = null;
@@ -515,8 +591,6 @@ export default class GroundAppreciation {
   private _orbatBase = '';
   /** The last en reading, so a new H re-times the options without reading the ground again. */
   private _lastEnemy: AprcEnemyIn | null = null;
-  /** The symbols on the map as PlanCheck read them at the last Read. */
-  private _drawn: any[] = [];
   /** The last ground reading (its AOR trace is drawn again, dark, for the slides). */
   private _aor: { reading: AorReading; frame: AorFrame } | null = null;
   /** A Read finished in this session (so `_lastEnemy` is what that reading found, not missing after a reload). */
@@ -547,17 +621,46 @@ export default class GroundAppreciation {
     return this._opts;
   }
 
+  /**
+   * Set options. A new kind for a sheet that holds a document of the other kind goes the way the sheet's own kind
+   * select goes (asked first when the planner has written in it, the sheet cleared with an Undo, read again if it was
+   * read): a host or the settings widget cannot drop his words without asking.
+   */
   setOptions(o: Partial<GroundAppreciationOptions>): void {
-    this._opts = { ...this._opts, ...Object.fromEntries(Object.entries(o ?? {}).filter(([, v]) => v !== undefined && v !== null)) } as GroundAppreciationOptions;
+    const rest: Partial<GroundAppreciationOptions> = { ...(o ?? {}) };
+    const want = rest.kind;
+    if (want && this._enabled && this._doc && want !== this._doc.kind && aprcKinds().find((k) => k.kind === want)?.ready) {
+      delete rest.kind;
+      void this._changeKind(want);
+    }
+    this._opts = { ...this._opts, ...Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined && v !== null)) } as GroundAppreciationOptions;
     if (!aprcKinds().find((k) => k.kind === this._opts.kind)?.ready) this._opts.kind = 'def';
+    if (!Number.isFinite(Number(this._opts.utcOffsetH)) || Math.abs(Number(this._opts.utcOffsetH)) > 14) this._opts.utcOffsetH = DEFAULT_GROUND_APPRECIATION_OPTIONS.utcOffsetH;
     if (String(this._opts.orbatUrl || '') !== this._orbatBase) this._orbat = undefined;
     if (this._enabled) this._render();
+  }
+
+  /** Keep a choice made in the sheet in the settings too, so a later settings change does not undo it. */
+  private _persist(key: keyof GroundAppreciationOptions, value: unknown): void {
+    try {
+      if (typeof window !== 'undefined' && (window as any).symbolEngine) setSetting(['groundAppreciation', key], value);
+    } catch {
+      /* no settings bus (a host without one): the choice holds for this session */
+    }
   }
 
   enable(): void {
     if (this._enabled) return;
     this._enabled = true;
-    if (!this._doc) this._doc = this._load() ?? newDoc(this._opts.kind);
+    if (!this._doc) {
+      const kept = this._load();
+      // the kept sheet decides the kind (it was saved under it), so it is never refused for a kind set elsewhere
+      if (kept && kept.kind !== this._opts.kind) {
+        this._opts.kind = kept.kind;
+        this._persist('kind', kept.kind);
+      }
+      this._doc = kept ?? newDoc(this._opts.kind);
+    }
     EngineLogger.nextStep(ENGINE, 'Aprc on: open the sheet and press Read');
   }
 
@@ -566,13 +669,42 @@ export default class GroundAppreciation {
     this._enabled = false;
     this._readSeq++;
     this._busy = false;
+    this._stopBusyClock();
     this.openPanel(false);
   }
 
+  /** Off, and everything the sheet put in the page goes: its timers, listeners, the print frame, its style when it is the last. */
   destroy(): void {
     this.disable();
+    this._askState?.resolve(false);
+    this._askState = null;
+    for (const t of this._timers) clearTimeout(t);
+    this._timers.clear();
+    if (this._toastTimer) clearTimeout(this._toastTimer);
+    this._toastTimer = null;
+    cancelAnimationFrame(this._resizeRaf);
+    this._resizeRaf = 0;
+    this._stopBusyClock();
+    if (this._outside) document.removeEventListener('pointerdown', this._outside, true);
+    this._outside = null;
+    this._printFrame?.remove();
+    this._printFrame = null;
     this._el?.remove();
     this._el = null;
+    if (this._cssHeld) {
+      this._cssHeld = false;
+      releaseCss();
+    }
+  }
+
+  /** A timer the sheet keeps track of (cleared on destroy). */
+  private _later(fn: () => void, ms: number): ReturnType<typeof setTimeout> {
+    const t = setTimeout(() => {
+      this._timers.delete(t);
+      fn();
+    }, ms);
+    this._timers.add(t);
+    return t;
   }
 
   onViewChanged(): void {
@@ -583,6 +715,7 @@ export default class GroundAppreciation {
     if (!open) {
       // what was typed in the paragraph box is kept as the planner's
       if (this._open) this._commitDirty();
+      this._askState?.resolve(false);
       this._closeMenu(false);
       this._open = false;
       this._el?.classList.remove('ms-open');
@@ -591,6 +724,10 @@ export default class GroundAppreciation {
       return;
     }
     if (!this._enabled) return;
+    if (!this._cssHeld) {
+      this._cssHeld = true;
+      cssUsers++;
+    }
     ensureCss();
     if (!this._el) this._build();
     // the sheet launches maximized, the whole page as the Briefing's edit view (user, 22 Nov 2026); opening a folded
@@ -641,8 +778,10 @@ export default class GroundAppreciation {
     el.classList.toggle('win-min', this._win === 'min');
     // the bar's own place applies only while minimized
     el.style.left = '';
+    el.style.right = '';
     el.style.bottom = '';
     el.style.transform = '';
+    el.setAttribute('aria-modal', String(this._win === 'max'));
     el.classList.remove('toast-below');
     if (this._win === 'max') {
       // the whole page, edge to edge (as the Briefing's edit view)
@@ -659,6 +798,7 @@ export default class GroundAppreciation {
         const r = el.getBoundingClientRect();
         const p = this._clampPos(this._minPos.x, this._minPos.y, r.width, r.height);
         el.style.left = `${p.x}px`;
+        el.style.right = 'auto';
         el.style.top = `${p.y}px`;
         el.style.bottom = 'auto';
         el.style.transform = 'none';
@@ -683,14 +823,31 @@ export default class GroundAppreciation {
     // words typed in the paragraph box are the planner's before the new reading comes in
     this._commitDirty();
     const seq = ++this._readSeq;
+    const live = (): boolean => seq === this._readSeq;
     this._busy = true;
-    this._msg = 'Reading…';
+    this._busyAt = Date.now();
+    this._step = 'Starting';
     this._note = '';
+    this._startBusyClock();
     this._render();
+    const step = (s: string): void => {
+      if (!live()) return;
+      this._step = s;
+      this._renderBusy();
+    };
     const prev = this._doc;
+    // an undo still open when Read starts (a clear or a kind change that asked for this Read) stays open after it
+    const undoAtStart = this._undo && this._undo.ver === this._docVer ? this._undo : null;
     const doc = newDoc(this._opts.kind);
     const attk = doc.kind === 'attk';
     const notes: string[] = [];
+    const at = this._clock();
+    // readings not taken this time: what the previous sheet holds from them is kept
+    const unread = new Set<AprcSrc>();
+    const tag = (cs: AprcConfirm[], src: AprcSrc): AprcConfirm[] => cs.map((c) => ({ ...c, src }));
+    let lastEnemy: AprcEnemyIn | null = null;
+    let timeIn: AprcTimeDataIn | null = null;
+    let hsum: AprcHSumIn | null = null;
     try {
       // 1. the ground, through the Ground Guide (the attack: round the obj, from own side)
       let guide = this._host.guide?.() ?? null;
@@ -699,151 +856,352 @@ export default class GroundAppreciation {
       let aor: { reading: AorReading; frame: AorFrame } | null = null;
       // just turned on (`waitGuide`), or still loading its terrain data: wait until the data is in (or has failed)
       if (o.waitGuide || (guide?.isEnabled && guide.status?.state === 'loading')) {
-        this._msg = 'Waiting for the terrain data…';
-        this._render();
+        step('Waiting for the terrain data');
         guide = await this._guideSettled(seq);
-        if (seq !== this._readSeq) return null;
+        if (!live()) return null;
       }
       if (!guide?.isEnabled) notes.push('Ground Guide is off: the Gr paragraphs are not read.');
       else {
+        step('Gr: the AOR');
         const so = this._opts;
         const side = attk ? (start ? { from: start.ll } : { away: true }) : {};
         aor = await withTimeout<{ reading: AorReading; frame: AorFrame } | null>(guide.aorAround(Array.isArray(o.at) ? o.at : null, { graphic, echelon: so.echelon === 'auto' ? undefined : so.echelon, profile: so.mover === 'auto' ? undefined : so.mover, ...side }), 60000);
+        if (!live()) return null;
         if (!aor) notes.push(guide.status?.state === 'ready' ? 'The ground could not be read here: outside the terrain data, or it did not load in time.' : 'No terrain data: the Gr paragraphs are not read.');
       }
-      if (seq !== this._readSeq) return null;
+      if (!aor) ['gr', 'en', 'orbat', 'time'].forEach((k) => unread.add(k as AprcSrc));
       // an attack read with nothing marked says what it took, and how to put it right
       if (attk && aor) {
         if (!o.at && !graphic) notes.push('Obj: a VG symbol, else the map centre. Select the obj and Read again.');
         if (!start) notes.push('Own start not marked: taken opposite the threat. Check an attack plan (FUP or axis) and Read again.');
       }
+      const threat = this._threatAt(aor?.reading ?? null);
 
       // 2. the symbols on the map
-      const symbols = await this._symbols(aor?.reading ?? null);
-      const sym = writeSymbols(symbols);
-      applyPatches(doc, sym.patches);
-      doc.confirm.push(...sym.confirm);
+      step('Symbols on the map');
+      const { symbols, drawn } = await this._symbols(aor?.reading ?? null);
+      if (!live()) return null;
+      const sym = writeSymbols(symbols, { attack: attk });
+      applyPatches(doc, sym.patches, 'map');
+      doc.confirm.push(...tag(sym.confirm, 'map'));
 
       if (aor && attk) {
         const r = aor.reading;
         const ech = aor.frame.echelon;
+        step('Apchs onto the obj (IPB)');
         const ipb = await this._ipbAttk(guide, r, start, ech);
-        if (seq !== this._readSeq) return null;
-        const gin = await this._groundIn(guide, aor, graphic, sym.drawnObs);
-        if (seq !== this._readSeq) return null;
+        if (!live()) return null;
+        const gin = await this._groundIn(guide, aor, graphic, sym.drawnObs, seq, step);
+        if (!live() || !gin) return null;
         gin.attack = true;
         gin.threatMarked = !!start;
         gin.startWords = start ? `${start.label ? `${start.label} ` : ''}${this._where(r, this._ground(r, start.merc))}` : null;
         if (ipb?.view?.wx) gin.wx = { marginal: ipb.view.wx.rows.filter((x: any) => x.status === 'marg').map((x: any) => `${x.mission} (${x.element})`), unfavourable: ipb.view.wx.rows.filter((x: any) => x.status === 'unfav').map((x: any) => `${x.mission} (${x.element})`) };
         const w = writeGround(gin);
-        applyPatches(doc, w.patches);
-        doc.confirm.unshift(...w.confirm);
+        applyPatches(doc, w.patches, 'gr');
+        doc.confirm.unshift(...tag(w.confirm, 'gr'));
         doc.frame = w.frame ?? null;
         if (ipb?.in) {
           const dw = writeAttkDir(ipb.in);
-          applyPatches(doc, dw.patches);
-          doc.confirm.push(...dw.confirm);
-        } else notes.push('The dir of attk was not read (no apch onto the obj from own side).');
-        this._lastEnemy = null;
+          applyPatches(doc, dw.patches, 'en');
+          doc.confirm.push(...tag(dw.confirm, 'en'));
+        } else {
+          unread.add('en');
+          notes.push('The dir of attk was not read (no apch onto the obj from own side).');
+        }
+        step('ORBAT');
         const orbat = await this._loadOrbat();
-        if (seq !== this._readSeq) return null;
+        if (!live()) return null;
         if (orbat) {
-          const si = await this._strengthIn(orbat, r, ech, null, true);
+          const si = await this._strengthIn(orbat, r, ech, null, drawn, true);
+          if (!live()) return null;
           if (si) {
             const sw = writeStrength(si, { attack: true, disposns: sym.ownWhere });
-            applyPatches(doc, sw.patches);
-            doc.confirm.push(...sw.confirm);
+            applyPatches(doc, sw.patches, 'orbat');
+            doc.confirm.push(...tag(sw.confirm, 'orbat'));
           }
-        } else notes.push(`No ORBAT at ${this._orbatBase || 'the ORBAT url'}: relative strength is counted from the symbols only.`);
-        applyPatches(doc, attkHeads(ech));
+        } else {
+          unread.add('orbat');
+          notes.push(`No ORBAT at ${this._orbatBase || 'the ORBAT url'}: relative strength is counted from the symbols only.`);
+        }
+        applyPatches(doc, attkHeads(ech), 'gr');
         doc.sources = this._sources(guide);
+        step('Figures');
         doc.figures = await this._figures(aor);
+        if (!live()) return null;
       } else if (aor) {
-        const ipb = await this._ipb(guide, aor.reading, graphic);
-        if (seq !== this._readSeq) return null;
-        const gin = await this._groundIn(guide, aor, graphic, sym.drawnObs);
-        if (seq !== this._readSeq) return null;
+        const r = aor.reading;
+        step('En options (IPB)');
+        const ipb = await this._ipb(guide, r, graphic, threat?.deg ?? null);
+        if (!live()) return null;
+        const gin = await this._groundIn(guide, aor, graphic, sym.drawnObs, seq, step);
+        if (!live() || !gin) return null;
+        if (threat) {
+          gin.threatMarked = true;
+          gin.threatWords = threat.words;
+        }
         if (ipb?.wx) gin.wx = { marginal: ipb.wx.rows.filter((x: any) => x.status === 'marg').map((x: any) => `${x.mission} (${x.element})`), unfavourable: ipb.wx.rows.filter((x: any) => x.status === 'unfav').map((x: any) => `${x.mission} (${x.element})`) };
         const w = writeGround(gin);
-        applyPatches(doc, w.patches);
-        doc.confirm.unshift(...w.confirm);
+        applyPatches(doc, w.patches, 'gr');
+        doc.confirm.unshift(...tag(w.confirm, 'gr'));
         doc.frame = w.frame ?? null;
-        const tw = writeTasks(aor.reading);
-        applyPatches(doc, tw.patches);
-        const en = ipb ? this._enemyIn(ipb, aor.reading, sym.enForce, guide) : null;
-        this._lastEnemy = en;
+        const tw = writeTasks(r);
+        applyPatches(doc, tw.patches, 'gr');
+        let en: AprcEnemyIn | null = null;
+        try {
+          en = ipb ? this._enemyIn(ipb, r, sym.enForce, guide) : null;
+        } catch (err) {
+          console.warn('[Aprc] en options', err);
+          notes.push('The en options could not be read from the IPB reading (a part of it was missing).');
+        }
+        lastEnemy = en;
         if (en) {
           const ew = writeEnemy(en);
-          applyPatches(doc, ew.patches);
-          doc.confirm.push(...ew.confirm);
-        } else notes.push('The en options were not read (no avenue from the threat side).');
+          applyPatches(doc, ew.patches, 'en');
+          doc.confirm.push(...tag(ew.confirm, 'en'));
+        } else {
+          unread.add('en');
+          notes.push('The en options were not read (no avenue from the threat side).');
+        }
+        // the fire of own posns and his air, when the Extended View has read them at this place
+        const fire = this._fireIn(ipb, r, guide);
+        if (fire) {
+          const fw = writeFire(fire);
+          applyPatches(doc, fw.patches, 'en');
+          doc.confirm.push(...tag(fw.confirm, 'en'));
+        } else applyPatches(doc, ['killing', 'df', 'surv', 'obs'].map((k) => ({ id: `gr.ded.dp1.${k}`, prompts: ['From the fire of own posns: turn on the Extended View (F) with IPB fire at this place, mark own posns, and Read again'] })));
+        const air = this._airIn(ipb, r, guide);
+        if (air) {
+          const aw = writeAir(air);
+          applyPatches(doc, aw.patches, 'en');
+          doc.confirm.push(...tag(aw.confirm, 'en'));
+        }
         // the ORBAT: relative strength, Pls held against the tasks; time required (mine laying by its engineers)
+        step('ORBAT');
         const orbat = await this._loadOrbat();
-        if (seq !== this._readSeq) return null;
+        if (!live()) return null;
         if (orbat) {
-          const si = await this._strengthIn(orbat, aor.reading, w.frame?.echelon ?? 'Bn', tw.pls);
+          const si = await this._strengthIn(orbat, r, w.frame?.echelon ?? 'Bn', tw.pls, drawn);
+          if (!live()) return null;
           if (si) {
             const sw = writeStrength(si);
-            applyPatches(doc, sw.patches);
-            doc.confirm.push(...sw.confirm);
+            applyPatches(doc, sw.patches, 'orbat');
+            doc.confirm.push(...tag(sw.confirm, 'orbat'));
           }
-        } else notes.push(`No ORBAT at ${this._orbatBase || 'the ORBAT url'}: relative strength is counted from the symbols only.`);
-        const tr = writeTimeReq(await this._timeIn(orbat, aor.reading, w.frame?.echelon ?? 'Bn'));
-        applyPatches(doc, tr.patches);
-        doc.confirm.push(...tr.confirm);
+        } else {
+          unread.add('orbat');
+          notes.push(`No ORBAT at ${this._orbatBase || 'the ORBAT url'}: relative strength is counted from the symbols only.`);
+        }
+        step('Time req');
+        const tin = await this._timeIn(orbat, r, w.frame?.echelon ?? 'Bn', drawn);
+        if (!live()) return null;
+        const tr = writeTimeReq(tin);
+        applyPatches(doc, tr.patches, 'orbat');
+        doc.confirm.push(...tag(tr.confirm, 'orbat'));
+        const fdl = en ? en.avenues.flatMap((a) => (a.lines ?? []).filter((l) => l.role === 'FDLs').map((l) => l.h[0])) : [];
+        timeIn = { hHour: this._hHour(guide), reqH: tr.reqH, fdlH: fdl.length ? Math.min(...fdl) : null };
+        applyPatches(doc, writeTimeData(timeIn).patches, 'time');
         doc.sources = this._sources(guide);
+        step('Figures');
         doc.figures = await this._figures(aor);
+        if (!live()) return null;
       } else if (this._opts.figures !== 'trace') {
+        step('A shot of the map');
         const shot = await this._mapShot();
+        if (!live()) return null;
         if (shot) doc.figures = [shot];
       }
-      // the reading kept for the slides' own (dark) maps, drawn when slides are made
-      this._aor = aor;
-      this._slideMaps = null;
 
       // 3. a checked plan: a defence for the defence, an attack for the attack
+      step('Plan check');
       const rep: any = this._host.planCheck?.() ?? null;
       if (attk) {
         const ac = rep?.task === 'attack' ? this._attkCheckIn(rep, aor?.reading ?? null) : null;
         if (ac) {
           const pw = writeAttkPlan(ac);
-          applyPatches(doc, pw.patches);
-          doc.confirm.push(...pw.confirm);
+          applyPatches(doc, pw.patches, 'plan');
+          doc.confirm.push(...tag(pw.confirm, 'plan'));
         }
+        hsum = rep?.task === 'attack' ? this._hSumOf(rep) : null;
+        applyPatches(doc, writeTimeCalcAttk(this._hHour(guide), hsum).patches, 'time');
       } else {
         const chk = rep?.task === 'attack' ? null : this._checkIn();
         if (chk) {
           const pw = writePlan(chk);
-          applyPatches(doc, pw.patches);
-          doc.confirm.push(...pw.confirm);
-          if (aor) applyPatches(doc, writeCoyTasks(this._coysIn(this._host.planCheck?.(), aor.reading)).patches);
+          applyPatches(doc, pw.patches, 'plan');
+          doc.confirm.push(...tag(pw.confirm, 'plan'));
+          if (aor) applyPatches(doc, writeCoyTasks(this._coysIn(rep, aor.reading)).patches, 'plan');
         }
       }
-      if (attk && !aor) applyPatches(doc, attkHeads(this._opts.echelon === 'bn' ? 'Bn' : this._opts.echelon === 'bde' ? 'Bde' : 'Coy'));
-      if (seq !== this._readSeq) return null;
+      // adm: the Admin Area finder's last sites, when the host passes it
+      const adm = this._admIn(aor?.reading ?? null);
+      if (adm) {
+        const aw = writeAdm(adm);
+        applyPatches(doc, aw.patches, 'plan');
+        doc.confirm.push(...tag(aw.confirm, 'plan'));
+      }
+      if (!live()) return null;
+
+      // what was not read this time: the previous reading of it is kept, never lost
+      const same = prev && prev.kind === doc.kind ? prev : null;
+      const kept = keepUnread(same, doc, unread);
+      // the attack's heads by the echelon set, where no reading gave them
+      if (attk && !aor) applyPatches(doc, attkHeads(this._opts.echelon === 'bn' ? 'Bn' : this._opts.echelon === 'bde' ? 'Bde' : 'Coy').filter((h) => !find(doc, h.id)?.src));
+      doc.readAt = { ...(doc.readAt ?? {}) };
+      for (const k of ['gr', 'map', 'plan', 'en', 'orbat', 'time'] as AprcSrc[]) if (!unread.has(k)) doc.readAt[k] = at;
+      if (kept && same) {
+        const was = (k: AprcSrc): string => same.readAt?.[k] ?? same.frame?.readAt ?? 'an earlier Read';
+        let held = false;
+        walk(doc, (p) => {
+          if (p.src === 'gr') held = true;
+        });
+        if (unread.has('gr') && held) notes.unshift(`Gr not read this time: the reading of ${was('gr')} kept.`);
+        let enHeld = false;
+        walk(doc, (p) => {
+          if (p.src === 'en') enHeld = true;
+        });
+        if (unread.has('en') && enHeld) notes.push(`En options not read this time: those of ${was('en')} kept.`);
+      }
       // the same item from two readings is listed once
       doc.confirm = doc.confirm.filter((c, i, all) => all.findIndex((x) => x.text === c.text) === i);
-      this._doc = carryOver(prev, doc);
+      const changed = markChanges(this._wasRead(same) ? same : null, doc);
+      carryOver(prev, doc);
+
+      // only now does the sheet take the reading (an overtaken Read has changed nothing)
+      this._doc = doc;
       this._docVer++;
+      if (undoAtStart && this._undo === undoAtStart) undoAtStart.ver = this._docVer;
+      else this._undo = null;
       this._readHere = true;
+      if (aor) {
+        this._aor = aor;
+        this._slideMaps = null;
+      }
+      if (!unread.has('en') || !this._lastEnemy) this._lastEnemy = lastEnemy;
+      if (timeIn || !unread.has('time')) this._lastTime = timeIn;
+      this._lastHSum = hsum;
       this._note = notes.join(' ');
-      const c = counts(this._doc);
-      this._msg = `Read: ${c.gr} from Gr, ${c.map} from the map, ${c.judge} proposals, ${c.yours} yours`;
+      const c = counts(doc);
+      this._msg = `Read: ${c.gr} from Gr, ${c.map} from the map, ${c.open} proposal${c.open === 1 ? '' : 's'} to judge${c.accepted ? `, ${c.accepted} accepted` : ''}, ${c.yours} yours${same && this._wasRead(same) ? `; ${changed} changed since the last Read` : ''}${kept ? `; ${kept} kept from before` : ''}`;
       EngineLogger.success(ENGINE, this._msg);
+      if (this._undo) this._undo.seq = this._msgSeq;
       this._save();
       this._emit('aprc-read', { doc: this._doc });
       return this._doc;
     } catch (err) {
       console.error('[Aprc] read', err);
-      this._msg = `Read failed: ${err instanceof Error ? err.message : String(err)}`;
-      EngineLogger.error(ENGINE, this._msg);
+      if (live()) {
+        this._msg = `Read failed: ${err instanceof Error ? err.message : String(err)}. The sheet is as it was.`;
+        EngineLogger.error(ENGINE, this._msg);
+      }
       return null;
     } finally {
-      if (seq === this._readSeq) {
+      if (live()) {
         this._busy = false;
+        this._stopBusyClock();
         this._render();
       }
     }
+  }
+
+  /** Stop a Read under way: nothing it found is taken, the sheet stays as it was. */
+  cancelRead(): boolean {
+    if (!this._busy) return false;
+    this._readSeq++;
+    this._busy = false;
+    this._stopBusyClock();
+    this._msg = 'Read cancelled: the sheet is as it was';
+    this._render();
+    return true;
+  }
+
+  private _startBusyClock(): void {
+    this._stopBusyClock();
+    this._busyTick = setInterval(() => this._renderBusy(), 1000);
+  }
+  private _stopBusyClock(): void {
+    if (this._busyTick) clearInterval(this._busyTick);
+    this._busyTick = null;
+  }
+
+  /** The step and the seconds in the header while Read runs (only that part of the sheet is drawn again). */
+  private _renderBusy(): void {
+    if (!this._el || !this._open || !this._busy) return;
+    const secs = Math.max(0, Math.round((Date.now() - this._busyAt) / 1000));
+    const frame = this._part('frame');
+    frame.innerHTML = `<span>${esc(this._step || 'Reading')}…</span><span class="ap-fr-at">${secs} s</span>`;
+    frame.title = 'Read is under way: Cancel stops it and leaves the sheet as it was';
+    const dot = this._part('dot');
+    dot.className = 'ap-dot busy';
+    dot.title = `Reading: ${this._step}`;
+  }
+
+  /** The place's clock now ("2027-02-15 11:00"), in the zone set for the sheet (not the computer's). */
+  private _clock(d = new Date()): string {
+    return new Date(d.getTime() + Number(this._opts.utcOffsetH) * 3600000).toISOString().slice(0, 16).replace('T', ' ');
+  }
+
+  /** The Threat marker the host passes: where it is in words and its bearing from the MITG; null when none is marked. */
+  private _threatAt(r: AorReading | null): { ll: [number, number]; words: string; deg: number } | null {
+    const t = this._host.threat?.() ?? null;
+    if (!Array.isArray(t) || t.length !== 2 || !t.every((v) => Number.isFinite(v))) return null;
+    if (!r) return { ll: [t[0], t[1]], words: 'the Threat marker', deg: NaN };
+    const g = this._ground(r, lngLatToMerc(t[0], t[1]));
+    const dx = g[0] - r.mitg.at[0], dy = g[1] - r.mitg.at[1];
+    const named = !!r.mitg.name && r.mitg.name !== 'MITG';
+    const deg = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360;
+    return { ll: [t[0], t[1]], words: `the Threat marker, ${(Math.hypot(dx, dy) / 1000).toFixed(1)} km ${compass(dx, dy)} of ${named ? r.mitg.name : 'the MITG'}`, deg };
+  }
+
+  /** The IPB reading's view whose area is this one: the host reading's, else the Extended View's live one when it was read here. */
+  private _liveAt(r: AorReading, guide: any): any | null {
+    const lv: any = guide?.ipbApproaches?.() ?? null;
+    if (!lv?.anchor) return null;
+    const m = this._toMerc(r, r.mitg.at);
+    return Math.hypot(lv.anchor[0] - m[0], lv.anchor[1] - m[1]) <= 2500 ? lv : null;
+  }
+
+  /** Own posns' fire on his avenues (the IPB fire reading), when it is there for this place. */
+  private _fireIn(ipb: any, r: AorReading, guide: any): AprcFireIn | null {
+    const f: any = ipb?.fire ?? this._liveAt(r, guide)?.fire ?? null;
+    if (!f || !Array.isArray(f.lines) || !f.lines.length) return null;
+    return {
+      posnSide: f.posnSide === 'enemy' ? 'enemy' : 'own',
+      posns: Array.isArray(f.posns) ? f.posns.length : 0,
+      assumedRange: Array.isArray(f.posns) && f.posns.some((p: any) => p?.assumed),
+      lines: f.lines.map((l: any) => ({ id: String(l.id), coveredPct: Number(l.coveredPct) || 0, screenedPct: Number(l.screenedPct) || 0, deadPct: Number(l.deadPct) || 0, outPct: Number(l.outPct) || 0, seenPct: Number(l.seenPct) || 0, gaps: Array.isArray(l.gaps) ? l.gaps : [] })),
+      killing: (Array.isArray(f.killing) ? f.killing : []).map((k: any) => ({ on: String(k.on), kind: k.kind === 'narrows' ? 'narrows' : 'stretch', widthM: Number.isFinite(k.widthM) ? Number(k.widthM) : null, lengthM: Number(k.lengthM) || 0, alongM: Number(k.alongM) || 0, where: Array.isArray(k.at) ? this._where(r, this._ground(r, k.at)) : null })),
+    };
+  }
+
+  /** His air avenues, LZs and DZs (the IPB air reading), when it is there for this place. */
+  private _airIn(ipb: any, r: AorReading, guide: any): AprcAirIn | null {
+    const a: any = ipb?.air ?? (this._liveAt(r, guide) ? guide?.ipbAir?.() : null) ?? null;
+    if (!a || a.side === 'own') return null;
+    const zone = (z: any) => ({ id: String(z.id), rank: Number(z.rank) || 99, where: Array.isArray(z.at) ? this._where(r, this._ground(r, z.at)) : null, why: String(z.why ?? ''), existing: z.existing ? String(z.existing) : null });
+    return {
+      lzs: (Array.isArray(a.lzs) ? a.lzs : []).map(zone),
+      dzs: (Array.isArray(a.dzs) ? a.dzs : []).map(zone),
+      routes: (Array.isArray(a.routes) ? a.routes : []).map((x: any) => ({ id: String(x.id), to: String(x.to ?? ''), lengthM: Number(x.lengthM) || 0, seenPct: Number(x.seenPct) || 0 })),
+      band: String(a.bandLabel ?? a.band ?? ''),
+    };
+  }
+
+  /** The Admin Area finder's last result, when the host passes the finder. */
+  private _admIn(r: AorReading | null): AprcAdmIn | null {
+    const res: any = this._host.adminArea?.()?.result ?? null;
+    if (!res?.sites?.length) return null;
+    return {
+      kind: String(res.rule?.label ?? 'Admin area'),
+      sites: res.sites.map((x: any) => ({ rank: Number(x.rank) || 99, where: r && Array.isArray(x.at) ? this._where(r, this._ground(r, x.at)) : null, tone: String(x.tone ?? 'unknown'), verdict: String(x.verdict ?? '') })),
+    };
+  }
+
+  /** The H-hour sum of a checked attack plan, read from its row, if the check carries one. */
+  private _hSumOf(rep: any): AprcHSumIn | null {
+    const rows: any[] = [...(rep?.rows ?? []), ...((rep?.groups ?? []) as any[]).flatMap((g) => g?.rows ?? [])];
+    const h = rows.find((x) => /^H-hour sum$/i.test(String(x?.name ?? '')));
+    return h ? hSumFromText(String(h.reason ?? '')) : null;
   }
 
   /**
@@ -888,34 +1246,36 @@ export default class GroundAppreciation {
     return `${(d / 1000).toFixed(1)} km ${compass(p[0] - r.mitg.at[0], p[1] - r.mitg.at[1])} of ${r.mitg.name}`;
   }
 
-  private async _symbols(r: AorReading | null): Promise<AprcSymbolIn[]> {
+  /** The symbols on the map, in words for the writer and as PlanCheck reads them (`drawn`, for the ORBAT and Time Req). */
+  private async _symbols(r: AorReading | null): Promise<{ symbols: AprcSymbolIn[]; drawn: any[] }> {
     const recs = this._host.records?.() ?? [];
-    this._drawn = [];
-    if (!recs.length) return [];
+    if (!recs.length) return { symbols: [], drawn: [] };
     try {
       const { readSymbols } = await import('../DeploymentBuilder/PlanCheck');
       const raw = readSymbols(recs as any);
-      this._drawn = raw;
-      return raw.map((s) => {
+      const symbols = raw.map((s) => {
         let where: string | null = null;
         if (r && s.pts.length) {
           const cx = s.pts.reduce((a, p) => a + p.x, 0) / s.pts.length, cy = s.pts.reduce((a, p) => a + p.y, 0) / s.pts.length;
           where = this._where(r, [(cx - r.centre[0]) / r.k, (cy - r.centre[1]) / r.k]);
         }
-        return { id: s.id, key: s.key, name: s.name, side: s.side, ech: s.ech, label: s.label, where, planned: s.status === '1' };
+        // a HQ: 2525D HQ / TF / dummy amplifier 2 (HQ) or 6 (TF HQ); 3 and 7 are dummies
+        return { id: s.id, key: s.key, name: s.name, side: s.side, ech: s.ech, label: s.label, where, planned: s.status === '1', hq: s.hqtf === '2' || s.hqtf === '6' };
       });
+      return { symbols, drawn: raw };
     } catch (err) {
       console.warn('[Aprc] symbols', err);
-      return [];
+      return { symbols: [], drawn: [] };
     }
   }
 
   /** The IPB reading of the en's avenues onto the position, with his times, the Annex A weather and the template. */
-  private async _ipb(guide: any, r: AorReading, graphic: any): Promise<any | null> {
+  /** `threatDeg`: the bearing to the Threat marker when one is marked, else the AOR reading's facing. */
+  private async _ipb(guide: any, r: AorReading, graphic: any, threatDeg: number | null = null): Promise<any | null> {
     if (!guide?.ipbApproachesAround) return null;
     const ll = mercToLngLat(...this._toMerc(r, r.mitg.at));
     const sidc: string | null = graphic?.attributes?.drawEssentials?.AMPLIFIER?.SIDC ?? null;
-    return withTimeout<any>(guide.ipbApproachesAround(ll, { sidc, readFor: 'defence', threatDeg: r.faceDeg, extras: true }), 60000);
+    return withTimeout<any>(guide.ipbApproachesAround(ll, { sidc, readFor: 'defence', threatDeg: Number.isFinite(threatDeg) ? threatDeg : r.faceDeg, extras: true }), 60000);
   }
 
   /** H on D Day: the sheet's, else the Ground Guide's IPB H; null when neither is set. */
@@ -974,7 +1334,9 @@ export default class GroundAppreciation {
 
   private _enemyIn(v: any, r: AorReading, force: string | null, guide: any = null): AprcEnemyIn | null {
     const d = v?.decision;
-    if (!v?.aas?.length || !d) return null;
+    // a partial decision object (no rates) gives no options; it never throws away the rest of the reading
+    if (!Array.isArray(v?.aas) || !v.aas.length || !d || !Array.isArray(d.rates?.go) || !Array.isArray(d.rates?.slow)) return null;
+    const profiles: any[] = Array.isArray(d.profiles) ? d.profiles : [];
     const ground = (p: [number, number]): AorXY => [(p[0] - r.centre[0]) / r.k, (p[1] - r.centre[1]) / r.k];
     const avenues: AprcAvenueIn[] = v.aas.map((aa: any) => {
       const pts: AorXY[] = (aa.line ?? []).map(ground);
@@ -992,7 +1354,7 @@ export default class GroundAppreciation {
         }
         if (best <= 800) seen.push({ name: q.name, at });
       }
-      const pr = d.profiles.find((x: any) => x.aa === aa.id);
+      const pr = profiles.find((x: any) => x?.aa === aa.id);
       return {
         id: String(aa.id),
         rank: Number(aa.rank) || 99,
@@ -1004,8 +1366,8 @@ export default class GroundAppreciation {
         waterLines: Number(aa.waterLines) || 0,
         through: seen.sort((a, b) => a.at - b.at).map((x) => x.name).filter((nm, i, all) => all.indexOf(nm) === i),
         onto: aa.ontoLabel ?? null,
-        startH: pr ? pr.startH : [0, 0],
-        endH: pr ? pr.endH : [0, 0],
+        startH: Array.isArray(pr?.startH) ? pr.startH : [0, 0],
+        endH: Array.isArray(pr?.endH) ? pr.endH : [0, 0],
         lines: pr ? this._lineTimes(aa, pr, r) : [],
       };
     });
@@ -1021,9 +1383,9 @@ export default class GroundAppreciation {
       mcWidthM: Number(v.mcWidthM) || 0,
       objective: named ? r.mitg.name : 'the MITG',
       avenues,
-      tais: (d.tais ?? []).map((x: any) => ({ id: x.id, aa: x.aa, why: x.why, earliestH: x.earliestH, latestH: x.latestH })),
-      dps: (d.dps ?? []).map((x: any) => ({ id: x.id, kind: x.kind, aa: x.aa, tai: x.tai, decision: x.decision, earliestH: x.earliestH, beforeH: !!x.beforeH })),
-      template: t ? { label: t.label, src: t.src, confirmed: !!t.confirmed, phases: (t.phases?.rows ?? []).map((x: any) => ({ phase: x.phase, time: x.time })) } : null,
+      tais: (Array.isArray(d.tais) ? d.tais : []).map((x: any) => ({ id: x.id, aa: x.aa, why: x.why, earliestH: x.earliestH, latestH: x.latestH })),
+      dps: (Array.isArray(d.dps) ? d.dps : []).map((x: any) => ({ id: x.id, kind: x.kind, aa: x.aa, tai: x.tai, decision: x.decision, earliestH: x.earliestH, beforeH: !!x.beforeH })),
+      template: t ? { label: String(t.label ?? ''), src: String(t.src ?? ''), confirmed: !!t.confirmed, phases: (Array.isArray(t.phases?.rows) ? t.phases.rows : []).map((x: any) => ({ phase: x.phase, time: x.time })) } : null,
       hHour: this._hHour(guide),
     };
   }
@@ -1163,12 +1525,11 @@ export default class GroundAppreciation {
   }
 
   /** Own and en units for the relative strength: a built plan's, else the symbols marked, else assumed (and said so). */
-  private async _strengthIn(o: any, r: AorReading, echWord: string, need: number | null, attack = false): Promise<AprcStrengthIn | null> {
+  private async _strengthIn(o: any, r: AorReading, echWord: string, need: number | null, drawn: any[], attack = false): Promise<AprcStrengthIn | null> {
     const { brief, ownUnitFor, enUnitFor } = await import('../DeploymentBuilder/PlanOrbat');
     const pd: any = (await import('../../Data/PlanDoctrine.json')).default;
     const ownEch = ({ Coy: '15', Bn: '16', Bde: '18' } as Record<string, string>)[echWord] ?? '16';
     const ECHW: Record<string, string> = { '15': 'Coy', '16': 'Bn', '18': 'Bde', '21': 'Div' };
-    const drawn = this._drawn;
     const isUnit = (s: any) => String(s.key ?? '').startsWith('10') && !!s.ech;
     const unitOf = (id: string | null, count: number): AprcForceUnit | null => {
       const b = id ? brief(o, id) : null;
@@ -1213,7 +1574,7 @@ export default class GroundAppreciation {
   }
 
   /** Time Req inputs: the move in (the unit symbol outside the AOR), posn preparation, the protective minefield. */
-  private async _timeIn(o: any | null, r: AorReading, echWord: string): Promise<AprcTimeIn> {
+  private async _timeIn(o: any | null, r: AorReading, echWord: string, drawn: any[]): Promise<AprcTimeIn> {
     const pd: any = (await import('../../Data/PlanDoctrine.json')).default;
     const md: any = (await import('../../Data/MoveDoctrine.json')).default;
     const ownEch = ({ Coy: '15', Bn: '16', Bde: '18' } as Record<string, string>)[echWord] ?? '16';
@@ -1228,7 +1589,7 @@ export default class GroundAppreciation {
       }
       return c;
     };
-    for (const s of this._drawn) {
+    for (const s of drawn) {
       if (s.side !== 'own' || s.ech !== ownEch || !String(s.key ?? '').startsWith('10') || !s.pts?.length) continue;
       const cx = s.pts.reduce((a: number, p: any) => a + p.x, 0) / s.pts.length, cy = s.pts.reduce((a: number, p: any) => a + p.y, 0) / s.pts.length;
       const g: AorXY = [(cx - r.centre[0]) / r.k, (cy - r.centre[1]) / r.k];
@@ -1247,7 +1608,7 @@ export default class GroundAppreciation {
       const t = (o.engrData ?? []).find((x: any) => /Mine Laying - Planning Data: Manual/i.test(String(x?.title)));
       const row = t?.rows?.find((x: any) => x.Condition === 'Engr Pl' && /mixed/i.test(String(x.Cluster)));
       const perPl = Number(row?.['Max in 24 hrs']);
-      const meta = this._drawn.find((s) => s.side === 'own' && s.pbMeta)?.pbMeta ?? null;
+      const meta = drawn.find((s) => s.side === 'own' && s.pbMeta)?.pbMeta ?? null;
       const types = ownEngrTypes(o);
       let e = types.find((x) => x.id === (meta?.engr ?? 'engr-fd-coy')) ?? types.find((x) => x.id === 'engr-fd-coy') ?? null;
       if (e && meta?.engr && meta?.engrCoys) e = engrShare(e, Number(meta.engrCoys));
@@ -1330,42 +1691,72 @@ export default class GroundAppreciation {
     return ok;
   }
 
-  private async _groundIn(guide: any, aor: { reading: AorReading; frame: AorFrame }, graphic: any, drawnObs: string[]): Promise<AprcGroundIn> {
+  /**
+   * The readings at the MITG and along each apch for the Gr paragraphs. Null when another Read overtook this one. The
+   * Obsn head is read at three points along the home side of each apch (its mean, spread and worst place).
+   */
+  private async _groundIn(guide: any, aor: { reading: AorReading; frame: AorFrame }, graphic: any, drawnObs: string[], seq: number, step: (s: string) => void): Promise<AprcGroundIn | null> {
     const r = aor.reading;
     const ll = mercToLngLat(...this._toMerc(r, r.mitg.at));
     const sidc: string | null = graphic?.attributes?.drawEssentials?.AMPLIFIER?.SIDC ?? null;
+    step('Gr: sections, cover and sight at the MITG');
     const [sec, cov, ext] = await Promise.all([
       withTimeout<any>(guide.sectionsAround?.(ll) ?? Promise.resolve(null), 20000),
       withTimeout<any>(guide.coverAround?.(ll) ?? Promise.resolve(null), 20000),
       withTimeout<any>(guide.extendedAround?.(ll, { sidc, threatDeg: r.faceDeg, radiusKm: 2 }) ?? Promise.resolve(null), 30000),
     ]);
+    if (seq !== this._readSeq) return null;
     const obsn: Partial<Record<AorSide, AprcObsn | null>> = {};
+    const toward = (deg: number): string => COMPASS[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
     if (this._opts.obsn && guide.extendedAround) {
+      const FRACS = [0.8, 0.5, 0.2];
       for (const a of r.apchs) {
-        // a point half way along the part of the approach on the home side
-        const want = a.lengthM - a.pastM / 2;
-        let acc = 0, at: AorXY = a.path[a.path.length - 1];
-        for (let i = 1; i < a.path.length; i++) {
-          const L = Math.hypot(a.path[i][0] - a.path[i - 1][0], a.path[i][1] - a.path[i - 1][1]);
-          if (acc + L >= want) {
-            const t = L ? (want - acc) / L : 0;
-            at = [a.path[i - 1][0] + (a.path[i][0] - a.path[i - 1][0]) * t, a.path[i - 1][1] + (a.path[i][1] - a.path[i - 1][1]) * t];
-            break;
+        const reads: Array<{ e: any; near: string | null }> = [];
+        for (let k = 0; k < FRACS.length; k++) {
+          step(`Obsn along the ${a.side} apch ${k + 1}/${FRACS.length}`);
+          // points along the part of the approach on the home side (its last `pastM`)
+          const want = a.lengthM - a.pastM * FRACS[k];
+          let acc = 0, at: AorXY = a.path[a.path.length - 1];
+          for (let i = 1; i < a.path.length; i++) {
+            const L = Math.hypot(a.path[i][0] - a.path[i - 1][0], a.path[i][1] - a.path[i - 1][1]);
+            if (acc + L >= want) {
+              const t = L ? (want - acc) / L : 0;
+              at = [a.path[i - 1][0] + (a.path[i][0] - a.path[i - 1][0]) * t, a.path[i - 1][1] + (a.path[i][1] - a.path[i - 1][1]) * t];
+              break;
+            }
+            acc += L;
           }
-          acc += L;
+          const e: any = await withTimeout<any>(guide.extendedAround(mercToLngLat(...this._toMerc(r, at)), { profile: 'dismounted', radiusKm: 2, threatDeg: (r.faceDeg + 180) % 360 }), 30000);
+          if (seq !== this._readSeq) return null;
+          if (!e?.obs || !Number.isFinite(e.obs.seenPct)) continue;
+          let near: string | null = null, nd = 1500;
+          for (const q of r.map.places) {
+            const d = Math.hypot(q.at[0] - at[0], q.at[1] - at[1]);
+            if (d < nd) ((nd = d), (near = q.name));
+          }
+          reads.push({ e, near });
         }
-        const e: any = await withTimeout<any>(guide.extendedAround(mercToLngLat(...this._toMerc(r, at)), { profile: 'dismounted', radiusKm: 2, threatDeg: (r.faceDeg + 180) % 360 }), 30000);
-        if (!e?.obs) {
+        if (!reads.length) {
           obsn[a.side] = null;
           continue;
         }
-        let near: string | null = null, nd = 1500;
-        for (const q of r.map.places) {
-          const d = Math.hypot(q.at[0] - at[0], q.at[1] - at[1]);
-          if (d < nd) ((nd = d), (near = q.name));
-        }
-        const ov = e.obs.overlook;
-        obsn[a.side] = { near, radiusM: e.radiusM ?? 2000, seenPct: e.obs.seenPct, clearMedianM: e.obs.clearMedianM, country: e.obs.country, overlook: ov ? { riseM: ov.riseM, distM: ov.distM, compass: COMPASS[Math.round((((ov.bearingDeg % 360) + 360) % 360) / 45) % 8] } : null };
+        const seen = reads.map((x) => Number(x.e.obs.seenPct));
+        const clear = reads.map((x) => Number(x.e.obs.clearMedianM)).sort((p, q) => p - q);
+        const worst = reads[seen.indexOf(Math.min(...seen))];
+        const mid = reads[Math.floor(reads.length / 2)];
+        const ov = reads.map((x) => x.e.obs.overlook).filter(Boolean).sort((p: any, q: any) => q.riseM - p.riseM)[0] ?? null;
+        obsn[a.side] = {
+          near: mid.near,
+          radiusM: mid.e.radiusM ?? 2000,
+          seenPct: seen.reduce((p, q) => p + q, 0) / seen.length,
+          clearMedianM: clear[Math.floor(clear.length / 2)],
+          country: mid.e.obs.country,
+          overlook: ov ? { riseM: ov.riseM, distM: ov.distM, compass: toward(ov.bearingDeg) } : null,
+          points: reads.length,
+          minSeenPct: Math.min(...seen),
+          maxSeenPct: Math.max(...seen),
+          worstNear: reads.length > 1 ? worst.near : null,
+        };
       }
     }
     const gd = sec?.ground, rd = sec?.roads?.density, wx = sec?.weather, lv = cov?.levels;
@@ -1380,11 +1771,12 @@ export default class GroundAppreciation {
       crop: ext?.crop ?? null,
       obsn,
       // the view from the MITG toward the reading's threat side (the attack: toward own side, his view from the obj)
-      mitgObsn: ext?.obs ? { near: null, radiusM: ext.radiusM ?? 2000, seenPct: ext.obs.seenPct, clearMedianM: ext.obs.clearMedianM, country: ext.obs.country, overlook: ext.obs.overlook ? { riseM: ext.obs.overlook.riseM, distM: ext.obs.overlook.distM, compass: COMPASS[Math.round((((ext.obs.overlook.bearingDeg % 360) + 360) % 360) / 45) % 8] } : null } : null,
-      light: lightTimes(new Date(), ll[1], ll[0], -new Date().getTimezoneOffset()),
+      mitgObsn: ext?.obs ? { near: null, radiusM: ext.radiusM ?? 2000, seenPct: ext.obs.seenPct, clearMedianM: ext.obs.clearMedianM, country: ext.obs.country, overlook: ext.obs.overlook ? { riseM: ext.obs.overlook.riseM, distM: ext.obs.overlook.distM, compass: toward(ext.obs.overlook.bearingDeg) } : null } : null,
+      // the place's zone (groundAppreciation.utcOffsetH), never the computer's
+      light: lightTimes(new Date(), ll[1], ll[0], Number(this._opts.utcOffsetH) * 60),
       drawnObs,
       threatMarked: !r.originsAssumed,
-      readAt: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16).replace('T', ' '),
+      readAt: `${this._clock()} (${zoneWord(Number(this._opts.utcOffsetH))})`,
     };
   }
 
@@ -1509,18 +1901,89 @@ export default class GroundAppreciation {
     if (n) this._changed();
     return n;
   }
-  /** Start again: every heading, nothing written. The planner's words go too. */
-  clear(): void {
-    // a Read still running would land on the cleared sheet (of the old kind): it is dropped
-    this._readSeq++;
-    this._busy = false;
-    this._lastEnemy = null;
-    this._readHere = false;
-    this._doc = newDoc(this._opts.kind);
-    this._sel = null;
-    this._dirty = null;
-    this._msg = 'Cleared: every heading empty';
+  /** Start again: every heading, nothing written. The planner's words go too, until the next change: Undo brings them back. */
+  clear(label = 'Cleared'): void {
+    this._undoable(label, () => {
+      // a Read still running would land on the cleared sheet (of the old kind): it is dropped
+      this._readSeq++;
+      this._busy = false;
+      this._stopBusyClock();
+      this._lastEnemy = null;
+      this._lastTime = null;
+      this._lastHSum = null;
+      this._readHere = false;
+      this._doc = newDoc(this._opts.kind);
+      this._sel = null;
+      this._dirty = null;
+      this._msg = `${label}: every heading empty. Undo brings it back`;
+      this._changed();
+    });
+  }
+
+  /** Give a paragraph back to the tool; his words are kept on it to put back, and Undo restores them at once. */
+  giveBack(id: string): boolean {
+    const p = this._doc ? find(this._doc, id) : null;
+    if (!p) return false;
+    let ok = false;
+    this._undoable(`${this._num(id)} given back`, () => {
+      if (p.moved && !p.mine) ok = dropMoved(this._doc!, id);
+      else ok = setMine(this._doc!, id, null);
+      if (!ok) return;
+      this._msg = `${this._num(id)} given back: the tool's draft prints. Undo brings yours back`;
+      this._changed();
+    });
+    return ok;
+  }
+
+  /** Put back the words last given back to the tool. */
+  putBack(id: string): boolean {
+    if (!this._doc || !restoreDiscarded(this._doc, id)) return false;
+    this._msg = `${this._num(id)}: your earlier words put back`;
     this._changed();
+    return true;
+  }
+
+  /**
+   * Run a change that can be undone: the document before it is kept until the next change. The toast that says what
+   * was done carries Undo (Ctrl+Z in the sheet too).
+   */
+  private _undoable(label: string, fn: () => void): void {
+    const json = this._doc ? JSON.stringify(this._doc) : null;
+    const ver = this._docVer;
+    fn();
+    if (json === null || this._docVer === ver) return;
+    this._undo = { label, json, ver: this._docVer, seq: this._msgSeq };
+    // show the toast again, now with Undo on it
+    this._toastSeq = -1;
+    this._render();
+  }
+
+  /** Undo the last clear, give-back, open or kind change (until the next change). */
+  undo(): boolean {
+    const u = this._undo;
+    if (!u || u.ver !== this._docVer) {
+      this._undo = null;
+      this._msg = 'Nothing to undo';
+      this._render();
+      return false;
+    }
+    if (this._busy) this.cancelRead();
+    const d = normalizeDoc(JSON.parse(u.json));
+    if (!d) return false;
+    this._undo = null;
+    this._doc = d;
+    // the readings held for re-timing belong to the sheet undone
+    this._readHere = false;
+    this._lastEnemy = null;
+    this._lastTime = null;
+    this._lastHSum = null;
+    if (d.kind !== this._opts.kind) {
+      this._opts.kind = d.kind;
+      this._persist('kind', d.kind);
+    }
+    this._msg = `Undone: ${u.label.charAt(0).toLowerCase()}${u.label.slice(1)}`;
+    this._changed();
+    return true;
   }
 
   private _changed(): void {
@@ -1528,6 +1991,57 @@ export default class GroundAppreciation {
     this._save();
     this._render();
     this._emit('aprc-changed', { doc: this._doc });
+  }
+
+  /**
+   * Change the kind of appreciation: asked first in the sheet when the planner has written in it; the sheet starts
+   * again (Undo brings the old one back) and is read again when it held a reading. The setting follows.
+   */
+  private async _changeKind(next: AprcKind): Promise<void> {
+    const doc = this._doc;
+    if (!doc || doc.kind === next) {
+      this._opts.kind = next;
+      return;
+    }
+    let mine = false;
+    walk(doc, (p) => {
+      if (p.mine || p.accepted || p.cells) mine = true;
+    });
+    const label = (k: AprcKind) => aprcKinds().find((x) => x.kind === k)?.label ?? k;
+    if (mine) {
+      if (!this._open) this.openPanel(true);
+      const ok = await this._ask(`Change to ${label(next)}? The sheet starts again with every heading empty and your written paragraphs go (Undo brings them back).`, `Change to ${label(next)}`, `Keep ${label(doc.kind)}`);
+      if (!ok || this._doc !== doc) {
+        this._persist('kind', this._doc?.kind ?? doc.kind);
+        this._render();
+        return;
+      }
+    }
+    const wasRead = this._wasRead(doc);
+    this._opts.kind = next;
+    this._persist('kind', next);
+    this.clear(`Changed to ${label(next)}`);
+    if (wasRead) void this.read();
+  }
+
+  /** Ask in the sheet's own style; resolves true for yes. A newer question, closing the sheet or Esc answers no. */
+  private _ask(text: string, yes: string, no: string): Promise<boolean> {
+    this._askState?.resolve(false);
+    return new Promise((res) => {
+      const st = {
+        text,
+        yes,
+        no,
+        resolve: (v: boolean) => {
+          if (this._askState === st) this._askState = null;
+          res(v);
+          this._render();
+        },
+      };
+      this._askState = st;
+      this._render();
+      (this._el?.querySelector('[data-a="ask-yes"]') as HTMLElement | null)?.focus({ preventScroll: true });
+    });
   }
 
   // ── output ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -1539,22 +2053,42 @@ export default class GroundAppreciation {
   toHtml(copy: AprcCopy = this._opts.copy): string {
     return this._doc ? printHtml(this._doc, copy) : '';
   }
-  /** The document as plain data (figures as they are); `fromJSON` takes it back. */
-  toJSON(): AprcDoc | null {
-    return this._doc ? (JSON.parse(JSON.stringify(this._doc)) as AprcDoc) : null;
+  /** The document as plain data (figures as they are, or left out: `pictures: false`); `fromJSON` takes it back. */
+  toJSON(o: { pictures?: boolean } = {}): AprcDoc | null {
+    if (!this._doc) return null;
+    const d = JSON.parse(JSON.stringify(this._doc)) as AprcDoc;
+    if (o.pictures === false) d.figures = [];
+    return d;
   }
-  fromJSON(doc: any): boolean {
-    if (!doc || doc.version !== 1 || !Array.isArray(doc.parts)) return false;
-    // the opened sheet is not the last reading: a Read still running is dropped, and H has no en options of its to re-time
-    this._readSeq++;
-    this._busy = false;
-    this._lastEnemy = null;
-    this._readHere = false;
-    this._doc = doc as AprcDoc;
-    this._sel = null;
-    this._dirty = null;
-    this._msg = 'Opened';
-    this._changed();
+  /**
+   * Open an appreciation (a file, a plan). It is made safe to open (missing arrays given, typed cells keyed by row);
+   * the sheet's kind and its setting follow the opened one, so the next Read keeps its words and the next start keeps
+   * the sheet. The sheet it replaces comes back with Undo.
+   */
+  fromJSON(raw: any): boolean {
+    const doc = normalizeDoc(raw);
+    if (!doc) return false;
+    this._undoable('Opened another appreciation', () => {
+      // the opened sheet is not the last reading: a Read still running is dropped, and H has no en options of its to re-time
+      this._readSeq++;
+      this._busy = false;
+      this._stopBusyClock();
+      this._lastEnemy = null;
+      this._lastTime = null;
+      this._lastHSum = null;
+      this._readHere = false;
+      this._aor = null;
+      this._slideMaps = null;
+      this._doc = doc;
+      if (doc.kind !== this._opts.kind) {
+        this._opts.kind = doc.kind;
+        this._persist('kind', doc.kind);
+      }
+      this._sel = null;
+      this._dirty = null;
+      this._msg = 'Opened';
+      this._changed();
+    });
     return true;
   }
 
@@ -1680,12 +2214,11 @@ export default class GroundAppreciation {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    this._later(() => URL.revokeObjectURL(a.href), 4000);
   }
 
   private _fileName(ext: string): string {
-    const place = (this._doc?.frame?.place ?? 'aprc').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'aprc';
-    return `Aprc_${place}_${new Date().toISOString().slice(0, 10)}${this._opts.copy === 'draft' ? '_draft' : ''}.${ext}`;
+    return `${aprcFileBase(this._doc, this._opts.copy)}.${ext}`;
   }
 
   async exportWord(): Promise<boolean> {
@@ -1708,18 +2241,31 @@ export default class GroundAppreciation {
   /** Print (Save as PDF in the print dialog). */
   exportPrint(): void {
     if (!this._doc) return;
+    this._printFrame?.remove();
     const fr = document.createElement('iframe');
+    this._printFrame = fr;
     fr.setAttribute('aria-hidden', 'true');
     fr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
-    fr.srcdoc = this.toHtml();
+    // the window's title is the file name: Save as PDF offers it
+    fr.srcdoc = printHtml(this._doc, this._opts.copy, { title: aprcFileBase(this._doc, this._opts.copy) });
+    let gone = false;
+    const done = () => {
+      if (gone) return;
+      gone = true;
+      fr.remove();
+      if (this._printFrame === fr) this._printFrame = null;
+    };
     fr.onload = () => {
       try {
+        // taken away once the print dialog closes (a long fallback where `afterprint` never comes)
+        fr.contentWindow?.addEventListener('afterprint', () => this._later(done, 500));
+        this._later(done, 10 * 60000);
         fr.contentWindow?.focus();
         fr.contentWindow?.print();
       } catch (err) {
         console.warn('[Aprc] print', err);
+        done();
       }
-      setTimeout(() => fr.remove(), 60000);
     };
     document.body.appendChild(fr);
     this._msg = 'Print: choose Save as PDF for a PDF';
@@ -1738,9 +2284,11 @@ export default class GroundAppreciation {
     return this._msg === 'Copied as text';
   }
 
-  exportJson(): void {
-    if (!this._doc) return;
-    this._download(new Blob([JSON.stringify(this._doc)], { type: 'application/json' }), this._fileName('json'));
+  /** Save to a file: without the pictures by default (Read makes them again; a few KB instead of MB). */
+  exportJson(o: { pictures?: boolean } = {}): void {
+    const d = this.toJSON({ pictures: !!o.pictures });
+    if (!d) return;
+    this._download(new Blob([JSON.stringify(d)], { type: 'application/json' }), this._fileName('json'));
   }
 
   private _openJson(): void {
@@ -1771,12 +2319,11 @@ export default class GroundAppreciation {
       /* storage full or refused: the document stays in memory */
     }
   }
+  /** The sheet kept in this browser, made safe to open; its kind wins over the setting (`enable`). */
   private _load(): AprcDoc | null {
     if (!this._opts.keep || typeof localStorage === 'undefined') return null;
     try {
-      const d = JSON.parse(localStorage.getItem(STORE) ?? 'null');
-      if (d) delete d.marking; // a document kept before the marking became a ruled line
-      return d && d.version === 1 && Array.isArray(d.parts) && d.kind === this._opts.kind ? (d as AprcDoc) : null;
+      return normalizeDoc(JSON.parse(localStorage.getItem(STORE) ?? 'null'));
     } catch {
       return null;
     }
@@ -1794,13 +2341,16 @@ export default class GroundAppreciation {
     el.tabIndex = -1;
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-label', 'Appreciation of the situation');
+    el.setAttribute('aria-keyshortcuts', 'ArrowUp ArrowDown N A Shift+A F X C M Control+Z Escape');
     const kinds = aprcKinds();
     el.innerHTML = `<header class="ap-head">
+<span class="ap-dot idle" data-p="dot" aria-hidden="true"></span>
 <span class="ap-ttl">Aprc</span>
 <select class="ap-select" data-o="kind" aria-label="Kind of appreciation">${kinds.map((k) => `<option value="${k.kind}" ${k.ready ? '' : 'disabled'}>${esc(k.label)}${k.ready ? '' : ' (no outline yet)'}</option>`).join('')}</select>
 <div class="ap-frame" data-p="frame"></div>
 <button class="ap-btn pri" data-a="read" data-p="read" title="Read the ground and the symbols on the map. Your words and acceptances are kept."></button>
 <button class="ap-btn" data-a="menu" data-v="export" aria-haspopup="menu" aria-expanded="false">Export ${UI.caret}</button>
+<button class="ap-btn icon" data-a="menu" data-v="log" aria-haspopup="menu" aria-expanded="false" aria-label="Messages (M)" title="Messages: the last ten, with their times (M)">${UI.log}</button>
 <button class="ap-btn icon" data-a="menu" data-v="more" aria-haspopup="menu" aria-expanded="false" aria-label="Save, open or clear" title="Save, open or clear">${UI.more}</button>
 <span class="ap-minprog" data-p="minprog"></span>
 <span class="ap-wsep" aria-hidden="true"></span>
@@ -1809,6 +2359,7 @@ export default class GroundAppreciation {
 <button class="ap-btn icon ghost" data-a="close" aria-label="Close (Esc)" title="Close (Esc)">${UI.close}</button>
 </header>
 <div class="ap-busy" data-p="busy" aria-hidden="true"><i></i></div>
+<div class="ap-ask" data-p="ask" role="alertdialog" aria-live="assertive" hidden></div>
 <div class="ap-note" data-p="note" role="note"></div>
 <div class="ap-grid" data-p="grid">
 <nav class="ap-out" id="ap-pane-out" data-p="out" aria-label="Outline"></nav>
@@ -1877,8 +2428,9 @@ export default class GroundAppreciation {
     if (b && this._el!.contains(b)) {
       if (b.disabled) return;
       const a = b.dataset.a!, v = b.dataset.v ?? '';
-      if (a === 'menu') return this._toggleMenu(v as 'export' | 'more');
+      if (a === 'menu') return this._toggleMenu(v as 'export' | 'more' | 'log');
       if (a !== 'clear') this._closeMenu(false);
+      if (a === 'ask-yes' || a === 'ask-no') return this._askState?.resolve(a === 'ask-yes');
       if (a === 'give') this._dirty = null;
       else if (a !== 'save' && a !== 'sel' && a !== 'prev' && a !== 'next' && a !== 'next-todo') this._commitDirty();
       switch (a) {
@@ -1886,6 +2438,19 @@ export default class GroundAppreciation {
           return this.openPanel(false);
         case 'read':
           return void this.read();
+        case 'cancel':
+          return void this.cancelRead();
+        case 'undo':
+          return void this.undo();
+        case 'restore':
+          if (this._sel) this.putBack(this._sel);
+          return;
+        case 'confirm':
+          return this._showConfirm();
+        case 'json-pics':
+          this.exportJson({ pictures: true });
+          this._msg = 'Saved to a file, with the pictures';
+          return this._render();
         case 'accept-all': {
           const n = this.acceptAll();
           this._msg = n ? `${n} proposal${n === 1 ? '' : 's'} accepted: they print in the fair copy` : 'No open proposal';
@@ -1904,7 +2469,7 @@ export default class GroundAppreciation {
           return void this.copyText();
         case 'json':
           this.exportJson();
-          this._msg = 'Saved to a file';
+          this._msg = 'Saved to a file (no pictures: Read makes them again)';
           return this._render();
         case 'open':
           return this._openJson();
@@ -1952,16 +2517,18 @@ export default class GroundAppreciation {
           return;
         }
         case 'give':
-          if (this._sel && this.setText(this._sel, null)) {
-            this._msg = `${this._num(this._sel)} given back: the tool's draft prints`;
-            this._render();
-          }
+          if (this._sel) this.giveBack(this._sel);
           return;
         case 'keep': {
           const p = this._doc && this._sel ? find(this._doc, this._sel) : null;
-          if (p?.mine && this.setText(p.id, p.mine.text)) {
+          if (!p) return;
+          if (p.mine && this.setText(p.id, p.mine.text)) {
+            if (p.moved) keepMoved(this._doc!, p.id);
             this._msg = `${this._num(p.id)}: yours kept`;
             this._render();
+          } else if (p.moved && keepMoved(this._doc!, p.id)) {
+            this._msg = `${this._num(p.id)}: your rows kept`;
+            this._changed();
           }
           return;
         }
@@ -1985,58 +2552,134 @@ export default class GroundAppreciation {
   private _changeEv(e: Event): void {
     const t = e.target as HTMLInputElement | HTMLSelectElement;
     const cell = t.dataset?.cell;
-    if (cell && this._doc && this._sel) {
-      const [r, c] = cell.split(',').map(Number);
-      this.setCell(this._sel, r, c, t.value);
+    if (cell) {
+      // a cell taken away by a new drawing of the panel has been committed already
+      if (t.isConnected && this._doc && this._sel) this._commitCell(t as HTMLInputElement);
       return;
     }
     const k = t.dataset?.o;
     if (!k) return;
-    if (k === 'hHour') {
-      const v = t.value.trim();
-      if (v && parseHHour(v) === null) {
-        this._msg = 'H: type HH:MM (24 h), or leave it empty';
-        return this._render();
-      }
-      this.setOptions({ hHour: v });
-      const doc = this._doc;
-      if (doc && this._lastEnemy) {
-        applyPatches(doc, writeEnemy({ ...this._lastEnemy, hHour: v || this._hHour(this._host.guide?.() ?? null) }).patches);
-        this._msg = v ? `H ${v}: the en's times re-timed` : 'H cleared';
-        this._changed();
-        return;
-      }
-      // H clocks only the en options of a defence. A reading kept from an earlier session lost them: read again to time
-      // them; a reading made here without them has nothing to time; with no reading yet, the first Read uses H.
-      const read = this._wasRead(doc);
-      if (read && doc!.kind === 'def' && doc!.frame && !this._readHere) return void this.read();
-      this._msg = !read
-        ? `${v ? `H ${v}` : 'H cleared'}: the en options are timed from it when you Read`
-        : doc!.kind !== 'def'
-          ? `${v ? `H ${v}` : 'H cleared'}: it clocks the en options of a defence; this sheet has none`
-          : `${v ? `H ${v}` : 'H cleared'}: this reading has no en options to time`;
-      return this._render();
-    }
+    if (k === 'hHour') return void this.setH(t.value);
     if (k === 'kind') {
       const next = t.value as AprcKind;
-      if (this._doc && this._doc.kind !== next) {
-        let mine = false;
-        walk(this._doc, (p) => {
-          if (p.mine || p.accepted || p.cells) mine = true;
-        });
-        if (mine && !window.confirm('Change the kind of appreciation? It starts again with every heading empty, and your written paragraphs go.')) {
-          t.value = this._doc.kind;
-          return;
-        }
-      }
       // A sheet that held a reading is read again for the new kind (the planner asked for a reading once: it is kept
       // current); a sheet never read only takes the new headings, the first Read stays his.
-      const wasRead = this._wasRead(this._doc);
-      this.setOptions({ kind: next });
-      if (this._doc && this._doc.kind !== this._opts.kind) {
-        this.clear();
-        if (wasRead) void this.read();
-      }
+      t.value = this._doc?.kind ?? this._opts.kind;
+      void this._changeKind(next);
+    }
+  }
+
+  /**
+   * H on D Day. With a reading of this session, only what carries a time is re-timed (his times, his phases' clock
+   * times, the reactions table when it is the en options', the Time Data, the attack's Time Calc); a reactions table a
+   * plan check settled stays, and the planner's words over a re-timed paragraph are marked "H changed", not "Gr". A
+   * sheet kept from an earlier session asks before it reads again.
+   */
+  setH(value: string): void {
+    const v = String(value ?? '').trim();
+    if (v && parseHHour(v) === null) {
+      this._msg = 'H: type HH:MM (24 h), or leave it empty';
+      return this._render();
+    }
+    this.setOptions({ hHour: v });
+    this._persist('hHour', v);
+    const doc = this._doc;
+    const hh = v || this._hHour(this._host.guide?.() ?? null);
+    const word = v ? `H ${v}` : 'H cleared';
+    if (doc && this._readHere && (this._lastEnemy || this._lastTime || doc.kind === 'attk')) {
+      const patches = [
+        ...(this._lastEnemy && doc.kind === 'def' ? writeEnemy({ ...this._lastEnemy, hHour: hh }).patches : []),
+        ...(this._lastTime && doc.kind === 'def' ? writeTimeData({ ...this._lastTime, hHour: hh }).patches : []),
+        ...(doc.kind === 'attk' ? writeTimeCalcAttk(hh, this._lastHSum).patches : []),
+      ];
+      const n = retime(doc, patches, ['en', 'time'], 'h');
+      if (this._lastTime) this._lastTime = { ...this._lastTime, hHour: hh };
+      this._msg = n ? `${word}: ${n} paragraph${n === 1 ? '' : 's'} re-timed` : `${word}: nothing carries a time to change`;
+      this._changed();
+      return;
+    }
+    const read = this._wasRead(doc);
+    if (read && doc && doc.frame && !this._readHere) {
+      void this._ask(`${word}. This sheet was read in an earlier session: read it again to time the en options from H? What is not read again is kept.`, 'Read again', 'Not now').then((yes) => {
+        if (yes) void this.read();
+        else {
+          this._msg = `${word}: the times show it after the next Read`;
+          this._render();
+        }
+      });
+      return;
+    }
+    this._msg = !read ? `${word}: the en options are timed from it when you Read` : `${word}: this reading has no en options or timings to re-time`;
+    this._render();
+  }
+
+  /** Commit a typed cell; true when the sheet was drawn again. */
+  private _commitCell(inp: HTMLInputElement): boolean {
+    const [r, c] = String(inp.dataset.cell).split(',').map(Number);
+    const p = this._doc && this._sel ? find(this._doc, this._sel) : null;
+    if (!p?.table) return false;
+    const now = tableOf(p, 'draft')?.rows[r]?.[c] ?? '';
+    if (inp.value.trim() === now.trim()) return false;
+    return this.setCell(this._sel!, r, c, inp.value);
+  }
+
+  /** Enter goes down a row, Tab across (Shift back), committing the cell first; the panel keeps the focus on the new cell. */
+  private _cellKey(e: KeyboardEvent, inp: HTMLInputElement): boolean {
+    if (e.key !== 'Enter' && e.key !== 'Tab') return false;
+    const [r, c] = String(inp.dataset.cell).split(',').map(Number);
+    const p = this._doc && this._sel ? find(this._doc, this._sel) : null;
+    const tb = p ? tableOf(p, 'draft') : null;
+    if (!tb) return false;
+    const rows = tb.rows.length, cols = tb.head.length;
+    let r2 = r, c2 = c;
+    if (e.key === 'Enter') r2 = e.shiftKey ? r - 1 : r + 1;
+    else {
+      c2 = c + (e.shiftKey ? -1 : 1);
+      if (c2 >= cols) ((c2 = 0), r2++);
+      if (c2 < 0) ((c2 = cols - 1), r2--);
+    }
+    if (r2 < 0 || r2 >= rows) {
+      if (e.key === 'Tab') return false; // out of the table: the focus moves on as usual
+      r2 = Math.max(0, Math.min(rows - 1, r2));
+    }
+    e.preventDefault();
+    this._commitCell(inp);
+    const next = this._el?.querySelector(`.ap-tbl input[data-cell="${r2},${c2}"]`) as HTMLInputElement | null;
+    next?.focus();
+    next?.select();
+    return true;
+  }
+
+  /** Confirm on Gr in the paragraph panel (C). */
+  private _showConfirm(): void {
+    this._commitDirty();
+    this._sel = null;
+    if (this._hideRt) {
+      this._hideRt = false;
+      this._saveUi();
+    }
+    this._render();
+    const sec = this._el?.querySelector('.ap-sec-confirm') as HTMLElement | null;
+    sec?.scrollIntoView({ block: 'start' });
+    if (!sec) {
+      this._msg = 'No Confirm on Gr items yet: Read first';
+      this._render();
+    }
+  }
+
+  /** Keep Tab inside the sheet while it is open as a window (not folded to its bar). */
+  private _trapTab(e: KeyboardEvent): void {
+    if (e.key !== 'Tab' || this._win === 'min' || !this._el) return;
+    const all = [...this._el.querySelectorAll<HTMLElement>('button,select,input,textarea,[tabindex="0"]')].filter((x) => !(x as HTMLButtonElement).disabled && x.offsetParent !== null && !x.closest('[hidden]'));
+    if (!all.length) return;
+    const first = all[0], last = all[all.length - 1];
+    const a = document.activeElement as HTMLElement | null;
+    if (e.shiftKey && (a === first || a === this._el)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && (a === last || a === this._el)) {
+      e.preventDefault();
+      first.focus();
     }
   }
 
@@ -2078,6 +2721,11 @@ export default class GroundAppreciation {
         return;
       }
     }
+    if (this._askState && e.key === 'Escape') {
+      e.preventDefault();
+      this._askState.resolve(false);
+      return;
+    }
     if (this._menu) {
       const items = [...this._part('menu').querySelectorAll<HTMLElement>('.ap-mi')];
       const i = items.indexOf(document.activeElement as HTMLElement);
@@ -2094,6 +2742,9 @@ export default class GroundAppreciation {
       if (e.key === 'Tab') this._closeMenu(false);
       return;
     }
+    if (t.matches?.('.ap-tbl input[data-cell]') && this._cellKey(e, t as HTMLInputElement)) return;
+    this._trapTab(e);
+    if (e.defaultPrevented) return;
     if (t.matches?.('textarea,input,select')) {
       if (t.matches('.ap-ed textarea') && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
@@ -2104,6 +2755,11 @@ export default class GroundAppreciation {
         t.blur();
         this._el!.focus({ preventScroll: true });
       }
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'z' || e.key === 'Z')) {
+      e.preventDefault();
+      this.undo();
       return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -2134,13 +2790,36 @@ export default class GroundAppreciation {
         break;
       case 'a':
       case 'A': {
+        // Shift+A accepts and moves on to the next to do
         const p = this._doc && this._sel ? find(this._doc, this._sel) : null;
-        if (!p || statusOf(p) !== 'open') return;
+        if (!p || statusOf(p) !== 'open') {
+          if (e.shiftKey) this._nextTodo();
+          else return;
+          break;
+        }
         this.accept(p.id, true);
         this._msg = `${this._num(p.id)} accepted: it prints in the fair copy`;
-        this._render();
+        if (e.shiftKey) this._nextTodo();
+        else this._render();
         break;
       }
+      case 'f':
+      case 'F':
+        this.setOptions({ copy: this._opts.copy === 'fair' ? 'draft' : 'fair' });
+        this._persist('copy', this._opts.copy);
+        break;
+      case 'x':
+      case 'X':
+        this._toggleMenu('export');
+        break;
+      case 'm':
+      case 'M':
+        this._toggleMenu('log');
+        break;
+      case 'c':
+      case 'C':
+        this._showConfirm();
+        break;
       case 'Enter':
       case 'e':
         if (t.matches?.('button')) return;
@@ -2471,7 +3150,7 @@ export default class GroundAppreciation {
 
   // ── the sheet: menus ─────────────────────────────────────────────────────────────────────────────────────────
 
-  private _toggleMenu(which: 'export' | 'more'): void {
+  private _toggleMenu(which: 'export' | 'more' | 'log'): void {
     if (this._menu === which) return this._closeMenu(true);
     this._commitDirty();
     this._menu = which;
@@ -2519,12 +3198,20 @@ export default class GroundAppreciation {
       h += item('text', 'Copy as text', 'To paste into a signal or a note');
       h += `<div class="ap-msep" role="separator"></div><div class="ap-ml">Slides in the Briefing - PPTX</div>`;
       for (const d of APRC_DECKS) h += item('slides', esc(d.label), esc(d.note[0].toUpperCase() + d.note.slice(1)), { v: d.kind, extra: d.kind === this._opts.deck ? '<span class="ap-last">default</span>' : '' });
+    } else if (this._menu === 'log') {
+      h += `<div class="ap-ml">Messages, newest first</div>`;
+      h += this._log.length
+        ? this._log.map((x) => `<div class="ap-log${x.err ? ' err' : ''}"><time>${esc(x.at.toTimeString().slice(0, 5))}</time>${esc(x.msg)}</div>`).join('')
+        : '<div class="ap-log">None yet.</div>';
+      h += `<div class="ap-msep" role="separator"></div>`;
+      h += item('confirm', `Confirm on Gr (${this._doc?.confirm.length ?? 0})`, 'What the reading asks you to check on the ground (C)');
     } else {
-      h += item('json', 'Save to a file', '.json, to open later or send on');
+      h += item('json', 'Save to a file', '.json without the pictures (small; Read makes them again)');
+      h += item('json-pics', 'Save with the pictures', '.json with the trace and the map shot (large)');
       h += item('open', 'Open a file…', 'An appreciation saved before');
       h += `<div class="ap-msep" role="separator"></div>`;
       h += this._clearArmed
-        ? item('clear', 'Click again to clear', 'Every heading empty: your words go too', { cls: 'danger armed' })
+        ? item('clear', 'Click again to clear', 'Every heading empty: your words go too (Undo brings them back)', { cls: 'danger armed' })
         : item('clear', 'Clear the appreciation…', 'Start again with every heading empty', { cls: 'danger' });
     }
     m.innerHTML = h;
@@ -2561,17 +3248,29 @@ export default class GroundAppreciation {
 
     // header
     const frame = this._part('frame');
-    frame.innerHTML = this._busy
-      ? '<span>Reading the ground and the map…</span>'
-      : fr
+    const dot = this._part('dot');
+    if (this._busy) this._renderBusy();
+    else {
+      frame.innerHTML = fr
         ? [fr.echelon, fr.place, fr.mover, `${fr.month}, ${fr.season === 'wet' ? 'after rain' : 'dry'}`].map((x) => `<span>${esc(x)}</span>`).join('') + `<span class="ap-fr-at">read ${esc(fr.readAt)}</span>`
         : '<span class="ap-fr-none">Not read yet</span>';
-    frame.title = fr && !this._busy ? `AOR from ${fr.aor}; threat ${fr.threat}` : '';
+      frame.title = fr ? `AOR from ${fr.aor}; threat ${fr.threat}` : '';
+      dot.className = `ap-dot ${this._dotErr ? 'err' : fr ? '' : 'idle'}`.trim();
+      dot.title = this._dotErr ? `Last message: ${this._msg}` : fr ? `Read ${fr.readAt}` : 'Not read yet';
+    }
+    // while Read runs the button stops it
     const rb = this._part('read') as HTMLButtonElement;
-    rb.disabled = this._busy;
-    rb.innerHTML = this._busy ? '<span class="ap-spin" aria-hidden="true"></span>Reading…' : `${UI.read}${fr ? 'Read again' : 'Read'}`;
+    rb.disabled = false;
+    rb.dataset.a = this._busy ? 'cancel' : 'read';
+    rb.classList.toggle('pri', !this._busy);
+    rb.innerHTML = this._busy ? `${UI.stop}Cancel` : `${UI.read}${fr ? 'Read again' : this._dotErr && this._log[0]?.msg.startsWith('Read') ? 'Retry' : 'Read'}`;
+    rb.title = this._busy ? 'Stop the Read: nothing it found is taken, the sheet stays as it was' : 'Read the ground and the symbols on the map. Your words and acceptances are kept; what cannot be read again is kept from before.';
     (this._el.querySelector('[data-o="kind"]') as HTMLSelectElement).value = doc.kind;
     this._part('busy').classList.toggle('on', this._busy);
+    const ask = this._part('ask');
+    const q = this._askState;
+    ask.hidden = !q;
+    ask.innerHTML = q ? `${UI.warn}<span class="ap-note-t">${esc(q.text)}</span><button class="ap-btn sm pri" data-a="ask-yes">${esc(q.yes)}</button><button class="ap-btn sm" data-a="ask-no">${esc(q.no)}</button>` : '';
 
     // over the page
     for (const b of this._el.querySelectorAll<HTMLElement>('.ap-seg [data-a="copy"]')) b.setAttribute('aria-pressed', String(b.dataset.v === copy));
@@ -2632,11 +3331,19 @@ export default class GroundAppreciation {
     const seg = (n: number, cls: string, word: string) => (n ? `<i class="${cls}" style="flex:${n}" title="${word}: ${n}"></i>` : '');
     let h = `<div class="ap-prog"><div class="ap-prog-h"><b>${ready}</b><span>of ${t.all} ready for the fair copy</span></div>`;
     h += `<div class="ap-bar" role="img" aria-label="${ready} of ${t.all} paragraphs print; ${t.todo} to do">${seg(t.written, 'b-written', WORD.written)}${seg(t.stale, 'b-stale', WORD.stale)}${seg(t.accepted, 'b-accepted', WORD.accepted)}${seg(t.gr, 'b-gr', WORD.gr)}${seg(t.map, 'b-map', WORD.map)}${seg(t.open, 'b-open', WORD.open)}</div>`;
-    const n: Record<AprcFilter, number> = { all: t.all, todo: t.todo, open: t.open, stale: t.stale, written: t.written + t.stale };
-    h += `<div class="ap-chips" role="group" aria-label="Show">${FILTERS.filter((x) => x.f !== 'stale' || t.stale || this._filter === 'stale')
+    let chg = 0;
+    walk(doc, (p) => {
+      if (p.changed) chg++;
+    });
+    const n: Record<AprcFilter, number> = { all: t.all, todo: t.todo, open: t.open, stale: t.stale, written: t.written + t.stale, changed: chg };
+    h += `<div class="ap-chips" role="group" aria-label="Show">${FILTERS.filter((x) => (x.f !== 'stale' || t.stale || this._filter === 'stale') && (x.f !== 'changed' || chg || this._filter === 'changed'))
       .map((x) => `<button class="ap-chip" data-a="filter" data-v="${x.f}" aria-pressed="${this._filter === x.f}">${x.label} <b>${n[x.f]}</b></button>`)
       .join('')}</div>`;
     if (t.open) h += `<button class="ap-btn sm" data-a="accept-all" title="Take every open proposal as it stands; you can take any back">Accept all ${t.open} proposal${t.open === 1 ? '' : 's'}</button>`;
+    // the last Read's summary stays here after its toast has gone
+    const last = doc.readAt ? Object.values(doc.readAt).sort().pop() : null;
+    if (last || doc.confirm.length)
+      h += `<div class="ap-lastread">${last ? `Last Read ${esc(last)}${chg ? `: ${chg} changed` : ''}. ` : ''}${doc.confirm.length ? `<button data-a="confirm" title="What the reading asks you to check on the ground (C)">Confirm on Gr ${doc.confirm.length}</button>` : ''}</div>`;
     h += '</div><div class="ap-list">';
 
     let rows = '', pending = '', any = false;
@@ -2648,7 +3355,7 @@ export default class GroundAppreciation {
         if (!r.match) continue;
         any = true;
         const sel = this._sel === l.p.id || !!this._sel?.startsWith(`${l.p.id}.`);
-        const ct = r.match >= 2 ? `<span class="ap-ct" title="${r.match} ${this._filter === 'all' ? 'paragraphs' : 'shown'} under it">${r.match}</span>` : '<span></span>';
+        const ct = `<span>${r.chg ? `<span class="ap-chg" title="${r.chg} changed on the last Read"></span>` : ''}${r.match >= 2 ? `<span class="ap-ct" title="${r.match} ${this._filter === 'all' ? 'paragraphs' : 'shown'} under it">${r.match}</span>` : ''}</span>`;
         rows += pending;
         pending = '';
         rows += `<button class="ap-it${sel ? ' sel' : ''}" data-a="sel" data-v="${esc(r.first)}"${sel ? ' aria-current="true"' : ''} title="${esc(`${l.p.head ?? asWords(l.part.title)}: ${WORD[r.worst].toLowerCase()}`)}">${ico(r.worst)}<span class="ap-no">${esc(l.label.replace('.', ''))}</span><span class="ap-nm">${esc(l.p.head ?? asWords(l.part.title))}<span class="ap-sr">, ${esc(WORD[r.worst])}</span></span>${ct}</button>`;
@@ -2659,8 +3366,9 @@ export default class GroundAppreciation {
         all: 'No paragraphs.',
         todo: 'Nothing left to do: every paragraph prints in the fair copy.',
         open: 'No open proposal.',
-        stale: 'None: the ground under your words has not changed.',
+        stale: 'None: nothing has changed under your words.',
         written: 'Nothing written yet. Select a paragraph and write in the box on the right.',
+        changed: 'Nothing changed on the last Read.',
       };
       rows = `<div class="ap-empty">${EMPTY[this._filter]}</div>`;
     }
@@ -2674,12 +3382,13 @@ export default class GroundAppreciation {
    * The worst state under a top-level paragraph (under a filter: the worst of those the filter shows), how many under it
    * the filter shows (all: how many to do), and the first of them (a click on the row goes there).
    */
-  private _rollup(p: AprcPara): { worst: ParaStatus; match: number; first: string } {
+  private _rollup(p: AprcPara): { worst: ParaStatus; match: number; first: string; chg: number } {
     const f = this._filter;
-    let worst: ParaStatus = 'head', match = 0, todo = 0, seen = 0, first = '';
+    let worst: ParaStatus = 'head', match = 0, todo = 0, seen = 0, first = '', chg = 0;
     const go = (q: AprcPara) => {
       const s = statusOf(q);
-      const hit = f !== 'all' && inFilter(s, f);
+      if (q.changed) chg++;
+      const hit = f === 'changed' ? !!q.changed : f !== 'all' && inFilter(s, f);
       if ((f === 'all' || hit) && WORST.indexOf(s) < WORST.indexOf(worst)) worst = s;
       if (s !== 'head') seen++;
       if (TODO.has(s)) todo++;
@@ -2691,7 +3400,7 @@ export default class GroundAppreciation {
     };
     go(p);
     if (f === 'all') match = seen ? Math.max(1, todo) : 1;
-    return { worst, match, first: first || p.id };
+    return { worst, match, first: first || p.id, chg };
   }
 
   private _renderPage(doc: AprcDoc, copy: AprcCopy): void {
@@ -2745,8 +3454,8 @@ export default class GroundAppreciation {
     h += `<li class="${read && !t.todo ? 'done' : ''}"><b>Settle each paragraph.</b> Accept a proposal, write what is yours, look again where the Gr changed.${t.todo ? `<br><button class="ap-btn sm" data-a="next-todo">Start with the first to do (${t.todo})</button>` : ''}</li>`;
     h += `<li><b>Export</b> the fair copy to Word or PDF, or make the Briefing slides.</li></ol>`;
     h += `<div class="ap-sec"><h5>What the marks mean</h5><ul class="ap-legend">${MEANS.map(([s, d]) => `<li>${ico(s)}<span><b>${esc(WORD[s])}.</b> <span class="d">${esc(d)}</span></span></li>`).join('')}</ul></div>`;
-    h += `<div class="ap-sec"><h5>Keys</h5><dl class="ap-keys"><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Previous, next paragraph</dd><dt><kbd>N</kbd></dt><dd>Next to do</dd><dt><kbd>A</kbd></dt><dd>Accept the proposal</dd><dt><kbd>Enter</kbd></dt><dd>Write in the paragraph (or double-click it)</dd><dt><kbd>Ctrl</kbd> + <kbd>Enter</kbd></dt><dd>Save as yours</dd><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Fold the outline, the paragraph panel</dd><dt><kbd>Esc</kbd></dt><dd>Leave the box; again to close</dd></dl></div>`;
-    if (doc.confirm.length) h += `<div class="ap-sec"><h5>Confirm on Gr (${doc.confirm.length})</h5><ul>${doc.confirm.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul></div>`;
+    h += `<div class="ap-sec"><h5>Keys</h5><dl class="ap-keys"><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Previous, next paragraph</dd><dt><kbd>N</kbd></dt><dd>Next to do</dd><dt><kbd>A</kbd></dt><dd>Accept the proposal</dd><dt><kbd>Shift</kbd> + <kbd>A</kbd></dt><dd>Accept it and go to the next to do</dd><dt><kbd>Enter</kbd></dt><dd>Write in the paragraph (or double-click it)</dd><dt><kbd>Ctrl</kbd> + <kbd>Enter</kbd></dt><dd>Save as yours</dd><dt><kbd>Enter</kbd> / <kbd>Tab</kbd></dt><dd>In a table cell: save it, go down a row / across</dd><dt><kbd>F</kbd></dt><dd>Fair copy or draft copy</dd><dt><kbd>X</kbd></dt><dd>Export</dd><dt><kbd>C</kbd></dt><dd>Confirm on Gr</dd><dt><kbd>M</kbd></dt><dd>Messages</dd><dt><kbd>Ctrl</kbd> + <kbd>Z</kbd></dt><dd>Undo a clear, give-back, open or kind change</dd><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Fold the outline, the paragraph panel</dd><dt><kbd>Esc</kbd></dt><dd>Leave the box; again to close</dd><dt><kbd>Alt</kbd> + <kbd>A</kbd></dt><dd>Open or close the sheet (anywhere)</dd></dl></div>`;
+    if (doc.confirm.length) h += `<div class="ap-sec ap-sec-confirm"><h5>Confirm on Gr (${doc.confirm.length})</h5><ul>${doc.confirm.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul></div>`;
     return h;
   }
 
@@ -2757,10 +3466,13 @@ export default class GroundAppreciation {
     const part = lines(doc).find((l) => l.type === 'para' && l.p.id === p.id);
     const head = p.head ?? (part && part.type === 'para' ? asWords(part.part.title) : '');
     let h = `<h3 class="ap-rt-h"><span class="ap-rt-n">${esc(num)}</span>${esc(head)}</h3>`;
-    if (s !== 'head') h += `<div class="ap-badges"><span class="ap-badge st-${s}">${ICON[s]}${esc(WORD[s])}</span></div>`;
+    const why = staleWhy(p);
+    if (s !== 'head') h += `<div class="ap-badges"><span class="ap-badge st-${s}">${ICON[s]}${esc(s === 'stale' && why ? `${STALE_MARK[why]} you wrote it` : WORD[s])}</span></div>`;
 
-    if (s === 'stale') {
-      h += `<div class="ap-call stale"><div class="ap-call-t">${ICON.stale}The Gr reading changed after you wrote this</div><p>It now reads:</p><div class="ap-quote">${esc(p.draft ?? '')}</div><div class="ap-acts"><button class="ap-btn" data-a="keep">Keep mine</button><button class="ap-btn" data-a="give">Use the new reading</button></div></div>`;
+    if (s === 'stale' && why === 'rows' && !p.mine) {
+      h += `<div class="ap-call stale"><div class="ap-call-t">${ICON.stale}${esc(STALE_WORD.rows)}</div><p>The table below shows them as added rows. Keep them, or take the new reading without them (Undo brings them back).</p><div class="ap-acts"><button class="ap-btn" data-a="keep">Keep my rows</button><button class="ap-btn" data-a="give">Use the new reading</button></div></div>`;
+    } else if (s === 'stale') {
+      h += `<div class="ap-call stale"><div class="ap-call-t">${ICON.stale}${esc(STALE_WORD[why ?? 'gr'])}</div><p>It now reads:</p><div class="ap-quote">${esc(p.draft ?? '')}</div><div class="ap-acts"><button class="ap-btn" data-a="keep">Keep mine</button><button class="ap-btn" data-a="give">Use the new reading</button></div></div>`;
     } else if (s === 'open') {
       h += `<div class="ap-call judge"><div class="ap-call-t">${ICON.open}A proposal for you to judge</div><p>It prints in the fair copy only once you accept it, or write your own in the box.</p><div class="ap-acts"><button class="ap-btn pri" data-a="acc">Accept <kbd>A</kbd></button></div></div>`;
     } else if (s === 'accepted') {
@@ -2772,6 +3484,12 @@ export default class GroundAppreciation {
     } else if (s === 'head') {
       h += `<p class="ap-lead">A heading: its sub-paragraphs carry the words. You may add words under the heading.</p>`;
     }
+    // what the last Read (or a new H) changed in the draft, and what it said before
+    if (p.changed && p.before) {
+      const b = p.before;
+      h += `<div class="ap-call chg"><div class="ap-call-t"><span class="ap-chg"></span>Changed on the last ${p.changed === 'h' ? 'H change' : 'Read'} (${esc(SRC_WORD[p.changed])})</div>${b.draft ? `<p>Before this ${p.changed === 'h' ? 'change' : 'Read'}:</p><div class="ap-quote">${esc(b.draft)}</div>` : `<p>${b.table ? 'Its table changed.' : 'New on this Read: it was a ruled line before.'}</p>`}</div>`;
+    }
+    if (p.discarded && !p.mine) h += `<div class="ap-call done"><span class="sp">Your earlier words (given back ${esc(p.discarded.at.slice(0, 16).replace('T', ' '))}): <span class="ap-quote">${esc(p.discarded.text)}</span></span><button class="ap-btn sm" data-a="restore">Put back</button></div>`;
 
     // the box
     const dirty = this._dirty?.id === p.id ? this._dirty.text : null;
@@ -2788,9 +3506,9 @@ export default class GroundAppreciation {
     const tb = tableOf(p, 'draft');
     if (tb && p.table) {
       const added = p.addRows ?? 0;
-      h += `<div class="ap-sec"><h5>Table</h5><p class="ap-mut">Type into any cell: what you type is yours and is never overwritten. Empty a cell to take the tool's value back.</p><div class="ap-tblw"><table class="ap-tbl" style="min-width:${Math.max(100, tb.head.length * 84)}px"><colgroup>${tb.head.map((_, c) => `<col style="width:${(((tb.widths ?? [])[c] ?? 1 / tb.head.length) * 100).toFixed(0)}%">`).join('')}</colgroup><tr>${tb.head.map((x) => `<th>${esc(x)}</th>`).join('')}</tr>`;
+      h += `<div class="ap-sec"><h5>Table</h5><p class="ap-mut">Type into any cell: what you type is yours, kept on its row and never overwritten. Empty a cell to take the tool's value back. Enter goes down a row, Tab across.</p><div class="ap-tblw"><table class="ap-tbl" style="min-width:${Math.max(100, tb.head.length * 84)}px"><colgroup>${tb.head.map((_, c) => `<col style="width:${(((tb.widths ?? [])[c] ?? 1 / tb.head.length) * 100).toFixed(0)}%">`).join('')}</colgroup><tr>${tb.head.map((x) => `<th>${esc(x)}</th>`).join('')}</tr>`;
       tb.rows.forEach((row, r) => {
-        h += `<tr>${row.map((v, c) => `<td><input data-cell="${r},${c}" value="${esc(v)}" aria-label="${esc(tb.head[c])}, row ${r + 1}"${p.cells?.[`${r},${c}`] !== undefined ? ' class="mine"' : ''}></td>`).join('')}</tr>`;
+        h += `<tr>${row.map((v, c) => `<td><input data-cell="${r},${c}" value="${esc(v)}" aria-label="${esc(tb.head[c])}, row ${r + 1}${r >= p.table!.rows.length ? ' (added)' : ''}"${cellTyped(p, r, c) ? ' class="mine"' : ''}></td>`).join('')}</tr>`;
       });
       h += `</table></div><div class="ap-acts"><button class="ap-btn sm" data-a="addrow">Add a row</button>${added ? '<button class="ap-btn sm ghost" data-a="delrow">Remove the last added row</button>' : ''}</div></div>`;
     }
@@ -2814,21 +3532,25 @@ export default class GroundAppreciation {
     }
     const conf = doc.confirm.filter((x) => x.paras.some((id) => p.id === id || p.id.startsWith(`${id}.`)));
     if (conf.length) h += `<div class="ap-sec"><h5>Confirm on Gr</h5><ul>${conf.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul></div>`;
+    if (p.src) h += `<p class="ap-mut" style="margin-top:14px">Drafted from the ${esc(SRC_WORD[p.src])}${doc.readAt?.[p.src] ? `, read ${esc(doc.readAt[p.src]!)}` : ''}.</p>`;
     return h;
   }
 
   /** The last message as a toast: it stays a few seconds (longer for a failure) and is read out once. */
   private _toast(): void {
-    if (!this._el || this._toastSeq === this._msgSeq) return;
+    // a message while Read runs waits for it (the header shows the steps meanwhile)
+    if (!this._el || this._toastSeq === this._msgSeq || this._busy) return;
     this._toastSeq = this._msgSeq;
     const el = this._part('toast');
     const msg = this._msg;
-    if (!msg || this._busy) return;
-    const err = /fail|refused|need|cannot|not available|type HH:MM|no open/i.test(msg);
-    el.innerHTML = `${err ? UI.err : UI.ok}<span>${esc(msg)}</span>`;
+    if (!msg) return;
+    const err = ERR_RE.test(msg);
+    const undo = !!this._undo && this._undo.seq === this._msgSeq && this._undo.ver === this._docVer;
+    el.innerHTML = `${err ? UI.err : UI.ok}<span>${esc(msg)}</span>${undo ? `<button class="ap-btn sm" data-a="undo" title="Undo: ${esc(this._undo!.label.toLowerCase())} (Ctrl+Z)">Undo</button>` : ''}`;
     el.classList.toggle('err', err);
+    el.classList.toggle('act', undo);
     el.classList.add('on');
     if (this._toastTimer) clearTimeout(this._toastTimer);
-    this._toastTimer = setTimeout(() => el.classList.remove('on'), err ? 9000 : 4500);
+    this._toastTimer = setTimeout(() => el.classList.remove('on', 'act'), undo ? 12000 : err ? 9000 : 4500);
   }
 }

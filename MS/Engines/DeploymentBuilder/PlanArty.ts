@@ -126,7 +126,12 @@ export const gunRole = (i: number) => (i ? `gunArea${i + 1}` : 'gunArea');
 function slotBox(s: Recipe['slots'][number]): [number, number, number, number] | null {
   const S: any = s.shape;
   if (!S) return null;
-  if (S.rect) return [S.rect.acrossM - S.rect.wM / 2, S.rect.backM - S.rect.hM / 2, S.rect.acrossM + S.rect.wM / 2, S.rect.backM + S.rect.hM / 2];
+  if (S.rect) {
+    // a size given by a doctrine path ({ doctrine }) is not a number here: the box is not known (never a NaN box that
+    // nothing is ever clear of)
+    const b: [number, number, number, number] = [S.rect.acrossM - S.rect.wM / 2, S.rect.backM - S.rect.hM / 2, S.rect.acrossM + S.rect.wM / 2, S.rect.backM + S.rect.hM / 2];
+    return b.every(Number.isFinite) ? b : null;
+  }
   const pts: [number, number][] = [...(S.at ? [S.at] : []), ...(S.pts ?? []), ...(S.base ?? []), ...(S.ctrl ? [S.ctrl] : [])];
   if (!pts.length) return null;
   const pad = S.widthM ? S.widthM / 2 : S.at ? 150 : 0;
@@ -174,14 +179,15 @@ function withCrossArty(r: Recipe, a: ArtyOnPlan): Recipe {
 }
 
 /**
- * The gun area laid behind a Bn plan (a new recipe `-gun`; the one passed in is not changed): in defence on the plan's
+ * The gun area laid behind a Coy, Bn or Bde plan (a new recipe `-gun`; the one passed in is not changed): in defence on the plan's
  * axis behind the FDL's front edge, in an attack 1500 m beside the axis behind the FUP (clear of the Assy Area), in the
  * middle of the band; where the band is empty (a short gun) at its minimum, and Arty reach says so.
  */
 export function withArty(r: Recipe, doc: DoctrineSet, a: ArtyOnPlan): Recipe {
   if (r.arty) return r;
   if (r.task === 'crossing') return withCrossArty(r, a);
-  if (r.echelon !== '16' || (r.task !== 'defence' && r.task !== 'attack')) return r;
+  // a Coy, Bn or Bde defence or attack (a Coy's support Bty, the Bn's, a Bde's Regt): the same band behind its FDL / FUP
+  if (!['15', '16', '18'].includes(r.echelon) || (r.task !== 'defence' && r.task !== 'attack')) return r;
   const out: Recipe = JSON.parse(JSON.stringify(r));
   const d = a.band[1] >= a.band[0] ? Math.round((a.band[0] + a.band[1]) / 2) : a.band[0];
   let across = 0, back: number;
@@ -193,7 +199,14 @@ export function withArty(r: Recipe, doc: DoctrineSet, a: ArtyOnPlan): Recipe {
     const fup = r.slots.find((s) => s.role === 'fup')?.shape?.pts;
     const fy = fup?.length ? fup.reduce((s, p) => s + p[1], 0) / fup.length : 0;
     back = fy + d;
+    // 1500 m beside the axis, then the nearest place 100 m clear of the Assy Area, the BOF, the HQ and the other areas
+    // (250 m steps across, either side), as the crossing's gun areas are
+    const [w, h] = a.areaM;
+    const busy = r.slots.filter((s) => (s.kind === 'area' || s.kind === 'point') && !/^ax/.test(s.role)).map(slotBox).filter((b): b is NonNullable<typeof b> => !!b);
+    const cy = back + h / 2;
+    const clear = (x: number) => busy.every((q) => x + w / 2 + 100 <= q[0] || x - w / 2 - 100 >= q[2] || cy + h / 2 + 100 <= q[1] || cy - h / 2 - 100 >= q[3]);
     across = 1500;
+    for (let k = 0; k <= 40 && !clear(across); k++) across = 1500 + (k % 2 ? -1 : 1) * Math.ceil((k + 1) / 2) * 250;
   }
   out.slots.push({ role: 'gunArea', kind: 'area', sym: '25240501', label: a.name, order: 8, shape: { rect: { acrossM: across, backM: Math.round(back + a.areaM[1] / 2), wM: a.areaM[0], hM: a.areaM[1] } } });
   out.id = `${r.id}-gun`;

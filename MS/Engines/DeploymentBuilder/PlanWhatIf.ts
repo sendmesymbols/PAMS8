@@ -71,6 +71,8 @@ export interface WhatIfResult {
   enemyToFdlMin: number | null;
   /** The enemy's start: the threat marker, or assumed. */
   enemyStartAssumed: boolean;
+  /** How far out the assumed start was put (m): 5 km for a Bn, 3 km for a Coy. */
+  enemyStartAssumedM?: number | null;
   /**
    * When the threat marker lies nearer the FDL than his FUP (IBB p201 infantry 1000-1200 m, p214 tanks 2500-3000 m):
    * how far out it lies along the main approach and the FUP distance his times start from instead. Null otherwise.
@@ -79,7 +81,8 @@ export interface WhatIfResult {
   /** His infantry pay the climb (mountains, MW p 81). */
   enemyClimbs: boolean;
   /** Who he is and how fast he comes (for the why and the fixes): his type, set by the user or the default, his rates. */
-  enemyInfo: { type: string; source: string; go: number; slow: number; tracked: boolean } | null;
+  /** En type and rates: `go` / `slow` the En approach rates (km/h), `assaultMin` the En infantry pace from the En FUP (min per 100 m, IC s114 p 684; not for a mounted En), `fupM` how far out the En FUP is. */
+  enemyInfo: { type: string; source: string; go: number; slow: number; tracked: boolean; assaultMin: number; fupM: number } | null;
   /** The own moves: on foot at this rate (the ground's), or mounted (an APC unit). */
   ownGo: number;
   ownMounted: boolean;
@@ -90,6 +93,8 @@ export interface WhatIfResult {
 const P = (x: number, y: number): XY => ({ x, y });
 const fmtM = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`);
 const num = (doc: DoctrineSet, path: string, fb: number) => { const r = resolveRange(doc, doctrineAt(doc, path)); return r ? (r[0] + r[1]) / 2 : fb; };
+/** His assault pace from his FUP, minutes per 100 m (IC s114 para 35k p 684: 2 against a hasty defence, the faster, safety first). */
+const enemyAssaultMin = (doc: DoctrineSet) => num(doc, 'moves.enemyAssaultMinPer100m', 2);
 
 /** A route on foot between two plan-metre points, round NO-GO when it must be. */
 export function routeOnFoot(g: PlanGround, f: FitFrame, doc: DoctrineSet, a: XY, b: XY, from: XY | null, shelled = false, kind: TerrainKind = 'plains', mounted = false): Route {
@@ -198,14 +203,22 @@ export function runTo(f: FitFrame, path: XY[], to: XY): { m: number; i: number }
 export interface EnemyTimeOpts {
   /** The ground: his infantry pay the climb on foot in the mountains (MW p 81), as the own moves do. */
   g?: PlanGround | null;
-  /** Ground metres added before the path's start: his start set back to his FUP when the threat marker is nearer the FDL. */
+  /** Ground metres added before the path's start: the En start set back to the En FUP when the threat marker is nearer the FDL. */
   padM?: number;
+  /**
+   * Ground metres along the path (from its start, before `padM`) where the En FUP is: from there on En infantry go at
+   * the En assault pace (moves.enemyAssaultMinPer100m, IC s114 p 684), not the approach rate. Unset: the approach rate
+   * all the way. Read for a dismounted En only: no pace for a mounted assault is printed (the user, 23 Nov 2026).
+   */
+  fupAtM?: number;
 }
 
 /**
- * The enemy's leading element along an approach (world path from his start) to a plan-metre place: minutes. Infantry
- * at the ground's foot rates, Mech / Armd at the IPB vehicle rates (p 18); in the mountains his infantry also pay
- * 30-60 min per 300 m of ascent (MW p 81), the same figure the own moves pay (`routeOnFoot`).
+ * The En leading element along an approach (world path from the En start) to a plan-metre place: minutes. En infantry
+ * at the ground's foot rates to the En FUP, then at the En assault pace (Foxland doctrine, IC s114 para 35k p 684: an
+ * infantry battalion's deliberate attack, 100 m in 2 min against a hasty defence, in 4 against a well-prepared one);
+ * En Mech / Armd at the IPB vehicle rates (p 18) all the way (no mounted assault pace is printed); in the mountains En
+ * infantry also pay 30-60 min per 300 m of ascent (MW p 81), the same figure the own moves pay (`routeOnFoot`).
  */
 export function enemyMinutesTo(f: FitFrame, doc: DoctrineSet, path: XY[], goPct: number, to: XY, en: EnemySpec | null = null, kind: TerrainKind = 'plains', opts: EnemyTimeOpts = {}): number {
   if (path.length < 2) return NaN;
@@ -213,7 +226,11 @@ export function enemyMinutesTo(f: FitFrame, doc: DoctrineSet, path: XY[], goPct:
   const type = en?.type ?? 'mech';
   const { go, slow } = enemyKmh(doc, type, kind);
   const share = Math.max(0, Math.min(100, goPct)) / 100;
-  let min = ((bestAt + Math.max(0, opts.padM ?? 0)) / 1000) * (share / go + (1 - share) / slow) * 60;
+  const pad = Math.max(0, opts.padM ?? 0), total = bestAt + pad;
+  const dismounted = enemyProfile(doc, type) === 'dismounted';
+  const fupAt = dismounted && opts.fupAtM !== undefined && Number.isFinite(opts.fupAtM) ? Math.max(0, opts.fupAtM + pad) : Infinity;
+  const approach = Math.min(total, fupAt), assault = Math.max(0, total - fupAt);
+  let min = (approach / 1000) * (share / go + (1 - share) / slow) * 60 + (assault / 100) * enemyAssaultMin(doc);
   if (opts.g && kind === 'mountain' && enemyProfile(doc, type) === 'dismounted') {
     // the climb along his way to that point, every 50 m (as routeOnFoot measures the own moves)
     let climb = 0, lastE = NaN;
@@ -239,13 +256,16 @@ export function verdict(doc: DoctrineSet, min: number | null, enemyMin: number |
   const k = num(doc, 'moves.margin.warnBelow', 2);
   if (enemyMin >= k * min) return { st: 'pass', reason: `${min} min against the enemy's ${enemyMin} min` };
   if (enemyMin > min) return { st: 'warn', reason: `${min} min against the enemy's ${enemyMin} min: little to spare, trigger it early` };
-  return { st: 'fail', reason: `${min} min, but the enemy's ${mover} are there in ${enemyMin} min: the move must start before he does` };
+  return { st: 'fail', reason: `${min} min, but the En ${mover} are there in ${enemyMin} min: the move must start before En does` };
 }
 
 /**
  * The what-if of a fitted defence: shelled forward posns to their alternates, the reserve to a supplementary posn
  * facing each secondary approach and to the C Pen posn astride the main one, each with its route, time and margin.
  */
+/** Sup and C Pen posns already on the map (Check my plan), plan metres: timed where they are drawn. */
+export interface DrawnMoves { sups?: { label: string; centre: XY }[]; cpen?: XY | null }
+
 export function whatIf(fl: FittedLayout, ground: PlanGround, doc: DoctrineSet, threat: XY | null): WhatIfResult {
   const res = fl.raw, f = fl.frame, fit = fl.fit;
   const en = fl.enemy ?? null, kind: TerrainKind = fl.terrain?.kind ?? 'plains';
@@ -253,8 +273,8 @@ export function whatIf(fl: FittedLayout, ground: PlanGround, doc: DoctrineSet, t
   const enType = en?.type ?? 'mech';
   const enRate = enemyKmh(doc, enType, kind);
   const out: WhatIfResult = {
-    triggers: [], sups: [], cpen: null, enemyToFdlMin: null, enemyStartAssumed: fit.fromAssumed, enemyFromFup: null, enemyClimbs: false, mover,
-    enemyInfo: { type: enType, source: en?.source ?? 'default', go: enRate.go, slow: enRate.slow, tracked: enemyProfile(doc, enType) !== 'dismounted' },
+    triggers: [], sups: [], cpen: null, enemyToFdlMin: null, enemyStartAssumed: fit.fromAssumed, enemyStartAssumedM: fit.fromAssumed ? fit.fromAssumedM ?? null : null, enemyFromFup: null, enemyClimbs: false, mover,
+    enemyInfo: { type: enType, source: en?.source ?? 'default', go: enRate.go, slow: enRate.slow, tracked: enemyProfile(doc, enType) !== 'dismounted', assaultMin: enemyAssaultMin(doc), fupM: enemyFupM(doc, enType)[0] },
     ownGo: footKmh(doc, kind).go, ownMounted: !!fl.unit?.mounted,
   };
   if (fl.recipe.task === 'attack') return out;
@@ -273,12 +293,14 @@ export function whatIf(fl: FittedLayout, ground: PlanGround, doc: DoctrineSet, t
     return best;
   };
   // his clock starts no nearer the FDL than his FUP (IBB p201 infantry 1000-1200 m, p214 tanks 2500-3000 m): a threat
-  // marker inside it gives the way he comes, not where he starts; his way is set back to his FUP along it
+  // marker inside it gives the way he comes, not where he starts; his way is set back to his FUP along it. From his FUP
+  // on he is timed at his assault pace (IC s114 p 684), not his approach rate
   const fupM = enemyFupM(doc, en?.type ?? 'mech')[0];
   const eOpts = (a: (typeof fit.approaches)[number]): EnemyTimeOpts => {
     const at = fdlPoint(a);
-    const pad = at ? Math.max(0, fupM - runTo(f, a.path, at).m) : 0;
-    return { g: ground, padM: pad };
+    if (!at) return { g: ground, padM: 0 };
+    const toFdl = runTo(f, a.path, at).m;
+    return { g: ground, padM: Math.max(0, fupM - toFdl), fupAtM: toFdl - fupM };
   };
   if (main) {
     const at = fdlPoint(main);
@@ -312,12 +334,20 @@ export function whatIf(fl: FittedLayout, ground: PlanGround, doc: DoctrineSet, t
 
   // 2. a secondary approach: a supplementary posn facing it, where it closes on the FDL, manned by the reserve
   const w = (resSlot?.wM ?? 1500) * 0.7, h = (resSlot?.hM ?? 700) * 0.7;
+  const drawnMoves = (fl as FittedLayout & { drawnMoves?: DrawnMoves }).drawnMoves ?? null;
+  const posnBoxes = res.slots.map((s) => ({ c: s.centre, w: s.wM, h: s.hM }));
+  const clearOfPosns = (c: XY, ww: number, hh: number) => !posnBoxes.some((b) => Math.abs(b.c.x - c.x) < (b.w + ww) / 2 + 50 && Math.abs(b.c.y - c.y) < (b.h + hh) / 2 + 50);
   for (const a of fit.approaches.filter((x) => !x.main)) {
     const at = fdlPoint(a);
     if (!at) continue;
     // set back from where the approach crosses the FDL line, toward the plan's centre, facing up the approach
     const back = 500;
-    const c = P(at.x * 0.85, frontY - h / 2 - back);
+    let c = P(at.x * 0.85, frontY - h / 2 - back);
+    // clear of every posn before it is timed: the route, the trigger and the posn drawn are the same place
+    for (let i = 0; i < 4 && !clearOfPosns(c, w, h); i++) c = P(c.x, c.y - 300);
+    // Check my plan: a Sup posn already drawn is timed where it is (the n-th secondary approach takes the n-th drawn)
+    const drawnSup = drawnMoves?.sups?.[out.sups.length];
+    if (drawnSup) c = drawnSup.centre;
     const ahead = a.path.map((p) => toLocal(f, p)).find((l) => l.y > frontY + 300) ?? P(at.x, frontY + 1000);
     const turn = Math.round((Math.atan2(ahead.x - c.x, ahead.y - c.y) * 180) / Math.PI);
     const sup: SupPosn = { apch: a.id, label: `Sup ${out.sups.length + 1}`, centre: c, w, h, turnDeg: turn };
@@ -364,6 +394,8 @@ export function whatIf(fl: FittedLayout, ground: PlanGround, doc: DoctrineSet, t
       }
     }
     const want = num(doc, 'cpen.coyMin', 30);
+    // Check my plan: a C Pen posn already drawn is timed where it is
+    if (drawnMoves?.cpen) { cp = drawnMoves.cpen; bd = 0; }
     if (cp && bd < 400) {
       out.cpen = cp;
       const enemy = enemyMinutesTo(f, doc, main.path, main.goPct, cp, en, kind, eOpts(main));
@@ -394,6 +426,9 @@ export function whatIf(fl: FittedLayout, ground: PlanGround, doc: DoctrineSet, t
       for (const q of sqns) out.triggers.push(none(q.label, `tk-cpen-${q.role}`));
     }
   }
+  // a path too short to walk gives NaN: not timed
+  for (const t of out.triggers) if (t.enemyMin !== null && !Number.isFinite(t.enemyMin)) t.enemyMin = null;
+  if (out.enemyToFdlMin !== null && !Number.isFinite(out.enemyToFdlMin)) out.enemyToFdlMin = null;
   return out;
 }
 
@@ -401,10 +436,10 @@ const ORDER: CheckState[] = ['fail', 'warn', 'unchecked', 'pass'];
 
 /** Where the enemy's times start from and whether he climbs, in words (the Moves row, the trigger table). */
 export function enemyStartWords(w: WhatIfResult): string {
-  const start = w.enemyStartAssumed ? 'an assumed start 5 km out'
-    : w.enemyFromFup ? `his FUP ${fmtM(w.enemyFromFup.fupM)} out (the threat marker lies ${fmtM(w.enemyFromFup.markerM)} in front of the FDL, inside his FUP distance: IBB p201, p214)`
+  const start = w.enemyStartAssumed ? `an assumed start ${w.enemyStartAssumedM ? fmtM(w.enemyStartAssumedM) : 'in front of the FDL'} out`
+    : w.enemyFromFup ? `the En FUP ${fmtM(w.enemyFromFup.fupM)} out (the threat marker lies ${fmtM(w.enemyFromFup.markerM)} in front of the FDL, inside the En FUP distance: IBB p201, p214)`
     : 'the threat marker';
-  return `${start}${w.enemyClimbs ? '; his infantry pay the climb as yours do (MW p 81)' : ''}`;
+  return `${start}${w.enemyClimbs ? '; En infantry pay the climb as Own troops do (MW p 81)' : ''}`;
 }
 
 /** A move in words: who goes where, on what trigger. */
@@ -412,6 +447,8 @@ const kindOfTrigger = (t: Trigger) => (t.id.startsWith('shell-') ? 'shell' : t.i
 const moveWords = (t: Trigger) => kindOfTrigger(t) === 'shell' ? `${t.who} to its alternate, when shelled`
   : kindOfTrigger(t) === 'sup' ? `${t.who} to ${t.to}, ${t.trigger.replace(/^Enemy on /, 'enemy on ')}`
   : `${t.who} to the C Pen posn, ${t.trigger.replace(/^Penetration on /, 'penetration on ')}`;
+/** His minutes for a trigger, '-' when not timed (null, or NaN from a path too short to walk). */
+const enMin = (t: Trigger) => (t.enemyMin !== null && Number.isFinite(t.enemyMin) ? String(t.enemyMin) : '-');
 const VERDICT: Record<CheckState, string> = { pass: 'in time', warn: 'little to spare', fail: 'too late', unchecked: 'not timed' };
 
 /**
@@ -419,10 +456,10 @@ const VERDICT: Record<CheckState, string> = { pass: 'in time', warn: 'little to 
  * what made the move late (his speed against a move on foot, a long way, no route, a start that is only assumed).
  */
 function movesDetail(w: WhatIfResult, moves: Trigger[], head: string): CheckDetail {
-  const items = moves.map((t) => `${moveWords(t)}: ${t.min === null ? (t.route?.blocked ? 'no route on foot' : 'not timed') : `${t.min} min ${t.route?.mounted ? 'mounted' : 'on foot'}`}, his ${w.mover} ${t.enemyMin ?? '-'} min (${VERDICT[t.st]})`);
+  const items = moves.map((t) => `${moveWords(t)}: ${t.min === null ? (t.route?.blocked ? 'no route on foot' : 'not timed') : `${t.min} min ${t.route?.mounted ? 'mounted' : 'on foot'}`}, En ${w.mover} ${enMin(t)} min (${VERDICT[t.st]})`);
   // the card's short forms
   const dest = (t: Trigger) => (kindOfTrigger(t) === 'shell' ? 'alt (shelled)' : kindOfTrigger(t) === 'sup' ? t.to : 'C Pen');
-  const short = moves.map((t) => `${t.who} → ${dest(t)}: ${t.min === null ? (t.route?.blocked ? 'no route' : 'not timed') : `${t.min} vs ${t.enemyMin ?? '-'} min`}`);
+  const short = moves.map((t) => `${t.who} → ${dest(t)}: ${t.min === null ? (t.route?.blocked ? 'no route' : 'not timed') : `${t.min} vs ${enMin(t)} min`}`);
   const late = moves.filter((t) => t.st === 'fail' || t.st === 'warn');
   if (!late.length) return { head, items, short };
   const timed = late.filter((t) => t.min !== null && t.enemyMin !== null);
@@ -430,23 +467,31 @@ function movesDetail(w: WhatIfResult, moves: Trigger[], head: string): CheckDeta
   const e = w.enemyInfo, shelled = timed.some((t) => kindOfTrigger(t) === 'shell'), reserve = timed.some((t) => kindOfTrigger(t) !== 'shell');
   const why: string[] = [];
   if (timed.length) {
-    why.push(`His ${w.mover} come ${e ? (e.tracked ? `at ${e.go} km/h on GO (IPB p 18)` : `on foot at ${e.go} km/h`) : ''} from ${enemyStartWords(w)}, and the clock starts when he moves`);
-    why.push(`${w.ownMounted ? 'Your moves go mounted' : `your Coys move on foot at ${w.ownGo} km/h`}${shelled ? ', half as long again under shelling (+5 min to settle)' : ''}`);
+    // En infantry from the En FUP on at the En assault pace (IC s114 p 684), before it at the foot rate; En vehicles at
+    // the IPB rate all the way: no mounted assault pace is printed (the user, 23 Nov 2026)
+    const pace = e ? `the En assault pace, 100 m in ${e.assaultMin} min (IC s114 p 684: Foxland infantry in a deliberate attack)` : 'the En assault pace';
+    const rate = e ? (e.tracked ? `${e.go} km/h on GO (IPB p 18)` : `${e.go} km/h on foot`) : 'the En approach rate';
+    why.push(e?.tracked
+      ? `En ${w.mover} come from ${enemyStartWords(w)} at ${rate} all the way (no assault pace for a mounted attack is printed: IC s114 p 684 gives the infantry's), and the clock starts when En moves`
+      : w.enemyFromFup
+        ? `En ${w.mover} come from ${enemyStartWords(w)} at ${pace}, and the clock starts when En moves`
+        : `En ${w.mover} come from ${enemyStartWords(w)} at ${rate} as far as the En FUP${e ? ` (${fmtM(e.fupM)} in front of the FDL)` : ''}, then at ${pace}, and the clock starts when En moves`);
+    why.push(`${w.ownMounted ? 'Own moves go mounted' : `Own Coys move on foot at ${w.ownGo} km/h`}${shelled ? ', half as long again under shelling (+5 min to settle)' : ''}`);
   }
   if (noRoute.length) why.push(`${noRoute.map(moveWords).join(', ')}: no way on foot round the NO-GO`);
   const fix: string[] = [];
-  if (shelled) fix.push('Start the move on the first shelling, before he leaves his start: write it into the orders as a trigger');
-  if (reserve) fix.push('Commit the reserve on the first sign of his main effort, or pre-position it at the C Pen posn');
+  if (shelled) fix.push('Start the move on the first shelling, before En leaves the start: write it into the orders as a trigger');
+  if (reserve) fix.push('Commit the reserve on the first sign of the En main effort, or pre-position it at the C Pen posn');
   if (timed.length && e?.tracked && !w.ownMounted) fix.push('Mount the Bn: an MIB or ABIB type (Type) moves at vehicle speed');
   if (reserve) fix.push('J moves the reserve nearer the main approach');
   if (timed.some((t) => kindOfTrigger(t) === 'shell' && (t.route?.lengthM ?? 0) > 1000)) fix.push('Site the alternate nearer when you place it: a shorter move');
-  if (timed.length && e?.source === 'default' && e.tracked) fix.push('If he is infantry here, set En type: Inf in the Enemy step');
-  if (timed.length && w.enemyStartAssumed) fix.push('Mark the threat where he really starts, for real times');
-  else if (timed.length && !w.enemyFromFup && w.enemyToFdlMin !== null && w.enemyToFdlMin < 30) fix.push('If the Threat marker only shows his direction, drag it to where he starts');
+  if (timed.length && e?.source === 'default' && e.tracked) fix.push('If En is infantry here, set En type: Inf in the Enemy step');
+  if (timed.length && w.enemyStartAssumed) fix.push('Mark the threat where En really starts, for real times');
+  else if (timed.length && !w.enemyFromFup && w.enemyToFdlMin !== null && w.enemyToFdlMin < 30) fix.push('If the Threat marker only shows the En direction, drag it to where En starts');
   if (noRoute.length) fix.push('Find a crossing, or end the move on this side of the NO-GO');
   const sentence = why.map((x, i) => (i ? x : x.charAt(0).toUpperCase() + x.slice(1))).join('; ');
   const whyShort = timed.length
-    ? `His ${w.mover} at ${e?.go ?? '-'} km/h${e && !e.tracked ? ' on foot' : ''} beat ${w.ownMounted ? 'your mounted moves' : `Coys on foot at ${w.ownGo} km/h`}${shelled ? ' under shelling' : ''}`
+    ? `En ${w.mover} (${e?.tracked ? `${e.go} km/h` : w.enemyFromFup ? `100 m in ${e?.assaultMin ?? '-'} min from the En FUP` : `${e?.go ?? '-'} km/h on foot to the En FUP, then 100 m in ${e?.assaultMin ?? '-'} min`}) beat ${w.ownMounted ? 'Own mounted moves' : `Own Coys on foot at ${w.ownGo} km/h`}${shelled ? ' under shelling' : ''}`
     : 'No way on foot round the NO-GO';
   return { head, items, why: `${sentence}.`, fix, short, whyShort };
 }
@@ -479,6 +524,9 @@ export function tankCoverRow(res: { items: { role: string }[]; slots: { role: st
   return { name: 'Tank AT cover', st: worst, reason: `${parts.join('; ')} (tank gun ${fmtM(gun)} effective, E: SO's Hbk Sec 1 prints a gun range only for the Al-Zarrar; ${fmtM(min)} beyond the FDL wanted). Tanks in defence counter-attack and counter penetration, and lend weight to the AT layout only where it is absolutely inescapable (IC s105 para 21c p 555; kept concentrated, inside the main defences only by exception: OoW I s6 para 1 p 22): this is their reach once there, not a post for them` };
 }
 
+/** A failing moves row reads "Too late" (the user's word, 23 Nov 2026) when every failed move is timed and he gets there first; one with no route keeps "Fail". */
+const lateWord = (moves: Trigger[], st: CheckState): { word?: string } => (st === 'fail' && moves.filter((t) => t.st === 'fail').every((t) => t.min !== null) ? { word: 'Too late' } : {});
+
 /** The plan row: how many moves are well before the enemy, which ones he wins, why and what fixes it. Null with no triggers. */
 export function movesRow(w: WhatIfResult): Check | null {
   if (!w.triggers.length) return null;
@@ -486,8 +534,8 @@ export function movesRow(w: WhatIfResult): Check | null {
   const ok = w.triggers.filter((t) => t.st === 'pass').length;
   const bad = w.triggers.filter((t) => t.st === 'fail');
   return {
-    name: 'Moves in time', st: worst,
-    reason: `${ok} of ${w.triggers.length} moves in time${bad.length ? `; ${bad.map((t) => `${moveWords(t)}: ${t.min === null ? 'no route on foot' : `${t.min} min against his ${t.enemyMin ?? '-'} min`}`).join('; ')}` : ''}; his times from ${enemyStartWords(w)} (trigger table)`,
+    name: 'Moves in time', st: worst, ...lateWord(w.triggers, worst),
+    reason: `${ok} of ${w.triggers.length} moves in time${bad.length ? `; ${bad.map((t) => `${moveWords(t)}: ${t.min === null ? 'no route on foot' : `${t.min} min against En ${t.enemyMin ?? '-'} min`}`).join('; ')}` : ''}; En times from ${enemyStartWords(w)} (trigger table)`,
     detail: movesDetail(w, w.triggers, `${ok} of ${w.triggers.length} in time`),
   };
 }
@@ -498,8 +546,8 @@ export function reserveMovesCheck(w: WhatIfResult, resLabel: string): Check | nu
   if (!mine.length) return null;
   const st = ORDER.find((x) => mine.some((t) => t.st === x)) ?? 'unchecked';
   return {
-    name: 'Moves in time', st,
-    reason: mine.map((t) => `${t.to} ${t.min ?? '-'} against ${t.enemyMin ?? '-'} min`).join(', ') + (st === 'fail' ? ": too far back for the enemy's pace: J moves it nearer; where no spot is in time, mount it, pre-position it or occupy the C Pen posn before he commits" : ''),
+    name: 'Moves in time', st, ...lateWord(mine, st),
+    reason: mine.map((t) => `${t.to} ${t.min ?? '-'} against ${t.enemyMin ?? '-'} min`).join(', ') + (st === 'fail' ? ": too far back for the En pace: J moves it nearer; where no spot is in time, mount it, pre-position it or occupy the C Pen posn before En commits" : ''),
     detail: movesDetail(w, mine, `${resLabel}: ${mine.filter((t) => t.st === 'pass').length} of ${mine.length} in time`),
   };
 }
@@ -508,11 +556,11 @@ export function reserveMovesCheck(w: WhatIfResult, resLabel: string): Check | nu
 export function triggerLines(w: WhatIfResult): string[] {
   const word: Record<CheckState, string> = { pass: 'Pass', warn: 'Warn', fail: 'Fail', unchecked: 'Not checked' };
   const L: string[] = [];
-  if (w.enemyToFdlMin !== null) L.push(`  Enemy's ${w.mover} to the FDL on the main approach: about ${w.enemyToFdlMin} min from ${enemyStartWords(w)}.`);
+  if (w.enemyToFdlMin !== null) L.push(`  En ${w.mover} to the FDL on the main approach: about ${w.enemyToFdlMin} min from ${enemyStartWords(w)}.`);
   for (const t of w.triggers) {
     const r = t.route;
     const route = r ? `${fmtM(r.lengthM)}${r.detour ? ' round NO-GO' : ''}${r.coveredPct !== null ? `, ${r.coveredPct} % hidden` : ''}${r.slowPct ? `, ${r.slowPct} % SLOW-GO` : ''}` : '-';
-    L.push(`  ${t.trigger}: ${t.who} ${t.from === t.who ? '' : `${t.from} `}-> ${t.to}; ${route}; ${t.min ?? '-'} min, enemy ${t.enemyMin ?? '-'} min [${word[t.st]}]. Covered by ${t.coveredBy || '-'}.`);
+    L.push(`  ${t.trigger}: ${t.who} ${t.from === t.who ? '' : `${t.from} `}-> ${t.to}; ${route}; ${t.min ?? '-'} min, enemy ${t.enemyMin ?? '-'} min [${t.st === 'fail' && t.min !== null ? 'Too late' : word[t.st]}]. Covered by ${t.coveredBy || '-'}.`);
   }
   return L;
 }
@@ -530,9 +578,7 @@ export function withMoves(fl: FittedLayout, inp: FitLayoutInput): FittedWithMove
   if (fl.recipe.task === 'attack') return { ...fl, whatIf: w };
   const resSlot = fl.raw.slots.find((s) => fl.recipe.slots.find((x) => x.role === s.role)?.kind === 'res');
   // keep the new posns clear of the others: step back 300 m at a time
-  const boxes = fl.raw.slots.map((s) => ({ c: s.centre, w: s.wM, h: s.hM }));
-  const clear = (c: XY, ww: number, hh: number) => !boxes.some((b) => Math.abs(b.c.x - c.x) < (b.w + ww) / 2 + 50 && Math.abs(b.c.y - c.y) < (b.h + hh) / 2 + 50);
-  for (const s of w.sups) for (let i = 0; i < 4 && !clear(s.centre, s.w, s.h); i++) s.centre = P(s.centre.x, s.centre.y - 300);
+  // the Sup posns were cleared of the other posns before they were timed (whatIf): drawn where they were timed
   const extra = [
     ...w.sups.map((s) => ({ role: 'sup', key: '25151200', label: s.label, centre: s.centre, w: s.w, h: s.h, turnDeg: s.turnDeg })),
     ...(w.cpen ? [{ role: 'cpenPosn', key: '25151201', label: 'C Pen', centre: w.cpen, w: (resSlot?.wM ?? 1500) * 0.5, h: (resSlot?.hM ?? 700) * 0.5, turnDeg: 0 }] : []),

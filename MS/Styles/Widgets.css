@@ -3367,6 +3367,16 @@
 #deploymentBuilderWidget .pb-cmp td { white-space: nowrap; }
 #deploymentBuilderWidget .pb-cmp-pv .pb-preview { width: 110px; max-height: 96px; margin: 0; }
 
+/* Options: the planBuilder settings with no control elsewhere in the tab, folded */
+#deploymentBuilderWidget .pb-opts { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--pb-line); }
+#deploymentBuilderWidget .pb-opts-body { margin-top: 10px; }
+#deploymentBuilderWidget .pb-opt-num { display: inline-flex; align-items: center; gap: 6px; font-size: var(--pb-fs-ctl); color: var(--pb-dim); }
+#deploymentBuilderWidget .pb-opt-num input {
+  width: 64px; min-height: 26px; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--pb-line-2);
+  background: var(--pb-ctl); color: var(--ms-text); font: inherit; font-variant-numeric: tabular-nums;
+}
+#deploymentBuilderWidget .pb-foot .pb-status + .pb-btn--ghost { margin-left: -6px; }
+
 @media (prefers-reduced-motion: reduce) {
   #deploymentBuilderWidget .pb-pulse, #deploymentBuilderWidget .pb-status.is-loading > i { animation: none; }
   #deploymentBuilderWidget .db-build *, #deploymentBuilderWidget .db-tabs-aside * { transition: none !important; }
@@ -5317,3 +5327,26 @@ body.ms-popup-dark .esri-popup__pointer-direction {
 .pb-card .pb-warn { background: rgba(229, 165, 64, 0.25); color: #f2c178; }
 .pb-card .pb-fail { background: rgba(220, 60, 48, 0.28); color: #ff8f86; }
 .pb-card .pb-unchecked { background: rgba(127, 136, 147, 0.3); color: #c3cbd3; }
+
+/* Intelligent Deployment: the key notice at the foot of the screen while a built plan is placed (PlanBuildTab._showNote):
+   the mode now (or why a key did nothing) and the keys that work, 5 s. Never takes the mouse. */
+.pb-keynote {
+  position: fixed; left: 50%; bottom: 56px; transform: translate(-50%, 6px); z-index: 2147482500; max-width: min(92vw, 620px);
+  padding: 9px 14px 10px; border-radius: 12px; background: rgba(18, 22, 27, 0.95); border: 1px solid rgba(90, 140, 220, 0.35);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45); font: 400 12px/1.4 'Inter', 'Segoe UI', system-ui, sans-serif; color: #dce8f5;
+  pointer-events: none; opacity: 0; transition: opacity 0.18s ease-out, transform 0.18s ease-out;
+}
+.pb-keynote.is-on { opacity: 1; transform: translate(-50%, 0); }
+.pb-keynote-h { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.pb-keynote-m { font-weight: 700; font-size: 13px; color: #fff; }
+.pb-keynote-m.is-warn { color: #f2c178; }
+.pb-keynote-t { color: rgba(155, 180, 215, 0.9); }
+.pb-keynote-k { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 7px; padding-top: 7px; border-top: 1px solid rgba(90, 140, 220, 0.18); font-size: 11px; color: rgba(205, 220, 238, 0.9); }
+.pb-keynote-k > span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.pb-keynote kbd {
+  display: inline-block; min-width: 20px; padding: 1px 5px; border: 1px solid rgba(90, 140, 220, 0.35); border-bottom-width: 2px; border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06); color: #fff; font: 700 11px/16px 'Inter', 'Segoe UI', system-ui, sans-serif; text-align: center;
+}
+.pb-keynote kbd + kbd { margin-left: -2px; }
+.pb-keynote-k > span:first-child kbd { border-color: #ef9f27; }
+@media (prefers-reduced-motion: reduce) { .pb-keynote { transition: none; transform: translate(-50%, 0); } }

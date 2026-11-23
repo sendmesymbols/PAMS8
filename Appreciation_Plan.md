@@ -378,6 +378,38 @@ ORBAT with the Pls held against DP 1; Time Req (move in, posn preparation, the p
 his phases at each line of def with clock times from H; Coy grouping and tasks from Check my plan; the appreciation
 saved inside the plan file (`SerializationEngine.registerPlanExtra`, `pamsExtras.aprc`). 141 checks.
 
-Still open from section 9: the Obsn head is read at one point per approach (not sampled along it); lines of def stay
+Still open from section 9 (see section 13 for what was built since): the Obsn head was read at one point per approach; lines of def stay
 W to Z; force ratio numbers; "from incl … to incl …". Built: first / last light, the IPB weather values, and the event
 matrix as the reactions table.
+
+## 13. Review fixes and additions (23 Nov 2026, user: "lets do it all")
+
+Built:
+
+- **A reading is never lost.** Drafts carry their reading (`src`); a Read that cannot read the ground, the IPB, the ORBAT
+  or the timings keeps what the sheet held from them, with its frame, data, figures and Confirm items, and says so
+  (`keepUnread`). A Read writes nothing until it is done; Cancel stops it; the header shows the step and seconds.
+- **H** re-times only what carries a time (`retime`); a reactions table a plan check settled stays; his words over a
+  re-timed paragraph are marked "H changed since you wrote this". A sheet from an earlier session asks before reading.
+- **Kind** follows an opened file or plan, and the kept sheet on start; a kind set in the settings goes through the same
+  ask-and-clear as the sheet's select (asked in the sheet, not `window.confirm`).
+- **Typed cells by row** (`rowKeys`): a re-read that moves rows leaves his figures on their rows; a row gone keeps them as
+  an added row and asks to be looked at again. Old "row,col" cells re-keyed on open.
+- Unique ids for posns and ITGs of one name; `normalizeDoc` for files; guards on a partial IPB decision; print marking
+  from a repeating table head / foot (no margin boxes needed), the print title the file name, the print frame gone on
+  `afterprint`; destroy clears timers, listeners and the style.
+- Undo (Clear, give back, open, kind change), words given back kept to put back; what each Read changed (Changed filter,
+  "Before this Read"); message history; Last Read summary and Confirm on Gr kept in view; keys Shift+A, F, X, C, M,
+  Ctrl+Z, Enter / Tab in cells, Tab kept in the sheet; the minimized bar at the right with a state dot and Read; Save to a
+  file without pictures by default; stale marks say what changed; accepted proposals counted as accepted; the 3 : 1 advice
+  a proposal of its own (`own.ded.addl`).
+- First / last light and the read time in the place's zone (`groundAppreciation.utcOffsetH`, default 5, PKT).
+- New drafts: the Threat marker as the en's direction and in the frame; DP 1 Killing Areas / DF / Surv / Obs from the IPB
+  fire reading; his LZs / DZs from the IPB air reading; Most Probable from the main avenue; DP 2 stepped back to the depth
+  line; Time Data from H and the Time Req; the attack's Time Calc from H (and the plan's H-hour sum when the check has it);
+  Comd and Sig from HQ symbols; Adm and Log from the Admin Area finder; lines of def as many as the reading gives; Obsn
+  sampled at three points along each apch. 244 checks.
+
+Still open: `GroundGuideAor` picks at most three lines plus Z; `ipbApproachesAround` extras carry no fire / air for a host
+(the sheet uses the live Extended View reading when it is at the place); Check my plan's report has no H-hour sum;
+SymbolEngine does not pass `adminArea` to Aprc; force ratio numbers; the move in by road.

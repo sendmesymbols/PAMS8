@@ -40,65 +40,65 @@ B. Light (sun and moon from date, time and place)
 C. Real sites on the bundle
   Seen % = of the ground within 5 km: on the ground alone / expected / sure.  November, standing man (eye 1.6 m), threat to the north (canal bank: toward the canal).
   site                    elev | seen % alone/exp/sure | reach m | country    | rifle 300 m: grade, clear m, seen/dead/screened % | tank 2 km: grade, clear m, seen/dead/screened % | overlooked           | ways out GO/SLOW/stopped
-  Margalla crest          1435 |  19 /  17 /  14       |  4002   | open       | poor       32    2/ 98/  0                    | poor       32    4/ 95/  1                  | +140 m at 3621 m, 6 % of arc | 0/0/24
-  Islamabad valley floor   566 |   7 /   4 /   2       |   159   | veryClose  | marginal  127   39/ 56/  5                    | poor      159    4/ 89/  7                  | +682 m at 4990 m, 61 % of arc | 13/7/4
-  Cholistan flat           120 |  16 /  16 /  14       |  3368   | open       | good      300  100/  0/  0                    | marginal  573   23/ 77/  0                  | +23 m at 4008 m, 10 % of arc | 24/0/0
-  Lahore centre            224 |  18 /   0 /   0       |    98   | veryClose  | poor       33   20/ 51/ 29                    | poor       33    1/ 66/ 33                  | +19 m at 4267 m, 1 % of arc | 6/14/4
-  Lahore canal bank        220 |   6 /   0 /   0       |   130   | veryClose  | marginal  163   36/ 40/ 24                    | poor      163    2/ 85/ 13                  | +26 m at 4723 m, 1 % of arc | 0/12/12
-  Punjab farmland          165 |  48 /  15 /   1       |  1248   | open       | good      300   84/  0/ 16                    | good     1510   51/  3/ 46                  | no                   | 14/0/10
-  Skardu valley           2240 |  30 /  20 /  19       |  1404   | open       | poor       31    3/ 77/ 20                    | poor       31   17/ 81/  3                  | +1358 m at 4866 m, 68 % of arc | 1/7/16
-  Quetta                  1673 |  35 /   2 /   2       |    33   | veryClose  | poor       33   15/  0/ 85                    | poor       33    1/ 42/ 58                  | +612 m at 4724 m, 50 % of arc | 0/24/0
-  Karachi                   10 |   2 /   0 /   0       |    35   | veryClose  | marginal  104   26/ 10/ 65                    | poor      104    1/ 84/ 16                  | +25 m at 1907 m, 4 % of arc | 0/24/0
+  Margalla crest          1431 |  23 /   7 /   0       |  1810   | open       | poor       32   14/ 83/  3                    | poor       32   23/ 49/ 28                  | +146 m at 3589 m, 6 % of arc | 0/0/24
+  Islamabad valley floor   563 |  12 /   0 /   0       |    64   | veryClose  | poor       64   14/ 47/ 39                    | poor       64    1/ 87/ 12                  | +681 m at 4958 m, 54 % of arc | 13/5/6
+  Cholistan flat           139 |  17 /  17 /  15       |  3402   | open       | good      300  100/  0/  0                    | marginal  573   21/ 79/  0                  | +24 m at 4008 m, 11 % of arc | 24/0/0
+  Lahore centre            225 |  13 /   0 /   0       |    98   | veryClose  | marginal  163   39/  3/ 58                    | poor      163    2/ 38/ 60                  | +19 m at 4495 m, 1 % of arc | 5/15/4
+  Lahore canal bank        227 |  23 /   0 /   0       |    98   | veryClose  | poor       98   35/  0/ 65                    | poor       98    2/ 24/ 75                  | no                   | 2/12/10
+  Punjab farmland          166 |  62 /  16 /   1       |  1215   | open       | good      300   84/  0/ 16                    | good     1543   51/  2/ 48                  | no                   | 14/0/10
+  Skardu valley           2261 |  31 /  13 /  13       |   873   | open       | poor       31    3/ 55/ 42                    | poor       31   18/ 79/  3                  | +1370 m at 4928 m, 67 % of arc | 0/8/16
+  Quetta                  1670 |  50 /   0 /   0       |   132   | veryClose  | marginal  165   31/  1/ 68                    | poor      165    1/ 24/ 74                  | +612 m at 4724 m, 63 % of arc | 0/22/2
+  Karachi                    6 |   2 /   0 /   0       |    35   | veryClose  | marginal  104   27/  2/ 71                    | poor      104    1/ 83/ 16                  | no                   | 0/24/0
   plausibility
-  PASS  the crest sees more than the valley floor   17 % against 4 %
-  PASS  the crest is open country with poor fields of fire (the slope below a summit is dead ground)   reach 4002 m, clear 32 m, dead ground 98 %
-  PASS  the valley floor is overlooked from most directions   61 % of the arc
-  PASS  Cholistan is open country   reach 3368 m
-  PASS  Lahore centre: the ground alone says open, the buildings make it close or very close country   18 % alone, 0.2 % expected, reach 98 m (veryClose)
-  PASS  dense towns are very close country: the view ends within a block   Lahore centre 98 m, Karachi 35 m, Quetta 33 m
-  PASS  farmland: less is seen in August (tall crops) than in November   August 11.0 % (reach 854 m), November 15.0 % (reach 1248 m)
+  PASS  the crest sees more than the valley floor   7 % against 0 %
+  PASS  the crest is open country with poor fields of fire (the slope below a summit is dead ground)   reach 1810 m, clear 32 m, dead ground 83 %
+  PASS  the valley floor is overlooked from most directions   54 % of the arc
+  PASS  Cholistan is open country   reach 3402 m
+  PASS  Lahore centre: the ground alone says open, the buildings make it close or very close country   13 % alone, 0.2 % expected, reach 98 m (veryClose)
+  PASS  dense towns are very close country: the view ends within a block   Lahore centre 98 m, Karachi 35 m, Quetta 132 m
+  PASS  farmland: less is seen in August (tall crops) than in November   August 11.4 % (reach 821 m), November 15.9 % (reach 1215 m)
   PASS  expected never exceeds what the ground alone allows, and sure never exceeds expected
   PASS  seen + dead + screened ground inside the range make 100 %
-  PASS  canal bank: the canal is the nearest NO-GO toward it, inside rifle range   class 20 at 65 m, chance seen 73 %
+  PASS  canal bank: the canal is the nearest NO-GO toward it, inside rifle range   class 20 at 65 m, chance seen 61 %
   PASS  the grade follows the weapon: a tank asks for more than a rifle on the same ground
 
 D. Cost per call (Node 24 / V8, tiles in memory; the browser is within a factor of two)
   Margalla crest
-    fire wedge 90 deg to 600 m (rifle)             median   0.02 ms   p95   0.04 ms
-    fire wedge 90 deg to 2 km (tank)               median   0.23 ms   p95   0.32 ms
-    observation all round, 2 deg, to 5 km          median   0.98 ms   p95   1.14 ms
+    fire wedge 90 deg to 600 m (rifle)             median   0.03 ms   p95   0.04 ms
+    fire wedge 90 deg to 2 km (tank)               median   0.23 ms   p95   0.30 ms
+    observation all round, 2 deg, to 5 km          median   0.92 ms   p95   0.99 ms
     straight ways out, 24 sectors to 2 km          median   0.00 ms   p95   0.00 ms
-    highest ground within 3 km                     median   0.03 ms   p95   0.04 ms
-    sight to 3 ITG candidates 3 km away            median   0.02 ms   p95   0.03 ms
-    picture: all round, fine, to 5 km, with the trace median   5.52 ms   p95   6.51 ms
-    going flood to 5 km (ways round)               median   2.51 ms   p95   2.85 ms
-    sight tables for a month                       median   0.00 ms   p95   0.02 ms
-    map: avenue from 4 km east, 300 m frontage     median   3.65 ms   p95   3.94 ms
-    map: better position within 300 m              median   1.13 ms   p95   1.27 ms
-    map: fan runs of the tank wedge                median   0.31 ms   p95   0.37 ms
-    = every mouse move (tank wedge + observation + ways + highest ground + 3 sight lines): 1.27 ms
-  Lahore centre
-    fire wedge 90 deg to 600 m (rifle)             median   0.03 ms   p95   0.05 ms
-    fire wedge 90 deg to 2 km (tank)               median   0.35 ms   p95   0.43 ms
-    observation all round, 2 deg, to 5 km          median   1.29 ms   p95   1.70 ms
-    straight ways out, 24 sectors to 2 km          median   0.01 ms   p95   0.01 ms
     highest ground within 3 km                     median   0.03 ms   p95   0.03 ms
     sight to 3 ITG candidates 3 km away            median   0.02 ms   p95   0.02 ms
-    picture: all round, fine, to 5 km, with the trace median   7.52 ms   p95   9.20 ms
-    going flood to 5 km (ways round)               median   4.62 ms   p95   5.08 ms
-    sight tables for a month                       median   0.01 ms   p95   0.01 ms
-    map: avenue from 4 km east, 300 m frontage     median   2.27 ms   p95   2.58 ms
-    map: better position within 300 m              median   3.65 ms   p95   3.94 ms
-    map: fan runs of the tank wedge                median   0.32 ms   p95   0.37 ms
-    = every mouse move (tank wedge + observation + ways + highest ground + 3 sight lines): 1.69 ms
+    picture: all round, fine, to 5 km, with the trace median   5.48 ms   p95   5.78 ms
+    going flood to 5 km (ways round)               median   2.06 ms   p95   2.55 ms
+    sight tables for a month                       median   0.00 ms   p95   0.01 ms
+    map: avenue from 4 km east, 300 m frontage     median   2.25 ms   p95   2.59 ms
+    map: better position within 300 m              median   0.47 ms   p95   0.63 ms
+    map: fan runs of the tank wedge                median   0.32 ms   p95   0.39 ms
+    = every mouse move (tank wedge + observation + ways + highest ground + 3 sight lines): 1.21 ms
+  Lahore centre
+    fire wedge 90 deg to 600 m (rifle)             median   0.03 ms   p95   0.04 ms
+    fire wedge 90 deg to 2 km (tank)               median   0.38 ms   p95   0.44 ms
+    observation all round, 2 deg, to 5 km          median   1.67 ms   p95   1.78 ms
+    straight ways out, 24 sectors to 2 km          median   0.01 ms   p95   0.02 ms
+    highest ground within 3 km                     median   0.04 ms   p95   0.04 ms
+    sight to 3 ITG candidates 3 km away            median   0.02 ms   p95   0.02 ms
+    picture: all round, fine, to 5 km, with the trace median   8.98 ms   p95  10.09 ms
+    going flood to 5 km (ways round)               median   2.68 ms   p95   4.74 ms
+    sight tables for a month                       median   0.00 ms   p95   0.01 ms
+    map: avenue from 4 km east, 300 m frontage     median   2.55 ms   p95   2.99 ms
+    map: better position within 300 m              median   3.97 ms   p95   4.19 ms
+    map: fan runs of the tank wedge                median   0.44 ms   p95   0.53 ms
+    = every mouse move (tank wedge + observation + ways + highest ground + 3 sight lines): 2.13 ms
   laying the tiles for a 6 km circle side by side (once per few km of cursor travel): median 1.4 ms
-  PASS  everything the cursor card needs fits a mouse move (under 4 ms in Node)   1.27 ms hills, 1.69 ms town
+  PASS  everything the cursor card needs fits a mouse move (under 4 ms in Node)   1.21 ms hills, 2.13 ms town
   PASS  the fine picture fits a Detail refresh (under 20 ms)   5.5 ms
 
 E. Cross-check against an independent implementation (Python, probes every sixth of a pixel, same tiles, ground alone)
-  step 1 px: 2640 samples on 24 rays: 2622 agree; engine seen / reference hidden 18, engine hidden / reference seen 0
-  step 0.5 px: 5280 samples on 24 rays: 5258 agree; engine seen / reference hidden 22, engine hidden / reference seen 0
-  PASS  step 1 px agrees with the independent check on 98 % or more of the samples   99.32 %
-  PASS  step 0.5 px agrees on 99.5 % or more   99.58 %
+  step 1 px: 2640 samples on 24 rays: 2621 agree; engine seen / reference hidden 19, engine hidden / reference seen 0
+  step 0.5 px: 5280 samples on 24 rays: 5262 agree; engine seen / reference hidden 18, engine hidden / reference seen 0
+  PASS  step 1 px agrees with the independent check on 98 % or more of the samples   99.28 %
+  PASS  step 0.5 px agrees on 99.5 % or more   99.66 %
 
 43 of 44 checks passed, 1 FAILED.

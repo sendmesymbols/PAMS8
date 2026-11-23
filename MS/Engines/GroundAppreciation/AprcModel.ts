@@ -22,6 +22,12 @@ export type AprcKind = 'def' | 'attk';
 /** Where a paragraph's draft came from: the ground reading, symbols / a plan on the map, a proposal to judge, or nothing (the planner's). */
 export type AprcState = 'gr' | 'map' | 'judge' | 'yours';
 export type AprcCopy = 'fair' | 'draft';
+/**
+ * Which reading a draft came from, so a change can say what changed: the ground (`gr`), the symbols on the map (`map`),
+ * the last Check my plan (`plan`), the en options of the IPB reading (`en`), the ORBAT (`orbat`), timings worked out
+ * from H and the Time Req (`time`), or a new H on the sheet (`h`, a cause only).
+ */
+export type AprcSrc = 'gr' | 'map' | 'plan' | 'en' | 'orbat' | 'time' | 'h';
 
 export interface AprcBasis {
   /** data: a layer and its date; rule: a book rule; input: what the user set or marked; calc: how a figure was worked out. */
@@ -41,6 +47,8 @@ export interface AprcMine {
   /** Hash of the draft the planner wrote over: a different draft later marks the paragraph stale. */
   draftHash: string;
   at: string;
+  /** What first changed the draft under his words (kept while it stays stale): says what to look at again. */
+  staleBy?: AprcSrc;
 }
 
 export interface AprcPara {
@@ -64,6 +72,15 @@ export interface AprcPara {
   /** Id of a figure printed under the paragraph. */
   figure?: string;
   children: AprcPara[];
+  /** The reading its draft came from. */
+  src?: AprcSrc;
+  /** Its draft changed on the last Read (or on a new H): the cause, and the draft it had before (null: none). */
+  changed?: AprcSrc;
+  before?: { draft: string | null; table: boolean };
+  /** The planner's last words given back to the tool, kept so they can be put back. */
+  discarded?: { text: string; at: string };
+  /** Rows he typed into were gone from a new reading: his cells kept as added rows (these, 0-based among the added). */
+  moved?: { rows: number[]; at: string };
 }
 
 export interface AprcGroup {
@@ -94,6 +111,8 @@ export interface AprcConfirm {
   text: string;
   /** Paragraph ids it touches. */
   paras: string[];
+  /** The reading it came from (kept with that reading when it is not read again). */
+  src?: AprcSrc;
 }
 
 /** What the reading was taken with. */
@@ -119,6 +138,8 @@ export interface AprcDoc {
   figures: AprcFigure[];
   confirm: AprcConfirm[];
   sources: string[];
+  /** When each reading was last taken ("2027-02-15 11:00", the place's clock): a reading not taken again is kept. */
+  readAt?: Partial<Record<AprcSrc, string>>;
 }
 
 export interface AprcPatch {
@@ -132,6 +153,8 @@ export interface AprcPatch {
   figure?: string | null;
   /** Replaces the sub-paragraphs (lists whose length follows the ground: approaches, ITGs, lines of def). */
   children?: AprcPara[];
+  /** The reading it comes from (else the one `applyPatches` is given). */
+  src?: AprcSrc;
 }
 
 // ── building ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -145,6 +168,24 @@ const headOnly = (id: string, head: string, children: AprcPara[], state: AprcSta
 const yours = (id: string, head: string | null, prompts: string[] = []): AprcPara => para(id, head, { prompts });
 
 export const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+/**
+ * Ids made from labels stay unique: the second of a base gets -2, the third -3, in reading order (two posns or two
+ * ITGs of the same name). `used` is shared by all the ids under one heading; pre-seed it with the fixed ones.
+ */
+export function uniqueId(used: Set<string>, base: string): string {
+  if (!used.has(base)) {
+    used.add(base);
+    return base;
+  }
+  for (let n = 2; ; n++) {
+    const id = `${base}-${n}`;
+    if (!used.has(id)) {
+      used.add(id);
+      return id;
+    }
+  }
+}
 
 /** The sub-heads of one Def Possibility. Those the ground reading can propose are filled by the writer; the rest stay the planner's. */
 export const DP_HEADS: Array<[string, string]> = [
@@ -590,8 +631,16 @@ export function hash(s: string): string {
 
 // ── writing into it ──────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Set drafts. A patch for an id the outline does not hold is skipped. The planner's words are untouched. */
-export function applyPatches(doc: AprcDoc, patches: AprcPatch[]): number {
+function setSrc(p: AprcPara, src: AprcSrc): void {
+  p.src = src;
+  for (const c of p.children) if (!c.src) setSrc(c, src);
+}
+
+/**
+ * Set drafts. A patch for an id the outline does not hold is skipped. The planner's words are untouched. `src` tags
+ * the patched paragraphs (and the sub-paragraphs a patch brings) with the reading they came from.
+ */
+export function applyPatches(doc: AprcDoc, patches: AprcPatch[], src?: AprcSrc): number {
   let n = 0;
   for (const x of patches) {
     const p = find(doc, x.id);
@@ -605,36 +654,257 @@ export function applyPatches(doc: AprcDoc, patches: AprcPatch[]): number {
     if (x.table !== undefined) p.table = x.table ?? undefined;
     if (x.figure !== undefined) p.figure = x.figure ?? undefined;
     if (x.children !== undefined) p.children = x.children;
+    const from = x.src ?? src;
+    if (from) {
+      p.src = from;
+      for (const c of p.children) if (!c.src) setSrc(c, from);
+    }
   }
   return n;
 }
 
-/** Bring the planner's words and acceptances from an earlier document into a newly read one (by paragraph id). */
-export function carryOver(prev: AprcDoc | null, next: AprcDoc): AprcDoc {
-  if (!prev) return next;
-  const keep = new Map<string, { mine?: AprcMine; accepted?: boolean; cells?: Record<string, string>; addRows?: number }>();
+/** What a paragraph says as drafted (state, words, table rows); '' for a heading or a ruled line with no table. */
+export function draftSig(p: AprcPara | null | undefined): string {
+  if (!p || ((p.draft === null || p.draft === '') && !p.table)) return '';
+  return `${p.state}|${p.draft ?? ''}|${p.table ? JSON.stringify(p.table.rows) : ''}`;
+}
+
+const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
+
+/**
+ * A Read that could not take a reading again (the guide off, outside the terrain data, a time-out) never loses the
+ * one kept: the paragraphs `prev` (same kind) drafted from those readings are carried into `next` wherever `next` has
+ * nothing from a reading taken this time, with their Confirm on Gr items and when they were read; with the ground not
+ * read, the frame, the data list and the figures too. Returns how many paragraphs were kept.
+ */
+export function keepUnread(prev: AprcDoc | null, next: AprcDoc, unread: Iterable<AprcSrc>): number {
+  const set = new Set(unread);
+  if (!prev || prev.kind !== next.kind || !set.size) return 0;
+  const fresh = new Set<string>();
+  walk(next, (p) => {
+    if (p.src) fresh.add(p.id);
+  });
+  let n = 0;
   walk(prev, (p) => {
-    if (p.mine || p.accepted || p.cells || p.addRows) keep.set(p.id, { mine: p.mine, accepted: p.accepted, cells: p.cells, addRows: p.addRows });
+    if (!p.src || !set.has(p.src) || fresh.has(p.id)) return;
+    const q = find(next, p.id);
+    if (!q) return;
+    const c = clone(p);
+    q.head = c.head;
+    q.draft = c.draft;
+    q.state = c.state;
+    q.basis = c.basis;
+    q.prompts = c.prompts;
+    q.table = c.table;
+    q.figure = c.figure;
+    q.children = c.children;
+    q.src = c.src;
+    const mark = (x: AprcPara) => {
+      fresh.add(x.id);
+      x.children.forEach(mark);
+    };
+    mark(q);
+    n++;
+  });
+  for (const c of prev.confirm) if (c.src && set.has(c.src) && !next.confirm.some((x) => x.text === c.text)) next.confirm.push({ ...c, paras: [...c.paras] });
+  for (const k of set) if (prev.readAt?.[k]) (next.readAt ??= {})[k] = prev.readAt[k];
+  if (set.has('gr')) {
+    if (!next.frame && prev.frame) next.frame = { ...prev.frame };
+    if (!next.sources.length) next.sources = [...prev.sources];
+    for (const f of prev.figures) if (!next.figures.some((x) => x.id === f.id)) next.figures.push(f);
+  }
+  return n;
+}
+
+/**
+ * Mark what a Read changed: each paragraph whose drafted words, state or table differ from `prev`'s gets `changed`
+ * (the reading that changed it) and `before` (what it said); the rest lose the marks. Returns how many changed. With
+ * no earlier reading (`prev` null or of another kind) nothing is marked.
+ */
+export function markChanges(prev: AprcDoc | null, next: AprcDoc): number {
+  const old = new Map<string, AprcPara>();
+  if (prev && prev.kind === next.kind) walk(prev, (p) => old.set(p.id, p));
+  let n = 0;
+  walk(next, (p) => {
+    delete p.changed;
+    delete p.before;
+    if (!old.size) return;
+    const o = old.get(p.id);
+    const a = draftSig(o), b = draftSig(p);
+    if (a === b) return;
+    p.changed = p.src ?? o?.src ?? 'gr';
+    p.before = { draft: o && a ? (o.draft || null) : null, table: !!o?.table && a !== '' };
+    n++;
+  });
+  return n;
+}
+
+/**
+ * Apply patches that only re-time (a new H): only to paragraphs whose draft came from one of `from` (the en options and
+ * the timings; a reactions table the plan check settled is left as it is). A draft that changes is marked changed by
+ * `cause`; the planner's words over it go stale with that cause, never with another reading's. Returns how many changed.
+ */
+export function retime(doc: AprcDoc, patches: AprcPatch[], from: AprcSrc[], cause: AprcSrc = 'h'): number {
+  const ok = new Set(from);
+  let n = 0;
+  for (const x of patches) {
+    const p = find(doc, x.id);
+    if (!p || (p.src && !ok.has(p.src))) continue;
+    const before = draftSig(p);
+    const was = p.draft;
+    applyPatches(doc, [x], x.src ?? p.src ?? from[0]);
+    if (draftSig(p) === before) continue;
+    n++;
+    p.changed = cause;
+    p.before = { draft: before ? (was || null) : null, table: !!p.table };
+    if (p.mine) {
+      if (isStale(p)) p.mine.staleBy ??= cause;
+      else delete p.mine.staleBy;
+    }
+  }
+  return n;
+}
+
+// ── typed table cells, keyed by the row they were typed on ───────────────────────────────────────────────────────
+// A cell the planner types is kept under the row's identity (its first column that is not a serial, with times taken
+// out), not its index: a new reading that adds, drops or reorders rows leaves his figures on their rows. Rows he adds
+// under the table are his own and stay by index ("+0", "+1").
+
+const SERIAL = /^\s*(\(?[a-z]{1,2}\)?\.?|\(?[ivx]{1,6}\)?\.?|\(?\d{1,3}\)?\.?|-)?\s*$/i;
+
+/** The column that names a row: the first one not made only of serials ("a.", "(1)", "2") and blanks. */
+export function idColOf(t: AprcTable): number {
+  for (let c = 0; c < t.head.length; c++) if (t.rows.some((r) => !SERIAL.test(String(r[c] ?? '')))) return c;
+  return 0;
+}
+
+const normKey = (s: string): string =>
+  s
+    .toLowerCase()
+    .replace(/\(\d{4} hrs[^)]*\)/g, '')
+    .replace(/\b\d{4} hrs( d( day|[+-]\d+))?/g, '')
+    .replace(/\bh\s*[+-]\s*\d+(:\d\d)?(\s*to\s*h\s*[+-]\s*\d+(:\d\d)?)?/g, '')
+    .replace(/\b(in )?\d+(\.\d+)? min\b/g, '')
+    .replace(/::/g, ':')
+    .replace(/^\++/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/** Each drafted row's identity: its naming cell (times out), "#2" on a repeat, "~1" after a blank's last named row. */
+export function rowKeys(t: AprcTable): string[] {
+  const c = idColOf(t);
+  const seen = new Map<string, number>();
+  let last = '^', blank = 0;
+  return t.rows.map((r) => {
+    const k = normKey(String(r[c] ?? ''));
+    if (!k) return `${last}~${++blank}`;
+    const n = (seen.get(k) ?? 0) + 1;
+    seen.set(k, n);
+    last = n === 1 ? k : `${k}#${n}`;
+    blank = 0;
+    return last;
+  });
+}
+
+/** The key of a cell at row `r` (0 is the first row under the head; past the drafted rows, an added row) and column `c`. */
+export function cellKey(p: AprcPara, r: number, c: number, keys: string[] = p.table ? rowKeys(p.table) : []): string {
+  const n = p.table?.rows.length ?? 0;
+  return r < n ? `${keys[r]}::${c}` : `+${r - n}::${c}`;
+}
+
+/** Cells kept as "row,col" before they were keyed by row: re-keyed against the table they were typed on. */
+export function migrateCells(p: AprcPara): void {
+  if (!p.cells || !p.table) return;
+  const keys = rowKeys(p.table);
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(p.cells)) {
+    const m = /^(\d+),(\d+)$/.exec(k);
+    out[m ? cellKey(p, Number(m[1]), Number(m[2]), keys) : k] = String(v);
+  }
+  p.cells = out;
+}
+
+/** Bring the planner's typed cells onto a newly read table; rows of his that are gone become added rows (`moved`). */
+function carryCells(k: AprcPara, p: AprcPara, at: string): void {
+  let added = k.addRows ?? 0;
+  const cells: Record<string, string> = {};
+  const newKeys = p.table ? new Set(rowKeys(p.table)) : null;
+  const orphan = new Map<string, Array<[number, string]>>();
+  for (const [key, text] of Object.entries(k.cells ?? {})) {
+    const m = /^(.*)::(\d+)$/.exec(key);
+    if (!m) continue;
+    if (m[1].startsWith('+') || !newKeys || newKeys.has(m[1])) cells[key] = text;
+    else {
+      const l = orphan.get(m[1]) ?? [];
+      l.push([Number(m[2]), text]);
+      orphan.set(m[1], l);
+    }
+  }
+  if (orphan.size && p.table) {
+    const oldKeys = k.table ? rowKeys(k.table) : [];
+    const idCol = idColOf(k.table ?? p.table);
+    const rows: number[] = [];
+    for (const [rk, cs] of [...orphan].sort((a, b) => oldKeys.indexOf(a[0]) - oldKeys.indexOf(b[0]))) {
+      const i = added++;
+      rows.push(i);
+      for (const [c, t] of cs) cells[`+${i}::${c}`] = t;
+      const r = oldKeys.indexOf(rk);
+      const label = r >= 0 ? String(k.table?.rows[r]?.[idCol] ?? '') : '';
+      if (label && cells[`+${i}::${idCol}`] === undefined) cells[`+${i}::${idCol}`] = label;
+    }
+    p.moved = { rows: [...(k.moved?.rows ?? []), ...rows], at };
+  } else if (k.moved) p.moved = { rows: [...k.moved.rows], at: k.moved.at };
+  p.cells = Object.keys(cells).length ? cells : undefined;
+  p.addRows = added || undefined;
+}
+
+/**
+ * Bring the planner's words, acceptances, typed cells, added rows and given-back words from an earlier document into
+ * a newly read one (by paragraph id). His words over a draft that changed are marked stale with what changed it; typed
+ * cells follow their rows (a row gone keeps his cells as an added row, the paragraph marked).
+ */
+export function carryOver(prev: AprcDoc | null, next: AprcDoc, at = new Date().toISOString()): AprcDoc {
+  if (!prev) return next;
+  const keep = new Map<string, AprcPara>();
+  walk(prev, (p) => {
+    if (p.mine || p.accepted || p.cells || p.addRows || p.discarded || p.moved) keep.set(p.id, p);
   });
   walk(next, (p) => {
     const k = keep.get(p.id);
     if (!k) return;
-    if (k.mine) p.mine = k.mine;
-    if (p.table && k.cells) p.cells = k.cells;
-    if (p.table && k.addRows) p.addRows = k.addRows;
-    // An acceptance holds only while the proposal is the one that was accepted.
+    if (k.mine) {
+      p.mine = { ...k.mine };
+      if (isStale(p)) {
+        if (!p.mine.staleBy) p.mine.staleBy = (hash(k.draft ?? '') !== hash(p.draft ?? '') || !isStale(k) ? p.changed ?? p.src : undefined) ?? p.src ?? 'gr';
+      } else delete p.mine.staleBy;
+    }
+    if (k.discarded) p.discarded = { ...k.discarded };
+    // An acceptance holds only while the paragraph is still a proposal.
     if (k.accepted && p.state === 'judge') p.accepted = true;
+    if (k.cells || k.addRows || k.moved) carryCells(k, p, at);
   });
   return next;
 }
 
-/** The planner writes a paragraph (empty text gives it back to the tool). */
+/** The planner writes a paragraph (empty text gives it back to the tool; his words are kept to put back). */
 export function setMine(doc: AprcDoc, id: string, text: string | null, at = new Date().toISOString()): boolean {
   const p = find(doc, id);
   if (!p) return false;
   const t = (text ?? '').trim();
-  if (!t) delete p.mine;
-  else p.mine = { text: t, draftHash: hash(p.draft ?? ''), at };
+  if (!t) {
+    if (p.mine) p.discarded = { text: p.mine.text, at };
+    delete p.mine;
+  } else p.mine = { text: t, draftHash: hash(p.draft ?? ''), at };
+  return true;
+}
+
+/** Put back the words last given back to the tool. */
+export function restoreDiscarded(doc: AprcDoc, id: string, at = new Date().toISOString()): boolean {
+  const p = find(doc, id);
+  if (!p?.discarded) return false;
+  const text = p.discarded.text;
+  delete p.discarded;
+  p.mine = { text, draftHash: hash(p.draft ?? ''), at };
   return true;
 }
 
@@ -667,11 +937,12 @@ export function tableOf(p: AprcPara, copy: AprcCopy): AprcTable | null {
   if (!t) return null;
   const hide = copy === 'fair' && p.state === 'judge' && !p.accepted;
   const n = t.rows.length + (p.addRows ?? 0);
+  const keys = rowKeys(t);
   const rows: string[][] = [];
   for (let r = 0; r < n; r++) {
     const base = t.rows[r] ?? t.head.map(() => '');
     rows.push(t.head.map((_, c) => {
-      const mine = p.cells?.[`${r},${c}`];
+      const mine = p.cells?.[cellKey(p, r, c, keys)];
       if (mine !== undefined) return mine;
       const d = base[c] ?? '';
       return hide && c > 0 ? '' : d;
@@ -680,15 +951,21 @@ export function tableOf(p: AprcPara, copy: AprcCopy): AprcTable | null {
   return { head: t.head, rows, widths: t.widths };
 }
 
-/** The planner types into a cell (null gives it back to the tool). */
+/** The planner types into a cell (null gives it back to the tool). `r` counts the rows as shown, added rows last. */
 export function setCell(doc: AprcDoc, id: string, r: number, c: number, text: string | null): boolean {
   const p = find(doc, id);
   if (!p?.table || c < 0 || c >= p.table.head.length || r < 0 || r >= p.table.rows.length + (p.addRows ?? 0)) return false;
+  const key = cellKey(p, r, c);
   const cells = { ...(p.cells ?? {}) };
-  if (text === null) delete cells[`${r},${c}`];
-  else cells[`${r},${c}`] = text.trim();
+  if (text === null) delete cells[key];
+  else cells[key] = text.trim();
   p.cells = Object.keys(cells).length ? cells : undefined;
   return true;
+}
+
+/** Whether the planner typed into a cell. */
+export function cellTyped(p: AprcPara, r: number, c: number): boolean {
+  return !!p.table && p.cells?.[cellKey(p, r, c)] !== undefined;
 }
 
 /** Add an empty row under the table (or take the last added one away). */
@@ -697,15 +974,153 @@ export function addRow(doc: AprcDoc, id: string, n = 1): boolean {
   if (!p?.table) return false;
   const next = Math.max(0, (p.addRows ?? 0) + n);
   if (n < 0 && p.cells) {
-    const last = p.table.rows.length + next;
-    for (const k of Object.keys(p.cells)) if (Number(k.split(',')[0]) >= last) delete p.cells[k];
+    for (const k of Object.keys(p.cells)) {
+      const m = /^\+(\d+)::/.exec(k);
+      if (m && Number(m[1]) >= next) delete p.cells[k];
+    }
+    if (!Object.keys(p.cells).length) p.cells = undefined;
+  }
+  if (p.moved) {
+    const rows = p.moved.rows.filter((i) => i < next);
+    if (rows.length) p.moved.rows = rows;
+    else delete p.moved;
   }
   p.addRows = next || undefined;
   return true;
 }
 
+/** The rows a new reading moved: keep them as his (the mark goes). */
+export function keepMoved(doc: AprcDoc, id: string): boolean {
+  const p = find(doc, id);
+  if (!p?.moved) return false;
+  delete p.moved;
+  return true;
+}
+
+/** The rows a new reading moved: drop them and their cells (take the new reading). */
+export function dropMoved(doc: AprcDoc, id: string): boolean {
+  const p = find(doc, id);
+  if (!p?.moved) return false;
+  const gone = new Set(p.moved.rows);
+  const n = p.addRows ?? 0;
+  const to = new Map<number, number>();
+  let j = 0;
+  for (let i = 0; i < n; i++) if (!gone.has(i)) to.set(i, j++);
+  const cells: Record<string, string> = {};
+  for (const [k, t] of Object.entries(p.cells ?? {})) {
+    const m = /^\+(\d+)::(\d+)$/.exec(k);
+    if (!m) cells[k] = t;
+    else if (to.has(Number(m[1]))) cells[`+${to.get(Number(m[1]))}::${m[2]}`] = t;
+  }
+  p.cells = Object.keys(cells).length ? cells : undefined;
+  p.addRows = j || undefined;
+  delete p.moved;
+  return true;
+}
+
 /** The draft under the planner's words has changed since he wrote them. */
 export const isStale = (p: AprcPara): boolean => !!p.mine && p.draft !== null && hash(p.draft) !== p.mine.draftHash;
+
+/** Why a paragraph wants looking at again: what changed under his words, or his table rows that moved; null when nothing. */
+export function staleWhy(p: AprcPara): AprcSrc | 'rows' | null {
+  if (isStale(p)) return p.mine!.staleBy ?? p.src ?? 'gr';
+  if (p.moved) return 'rows';
+  return null;
+}
+
+/** The short mark of a stale paragraph in the draft copy, by what changed. */
+export const STALE_MARK: Record<AprcSrc | 'rows', string> = {
+  gr: 'Gr changed since',
+  map: 'Map changed since',
+  plan: 'Plan check changed since',
+  en: 'En options changed since',
+  orbat: 'ORBAT changed since',
+  time: 'Timings changed since',
+  h: 'H changed since',
+  rows: 'Table rows changed since',
+};
+
+// ── opening a kept or saved document ─────────────────────────────────────────────────────────────────────────────
+
+const STATES = new Set<AprcState>(['gr', 'map', 'judge', 'yours']);
+
+function normPara(x: any): AprcPara | null {
+  if (!x || typeof x !== 'object' || typeof x.id !== 'string' || !x.id) return null;
+  const p: AprcPara = {
+    ...x,
+    head: typeof x.head === 'string' ? x.head : null,
+    draft: typeof x.draft === 'string' ? x.draft : null,
+    state: STATES.has(x.state) ? x.state : 'yours',
+    basis: Array.isArray(x.basis) ? x.basis.filter((b: any) => b && typeof b.text === 'string').map((b: any) => ({ kind: ['data', 'rule', 'input', 'calc'].includes(b.kind) ? b.kind : 'data', text: b.text })) : [],
+    prompts: Array.isArray(x.prompts) ? x.prompts.map(String) : [],
+    children: Array.isArray(x.children) ? (x.children.map(normPara).filter(Boolean) as AprcPara[]) : [],
+  };
+  if (p.table && !(Array.isArray(p.table.head) && Array.isArray(p.table.rows))) delete p.table;
+  if (p.cells && typeof p.cells !== 'object') delete p.cells;
+  if (p.mine && typeof p.mine.text !== 'string') delete p.mine;
+  migrateCells(p);
+  return p;
+}
+
+/**
+ * A sheet kept before drafts carried their reading (`src`): each drafted paragraph is given the reading its writer
+ * draws on, by its id, so a Read that cannot read again still keeps it. Only when no paragraph carries one.
+ */
+function inferSrc(parts: AprcPart[]): void {
+  let any = false;
+  const all: AprcPara[] = [];
+  const go = (p: AprcPara) => {
+    if (p.src) any = true;
+    all.push(p);
+    p.children.forEach(go);
+  };
+  for (const pt of parts) for (const g of pt.groups) g.paras.forEach(go);
+  if (any) return;
+  const RULES: Array<[RegExp, AprcSrc]> = [
+    [/^(rev\.|en\.comp|en\.opt1\.disp|own\.disp|plan\.comd)/, 'map'],
+    [/^(own\.str|own\.comp|own\.ded\.basic|own\.ded\.addl|ts\.req)/, 'orbat'],
+    [/^(ts\.data|ts\.calc)/, 'time'],
+    [/^(en\.|crs\.react|gr\.ded\.apch|gr\.ded\.ap1|gr\.ded\.ap2|gr\.itg\.mitg\.dir)/, 'en'],
+    [/^(crs\.|plan\.)/, 'plan'],
+    [/^(gr\.|aim|own\.tasks)/, 'gr'],
+  ];
+  for (const p of all) {
+    if (p.state === 'yours' && p.draft === null && !p.table) continue;
+    const hit = RULES.find(([re]) => re.test(p.id));
+    if (hit) p.src = hit[1];
+  }
+}
+
+/**
+ * An appreciation from a file, the browser or a plan, made safe to open: the arrays the sheet and the exports read
+ * are there (an older or hand-edited file may lack figures, confirm or sources), typed cells keyed by row. Null when
+ * it is not an appreciation.
+ */
+export function normalizeDoc(raw: unknown): AprcDoc | null {
+  const d: any = raw && typeof raw === 'object' ? clone(raw) : null;
+  if (!d || d.version !== 1 || !Array.isArray(d.parts)) return null;
+  delete d.marking; // kept before the marking became a ruled line
+  const parts: AprcPart[] = d.parts
+    .filter((pt: any) => pt && typeof pt === 'object')
+    .map((pt: any) => ({
+      id: String(pt.id ?? ''),
+      title: String(pt.title ?? ''),
+      groups: (Array.isArray(pt.groups) ? pt.groups : []).filter((g: any) => g && typeof g === 'object').map((g: any) => ({ id: String(g.id ?? ''), title: typeof g.title === 'string' ? g.title : null, paras: (Array.isArray(g.paras) ? g.paras : []).map(normPara).filter(Boolean) as AprcPara[] })),
+    }));
+  inferSrc(parts);
+  return {
+    ...d,
+    version: 1,
+    kind: d.kind === 'attk' ? 'attk' : 'def',
+    title: typeof d.title === 'string' && d.title ? d.title : 'APRC OF THE SIT',
+    frame: d.frame && typeof d.frame === 'object' ? d.frame : null,
+    parts,
+    figures: Array.isArray(d.figures) ? d.figures.filter((f: any) => f && typeof f.id === 'string') : [],
+    confirm: Array.isArray(d.confirm) ? d.confirm.filter((c: any) => c && typeof c.text === 'string').map((c: any) => ({ ...c, paras: Array.isArray(c.paras) ? c.paras.map(String) : [] })) : [],
+    sources: Array.isArray(d.sources) ? d.sources.map(String) : [],
+    readAt: d.readAt && typeof d.readAt === 'object' ? d.readAt : undefined,
+  };
+}
 
 // ── reading it out ───────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -718,15 +1133,20 @@ export interface AprcShown {
   /** A proposal shown but not yet accepted (draft copy only). */
   proposal: boolean;
   stale: boolean;
+  /** What changed under it (when stale). */
+  why?: AprcSrc | 'rows' | null;
 }
 
 /** What a paragraph prints in a copy. */
 export function shown(p: AprcPara, copy: AprcCopy): AprcShown {
-  if (p.mine) return { text: p.mine.text, mark: 'WRITTEN', proposal: false, stale: isStale(p) };
-  if (p.draft === null) return { text: null, mark: 'YOURS', proposal: false, stale: false };
-  if (p.draft === '') return { text: '', mark: p.state === 'gr' ? 'GR' : p.state === 'map' ? 'MAP' : p.state === 'judge' ? 'YOU JUDGE' : 'YOURS', proposal: false, stale: false };
-  if (p.state === 'judge' && !p.accepted) return copy === 'fair' ? { text: null, mark: 'YOU JUDGE', proposal: false, stale: false } : { text: p.draft, mark: 'YOU JUDGE', proposal: true, stale: false };
-  return { text: p.draft, mark: p.state === 'gr' ? 'GR' : p.state === 'map' ? 'MAP' : p.state === 'judge' ? 'YOU JUDGE' : 'YOURS', proposal: false, stale: false };
+  const why = staleWhy(p);
+  const stale = why !== null;
+  const markOf = (): AprcMark => (p.state === 'gr' ? 'GR' : p.state === 'map' ? 'MAP' : p.state === 'judge' ? 'YOU JUDGE' : 'YOURS');
+  if (p.mine) return { text: p.mine.text, mark: 'WRITTEN', proposal: false, stale, why };
+  if (p.draft === null) return { text: null, mark: 'YOURS', proposal: false, stale, why };
+  if (p.draft === '') return { text: '', mark: markOf(), proposal: false, stale, why };
+  if (p.state === 'judge' && !p.accepted) return copy === 'fair' ? { text: null, mark: 'YOU JUDGE', proposal: false, stale, why } : { text: p.draft, mark: 'YOU JUDGE', proposal: true, stale, why };
+  return { text: p.draft, mark: markOf(), proposal: false, stale, why };
 }
 
 const ROMAN = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv', 'xvi', 'xvii', 'xviii', 'xix', 'xx'];
@@ -786,17 +1206,21 @@ export interface AprcCounts {
   stale: number;
   /** Proposals neither accepted nor rewritten. */
   open: number;
+  /** Proposals taken as they stand (counted in `judge` too). */
+  accepted: number;
 }
 
 /** Paragraphs by state (headings without words of their own are not counted). */
 export function counts(doc: AprcDoc): AprcCounts {
-  const c: AprcCounts = { gr: 0, map: 0, judge: 0, yours: 0, written: 0, stale: 0, open: 0 };
+  const c: AprcCounts = { gr: 0, map: 0, judge: 0, yours: 0, written: 0, stale: 0, open: 0, accepted: 0 };
   walk(doc, (p) => {
     if (p.mine) {
       c.written++;
       if (isStale(p)) c.stale++;
       return;
     }
+    if (p.moved) c.stale++;
+    if (p.state === 'judge' && p.accepted && (p.draft || p.table)) c.accepted++;
     if (p.draft === '' && !p.table) return;
     if (p.draft === null) c.yours++;
     else if (p.state === 'yours') c.yours++;
@@ -821,7 +1245,7 @@ export function toText(doc: AprcDoc, copy: AprcCopy = 'draft'): string {
       const pad = '   '.repeat(l.depth);
       const head = l.p.head ? `${l.p.head}.` : '';
       const body = s.text === null ? RULE : s.text;
-      const mark = copy === 'draft' && (s.text !== '' || l.p.table) ? ` [${s.proposal ? 'PROPOSAL' : s.mark}${s.stale ? ', Gr changed since' : ''}]` : '';
+      const mark = copy === 'draft' && (s.text !== '' || l.p.table) ? ` [${s.proposal ? 'PROPOSAL' : s.mark}${s.stale && s.why ? `, ${STALE_MARK[s.why]}` : ''}]` : '';
       L.push(`${pad}${l.label} ${[head, body].filter(Boolean).join(' ')}${mark}`.trimEnd());
       if (copy === 'draft' && s.text === null && l.p.prompts.length) L.push(`${pad}   (${l.p.prompts.join('; ')})`);
       const tb = tableOf(l.p, copy);

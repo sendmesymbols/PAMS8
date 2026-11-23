@@ -16,7 +16,8 @@
         "bn-def-all-round",
         "bn-def-canal",
         "bn3-def-two-up",
-        "bn3-def-three-up"
+        "bn3-def-three-up",
+        "bn-def-rev-slope"
       ]
     },
     {
@@ -29,7 +30,8 @@
         "coy-def-two-up",
         "coy-def-three-up",
         "coy-def-one-up",
-        "coy-def-all-round"
+        "coy-def-all-round",
+        "coy-def-rev-slope"
       ]
     },
     {
@@ -133,6 +135,58 @@
       "echelon": "21",
       "recipes": [
         "div-bridgehead-two-bde"
+      ]
+    },
+    {
+      "id": "bn-wdr",
+      "name": "Bn Withdrawal",
+      "task": "withdrawal",
+      "echelon": "16",
+      "unit": "inf-bn-std",
+      "recipes": [
+        "bn-wdr-night"
+      ]
+    },
+    {
+      "id": "coy-attk",
+      "name": "Coy Attk",
+      "task": "attack",
+      "echelon": "15",
+      "unit": "inf-coy-std-rifle",
+      "recipes": [
+        "coy-attk-right-flank",
+        "coy-attk-left-flank",
+        "coy-attk-frontal"
+      ]
+    },
+    {
+      "id": "bde-def",
+      "name": "Bde Def",
+      "task": "defence",
+      "echelon": "18",
+      "unit": "inf-bde",
+      "recipes": [
+        "bde-def-two-up"
+      ]
+    },
+    {
+      "id": "div-def",
+      "name": "Div Def",
+      "task": "defence",
+      "echelon": "21",
+      "unit": "inf-div",
+      "recipes": [
+        "div-def-two-up"
+      ]
+    },
+    {
+      "id": "bde-attk",
+      "name": "Bde Attk",
+      "task": "attack",
+      "echelon": "18",
+      "unit": "inf-bde",
+      "recipes": [
+        "bde-attk-two-up"
       ]
     }
   ]

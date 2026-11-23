@@ -54,6 +54,24 @@ let unbased = [], unsourced = [];
 })(doc.plan, '', null, null);
 check('PlanDoctrine: every figure has a basis', !unbased.length, unbased.join(', '));
 check('PlanDoctrine: every D figure has a source', !unsourced.length, unsourced.join(', '));
+// every figure is backed (the user's rule, 17 Nov 2026): a book rule with its page and words, checked against the book
+// (D / R / calc, refs with checked ok; an R the books do not print says where it was looked for), the user's decision (U),
+// data (O), a method setting with its reason (M), or a decision that names where it was looked for and when (E)
+const figs = [];
+(function walkF(node, path) {
+  if (!node || typeof node !== 'object' || Array.isArray(node)) return;
+  if (node.basis && ('value' in node || node.src)) figs.push([path, node]);
+  for (const [k, v] of Object.entries(node)) if (!['sources', 'basisCodes', 'refs'].includes(k)) walkF(v, path ? `${path}.${k}` : k);
+})(doc.plan, '');
+const okRef = (f) => (f.refs ?? []).some((r) => r.checked?.status === 'ok');
+const unbacked = figs.filter(([, f]) => (['D', 'calc'].includes(f.basis) ? !okRef(f) : f.basis === 'R' ? !okRef(f) && !f.searched : f.basis === 'E' ? !(f.decided && f.searched && (f.note || f.src)) : f.basis === 'M' ? !f.src : f.basis === 'U' ? !(f.decided || f.src || /user/i.test(f.note ?? '')) : f.basis === 'O' ? !(f.src || f.note) : true));
+check('PlanDoctrine: every figure is backed (D / R / calc by a checked book reference, U by the user, O by the plans, M by its reason, E by a recorded decision)', figs.length > 150 && unbacked.length === 0, unbacked.map(([p, f]) => `${p} (${f.basis})`).join(', ') || `${figs.length} figures`);
+const badRef = figs.flatMap(([p, f]) => (f.refs ?? []).filter((r) => r.checked?.status !== 'ok').map((r) => `${p}: ${r.book} p ${r.page}`));
+check('PlanDoctrine: every book reference was found on its page (tools/doctrine-refs/verify.py --write)', badRef.length === 0, badRef.join(', '));
+const undecided = figs.filter(([, f]) => f.basis === 'E' && !f.decided).map(([p]) => p);
+check('PlanDoctrine: no figure is left an open proposal (each E records its decision and search)', undecided.length === 0, undecided.join(', '));
+check('PlanDoctrine: bases are the codes the file declares', figs.every(([, f]) => f.basis in doc.plan.basisCodes), [...new Set(figs.filter(([, f]) => !(f.basis in doc.plan.basisCodes)).map(([, f]) => f.basis))].join(', '));
+check('PlanDoctrine: own figures do not rest on the Foxland (enemy) rows of IC s113-114 unless the figure is the enemy\'s or says so', !figs.some(([p, f]) => /IC s113/.test(f.src ?? '') && !/Foxland|enemy|his /i.test(f.src ?? '') && !p.startsWith('enemy.')), figs.filter(([p, f]) => /IC s113/.test(f.src ?? '') && !/Foxland|enemy|his /i.test(f.src ?? '') && !p.startsWith('enemy.')).map(([p]) => p).join(', '));
 for (const k of ['frontage', 'fieldOfFire', 'standoffRows']) {
   const from = doc.plan[k]?.from?.replace(/^OcokaDoctrine\./, '');
   check(`PlanDoctrine: ${k} points at OcokaDoctrine.${from}`, !!from && doc.ocoka[from] != null);

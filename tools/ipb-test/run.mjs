@@ -112,6 +112,21 @@ const ramp = (pct, cells, x0 = 45) => (x) => 200 + Math.min(Math.max(x - x0, 0),
   const c = run(grid(), { obstacles: [{ kind: 'area', pts: [[40, 40], [60, 40], [60, 60], [40, 60]] }] });
   check('a minefield symbol is NO-GO inside, GO outside', at(c, C, C).code === IPB.NOGO && (at(c, C, C).why & WHY.MANMADE) !== 0 && at(c, 10, 10).code === IPB.GO);
 }
+{
+  // Who an obstacle stops (IPB p 10: minefields, tank ditches, barriers; E: wire stops men, a ditch stops vehicles).
+  const ditch = { kind: 'line', pts: [[20, 50], [80, 50]], stops: ['armour', 'mech'] };
+  const wire = { kind: 'line', pts: [[50, 20], [50, 80]], stops: ['dismounted'] };
+  const arm = run(grid(), { obstacles: [ditch, wire] });
+  const foot = run(grid(), { mover: 'dismounted', obstacles: [ditch, wire] });
+  check('an AT ditch stops armour, not infantry; wire the other way round', at(arm, 60, 50).code === IPB.NOGO && at(arm, 50, 60).code === IPB.GO && at(foot, 60, 50).code === IPB.GO && at(foot, 50, 60).code === IPB.NOGO);
+  // A lane through a minefield clears its cells (the minefield burnt first, the lane after).
+  const mf = { kind: 'area', pts: [[40, 40], [60, 40], [60, 60], [40, 60]] };
+  const lane = { kind: 'line', pts: [[50, 35], [50, 65]], lane: true, halfCells: 0 };
+  const c2 = run(grid(), { obstacles: [mf, lane] });
+  check('a safe lane through a minefield is GO, the minefield beside it NO-GO', at(c2, 50, 50).code === IPB.GO && at(c2, 45, 50).code === IPB.NOGO && at(c2, 55, 50).code === IPB.NOGO);
+  const c3 = run(grid(), { obstacles: [lane, mf] });
+  check('the same whichever order they come in', at(c3, 50, 50).code === IPB.GO && at(c3, 45, 50).code === IPB.NOGO);
+}
 // 8 Season rules (Desert p 4, Mountain pp 259, 281).
 {
   const rann = grid({ cls: () => 16 });

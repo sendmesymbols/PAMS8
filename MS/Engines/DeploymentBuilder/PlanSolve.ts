@@ -13,6 +13,7 @@
  */
 import type { DoctrineSet, Recipe } from './PlanRecipes';
 import { doctrineAt, resolveRange, slotSizeM, frontageRow, FOOTPRINT_KINDS, SMALL_TASKS } from './PlanRecipes';
+import { withdrawalGeometryRows } from './PlanWithdrawal';
 
 export type CheckState = 'pass' | 'warn' | 'fail' | 'unchecked';
 /** A check laid out for the reader (the cursor card, the Check step, Copy as Text): what was measured, why, what fixes it. */
@@ -29,7 +30,8 @@ export interface CheckDetail {
   short?: string[];
   whyShort?: string;
 }
-export interface Check { name: string; st: CheckState; reason: string; detail?: CheckDetail }
+/** `word`: the verdict's own word where the generic one misleads (a move the enemy beats reads "Too late", not "Fail"). */
+export interface Check { name: string; st: CheckState; reason: string; detail?: CheckDetail; word?: string }
 
 /** A check as indented text lines under its row (Copy as Text): its items, why and fixes. */
 export function detailLines(c: Check, indent = '      '): string[] {
@@ -190,7 +192,8 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     boxes.push(b); bySlot.set(s.role, b);
     // a posn taken up when ordered (a canal defence's counter penetration posns) is drawn planned (dashed)
     add(s.role, s.sym, s.label ?? '', battlePosnPts(b.c, w, h, turn, opts.outlines?.[s.role]), { echelon: s.echelon, drawType: 1, extra: { FACE_GAP: 5 }, planned: s.planned || undefined });
-    if (s.echelon === '15' || s.echelon === '14') add(`${s.role}Unit`, '10121100', s.label ?? '', [b.c], { echelon: s.echelon });
+    // the unit in its posn: a Pl, Coy or (a Bde's posns) a Bn
+    if (s.echelon === '14' || s.echelon === '15' || s.echelon === '16') add(`${s.role}Unit`, '10121100', s.label ?? '', [b.c], { echelon: s.echelon });
     // the Pl posns inside a Coy locality: two up, one back (Pl 600 x 250 m in a 1500 x 700 m Coy, IBB Annex U App 5)
     if (opts.detail === 'pl' && s.echelon === '15') {
       const coyLetter = (s.label ?? '').split(' ')[0];
@@ -355,7 +358,7 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     const fwdRear = fwd.length ? Math.min(...fwd.map((b) => b.c.y - b.h / 2)) : 0;
     const backFront = back.length ? Math.max(...back.filter((b) => b.c.y < fwdRear).map((b) => b.c.y + b.h / 2), fwdRear - 600) : fwdRear - 600;
     const want = fwd.length ? P(midX, (fwdRear + backFront) / 2) : P(0, 0);
-    const hq = add('hq', '10121100', ech === '16' ? 'Bn HQ' : 'Coy HQ', [freeSpot(want, 150, 150)], { echelon: ech, hq: true });
+    const hq = add('hq', '10121100', ({ '21': 'Div HQ', '18': 'Bde HQ', '16': 'Bn HQ' } as Record<string, string>)[ech] ?? 'Coy HQ', [freeSpot(want, 150, 150)], { echelon: ech, hq: true });
     // the click lands on the HQ unless the recipe names its own pivot (a canal defence: a point on the canal)
     if (hq && !recipe.pivot) pivotId = hq.id;
   }
@@ -384,7 +387,9 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
       const echelon = recipe.slots.find((s) => s.role === a.of)?.echelon;
       add('alt', recipe.slots.find((s) => s.role === a.of)?.sym ?? '25151200', `Alt ${letter}`, battlePosnPts(placed.c, w, h, placed.turn),
         { echelon, planned: true, hidden: opts.alternates === 'hidden', drawType: 1, extra: { FACE_GAP: 5 } });
-      const perKm = num(doctrineAt(doc, 'alt.underFireMinPerKm'), 15);
+      // the same move the what-if times on the ground (PlanWhatIf.routeOnFoot, shelled): on foot at the GO rate (IPB p 18),
+      // half as long again under shelling, + the time to settle; here on open ground, straight
+      const perKm = (60 / num(doctrineAt(doc, 'moves.footKmh.go'), 4)) * num(doctrineAt(doc, 'moves.underFireFactor'), 1.5);
       alts.push({ of: a.of, ofLabel: recipe.slots.find((s) => s.role === a.of)?.label ?? a.of, label: `Alt ${letter}`, centre: placed.c, min: Math.round((dist(b.c, placed.c) / 1000) * perKm + num(doctrineAt(doc, 'cpen.settleMin'), 5)) });
     }
   }
@@ -469,6 +474,16 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     frontageM = e.x1 - e.x0; depthM = e.y1 - e.y0;
     for (const [n, why] of [['Going on the axis', 'the going for tracks along the axis, from the Main Body to the covering troops'], ['Flank guards\' ground', 'the ground the flank guards stand on']] as const) rows.push({ name: n, st: 'unchecked', reason: `${NT}: ${why}` });
     conf.push('The route on the ground: roads, bridges and their classes (the Move Planner)', 'Bounds, report lines and halting areas along the axis');
+  } else if (recipe.task === 'withdrawal') {
+    // the old posn's frontage and depth; the control points, embussing points, intermediate posn and artillery by the
+    // figures (PlanWithdrawal); the ground's rows grey until the terrain fit reads them
+    const fpPts = fp.flatMap((b) => [boxPt(b.c, -b.w / 2, -b.h / 2, b.turn), boxPt(b.c, b.w / 2, b.h / 2, b.turn)]);
+    const e = ext(fpPts.length ? fpPts : allPts);
+    frontageM = e.x1 - e.x0; depthM = e.y1 - e.y0;
+    const wd = withdrawalGeometryRows(items, recipe, doc);
+    rows.push(...wd.rows);
+    for (const [n, why] of [['Routes hidden', 'the routes back in the En view from the threat marker or the En FUP'], ['Behind an obstacle', 'water between the old posn and the intermediate posn']] as const) rows.push({ name: n, st: 'unchecked', reason: `${NT}: ${why}` });
+    conf.push(...wd.confirm);
   } else if (!isAttack) {
     const fpPts = fp.flatMap((b) => [boxPt(b.c, -b.w / 2, -b.h / 2, b.turn), boxPt(b.c, b.w / 2, b.h / 2, b.turn)]);
     const e = ext(fpPts.length ? fpPts : allPts);
@@ -515,12 +530,13 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     const resSlot = recipe.slots.find((s) => s.kind === 'res');
     const res = resSlot && bySlot.get(resSlot.role);
     if (res && fwd.length) {
-      const back = num(doctrineAt(doc, recipe.echelon === '16' ? 'cpen.behindFwdM.bn' : 'cpen.behindFwdM.coy'), 400);
+      const back = num(doctrineAt(doc, recipe.echelon === '16' ? 'cpen.behindFwdM.bn' : recipe.echelon === '18' || recipe.echelon === '21' ? 'cpen.behindFwdM.bde' : 'cpen.behindFwdM.coy'), 400);
       const far = Math.max(...fwd.map((b) => dist(res.c, P(b.c.x, b.c.y - b.h / 2 - back))));
       const kmh = opts.mountedReserve ? num(doctrineAt(doc, 'moves.tankKmh.go'), 24) : opts.reserveKmh ?? num(doctrineAt(doc, 'cpen.footKmPerH'), 5), settle = num(doctrineAt(doc, 'cpen.settleMin'), 5);
       const min = Math.round((far / 1000) * (60 / kmh) + settle);
-      const want = num(doctrineAt(doc, recipe.echelon === '16' ? 'cpen.coyMin' : 'cpen.coyMin'), 30);
-      rows.push({ name: 'Reserve reach', st: min <= want ? 'pass' : 'warn', reason: `${resSlot!.label} to the C Pen posns in ${min} min ${opts.mountedReserve ? 'mounted (the unit\'s APCs, ORBAT; IPB p 18 vehicle rate)' : 'on foot'}, straight line (wants ${want} min)` });
+      // the reserve's time: a depth Coy's local counter-attack 30 min at Coy / Bn level, a Bde reserve 2-3 h, a Div's 4-6 h (IBB p 279)
+      const want = recipe.echelon === '18' || recipe.echelon === '21' ? num(doctrineAt(doc, `check.reserveMin.${recipe.echelon}`), 120) : num(doctrineAt(doc, 'cpen.coyMin'), 30);
+      rows.push({ name: 'Reserve reach', st: min <= want ? 'pass' : 'warn', reason: `${resSlot!.label} to the C Pen posns in ${min} min ${opts.mountedReserve ? 'mounted (the unit\'s APCs, ORBAT; IPB p 18 vehicle rate)' : 'on foot'}, straight line (wants ${want} min${recipe.echelon === '18' ? ', IBB p 279: Bde Res 2-3 h' : recipe.echelon === '21' ? ', IBB p 279: Div Res 4-6 h' : ''})` });
       conf.push(`${resSlot!.label}: walk the routes to the C Pen posns and time them`);
     }
     const nFwd = recipe.slots.filter((s) => s.kind === 'fwd').length;
@@ -854,7 +870,7 @@ export function planText(res: SolveResult, unitLine = '', triggers: string[] | n
   }
   L.push('');
   L.push('CHECKS');
-  for (const c of res.rows) { L.push(`  ${c.name.padEnd(20)} ${WORD[c.st].padEnd(11)} ${c.reason}`); L.push(...detailLines(c)); }
+  for (const c of res.rows) { L.push(`  ${c.name.padEnd(20)} ${(c.word ?? WORD[c.st]).padEnd(11)} ${c.reason}`); L.push(...detailLines(c)); }
   if (triggers && triggers.length) {
     L.push('');
     L.push(({ attack: 'H-HOUR SUM, FIRE LIFTS, NIGHT MARCH AND WEIGHED FACTORS', ambush: 'THE SITE (what scored) AND BETTER SITES ALONG THE RD', patrol: 'ROUTE CARD (out and in)', recce: 'OPS', crossing: 'TIMELINE FROM H (IBB Annex Q), THE BRIDGE SITE, HIS OBSERVERS' } as Record<string, string>)[r.task] ?? "TRIGGERS (who moves, route, own time against the enemy's)");

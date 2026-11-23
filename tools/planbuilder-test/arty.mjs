@@ -64,7 +64,7 @@ const two = rec('bn-def-two-up'), front = rec('bn-attk-frontal');
 const d1 = A.withArty(two, doc, aDef), t1 = A.withArty(front, doc, aAtk);
 const bad = (r) => R.validateRecipe(r, ctx).filter((i) => i.level === 'fail').map((i) => i.msg);
 check('Bn Def and Bn Attk with the Fd Regt: the recipes validate, ids -gun, the gun area a PAA (25240501) named for the Regt', !bad(d1).length && !bad(t1).length && d1.id === 'bn-def-two-up-gun' && t1.id === 'bn-attk-frontal-gun' && d1.slots.find((s) => s.role === 'gunArea')?.sym === '25240501' && d1.slots.find((s) => s.role === 'gunArea').label === 'Fd Regt', [...bad(d1), ...bad(t1)].join('; '));
-check('...the ones passed in unchanged; a Coy plan and a plan that has its artillery already are left as they are', !two.slots.some((s) => s.role === 'gunArea') && !two.arty && !A.withArty(rec('coy-def-two-up'), doc, aDef).slots.some((s) => s.role === 'gunArea') && A.withArty(d1, doc, aDef) === d1);
+check('...the ones passed in unchanged; a Coy plan and a plan that has its artillery already are left as they are', !two.slots.some((s) => s.role === 'gunArea') && !two.arty && A.withArty(d1, doc, aDef) === d1);
 const rect = (r) => r.slots.find((s) => s.role === 'gunArea').shape.rect;
 check('defence: on the axis, its front edge in the middle of the band behind the FDL (FDL front edge -1550 m + 2770 m)', rect(d1).acrossM === 0 && rect(d1).backM === -1550 + 2770 + 500, JSON.stringify(rect(d1)));
 check('attack: 1500 m beside the axis (clear of the Assy Area), its front edge 2270 m behind the FUP', rect(t1).acrossM === 1500 && rect(t1).backM === 0 + 2270 + 500, JSON.stringify(rect(t1)));

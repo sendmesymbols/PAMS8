@@ -575,7 +575,11 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
   const range = (path: string) => resolveRange(doc, doctrineAt(doc, path));
 
   // the slots PlanFit reads (role = posn id)
-  const slots: SlotResult[] = active.filter((p) => p.c).map((p) => ({ role: p.id, label: p.label, kind: p.kind === 'res' ? 'res' : p.kind === 'fwd' ? 'fwd' : 'depth', centre: p.c!, wM: p.w!, hM: p.h!, turnDeg: 0, checks: [], st: 'unchecked' as CheckState }));
+  // each posn faces the way it was drawn (its open face), to the nearest 30 degrees (the build turns posns by 90 or 120):
+  // an all-round plan's rear posn is judged facing out, never through the plan's own middle. Planned posns (alternates,
+  // Sup and C Pen) are timed by the what-if, as the build does, not given ground rows of their own.
+  const turnOf = (p: PosnRead) => (p.faceDeg == null ? 0 : ((Math.round(p.faceDeg / 30) * 30) % 360 + 360) % 360);
+  const slots: SlotResult[] = active.filter((p) => p.c && !['alt', 'sup', 'cpen'].includes(p.kind)).map((p) => ({ role: p.id, label: p.label, kind: p.kind === 'res' ? 'res' : p.kind === 'fwd' ? 'fwd' : 'depth', centre: p.c!, wM: p.w!, hM: p.h!, turnDeg: turnOf(p), checks: [], st: 'unchecked' as CheckState }));
   const recipe: any = { task: 'defence', echelon: planEch, slots: slots.map((s) => ({ role: s.role, kind: s.kind })) };
   const res: any = { slots, items: [], rows: [] };
   const terrain = terrainFor(mp, doc, opts, res, recipe);
@@ -758,7 +762,12 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
       return of ? { of: of.id, ofLabel: of.label, label: a.label, centre: a.c!, min: 0 } : null;
     }).filter((x): x is NonNullable<typeof x> => !!x);
     const raw: any = { ...res, recipe, alternates, items };
-    whatIfRes = whatIf({ recipe, raw, res: raw, fit, frame, anchor: frame.anchor, bearing: frame.bearing, manual: {}, terrain, enemy, unit: unitB } as any, opts.ground, doc, start);
+    // the Sup and C Pen posns drawn on the map (a built plan's, or the user's): timed where they are, not sited again
+    const drawn = {
+      sups: active.filter((p) => p.kind === 'sup' && p.c).sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })).map((p) => ({ label: p.label, centre: p.c! })),
+      cpen: active.find((p) => p.kind === 'cpen' && p.c)?.c ?? null,
+    };
+    whatIfRes = whatIf({ recipe, raw, res: raw, fit, frame, anchor: frame.anchor, bearing: frame.bearing, manual: {}, terrain, enemy, unit: unitB, drawnMoves: drawn } as any, opts.ground, doc, start);
     const mr = movesRow(whatIfRes);
     if (mr) rows.push(mr);
     const tc = defTk ? tankCoverRow(raw, recipe, whatIfRes, fit, frame, doc) : null;
@@ -821,7 +830,21 @@ function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Chec
   const range = (path: string) => resolveRange(doc, doctrineAt(doc, path));
   const ownEch = (() => { const s = strengthOfSide(own, doc); return s >= 27 ? '21' : s >= 9 ? '18' : s >= 3 ? '16' : '15'; })();
   const enemy = withOverride(opts.enemy ?? enemyFromSymbols(mp.syms, doc) ?? defaultEnemy(doc, ownEch, null, 'attack'), opts);
-  const terrain: TerrainSpec = opts.terrain && opts.terrain !== 'auto' ? { kind: opts.terrain, source: 'user' } : { kind: 'plains', source: 'assumed', why: 'set the Ground if the attack goes over an obstacle, desert or mountains' };
+  // the ground's kind as the build reads it: the user's; a built plan's own; else the bundle round the Obj (mountains,
+  // desert: the same detectTerrain the build runs); else plains, assumed
+  const terrain: TerrainSpec = (() => {
+    if (opts.terrain && opts.terrain !== 'auto') return { kind: opts.terrain, source: 'user' } as TerrainSpec;
+    const mg = mp.built?.meta?.ground;
+    if (mg && ['plains', 'obstacle', 'desert', 'mountain'].includes(mg)) return { kind: mg, source: 'plan', why: `as the plan was built${mp.built?.meta?.groundWhy ? ` (${mp.built.meta.groundWhy})` : ''}` } as TerrainSpec;
+    const o = objs[0]?.pts;
+    if (opts.ground && o?.length) {
+      const c = { x: o.reduce((a, p) => a + p.x, 0) / o.length, y: o.reduce((a, p) => a + p.y, 0) / o.length };
+      const f: FitFrame = { anchor: c, bearing: 0, k: kAt(c.y), pivot: { x: 0, y: 0 } };
+      const t = detectTerrain(opts.ground, f, { slots: [], items: [] } as any, { slots: [] } as any, doc);
+      if (t) return t;
+    }
+    return { kind: 'plains', source: 'assumed', why: opts.ground ? 'the ground round the Obj is not loaded yet' : 'set the Ground if the attack goes over an obstacle, desert or mountains' } as TerrainSpec;
+  })();
   rows.push(forceRow(doc, 'attack', ownEch, enemy, strengthOfSide(own, doc) || undefined, ...enemyFromOrbat(mp, doc, opts, enemy, terrain.kind)));
   rows.push(terrainRow(doc, terrain));
   // the artillery it was built with (pbMeta.arty): its gun area, the FUP, the Obj and the LOE read from their symbols, in
@@ -1021,17 +1044,17 @@ export function checkText(r: CheckReport): string {
   for (const x of r.read) L.push(`  ${x}`);
   if (r.unclear.length) { L.push(''); L.push('TO CONFIRM'); for (const u of r.unclear) L.push(`  - ${u}`); }
   L.push(''); L.push('CHECKS');
-  for (const c of r.rows) { L.push(`  ${c.name.padEnd(22)} ${W[c.st].padEnd(11)} ${c.reason}`); L.push(...detailLines(c)); }
+  for (const c of r.rows) { L.push(`  ${c.name.padEnd(22)} ${(c.word ?? W[c.st]).padEnd(11)} ${c.reason}`); L.push(...detailLines(c)); }
   if (r.task === 'defence' && r.slots.length) {
     L.push(''); L.push('POSNS');
     for (const s of r.slots) {
       L.push(`  ${s.label} (${r.posns.find((p) => p.id === s.role)?.kind ?? s.kind}) ${W[s.st]}`);
-      for (const c of s.checks) L.push(`    ${c.name.padEnd(18)} ${W[c.st].padEnd(11)} ${c.reason}`);
+      for (const c of s.checks) L.push(`    ${c.name.padEnd(18)} ${(c.word ?? W[c.st]).padEnd(11)} ${c.reason}`);
     }
   }
   for (const g of r.groups) {
     L.push(''); L.push(`${g.label.toUpperCase()} -> ${g.obj?.label ?? '?'} (${W[g.st]})`);
-    for (const c of g.rows) L.push(`  ${c.name.padEnd(22)} ${W[c.st].padEnd(11)} ${c.reason}`);
+    for (const c of g.rows) L.push(`  ${c.name.padEnd(22)} ${(c.word ?? W[c.st]).padEnd(11)} ${c.reason}`);
   }
   if (r.whatIf?.triggers.length) { L.push(''); L.push("TRIGGERS (who moves, route, own time against the enemy's)"); for (const t of triggerLines(r.whatIf)) L.push(t); }
   L.push(''); L.push('CONFIRM ON THE GROUND');

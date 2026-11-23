@@ -90,7 +90,48 @@
       "trackClasses": { "basis": "E", "value": [38] },
       "closeClasses": { "basis": "E", "value": [1, 29, 30, 31], "note": "Close country where the rule applies: trees and orchards (the book ties the rule to vegetation: 'This negates vegetation'). Built-up areas are judged by the BUA rule only." }
     },
-    "manMade": { "basis": "D", "src": "IPB p 10", "text": "Minefields, tank ditches, trees blown down and barriers (may be directional).", "fromSymbols": "Read from obstacle symbols on the map; ditch-cum-bund and AT ditches are not in the bundle." },
+    "manMade": {
+      "basis": "D", "src": "IPB p 10", "text": "Minefields, tank ditches, trees blown down and barriers (may be directional).",
+      "refs": [{ "book": "IPB", "page": "10", "quote": "Minefields, tank ditches, trees blown down and barriers", "role": "rule" }],
+      "fromSymbols": "Read from the obstacle symbols on the map (2026-11-23); ditch-cum-bund and AT ditches are not in the bundle. An obstacle stops the movers listed; left out: every mover. A lane opens a way through.",
+      "coveredByFire": { "basis": "U", "src": "ATP 2-01.3 para 4-14: obstacles are effective only if covered by observation and fire", "refs": [{ "book": "ATP", "page": "4-14", "quote": "covered by observation and fire", "role": "rule" }], "rule": "An own obstacle no own Posn's weapon reaches (catalogue Rng) is still coded NO-GO (the book) but named as not covered." },
+      "sides": { "basis": "E", "decided": "An obstacle stops whoever crosses it, whichever side laid it; a lane (safe lane, breach, bridge over a ditch) is used only by the side that made it; a decoy minefield works only on the other side, who cannot tell it apart.", "searched": "IPB pp 10-12, ATP 2-01.3 ch 4, OoW Vol I s12-13 pp 42-45, IBB Annex Q: none says who may use a lane; decoys by definition deceive the other side." },
+      "symbols": {
+        "basis": "E",
+        "decided": "Which movers each 2525D obstacle symbol stops: the book names minefields and tank ditches (armour, p 10) and barriers; wire stops men on foot, not vehicles; AT mines, ditches and walls stop vehicles, not men (a man steps over an AT mine, climbs a ditch); AP and mixed minefields and mined areas stop everyone. Halt lines are 3 cells (90 m) wide so a 30 m sample cannot slip between two cells.",
+        "searched": "IPB p 10 (minefields, tank ditches, barriers); FM 34-130 Fig B-6 (minefields NO-GO for mechanized or armored forces); IBB Annex Q (AT ditch, wire).",
+        "stops": {
+          "25270701": { "name": "Minefield - AP", "stops": ["armour", "mech", "dismounted"] },
+          "25270702": { "name": "Minefield - AP directional", "stops": ["armour", "mech", "dismounted"] },
+          "25270703": { "name": "Minefield - AT", "stops": ["armour", "mech"] },
+          "25270704": { "name": "Minefield - AT anti-handling", "stops": ["armour", "mech"] },
+          "25270705": { "name": "Minefield - wide area AT", "stops": ["armour", "mech"] },
+          "25270706": { "name": "Minefield - unspecified", "stops": ["armour", "mech", "dismounted"] },
+          "25270707": { "name": "Minefield - AP + AT", "stops": ["armour", "mech", "dismounted"] },
+          "25270800": { "name": "Mined area", "stops": ["armour", "mech", "dismounted"] },
+          "25270900": { "name": "Decoy mined area", "stops": ["armour", "mech", "dismounted"], "decoy": true },
+          "25270901": { "name": "Decoy mined area fenced", "stops": ["armour", "mech", "dismounted"], "decoy": true },
+          "25271000": { "name": "UXO area", "stops": ["armour", "mech", "dismounted"] },
+          "25290201": { "name": "DCB", "stops": ["armour", "mech"] },
+          "25290202": { "name": "DCB filled", "stops": ["armour", "mech"] },
+          "25290203": { "name": "AT ditch with mines", "stops": ["armour", "mech", "dismounted"] },
+          "25290204": { "name": "AT wall", "stops": ["armour", "mech"] },
+          "25290100": { "name": "Obstacle line", "stops": ["armour", "mech", "dismounted"] },
+          "25290301": { "name": "Wire", "stops": ["dismounted"] },
+          "25290302": { "name": "Single fence", "stops": ["dismounted"] },
+          "25290303": { "name": "Double fence", "stops": ["dismounted"] },
+          "25290304": { "name": "Double apron fence", "stops": ["dismounted"] },
+          "25290305": { "name": "Low wire fence", "stops": ["dismounted"] },
+          "25290306": { "name": "High wire fence", "stops": ["dismounted"] },
+          "25290307": { "name": "Single concertina", "stops": ["dismounted"] },
+          "25290308": { "name": "Double strand concertina", "stops": ["dismounted"] },
+          "25290309": { "name": "Triple strand concertina", "stops": ["dismounted"] },
+          "25290900": { "name": "Fortified line", "stops": ["armour", "mech", "dismounted"] }
+        },
+        "lanes": { "25271100": "Bridge - gap", "25271300": "Assault crossing", "25271400": "Bridge", "25170400": "Safe lane", "25340200": "Breach" },
+        "leftOut": "Block, Turn, Fix and Disrupt are obstacle effects (intentions), obstacle zones and bypass marks are plans: not obstacles on the ground."
+      }
+    },
     "waterTable": { "basis": "D", "src": "IPB pp 10-12", "nogoFt": 5, "slowFt": [5, 10], "goFt": 10, "notRecorded": "Not in the bundle: not assessed anywhere." },
     "season": {
       "note": "Rules from the terrain pamphlets. Whether they join the coding or stay as notes is a switch (ipb.season: coding | notes) until the user decides.",
@@ -197,7 +238,7 @@
     "vehicleKmh": { "go": [24, 24], "slow": [16, 8], "nogo": [1.0, [0.1, 0.5]] },
     "note": "Day, night. Vehicles at night: GO with lights or passive, SLOW-GO blacked out.",
     "footByTerrain": { "basis": "D", "src": "IBB p 18", "plains": [4, 3], "desertFirm": [3, 2.5], "desertLoose": [2.5, 2], "mountainDescent": [3, 2], "mountainAscent": [2, 1] },
-    "mountain": { "basis": "D", "src": "MW p 81", "dayKmh": 3, "nightKmh": [0.5, 1], "addMinPer300mAscent": [30, 60], "addMinPer600mDescent": [30, 60], "groundDistance": "map distance + 1/3" }
+    "mountain": {"basis": "D", "src": "MW p 81", "dayKmh": 3, "nightKmh": [0.5, 1], "addMinPer300mAscent": [30, 60], "addMinPer600mDescent": [30, 60], "groundDistance": "map distance + 1/3", "refs": [{"book": "MW", "page": "81", "quote": "30 to 60 minutes for every 300 metres of ascent", "role": "rule"}], "appliedTo": "The Decision tab's times on foot: each avenue's ascent (the grid's 30 m elevation every 100 m along it) adds 30 min per 300 m at his earliest and 60 at his latest, wherever the ground is (on the plains the rise is a few metres and costs nothing); descents not charged (E: the book's descent figure is for 600 m, rare on an avenue). Vehicles pay nothing: the book's figure is for men on foot. The same figure the Intelligent Deployment tab's own moves pay (PlanDoctrine terrain.kinds.mountain.ascentMinPer300m 45, its midpoint)."}
   },
 
   "decisionPoints": {
@@ -220,7 +261,8 @@
       { "id": "going", "label": "Going", "weight": 1, "basis": "E" },
       { "id": "surprise", "label": "Surprise", "weight": 1, "basis": "D", "src": "OOW2 s6" }
     ],
-    "weightsNote": { "basis": "E", "note": "Default weights are my proposal; the user sets them 0-3." },
+    "weightsNote": { "basis": "E", "note": "Default weights are my proposal; the user sets them 0-3 (extended.ipb.lrWeights, the chips in tab 3's Left or Right tile)." },
+    "reading": { "basis": "E", "decided": "How the Extended View scores each factor 0-1 (GroundGuideIpbCompare.ts): msr = the turning approach to the MSR choke goes round this side (1) or the other (0.25), frontal 0; fupCover = his fire at the FUP (under fire 0, out of range 0.6, screened or dead 1); fupObstacles = 1 - 0.8 x NO-GO share of the assault - 0.1 a narrows; fupDistance = the assault against the FUP distance set; route = 1 - share of the way under his fire; fireBase = not read here (0.5, the Intelligent Deployment tab sites the BOF); going = GO share; surprise = share of the way he may not watch. A factor not read scores 0.5 both sides and never decides; left and right within 3 points are level.", "searched": "IC s15.12 b (the factors, no scoring), IC s15.12 c (time and space), OoW Vol II s6 (surprise); no book scores them." },
     "timeAndSpace": { "basis": "D", "src": "IC s15.12 c", "unforeseenMin": [5, 10], "inFupMin": 2 }
   },
 

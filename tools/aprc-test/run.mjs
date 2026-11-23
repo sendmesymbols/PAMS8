@@ -137,7 +137,7 @@ doc.sources = ['Land cover (2021)', '1:50k map (Survey of Pakistan)'];
   check('Gr: ITGs: BUAs astride the FDLs and depth are proposals', P('gr.itg.kot-jaimal')?.state === 'judge' && P('gr.itg.nurpur')?.state === 'judge' && !P('gr.itg.burj'));
   check('Gr: Obs lists water, NO-GO, bridges and the drawn minefield', /Sukh Nala \(nala, 12 m\) across the Lt, Cen and Rt apchs/.test(P('gr.obs').draft) && /3 bridges in the AOR, 0 with a load class/.test(P('gr.obs').draft) && /Minefield 1\.2 km N of Kot Jaimal/.test(P('gr.obs').draft), P('gr.obs').draft);
   check('Gr: Cover by apch, at the MITG and crops', /Lt BUAs 9 %, trees and orchards 14 %/.test(P('gr.cover').draft) && /cover from dir fire poor/.test(P('gr.cover').draft) && /60 % of the cropland hides a crouching man/.test(P('gr.cover').draft));
-  check('Gr: Met Conditions with light', /February: max 21 °C, min 7 °C, rain 28 mm, wind 2\.0 m\/s/.test(P('gr.met').draft) && /first lt 06\d\d, last lt 18\d\d hrs \(UTC\+5\)/.test(P('gr.met').draft), P('gr.met').draft);
+  check('Gr: Met Conditions with light', /February: max 21 °C, min 7 °C, rain 28 mm, wind 2\.0 m\/s/.test(P('gr.met').draft) && /first lt 06\d\d, last lt 18\d\d hrs \(UTC\+5, PKT\)/.test(P('gr.met').draft) && P('gr.met').basis.some((b) => /UTC\+5, PKT/.test(b.text)), P('gr.met').draft);
   check('Gr: Pri of Apchs is a proposal with its reasons', P('gr.ded.pri').state === 'judge' && /^Lt \(6\.1 km past the Intl Border, 2 BUAs, 2 water obs\), Cen .* then Rt .*narrows to 1\.1 km\)\.$/.test(P('gr.ded.pri').draft), P('gr.ded.pri').draft);
   check('Gr: Pri of Comb from the laterals', /^Lt and Cen \(2 metalled laterals\); Cen and Rt \(1 metalled lateral\)\.$/.test(P('gr.ded.comb').draft));
   const ln = P('gr.ded.lines');
@@ -203,7 +203,9 @@ M.setMine(doc, 'aim', 'To def <Qila Mor> & hold it.');
   check('page: tables print ruled', /<table>/.test(fair) && /<th>Ratio<\/th>/.test(fair));
   check('page: no "whites"', !/whites/i.test(fair + draft));
   const pr = H.printHtml(doc, 'fair');
-  check('print: A4 with the page number and the marking as a ruled line in the margins', /@page\{size:A4/.test(pr) && /@top-center\{content:counter\(page\) "\\A ________________"/.test(pr) && /@bottom-center\{content:"________________"/.test(pr) && pr.startsWith('<!doctype html>'));
+  check('print: A4, the page number in the top margin where supported', /@page\{size:A4/.test(pr) && /@top-center\{content:counter\(page\)/.test(pr) && pr.startsWith('<!doctype html>'));
+  check('print: the marking ruled line heads and foots every page from a repeating table head and foot (no margin boxes needed)', /<thead><tr><td><div class="ap-mkg"><span class="ap-rule"><\/span><\/div><\/td><\/tr><\/thead><tfoot><tr><td><div class="ap-mkg">/.test(pr) && !/display:none/.test(pr) && (pr.match(/class="ap-mkg"/g) || []).length === 2);
+  check('print: the title is the file name (Save as PDF takes it)', /<title>Aprc_Qila_Mor_\d{4}-\d\d-\d\d<\/title>/.test(pr) && H.aprcFileBase(doc, 'draft', new Date('2027-02-15T08:00:00Z')) === 'Aprc_Qila_Mor_2027-02-15_draft', pr.match(/<title>[^<]*/)?.[0]);
   check('page: the sheet shows the ruled line at head and foot', (fair.match(/<div class="ap-mkg"><span class="ap-rule"><\/span><\/div>/g) || []).length === 2);
 }
 
@@ -288,9 +290,23 @@ M.setMine(doc, 'aim', 'To def <Qila Mor> & hold it.');
   M.applyPatches(next, [{ id: 'own.tasks.dp1', draft: '', state: 'judge', table: { head: ['Ser', 'Locs', 'Inf'], rows: [['(1)', 'FDLs: B', '3 x pl']] } }]);
   M.carryOver(d, next);
   const q = M.find(next, 'own.tasks.dp1');
-  check('cells: a new reading keeps typed cells and added rows', q.cells['0,2'] === '2 x pl' && q.addRows === 1 && M.tableOf(q, 'draft').rows[0][1] === 'FDLs: B');
+  check('cells: keyed by the row, not its index', p.cells['fdls: a::2'] === '2 x pl' && p.cells['+0::1'] === 'Screen', JSON.stringify(p.cells));
+  check('cells: a row of his gone from the new reading: his cells kept as an added row with its name, the paragraph marked', q.addRows === 2 && q.cells['+0::1'] === 'Screen' && q.cells['+1::2'] === '2 x pl' && q.cells['+1::1'] === 'FDLs: A' && JSON.stringify(q.moved.rows) === '[1]' && M.staleWhy(q) === 'rows' && M.tableOf(q, 'draft').rows[0][1] === 'FDLs: B' && M.tableOf(q, 'draft').rows[2][2] === '2 x pl', JSON.stringify(q.cells));
+  {
+    const n2 = M.newDoc('def');
+    M.applyPatches(n2, [{ id: 'own.tasks.dp1', draft: '', state: 'judge', table: { head: ['Ser', 'Locs', 'Inf'], rows: [['(1)', 'FDLs: Z', '3 x pl'], ['(2)', 'FDLs: A', '3 x pl'], ['(3)', 'Total', '6 x pl']] } }]);
+    M.carryOver(d, n2);
+    const r2 = M.find(n2, 'own.tasks.dp1');
+    check('cells: a row added above his moves nothing: his figure stays on its row', M.tableOf(r2, 'draft').rows[1][2] === '2 x pl' && M.tableOf(r2, 'draft').rows[0][2] === '3 x pl' && !r2.moved && r2.addRows === 1);
+    check('cells: use the new reading drops the moved rows; keep clears the mark', (() => { const c1 = JSON.parse(JSON.stringify(next)); M.dropMoved(c1, 'own.tasks.dp1'); const a = M.find(c1, 'own.tasks.dp1'); const c2 = JSON.parse(JSON.stringify(next)); M.keepMoved(c2, 'own.tasks.dp1'); const b = M.find(c2, 'own.tasks.dp1'); return a.addRows === 1 && a.cells['+0::1'] === 'Screen' && !a.cells['+1::2'] && !a.moved && b.addRows === 2 && !b.moved; })());
+    const old = { cells: { '0,2': 'x', '1,1': 'y', '2,0': 'z' }, table: { head: ['Ser', 'Locs', 'Inf'], rows: [['(1)', 'FDLs: A', ''], ['(2)', 'Total', '']] }, id: 't' };
+    M.migrateCells(old);
+    check('cells: kept "row,col" cells are re-keyed by row on open', old.cells['fdls: a::2'] === 'x' && old.cells['total::1'] === 'y' && old.cells['+0::0'] === 'z', JSON.stringify(old.cells));
+    const rk = M.rowKeys({ head: ['Ser', 'Ev'], rows: [['a.', 'His lead element at TAI 1: H+0:54 to H+1:36 (0654 hrs D Day to 0736 hrs D Day).'], ['b.', 'Unforeseen'], ['c.', 'Unforeseen'], ['d.', '']] });
+    check('cells: row keys leave times out, tell repeats and blanks apart', rk[0] === 'his lead element at tai 1: .' && rk[1] === 'unforeseen' && rk[2] === 'unforeseen#2' && rk[3] === 'unforeseen#2~1', JSON.stringify(rk));
+  }
   M.addRow(d, 'own.tasks.dp1', -1);
-  check('cells: removing the added row drops its cells', !p.addRows && p.cells['2,1'] === undefined && p.cells['0,2'] === '2 x pl');
+  check('cells: removing the added row drops its cells', !p.addRows && p.cells['+0::1'] === undefined && p.cells['fdls: a::2'] === '2 x pl');
   M.setCell(d, 'own.tasks.dp1', 0, 2, null);
   check('cells: null gives a cell back to the tool', !p.cells);
   M.accept(d, 'own.tasks.dp1');
@@ -329,7 +345,8 @@ M.setMine(doc, 'aim', 'To def <Qila Mor> & hold it.');
   check('en: most dangerous is one of the two options', (() => { const p3 = W.writeEnemy({ ...e, avenues: [...e.avenues.slice(0, 2), { ...e.avenues[0], id: 'AA 3', rank: 3, endH: [0.5, 1] }] }).patches; return /Along AA 2/.test(p3.find((x) => x.id === 'en.danger').draft); })());
   check('en: option 2 is the second avenue; a lone corridor is not an option', /along AA 2 \(frontal\)/.test(M.find(d, 'en.opt2').draft) && /narrows to 0\.9 km/.test(M.find(d, 'en.opt2').draft) && !/MC 5/.test(JSON.stringify(ew.patches)));
   check('en: most dangerous = earliest onto the objective, a proposal', M.find(d, 'en.danger').draft === 'Along AA 2: he is onto Qila Mor earliest, at H+1:06.' && M.find(d, 'en.danger').state === 'judge');
-  check('en: most probable stays the planner\'s', M.find(d, 'en.probable').draft === null);
+  check('en: most probable is the IPB reading\'s main avenue, a proposal saying it has no book figure', /^Along AA 1 \(Lt flanking\): the main avenue of the IPB reading/.test(M.find(d, 'en.probable').draft) && M.find(d, 'en.probable').state === 'judge' && M.find(d, 'en.probable').basis.some((b) => /no book figure/.test(b.text)), M.find(d, 'en.probable').draft);
+  check('en: no main avenue, most probable stays the planner\'s', !W.writeEnemy({ ...e, avenues: e.avenues.map((a) => ({ ...a, main: false })) }).patches.some((x) => x.id === 'en.probable'));
   const rt = M.find(d, 'crs.react').table;
   check('en: reactions table from the TAIs and DPs', rt.rows.length === 2 && /TAI 1 on AA 1 \(the crossing/.test(rt.rows[0][1]) && /DP 1: interdict at TAI 1 \(before H\)/.test(rt.rows[0][2]) && /DP 2: launch the C attk by H\+0:42/.test(rt.rows[1][2]) && rt.rows[1][0] === 'b.');
   check('en: the 2 hr rule is cited', M.find(d, 'crs.react').basis.some((b) => /IPB book p 30/.test(b.text)));
@@ -552,6 +569,124 @@ const ad = M.newDoc('attk');
   check('attk slides: sand model is the ground only', sand.length > 1 && sand.every((s) => !/^aprc:(aim|en|own|crs|plan)/.test(s.sourceRef ?? '')));
   check('attk slides: the book\'s blank tables make no slide until drafted or typed', !full.some((s) => s.sourceRef === 'aprc:ts.calc' || s.sourceRef === 'aprc:own.tasks'));
   check('attk kinds: a defence deck is unchanged by the attack lists', K.DECK_IDS.def.decision.includes('en.opts') && !K.DECK_IDS.def.decision.includes('own.tasks'));
+}
+
+// ── a Read that cannot read again keeps the reading (fix 1), what changed (18), H re-times only times (2) ────────────
+{
+  const prev = M.newDoc('def');
+  M.applyPatches(prev, W.writeGround(gin).patches, 'gr');
+  M.applyPatches(prev, [{ id: 'en.opt1.what', draft: 'Old option.', state: 'judge' }], 'en');
+  M.applyPatches(prev, [{ id: 'rev.en', draft: 'Marked: 1 x Bde.', state: 'map' }], 'map');
+  prev.frame = gw.frame;
+  prev.sources = ['Land cover (2021)'];
+  prev.confirm = [{ text: 'Walk the Lt apch.', paras: ['gr.apchs'], src: 'gr' }, { text: 'Symbols old.', paras: ['rev.en'], src: 'map' }];
+  prev.readAt = { gr: '2027-02-15 11:00', en: '2027-02-15 11:00' };
+  M.setMine(prev, 'gr.obs', 'My obs.');
+  // this Read: the ground not read, the map read again
+  const next = M.newDoc('def');
+  M.applyPatches(next, [{ id: 'rev.en', draft: 'Marked: 2 x Bde.', state: 'map' }], 'map');
+  const kept = M.keepUnread(prev, next, ['gr', 'en', 'orbat', 'time']);
+  check('keep: the ground not read keeps the earlier Gr paragraphs, frame, data and their Confirm items', kept > 5 && M.find(next, 'gr.gen').draft === M.find(prev, 'gr.gen').draft && M.find(next, 'gr.apchs').children.length === 3 && next.frame?.place === 'Qila Mor' && next.sources.length === 1 && next.confirm.some((c) => c.text === 'Walk the Lt apch.') && !next.confirm.some((c) => c.text === 'Symbols old.') && next.readAt.gr === '2027-02-15 11:00', `${kept}`);
+  check('keep: the en options not read are kept too; what was read again wins', M.find(next, 'en.opt1.what').draft === 'Old option.' && M.find(next, 'rev.en').draft === 'Marked: 2 x Bde.');
+  check('keep: nothing kept from a sheet of the other kind', M.keepUnread(M.newDoc('attk'), M.newDoc('def'), ['gr']) === 0);
+  const ch = M.markChanges(prev, next);
+  check('changed: only what this Read changed is marked, with what it said before', ch === 1 && M.find(next, 'rev.en').changed === 'map' && M.find(next, 'rev.en').before.draft === 'Marked: 1 x Bde.' && !M.find(next, 'gr.gen').changed, `${ch}`);
+  check('changed: nothing marked against a sheet never read', M.markChanges(null, next) === 0 && !M.find(next, 'rev.en').changed);
+  M.carryOver(prev, next);
+  check('keep: his words ride on the kept reading, not stale', M.find(next, 'gr.obs').mine.text === 'My obs.' && !M.isStale(M.find(next, 'gr.obs')));
+  // stale reasons
+  const n3 = M.newDoc('def');
+  M.applyPatches(n3, [{ id: 'gr.obs', draft: 'Different obs.', state: 'gr' }, { id: 'rev.en', draft: 'Marked: 3 x Bde.', state: 'map' }], 'gr');
+  M.applyPatches(n3, [{ id: 'rev.en', src: 'map' }]);
+  M.markChanges(next, n3);
+  M.carryOver(next, n3);
+  check('stale: says what changed under his words (Gr)', M.staleWhy(M.find(n3, 'gr.obs')) === 'gr' && M.shown(M.find(n3, 'gr.obs'), 'draft').why === 'gr');
+  M.setMine(n3, 'rev.en', 'My en.');
+  const rt = M.retime(n3, [{ id: 'rev.en', draft: 'Marked at H+1.', state: 'map' }], ['map']);
+  check('retime: a clock change marks his words "H changed", not Gr', rt === 1 && M.staleWhy(M.find(n3, 'rev.en')) === 'h' && M.find(n3, 'rev.en').changed === 'h' && M.STALE_MARK.h === 'H changed since');
+  check('retime: a paragraph from another reading is left alone (a reactions table the plan settled)', (() => { const d = M.newDoc('def'); M.applyPatches(d, [{ id: 'crs.react', draft: '', state: 'judge', table: { head: ['Ser', 'En', 'Own'], rows: [['a.', 'Plan row', 'x']] } }], 'plan'); return M.retime(d, [{ id: 'crs.react', draft: '', state: 'judge', table: { head: ['Ser', 'En', 'Own'], rows: [['a.', 'IPB row', 'y']] } }], ['en', 'time']) === 0 && M.find(d, 'crs.react').table.rows[0][1] === 'Plan row'; })());
+  check('text, page and Word mark stale by what changed', /H changed since\]/.test(M.toText(n3, 'draft')) && /H CHANGED SINCE/.test(H.bodyHtml(n3, 'draft')) && /H CHANGED SINCE/.test(D.docxFiles(n3, 'draft')['word/document.xml']));
+  // given back words are kept
+  M.setMine(n3, 'gr.obs', null);
+  check('give back: his words are kept to put back', M.find(n3, 'gr.obs').discarded.text === 'My obs.' && !M.find(n3, 'gr.obs').mine && M.restoreDiscarded(n3, 'gr.obs') && M.find(n3, 'gr.obs').mine.text === 'My obs.' && !M.find(n3, 'gr.obs').discarded);
+  const c = M.counts((() => { const d = M.newDoc('def'); M.applyPatches(d, [{ id: 'gr.ded.pri', draft: 'A.', state: 'judge' }, { id: 'gr.ded.comb', draft: 'B.', state: 'judge' }]); M.accept(d, 'gr.ded.pri'); return d; })());
+  check('counts: accepted proposals counted as accepted, not open', c.accepted === 1 && c.open === 1 && c.judge === 2, JSON.stringify(c));
+}
+// ── opening a file (13) ──────────────────────────────────────────────────────────────────────────────────────────
+{
+  const raw = JSON.parse(JSON.stringify(M.newDoc('attk')));
+  delete raw.figures; delete raw.confirm; delete raw.sources; raw.marking = 'SECRET';
+  raw.parts[2].groups[0].paras[0].basis = undefined;
+  const t = raw.parts[1].groups[0].paras[0];
+  const n = M.normalizeDoc(raw);
+  check('open: an older or hand-edited file gets the arrays the sheet reads', n && Array.isArray(n.figures) && Array.isArray(n.confirm) && Array.isArray(n.sources) && n.kind === 'attk' && !('marking' in n) && Array.isArray(n.parts[2].groups[0].paras[0].basis) && !!t);
+  check('open: not an appreciation, refused', M.normalizeDoc({ version: 2, parts: [] }) === null && M.normalizeDoc(null) === null && M.normalizeDoc('x') === null);
+  check('open: toText and the page run on it', M.toText(n, 'draft').length > 100 && H.bodyHtml(n, 'draft').length > 100);
+  // a sheet kept before drafts carried their reading: the reading is told from the id, so a Read that cannot read keeps it
+  const legacy = JSON.parse(JSON.stringify(doc));
+  M.walk(legacy, (p) => { delete p.src; });
+  const ln = M.normalizeDoc(legacy);
+  const fresh = M.newDoc('def');
+  check('open: an older sheet gets its readings told from the ids, and a Read without the ground keeps them', M.find(ln, 'gr.gen').src === 'gr' && M.find(ln, 'own.str').src === 'orbat' && M.keepUnread(ln, fresh, ['gr', 'orbat']) > 5 && M.find(fresh, 'gr.gen').draft === M.find(doc, 'gr.gen').draft);
+}
+// ── unique ids (14) ──────────────────────────────────────────────────────────────────────────────────────────────
+{
+  const u = new Set(['gr.itg.more']);
+  check('ids: a repeat gets -2, -3; a fixed id is never taken', M.uniqueId(u, 'a') === 'a' && M.uniqueId(u, 'a') === 'a-2' && M.uniqueId(u, 'a') === 'a-3' && M.uniqueId(u, 'gr.itg.more') === 'gr.itg.more-2');
+  const ct = W.writeCoyTasks([{ label: 'A Coy', kind: 'fwd', span: null, units: [], moves: [], catk: [] }, { label: 'A Coy', kind: 'fwd', span: 'over X', units: [], moves: [], catk: [] }]);
+  const d = M.newDoc('def');
+  M.applyPatches(d, ct.patches);
+  const ids = [];
+  M.walk(d, (p) => ids.push(p.id));
+  check('ids: two posns of one name give unique ids', new Set(ids).size === ids.length && !!M.find(d, 'plan.exec.tasks.a-coy-2.t1'));
+  const r2 = { ...reading, lines: [...reading.lines.slice(0, 1), { ...reading.lines[1], buas: ['More', 'Chak-21', null] }, { ...reading.lines[2], buas: ['Chak 21', null, null] }, reading.lines[3]] };
+  const d2 = M.newDoc('def');
+  M.applyPatches(d2, W.writeGround({ ...gin, reading: r2 }).patches);
+  const ids2 = [];
+  M.walk(d2, (p) => ids2.push(p.id));
+  check('ids: ITGs whose names slug alike, or a place called More, stay unique', new Set(ids2).size === ids2.length && !!M.find(d2, 'gr.itg.chak-21-2') && !!M.find(d2, 'gr.itg.more-2'), ids2.filter((x) => x.startsWith('gr.itg.')).join(' '));
+}
+// ── the writer's new paragraphs (24-31) ──────────────────────────────────────────────────────────────────────────
+{
+  const g = W.writeGround({ ...gin, threatMarked: true, threatWords: 'the Threat marker, 6.2 km N of Qila Mor' });
+  check('threat: the marker in words in the frame and the basis', g.frame.threat === 'the Threat marker, 6.2 km N of Qila Mor' && g.patches.find((x) => x.id === 'gr.apchs').basis.some((b) => /Threat marker, 6\.2 km N/.test(b.text)));
+  const dp2 = g.patches.find((x) => x.id === 'gr.ded.dp2');
+  check('DP 2: stepped back to the depth line, a proposal', dp2.state === 'judge' && /^FDLs on Line Y \(Chak 21 – Jhanda/.test(dp2.draft) && /Line X \(Kot Jaimal – Dhok Rai\) held by a screen/.test(dp2.draft), dp2.draft);
+  check('DP 2: no depth line, left to the planner', W.writeGround({ ...gin, reading: { ...reading, lines: reading.lines.map((l) => (l.role === 'Depth' ? { ...l, role: '' } : l)) } }).patches.find((x) => x.id === 'gr.ded.dp2').draft === null);
+  const five = [{ ...reading.lines[0], id: 'V', depthM: 900 }, ...reading.lines, { ...reading.lines[2], id: 'Y2', role: '', depthM: 5200 }];
+  const g5 = W.writeGround({ ...gin, reading: { ...reading, lines: five } });
+  const poss = g5.patches.find((x) => x.id === 'gr.ded.lines').children[0];
+  check('lines: as many as the reading gives, from the front by depth, the MITG line last', poss.children.map((c) => c.head).join('|') === 'Line V|Line W|Line X|Line Y|Line Y2|Line Z', poss.children.map((c) => c.head).join('|'));
+  const ob = { near: 'Burj', radiusM: 2000, seenPct: 40, clearMedianM: 800, country: 'open', overlook: null, points: 3, minSeenPct: 22, maxSeenPct: 61, worstNear: 'Burj' };
+  const gs = W.writeGround({ ...gin, obsn: { Lt: ob } });
+  const lo = gs.patches.find((x) => x.id === 'gr.apchs').children[0].children.find((c) => c.id === 'gr.apch.lt.obsn');
+  check('Obsn: sampled along the apch, the spread and the worst place said', /about 40 % \(22-61 % at 3 points; least near Burj\) of the ground within 2\.0 km is in view from points along it/.test(lo.draft) && lo.basis.some((b) => /at 3 points along/.test(b.text)), lo.draft);
+  const sw = W.writeSymbols([{ id: 'h', key: '10110000', name: 'Infantry', side: 'own', ech: '16', label: '7 Bn', where: '1.2 km S of Qila Mor', hq: true }, { id: 'h2', key: '10110000', name: 'Infantry', side: 'enemy', ech: '16', label: 'X', where: null, hq: true }]);
+  const hq = sw.patches.find((x) => x.id === 'plan.comd');
+  check('HQ: own HQ symbols in Comd and Sig, from the map', hq?.state === 'map' && hq.draft === 'HQ as marked: 7 Bn (Bn HQ) 1.2 km S of Qila Mor.' && W.writeSymbols([{ id: 'h', key: '10110000', name: 'Infantry', side: 'own', ech: '15', label: 'A', where: null, hq: true }], { attack: true }).patches.some((x) => x.id === 'plan.comd.hq'));
+  const bn = { name: 'Inf Bn (Std)', count: 1, coys: 4, strength: 850, atgm: 8, mortars: 6, plsPerCoy: 3, src: 'x' };
+  const st = W.writeStrength({ en: [{ ...bn, name: 'En Bn', coys: 3 }], enAssumed: null, own: [bn], ownAssumed: null, need: null }, { attack: true });
+  check('strength: the advice is a proposal of its own; the figures stay a fact', !/phase the attk/.test(st.patches.find((x) => x.id === 'own.str').draft) && st.patches.find((x) => x.id === 'own.str').state === 'map' && st.patches.find((x) => x.id === 'own.ded.addl')?.state === 'judge' && /phase the attk/.test(st.patches.find((x) => x.id === 'own.ded.addl').draft));
+  const fire = W.writeFire({ posnSide: 'own', posns: 4, assumedRange: true, lines: [{ id: 'AA 1', coveredPct: 55, screenedPct: 10, deadPct: 20, outPct: 15, seenPct: 62, gaps: [{ fromM: 3200, toM: 4100, kind: 'd' }, { fromM: 0, toM: 2100, kind: 'o' }, { fromM: 5000, toM: 5100, kind: 's' }] }], killing: [{ on: 'AA 1', kind: 'narrows', widthM: 400, lengthM: 600, alongM: 4600, where: '0.8 km E of Burj' }] });
+  const fd = M.newDoc('def');
+  M.applyPatches(fd, fire.patches);
+  check('fire: killing areas, DF, Surv and Obs from own fire, all proposals with OoW Vol I pp 42-45', /^The narrows \(0\.4 km wide\) on AA 1, 4\.6 km along \(0\.8 km E of Burj\)\.$/.test(M.find(fd, 'gr.ded.dp1.killing').draft) && /AA 1 3\.2-4\.1 km along \(dead\)/.test(M.find(fd, 'gr.ded.dp1.df').draft) && !/5\.0-5\.1/.test(M.find(fd, 'gr.ded.dp1.df').draft) && /AA 1 62 % of its length/.test(M.find(fd, 'gr.ded.dp1.surv').draft) && /on AA 1 4\.6 km along/.test(M.find(fd, 'gr.ded.dp1.obs').draft) && ['killing', 'df', 'surv', 'obs'].every((k) => M.find(fd, `gr.ded.dp1.${k}`).state === 'judge') && M.find(fd, 'gr.ded.dp1.killing').basis.some((b) => /OoW Vol I pp 42-45/.test(b.text)) && fire.confirm.length === 1, M.find(fd, 'gr.ded.dp1.killing').draft);
+  check('fire: the en posns firing (an attack reading) write nothing here', W.writeFire({ posnSide: 'enemy', posns: 1, assumedRange: false, lines: [{ id: 'x', coveredPct: 1, screenedPct: 0, deadPct: 0, outPct: 0, seenPct: 1, gaps: [] }], killing: [] }).patches.length === 0);
+  const air = W.writeAir({ lzs: [{ id: 'LZ 2', rank: 2, where: 'at Burj', why: '', existing: null }, { id: 'LZ 1', rank: 1, where: '1.1 km N of Nurpur', why: '', existing: 'helipad' }], dzs: [{ id: 'DZ 1', rank: 1, where: null, why: '' }], routes: [{ id: 'A1', to: 'Qila Mor', lengthM: 12000, seenPct: 30 }], band: 'NOE' });
+  const ap = air.patches[0];
+  check('air: his likeliest LZs and DZs in Common Deductions, a proposal, the book and the US figures said', ap.id === 'en.ded.common' && ap.state === 'judge' && /^Heliborne: his likeliest LZs LZ 1 1\.1 km N of Nurpur \(helipad\) and LZ 2 at Burj; DZs DZ 1\./.test(ap.draft) && ap.basis.some((b) => /IPB book pp 5-6/.test(b.text) && /to confirm/.test(b.text)) && ap.prompts === undefined, ap.draft);
+  check('air: none read, nothing written', W.writeAir({ lzs: [], dzs: [], routes: [], band: '' }).patches.length === 0);
+  const td = M.newDoc('def');
+  M.applyPatches(td, W.writeTimeData({ hHour: '06:00', reqH: 88, fdlH: 0.9 }).patches);
+  check('time data: D Day, occupied by H less the Time Req, ready by H with his earliest at the FDLs', M.find(td, 'ts.data.d-day').draft === 'H at 0600 hrs on D Day.' && /^Not later than H-88 \(1400 hrs D-4\)/.test(M.find(td, 'ts.data.time-by-which-def-to-be-occupied').draft) && /^By H \(0600 hrs D Day\): he sets out at H and can be at the FDLs from H\+0:54 \(0654 hrs D Day\), unopposed\.$/.test(M.find(td, 'ts.data.time-by-which-def-to-be-ready').draft) && M.find(td, 'ts.data.i-day').draft === null, M.find(td, 'ts.data.time-by-which-def-to-be-occupied').draft);
+  check('time data: nothing known, nothing written', W.writeTimeData({ hHour: null, reqH: null, fdlH: null }).patches.length === 0);
+  check('H-hour sum: read from the plan row\'s words', JSON.stringify(W.hSumFromText('leave the Assy Area H-1 h 30 (night rates, IBB p 18); fup to sl 300 m 4 min; fire lifts 200 m H+5 min (IC s66 p305); on Obj 1 H+42 min; H2 H+95 min, fire lifts on Obj 2 100 m H+100 min, on Obj 2 H+130 min')) === JSON.stringify({ leaveBeforeMin: 90, objMin: 42, h2Min: 95, obj2Min: 130 }) && W.hSumFromText('nothing') === null && W.parseHRel('H') === 0);
+  const tc = W.writeTimeCalcAttk('02:00', { leaveBeforeMin: 90, objMin: 42, h2Min: 95, obj2Min: 130 }).patches[0];
+  const rowOf = (e) => tc.table.rows.find((r) => r[1] === e);
+  check('time calc (attk): H on its row, the plan\'s march, assault and Phase 2', rowOf('H hr')[3] === 'H (0200 hrs D Day)' && rowOf('FAA to FUP')[2] === '90 min' && rowOf('FAA to FUP')[3] === 'H-1:30 (0030 hrs D Day)' && rowOf('FUP to Obj Phase 1')[3] === 'H+0:42 (0242 hrs D Day)' && rowOf('SL to Obj Phase 2')[2] === '35 min' && tc.table.rows.length === 18 && tc.state === 'judge', JSON.stringify(rowOf('FAA to FUP')));
+  check('time calc (attk): neither H nor a plan, the book\'s blank table stays', W.writeTimeCalcAttk(null, null).patches.length === 0 && W.writeTimeCalcAttk('02:00', null).patches[0].table.rows.filter((r) => r[3]).length === 1);
+  const adm = W.writeAdm({ kind: 'BAA', sites: [{ rank: 2, where: 'at Burj', tone: 'warn', verdict: 'Needs a culvert.' }, { rank: 1, where: '2 km S of Nurpur', tone: 'ok', verdict: '' }] });
+  check('adm: the Admin Area finder\'s best sites, a proposal to walk', adm.patches[0].id === 'plan.adm' && adm.patches[0].draft === 'BAA: site 1 2 km S of Nurpur (passes); site 2 at Burj (needs work: Needs a culvert).' && adm.patches[0].state === 'judge' && adm.confirm.length === 1 && W.writeAdm({ kind: 'BAA', sites: [] }).patches.length === 0, adm.patches[0].draft);
 }
 
 console.log(`\n${n - fails} of ${n} checks passed`);

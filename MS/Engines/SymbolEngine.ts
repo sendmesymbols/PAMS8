@@ -1420,6 +1420,8 @@ class SymbolEngine implements Evented {
         threat: () => this._threatLngLat(),
         planCheck: () => (this._deploymentBuilderEngine as any)?.planCheck ?? null,
         briefing: () => this._briefingEngine,
+        // the Admin Area finder's last result drafts Adm and Log (null while it is off)
+        adminArea: () => this._adminArea,
       });
       this._groundAppreciation = ga;
       ga.setOptions((settingsData as any).groundAppreciation ?? {});
@@ -1648,6 +1650,8 @@ class SymbolEngine implements Evented {
           groupUndo: (label, fn) => this.runUndoGroup(label, fn),
           removeByIds: (ids, label) => this.removeGraphicsById(ids, label),
           selected: () => this._selectionEngine?.selectedGraphics ?? [],
+          // the Ground Guide's threat marker (lon, lat), the one Gun Deployment and Admin Area default to
+          threat: () => this._threatLngLat(),
         },
       });
       this._deploymentBuilderEngine!.enable();

@@ -16,32 +16,34 @@ import SerializationEngine from '../ImportExport/SerializationEngine';
 import Plan from '../ImportExport/Plan.ts';
 import EngineLogger from '../../Support/EngineLogger';
 import Utils from '../../Support/utils.ts';
+import { GeoTools } from '../../Support/GeoTools';
 import { bindDisclosures } from '../../Support/Disclosure';
 import symbolMeta from '../../Data/Symbols.json';
 
 // ── Web Mercator helpers ─────────────────────────────────────────────────────
 // Plan files store WGS84 degrees; every layout calculation runs in Web Mercator
 // (what the 102100 views draw in) so a rotation or scale on screen is exactly the
-// one applied to the data.
-const R_EARTH = 6378137;
+// one applied to the data. The conversions are the SDK's (webMercatorUtils), the
+// spatial-reference tests GeoTools'; the latitude is held inside the Mercator band
+// so a pole never gives Infinity.
 const MAX_MERC_LAT = 85.0511287798;
 const MERC_SR = { wkid: 102100 };
 
 interface XY { x: number; y: number }
 
 function lonLatToMerc(lon: number, lat: number): XY {
-  const la = Math.max(-MAX_MERC_LAT, Math.min(MAX_MERC_LAT, lat));
-  return {
-    x: (R_EARTH * lon * Math.PI) / 180,
-    y: R_EARTH * Math.log(Math.tan(Math.PI / 4 + (la * Math.PI) / 360)),
-  };
+  const [x, y] = webMercatorUtils.lngLatToXY(lon, Math.max(-MAX_MERC_LAT, Math.min(MAX_MERC_LAT, lat)));
+  return { x, y };
 }
 
 function mercToLonLat(x: number, y: number): XY {
-  return {
-    x: (x / R_EARTH) * (180 / Math.PI),
-    y: (2 * Math.atan(Math.exp(y / R_EARTH)) - Math.PI / 2) * (180 / Math.PI),
-  };
+  const [lon, lat] = webMercatorUtils.xyToLngLat(x, y);
+  return { x: lon, y: lat };
+}
+
+/** A geographic spatial reference (WGS84 / NAD83 degrees): its points are converted to Web Mercator. */
+function isGeographicSR(sr: any): boolean {
+  return !!sr && !GeoTools.isWebMercatorSR(sr) && (sr.isWGS84 === true || sr.isGeographic === true || sr.wkid === 4326 || sr.wkid === 4269);
 }
 
 function meanXY(points: XY[]): XY {
@@ -124,7 +126,12 @@ export interface PlanEntry {
   /** What a built plan was fitted for (ground kind, enemy, unit, the threat), written on each graphic as `pbMeta`:
    *  Check my plan reads the plan against the same, not a fresh guess. */
   meta?: Record<string, unknown>;
+  /** The ghost also draws the symbols in `hidden` (planBuilder.alternates.show): the alternates seen while placing. */
+  ghostShowsHidden?: boolean;
 }
+
+/** How a placement ended: `placed` false = cancelled (nothing landed this time); `again` = keep placing copies re-arms. */
+export interface PlacementEnd { placed: boolean; again?: boolean }
 
 /** What a placement tells the Build tab, and what it may hand back (DeploymentBuilderEngine.setPlacementHooks). */
 export interface PlacementHooks {
@@ -135,8 +142,13 @@ export interface PlacementHooks {
   onGhost?(anchor: { x: number; y: number }, bearing: number | null, phase: 'anchor' | 'bearing', screen: { x: number; y: number } | null, cursor?: { x: number; y: number } | null): void;
   /** Just before the plan lands: a plan document to place instead (fitted to the ground there), or null. `cursor`: the aiming click. */
   prepareCommit?(anchor: { x: number; y: number }, bearing: number, cursor?: { x: number; y: number } | null): any | null;
-  /** The placement ended (placed or cancelled). */
-  onEnd?(): void;
+  /**
+   * The placement ended: placed (a copy landed; `again` when Keep placing copies re-arms for the next, the hooks then
+   * stay) or cancelled. Called once per placement, never while idle.
+   */
+  onEnd?(info: PlacementEnd): void;
+  /** What the bottom bar and the status line say for a phase (the plan's own words: "Click H on the water"); null: the Mgr's. */
+  prompt?(phase: 'anchor' | 'bearing'): { step: string; text: string } | null;
 }
 
 /** What the Build tab module offers the manager (PlanBuildTab.ts, loaded only while the tab is on). */
@@ -147,6 +159,8 @@ interface BuildTabLike {
   shown(): void;
   /** The map switched between 2D and 3D: move its overlay to the new view. */
   viewChanged(): void;
+  /** The Mgr panel closed (false) or opened again (true): the tab's map products hide and come back with it. */
+  setVisible?(on: boolean): void;
   destroy(): void;
 }
 
@@ -164,6 +178,11 @@ export interface DeploymentHost {
   removeByIds(ids: string[], label?: string): number;
   /** The symbols selected on the map (Check my plan reads them). */
   selected?(): Graphic[];
+  /**
+   * The Ground Guide's threat marker as lng / lat while the guide is on and has one, else null (the same the Gun
+   * Deployment and Admin Area tools read). Not given: the Mgr reads `window.symbolEngine.groundGuide` itself.
+   */
+  threat?(): [number, number] | null;
 }
 
 /** What Check my plan reads: plan records (drawEss as Save Plan writes it) and a line saying where they came from. */
@@ -287,8 +306,21 @@ class DeploymentBuilderEngine {
   private _buildSettings: Record<string, any> = {};
   private _buildTab: BuildTabLike | null = null;
   private _activeTab: 'samples' | 'build' = 'samples';
+  /** Set by destroy(): an import still in flight must not build a tab on a dead manager. */
+  private _destroyed = false;
+  /** The widget was minimized by Place (so the end of the placement restores it); false: the user's own state stands. */
+  private _minByPlace = false;
+  /** The Templates tab's selection and options while a built plan is placed (restored when it ends). */
+  private _savedTemplates: { entry: PlanEntry | null; data: any; metrics: PlanMetrics | null; pivotId: string | null; rotate: boolean; spread: number } | null = null;
+  /** Saved plans imported this session ("Use Saved Plan…"): kept in the list under Imported. */
+  private _imported: PlanEntry[] = [];
 
   private constructor() {}
+
+  /** On while the manager is enabled (SymbolEngine features.deploymentBuilder). */
+  public get enabled(): boolean {
+    return this._enabled;
+  }
 
   /** The last Check my plan report of the Intelligent Deployment tab (PlanCheck.CheckReport), or null. */
   public get planCheck(): unknown | null {
@@ -309,7 +341,7 @@ class DeploymentBuilderEngine {
     this._serializationEngine = serialEngine;
     this._host = options.host ?? null;
     this._ghostLayer = new GraphicsLayer({ listMode: 'hide', opacity: 0.85 });
-    view.map.add(this._ghostLayer);
+    view.map?.add(this._ghostLayer);
     if (options.planSource) this.setPlanSource(options.planSource);
     EngineLogger.success(ENGINE_NAME, 'DeploymentBuilderEngine started');
   }
@@ -333,7 +365,7 @@ class DeploymentBuilderEngine {
     }
     this._view = view;
     this._ghostLayer = new GraphicsLayer({ listMode: 'hide', opacity: 0.85 });
-    view.map.add(this._ghostLayer);
+    view.map?.add(this._ghostLayer);
     this._removePointerHandles();
     this._removeBgPopup();
     this._buildTab?.viewChanged();
@@ -351,9 +383,17 @@ class DeploymentBuilderEngine {
 
   public destroy(): void {
     this.disable();
+    this._destroyed = true;
+    this._buildEnabled = false;
     this._buildTab?.destroy();
     this._buildTab = null;
     this._removeBgClickHandle();
+    this._removeBearingHUD();
+    this._removePlacementInstructions();
+    document.getElementById('db-overlay-styles')?.remove();
+    this._iconCache.clear();
+    this._imported = [];
+    this._savedTemplates = null;
     if (this._helpDismiss) {
       document.removeEventListener('click', this._helpDismiss);
       this._helpDismiss = null;
@@ -381,6 +421,7 @@ class DeploymentBuilderEngine {
       this._minimized = false;
       this._applyMinimizeState();
     }
+    this._buildTab?.setVisible?.(true);
     this._syncLastPlacement();
     this._loadRegistryIntoWidget();
   }
@@ -390,6 +431,9 @@ class DeploymentBuilderEngine {
       this._widget.classList.remove('ms-visible');
     }
     this._cancelPlacement();
+    // the Intelligent Deployment tab's map products (Check my plan rings, routes, its own threat marker) go with the
+    // panel and come back when it opens again
+    this._buildTab?.setVisible?.(false);
   }
 
   private _minimizeWidget(): void {
@@ -431,8 +475,8 @@ class DeploymentBuilderEngine {
       <div class="ms-help-popover" id="db-help-popover" hidden>
         <div class="ms-help-head">
           <div>
-            <div class="ms-help-kicker">Field Guide</div>
-            <div class="ms-help-title">Deployment Manager</div>
+            <div class="ms-help-kicker">How it works</div>
+            <div class="ms-help-title">Deployment Mgr</div>
           </div>
           <button class="ms-help-close" id="db-help-close" title="Close">✕</button>
         </div>
@@ -511,6 +555,7 @@ class DeploymentBuilderEngine {
 
             <div class="ms-btn-row">
               <button class="ms-btn ms-cta db-btn-place" disabled>Place on Map ↗</button>
+              <button class="ms-btn db-btn-copy" disabled title="The selected plan as text: name, size, what it holds, each symbol">Copy as Text</button>
             </div>
             <div class="ms-btn-row db-cancel-row" hidden>
               <button class="ms-btn danger db-btn-cancel">Cancel placement</button>
@@ -653,6 +698,7 @@ class DeploymentBuilderEngine {
     // Place / Cancel
     el.querySelector('.db-btn-place')!.addEventListener('click', () => this._onPlaceClicked());
     el.querySelector('.db-btn-cancel')!.addEventListener('click', () => this._cancelPlacement());
+    el.querySelector('.db-btn-copy')!.addEventListener('click', () => { void this._copyTemplate(); });
 
     // Last placement: pick it up again, or take it away
     el.querySelector('.db-btn-reposition')!.addEventListener('click', () => this._repositionLast());
@@ -692,9 +738,13 @@ class DeploymentBuilderEngine {
     if (!this._buildTab && box) {
       try {
         const { PlanBuildTab } = await import('./PlanBuildTab');
-        if (!this._buildEnabled || this._buildTab) return;
+        // destroyed, switched off or rebuilt while the module loaded: no tab on a dead or replaced widget
+        if (this._destroyed || !this._buildEnabled || this._buildTab || this._widget !== el || !box.isConnected) return;
         this._buildTab = new PlanBuildTab(box, {
-          place: (entry, doc) => this._placeBuiltPlan(entry, doc),
+          place: (entry, doc, opts) => this._placeBuiltPlan(entry, doc, opts),
+          threat: () => this._guideThreat(),
+          lastBuilt: () => this._lastBuiltOnMap(),
+          selectedCount: () => this._host?.selected?.().length ?? 0,
           log: (msg, ok) => (ok ? EngineLogger.success(ENGINE_NAME, msg) : EngineLogger.error(ENGINE_NAME, msg)),
           view: () => this._view,
           container: () => this._getViewContainer(),
@@ -736,6 +786,33 @@ class DeploymentBuilderEngine {
     return { records, note: `every symbol on the map (${records.length})` };
   }
 
+  /**
+   * The Ground Guide's threat marker in Web Mercator while the guide is on and has one (the marker the Gun Deployment
+   * and Admin Area tools default to), else null. The host says it (DeploymentHost.threat); a host that does not is read
+   * through `window.symbolEngine.groundGuide` (null while the guide is off: it is created only when turned on).
+   */
+  private _guideThreat(): XY | null {
+    let ll: [number, number] | null = null;
+    try {
+      if (this._host?.threat) ll = this._host.threat();
+      else {
+        const gg: any = (window as any).symbolEngine?.groundGuide;
+        const o = gg?.options?.extended;
+        if (gg && o?.threat === 'point' && Array.isArray(o.at)) ll = [Number(o.at[0]), Number(o.at[1])];
+      }
+    } catch { ll = null; }
+    if (!ll || !Number.isFinite(ll[0]) || !Number.isFinite(ll[1])) return null;
+    return lonLatToMerc(ll[0], ll[1]);
+  }
+
+  /** The last placement when it was a built plan (Intelligent Deployment) and some of it is still on the map; else null. */
+  private _lastBuiltOnMap(): { name: string; count: number } | null {
+    const rec = this._lastPlacement;
+    if (!rec || rec.entry.category !== 'built' || !this._host) return null;
+    const n = this.readDrawn('last').records.length;
+    return n > 0 ? { name: rec.entry.name, count: n } : null;
+  }
+
   private _showTab(tab: 'samples' | 'build'): void {
     const el = this._widget;
     if (!el) return;
@@ -757,9 +834,16 @@ class DeploymentBuilderEngine {
    * placement (ghost on the cursor, aim, one undo step, Last placement). Built plans are aimed at the threat, so the
    * bearing click is on for them.
    */
-  private _placeBuiltPlan(entry: PlanEntry, doc: any): void {
+  private _placeBuiltPlan(entry: PlanEntry, doc: any, opts: { replaceLast?: boolean } = {}): void {
     const data = this._asPlanDocument(doc);
     if (!data) { this._setStatus('The built plan could not be read'); return; }
+    // the Templates tab's own plan and options come back when this placement ends (_restoreTemplates)
+    this._savedTemplates ??= {
+      entry: this._selectedPlanEntry, data: this._selectedPlanData, metrics: this._selectedPlanMetrics,
+      pivotId: this._pivotId, rotate: this._rotate, spread: this._spread,
+    };
+    // "Replace the last plan": the new copy lands first, then the last built placement goes, as one undo step
+    const replacing = opts.replaceLast && this._lastBuiltOnMap() ? this._lastPlacement : null;
     this._selectedPlanEntry = entry;
     this._selectedPlanData = data;
     this._selectedPlanMetrics = this._buildPlanMetrics(data);
@@ -775,6 +859,77 @@ class DeploymentBuilderEngine {
     this._applySelectedPlanToUI('ready');
     this._renderPlanList();
     this._onPlaceClicked();
+    this._replacing = replacing;
+  }
+
+  /** Put the Templates tab's selection and options back as they were before a built plan was placed. */
+  private _restoreTemplates(): void {
+    const s = this._savedTemplates;
+    if (!s) return;
+    this._savedTemplates = null;
+    this._selectedPlanEntry = s.entry;
+    this._selectedPlanData = s.data;
+    this._selectedPlanMetrics = s.metrics;
+    this._pivotId = s.pivotId;
+    this._rotate = s.rotate;
+    this._spread = s.spread;
+    const w = this._widget;
+    const rot = w?.querySelector<HTMLInputElement>('.db-rotate');
+    const spr = w?.querySelector<HTMLInputElement>('.db-spread-val');
+    if (rot) rot.checked = this._rotate;
+    if (spr) spr.value = String(Math.round(this._spread * 100));
+    if (s.entry) this._applySelectedPlanToUI(s.data ? 'ready' : 'failed');
+    else this._clearSelectedPlanUI();
+    this._renderPlanList();
+  }
+
+  /** The Selected Plan card with nothing selected. */
+  private _clearSelectedPlanUI(): void {
+    const w = this._widget;
+    if (!w) return;
+    const nameEl = w.querySelector<HTMLElement>('.db-plan-name');
+    if (nameEl) { nameEl.textContent = 'No plan selected'; nameEl.classList.add('empty'); }
+    const descEl = w.querySelector<HTMLElement>('.db-plan-desc');
+    if (descEl) descEl.textContent = '';
+    for (const sel of ['.db-plan-syms', '.db-plan-cat']) { const e = w.querySelector<HTMLElement>(sel); if (e) e.textContent = '—'; }
+    const place = w.querySelector<HTMLButtonElement>('.db-btn-place');
+    if (place) place.disabled = true;
+    const copy = w.querySelector<HTMLButtonElement>('.db-btn-copy');
+    if (copy) copy.disabled = true;
+    this._populatePivotSelect();
+    this._renderPlanPreview();
+    this._syncOptionsMeta();
+  }
+
+  /** Templates: the selected plan as text (name, category, size, what it holds, the options, each symbol). */
+  private async _copyTemplate(): Promise<void> {
+    const e = this._selectedPlanEntry;
+    const m = this._selectedPlanMetrics;
+    if (!e || !m) { this._setStatus('Pick a plan first'); return; }
+    const lay = this._authoredLayout();
+    const size = lay
+      ? `${this._formatDistance((lay.bounds.xmax - lay.bounds.xmin) * lay.groundK)} x ${this._formatDistance((lay.bounds.ymax - lay.bounds.ymin) * lay.groundK)}`
+      : 'not known';
+    const kindWord = (k: string) => (k === 'Line' ? 'line' : k === 'Area' ? 'area' : 'unit / point');
+    const pivot = this._pivotId ? m.symbols.find((s) => s.id === this._pivotId)?.label ?? 'a unit' : 'the plan centre';
+    const lines = [
+      e.name.toUpperCase(),
+      `Category: ${CATEGORY_LABELS[e.category] ?? e.category}`,
+      ...(e.description ? [e.description] : []),
+      `Symbols: ${m.symbolCount}; ground size at ${Math.round(this._spread * 100)} % spread: ${size}`,
+      `Placement: ${this._rotate ? 'rotated to a bearing' : 'as drawn (north up)'}, pivot ${pivot}`,
+      '',
+      'SYMBOLS',
+      ...m.symbols.map((s, i) => `  ${String(i + 1).padStart(2)}. ${s.label} (${kindWord(s.kind)}${s.sidc ? `, ${s.sidc}` : ''})`),
+    ];
+    const text = lines.join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      this._setStatus('Copied to the clipboard');
+    } catch {
+      this._setStatus('The clipboard is not available here: the text is in the Engine Log');
+      EngineLogger.success(ENGINE_NAME, text);
+    }
   }
 
 
@@ -820,9 +975,6 @@ class DeploymentBuilderEngine {
         const startY = e.clientY;
         const startW = el.offsetWidth;
         const startH = el.offsetHeight;
-        const rect = el.getBoundingClientRect();
-        const startL = rect.left;
-        const startT = rect.top;
         const minW = 380;
         const minH = 240;
 
@@ -880,6 +1032,8 @@ class DeploymentBuilderEngine {
 
   private async _loadPlanFile(entry: PlanEntry): Promise<any> {
     try {
+      // an imported plan (or a host's inline one) carries its document: no source asked
+      if (entry.data != null) return entry.data;
       return await this._source.load(entry);
     } catch (err) {
       EngineLogger.error(ENGINE_NAME, `Failed to load plan "${entry.name}": ${err instanceof Error ? err.message : String(err)}`);
@@ -897,16 +1051,21 @@ class DeploymentBuilderEngine {
   private _renderPlanList(plans?: PlanEntry[]): void {
     const list = this._widget?.querySelector('.db-plan-list') as HTMLElement | null;
     if (!list) return;
-    const source = plans ?? this._registry ?? [];
-    const filtered = this._searchText
-      ? source.filter(p => p.name.toLowerCase().includes(this._searchText) || p.category.includes(this._searchText))
+    // the registry (a shared file: any field may be missing) and the plans imported this session
+    const source = [...(plans ?? this._registry ?? []).filter((p) => p && typeof p === 'object'), ...this._imported];
+    const q = this._searchText.trim().toLowerCase();
+    const text = (v: unknown) => (typeof v === 'string' ? v : v == null ? '' : String(v)).toLowerCase();
+    const catOf = (p: PlanEntry) => (typeof p.category === 'string' && p.category ? p.category : 'other');
+    const filtered = q
+      ? source.filter((p) => [p.name, p.category, CATEGORY_LABELS[catOf(p)], p.description].some((v) => text(v).includes(q)))
       : source;
 
     // Group by category
     const grouped: Record<string, PlanEntry[]> = {};
     filtered.forEach(p => {
-      if (!grouped[p.category]) grouped[p.category] = [];
-      grouped[p.category].push(p);
+      const c = catOf(p);
+      if (!grouped[c]) grouped[c] = [];
+      grouped[c].push(p);
     });
 
     list.innerHTML = '';
@@ -949,7 +1108,8 @@ class DeploymentBuilderEngine {
         grouped[cat].forEach(plan => {
           const item = document.createElement('div');
           item.className = 'db-plan-item' + (this._selectedPlanEntry?.id === plan.id ? ' active' : '');
-          item.textContent = plan.name;
+          item.textContent = typeof plan.name === 'string' && plan.name ? plan.name : String(plan.id ?? 'Unnamed plan');
+          if (plan.description) item.title = String(plan.description);
           item.addEventListener('click', () => this._selectPlan(plan));
           list.appendChild(item);
         });
@@ -964,6 +1124,8 @@ class DeploymentBuilderEngine {
     const symsEl = this._widget.querySelector('.db-plan-syms') as HTMLElement | null;
     const catEl = this._widget.querySelector('.db-plan-cat') as HTMLElement | null;
     const placeBtn = this._widget.querySelector('.db-btn-place') as HTMLButtonElement | null;
+    const copyBtn = this._widget.querySelector('.db-btn-copy') as HTMLButtonElement | null;
+    if (copyBtn) copyBtn.disabled = state !== 'ready';
 
     if (nameEl) {
       nameEl.textContent = this._selectedPlanEntry.name;
@@ -1292,7 +1454,8 @@ class DeploymentBuilderEngine {
       const reader = new FileReader();
       reader.onload = (evt) => {
         try {
-          const parsed = this._asPlanDocument(JSON.parse(evt.target?.result as string));
+          const raw = JSON.parse(evt.target?.result as string);
+          const parsed = this._asPlanDocument(raw);
           if (!parsed) {
             this._setStatus('Selected file is not a Save Plan or exercise template JSON');
             EngineLogger.error(ENGINE_NAME, 'Imported file is not a valid Plan document');
@@ -1306,7 +1469,7 @@ class DeploymentBuilderEngine {
             return;
           }
 
-          this._selectImportedPlan(file.name, parsed, metrics);
+          this._selectImportedPlan(file.name, parsed, metrics, raw);
           this._setStatus(`Imported "${file.name}"`);
           EngineLogger.success(ENGINE_NAME, `Imported saved plan "${file.name}" with ${metrics.symbolCount} symbols`);
         } catch (err) {
@@ -1322,17 +1485,29 @@ class DeploymentBuilderEngine {
     input.click();
   }
 
-  private _selectImportedPlan(fileName: string, data: any, metrics: PlanMetrics): void {
-    this._selectedPlanEntry = {
-      id: `imported-${Date.now()}`,
-      name: fileName.replace(/\.json$/i, ''),
+  /**
+   * An imported plan becomes an entry of the list for the session (under Imported; the same file again replaces its
+   * entry) with the plan inline. Its pivot is the file's own when it names one (`pivot`, as a registry entry does, or
+   * `pamsPivot`); else the plan centre.
+   */
+  private _selectImportedPlan(fileName: string, data: any, metrics: PlanMetrics, raw: any = null): void {
+    const name = fileName.replace(/\.json$/i, '');
+    const pivotName = [raw?.pivot, raw?.pamsPivot, raw?.meta?.pivot].find((v) => typeof v === 'string' && v) as string | undefined;
+    const entry: PlanEntry = {
+      id: `imported-${name}`,
+      name,
       category: 'imported',
       file: '',
-      description: 'Imported saved plan',
+      description: typeof raw?.description === 'string' && raw.description ? raw.description : `Imported from ${fileName} (this session)`,
+      pivot: pivotName,
+      data,
     };
+    this._imported = [...this._imported.filter((p) => p.id !== entry.id), entry];
+    this._collapsedCategories.delete('imported');
+    this._selectedPlanEntry = entry;
     this._selectedPlanData = data;
     this._selectedPlanMetrics = metrics;
-    this._pivotId = null;
+    this._pivotId = this._resolvePivotId(pivotName, metrics);
 
     this._applySelectedPlanToUI('ready');
     this._renderPlanList();
@@ -1345,8 +1520,25 @@ class DeploymentBuilderEngine {
     this._setHeaderState('running', 'Anchor');
     this._startPlacement();
     this._fitViewToPlan();
-    // Minimize widget so it doesn't block the map
-    if (!this._minimized) this._minimizeWidget();
+    this._minimizeForPlacement();
+  }
+
+  /** Minimize the widget so it does not block the map; remembered so the end of the placement restores only what Place did. */
+  private _minimizeForPlacement(): void {
+    if (this._minimized) return;   // the user's own state stands (and stays after the placement)
+    this._minimizeWidget();
+    this._minByPlace = true;
+  }
+
+  /** The placement ended: the widget back as the user had it before Place. */
+  private _restoreMinimize(): void {
+    if (this._minByPlace && this._minimized) this._minimizeWidget();
+    this._minByPlace = false;
+  }
+
+  /** The bottom bar's and the status line's words for a phase: the plan's own (the Build tab's hook), else null. */
+  private _hookPrompt(phase: 'anchor' | 'bearing'): { step: string; text: string } | null {
+    try { return this._placementHooks?.prompt?.(phase) ?? null; } catch { return null; }
   }
 
   private _startPlacement(): void {
@@ -1384,13 +1576,18 @@ class DeploymentBuilderEngine {
     });
 
     this._keyDownHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') this._cancelPlacement();
+      if (e.key !== 'Escape') return;
+      // Esc in a text box (the plan search, a setting) is that box's own
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      this._cancelPlacement();
     };
     document.addEventListener('keydown', this._keyDownHandler);
 
     // a plan that faces a set point (the Build tab's threat marker) is aimed already: one click places it
     this._showPlacementInstructions(this._rotate && !this._selectedPlanEntry?.faceAt ? 'anchor' : 'anchor-asIs');
-    this._setStatus(this._rotate
+    const said = this._hookPrompt('anchor');
+    this._setStatus(said ? `${said.text}…` : this._rotate
       ? 'Click on map to set anchor point…'
       : 'Click on map to place — the plan keeps its drawn orientation');
   }
@@ -1411,7 +1608,7 @@ class DeploymentBuilderEngine {
     if (!this._view) return;
     this._phase = 'bearing';
     this._showPlacementInstructions('bearing');
-    this._setStatus('Move cursor to set bearing — click to place');
+    this._setStatus(this._hookPrompt('bearing')?.text ?? 'Move cursor to set bearing — click to place');
     this._setHeaderState('running', 'Bearing');
     this._renderGhost(anchor, 0, null);
 
@@ -1437,7 +1634,7 @@ class DeploymentBuilderEngine {
       if (this._pointerMoveHandle) { this._pointerMoveHandle.remove(); this._pointerMoveHandle = null; }
       if (this._rightClickHandle) { this._rightClickHandle.remove(); this._rightClickHandle = null; }
       this._showPlacementInstructions('anchor');
-      this._setStatus('Click on map to set anchor point…');
+      this._setStatus(this._hookPrompt('anchor')?.text ?? 'Click on map to set anchor point…');
       this._setHeaderState('running', 'Anchor');
       this._listenAnchorHover();
     });
@@ -1445,8 +1642,19 @@ class DeploymentBuilderEngine {
 
   private _commitPlacement(bearing: number, aimedAt: Point | null = null): void {
     if (!this._anchorPoint || !this._selectedPlanData || !this._serializationEngine) return;
-    // the Build tab fits the plan to the ground at exactly this spot and bearing (and the aiming click) before it lands
-    const fitted = this._placementHooks?.prepareCommit?.(this._toProjected(this._anchorPoint), bearing, aimedAt ? this._toProjected(aimedAt) : null);
+    // the Build tab fits the plan to the ground at exactly this spot and bearing (and the aiming click) before it lands;
+    // a fit that throws must not leave the map armed with a hidden cursor: say so and end the placement
+    let fitted: any = null;
+    try {
+      fitted = this._placementHooks?.prepareCommit?.(this._toProjected(this._anchorPoint), bearing, aimedAt ? this._toProjected(aimedAt) : null);
+    } catch (err) {
+      const why = err instanceof Error ? err.message : String(err);
+      EngineLogger.error(ENGINE_NAME, `The fit at the click failed: ${why}`);
+      this._cancelPlacement();
+      this._setStatus(`Not placed: the fit at the click failed (${why})`);
+      this._setHeaderState('warning', 'Error');
+      return;
+    }
     if (fitted) this.replaceSelectedPlan(fitted, false);
     this._phase = 'idle';
     this._showCancel(false);
@@ -1502,12 +1710,14 @@ class DeploymentBuilderEngine {
       if (hiddenIds.size) this._hideAnnotationsOf(hiddenIds);
       return n;
     };
-    const label = `${replacing ? 'Reposition' : 'Place'} ${entry?.name ?? 'deployment'}`;
+    const label = `${replacing ? (replacing.entry !== entry ? 'Replace with' : 'Reposition') : 'Place'} ${entry?.name ?? 'deployment'}`;
     const count = this._host ? this._host.groupUndo(label, run) : run();
     this._anchorPoint = null;
     this._replacing = null;
     this._lastGhost = null;
-    this._placementHooks?.onEnd?.();
+    // Keep placing: the hooks stay for the next copy (each fitted at its own spot, with its card)
+    const again = count > 0 && this._keepPlacing && !replacing;
+    this._placementHooks?.onEnd?.({ placed: count > 0, again });
 
     if (count > 0 && entry && this._selectedPlanData) {
       this._lastPlacement = {
@@ -1525,7 +1735,7 @@ class DeploymentBuilderEngine {
     }
 
     // Keep placing: stay armed for the next copy; the map stays where the user has it.
-    if (count > 0 && this._keepPlacing && !replacing) {
+    if (again) {
       this._setStatus(`Placed ${this._placedThisRun} cop${this._placedThisRun === 1 ? 'y' : 'ies'} — click to place another, Esc to finish`);
       this._setHeaderState('running', `Placed ${this._placedThisRun}`);
       // Re-arm on the next tick: doing it inside this click's own dispatch could hand the
@@ -1542,11 +1752,13 @@ class DeploymentBuilderEngine {
 
     if (count > 0) this._zoomToPlaced(bounds);
 
-    this._setStatus(`Placed ${count} symbol${count !== 1 ? 's' : ''}`);
+    // a built plan placed: the Templates tab's own plan and options come back
+    this._restoreTemplates();
+    this._setStatus(`Placed ${count} symbol${count !== 1 ? 's' : ''}${entry && entry.category === 'built' ? ` (${entry.name})` : ''}`);
     this._setHeaderState(count > 0 ? 'ready' : 'warning', count > 0 ? 'Placed' : 'Empty');
-    // The widget stays open after a placement (user, 15 Nov 2026): restore it from the
-    // minimized bar it took while placing, with the status and the last-placement card.
-    if (this._minimized) this._minimizeWidget();
+    // The widget stays open after a placement (user, 15 Nov 2026): restore it from the minimized bar it took while
+    // placing (not when the user had minimized it), with the status and the last-placement card.
+    this._restoreMinimize();
     this._syncLastPlacement();
   }
 
@@ -1617,10 +1829,12 @@ class DeploymentBuilderEngine {
     this._setHeaderState('running', 'Anchor');
     this._startPlacement();
     this._fitViewToPlan();
-    if (!this._minimized) this._minimizeWidget();
+    this._minimizeForPlacement();
   }
 
   private _cancelPlacement(): void {
+    // nothing was being placed (a close or a view switch while idle): the hooks are not told of an end
+    const active = this._phase !== 'idle' || this._rearmTimer !== null;
     this._phase = 'idle';
     this._replacing = null;
     if (this._rearmTimer !== null) {
@@ -1635,12 +1849,14 @@ class DeploymentBuilderEngine {
     this._setStatus('');
     this._removeBearingHUD();
     this._removePlacementInstructions();
-    if (this._minimized) this._minimizeWidget();
+    this._lastGhost = null;
+    if (!active) return;
+    this._placementHooks?.onEnd?.({ placed: false });
+    this._restoreTemplates();
+    this._restoreMinimize();
     const ready = (this._selectedPlanMetrics?.symbolCount ?? 0) > 0;
     this._setHeaderState(ready ? 'ready' : '', ready ? 'Ready' : 'Idle');
     this._syncLastPlacement();
-    this._lastGhost = null;
-    this._placementHooks?.onEnd?.();
   }
 
   // ── View framing ───────────────────────────────────────────────────────────
@@ -1649,9 +1865,9 @@ class DeploymentBuilderEngine {
   private _viewSpanMerc(): number | null {
     const ext = this._view?.extent;
     if (!ext) return null;
-    const wkid = ext.spatialReference?.wkid;
-    if (wkid === 102100 || wkid === 3857) return Math.min(ext.width, ext.height);
-    if (wkid === 4326) {
+    const sr = ext.spatialReference;
+    if (GeoTools.isWebMercatorSR(sr)) return Math.min(ext.width, ext.height);
+    if (isGeographicSR(sr)) {
       const lo = lonLatToMerc(ext.xmin, ext.ymin);
       const hi = lonLatToMerc(ext.xmax, ext.ymax);
       return Math.min(hi.x - lo.x, hi.y - lo.y);
@@ -1761,9 +1977,8 @@ class DeploymentBuilderEngine {
     if (!this._view || this._phase === 'idle') return false;
     if (this._phase === 'anchor' && (!this._rotate || this._selectedPlanEntry?.faceAt)) return false;
     const sr = this._view.spatialReference;
-    const geo = sr?.wkid === 4326 || sr?.wkid === 4269;
-    const ll = geo ? webMercatorUtils.xyToLngLat(xy.x, xy.y) : null;
-    const pt = ll ? new Point({ x: ll[0], y: ll[1], spatialReference: sr }) : new Point({ x: xy.x, y: xy.y, spatialReference: sr ?? { wkid: 102100 } });
+    const ll = isGeographicSR(sr) ? mercToLonLat(xy.x, xy.y) : null;
+    const pt = ll ? new Point({ x: ll.x, y: ll.y, spatialReference: sr }) : new Point({ x: xy.x, y: xy.y, spatialReference: sr ?? MERC_SR });
     // where the mouse is: it keeps the aim (from the new anchor toward it)
     const mouse = this._lastGhost?.cursor ?? this._lastGhost?.anchor ?? null;
     if (this._pointerMoveHandle) { this._pointerMoveHandle.remove(); this._pointerMoveHandle = null; }
@@ -1811,7 +2026,11 @@ class DeploymentBuilderEngine {
     const marks: Graphic[] = [];
 
     const pivot = this._pivot(metrics);
+    // symbols created hidden (a built plan's alternates) stay off the ghost unless the plan asks to show them
+    const entry = this._selectedPlanEntry;
+    const skip = entry?.hidden?.length && !entry.ghostShowsHidden ? new Set(entry.hidden.map(String)) : null;
     for (const s of metrics.symbols) {
+      if (skip?.has(s.id)) continue;
       const pts = this._layoutSymbol(s, pivot, a, cos, sin, this._spread, k);
       if (pts.length === 0) continue;
       const rgb = affiliationRGB(s.sidc);
@@ -1988,7 +2207,18 @@ class DeploymentBuilderEngine {
     const key = (label: string, tone: 'accent' | 'success' | 'danger' = 'accent') =>
       `<kbd class="db-pi-key db-pi-key-${tone}">${label}</kbd>`;
 
-    if (phase === 'anchor-asIs') {
+    // a built plan says its own steps (the Build tab's card says the same): "Click H on the water", "Aim up the Rd …"
+    const said = this._hookPrompt(phase === 'bearing' ? 'bearing' : 'anchor');
+    if (said) {
+      this._placementInstructions.innerHTML = `
+        <span class="db-pi-step">${Utils.escapeHtml(said.step)}</span>
+        ${sep}
+        <span>${Utils.escapeHtml(said.text)}</span>
+        ${phase === 'bearing' ? `${sep}<span>${key('Right-click', 'success')} reset</span>` : ''}
+        ${sep}
+        <span>${key('Esc', 'danger')} cancel</span>
+      `;
+    } else if (phase === 'anchor-asIs') {
       this._placementInstructions.innerHTML = `
         <span class="db-pi-step">Place plan</span>
         ${sep}
@@ -2180,15 +2410,8 @@ class DeploymentBuilderEngine {
   }
 
   private _toProjected(pt: Point): XY {
-    if (pt.spatialReference?.wkid === 4326 || pt.spatialReference?.wkid === 4269) {
-      // Geographic → Web Mercator
-      try {
-        const proj = webMercatorUtils.geographicToWebMercator(pt) as Point;
-        return { x: proj.x, y: proj.y };
-      } catch {
-        return { x: pt.x, y: pt.y };
-      }
-    }
+    // Geographic → Web Mercator; a Web Mercator point (any wkid of it) is used as it is
+    if (isGeographicSR(pt.spatialReference)) return lonLatToMerc(pt.x, pt.y);
     return { x: pt.x, y: pt.y };
   }
 

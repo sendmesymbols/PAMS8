@@ -25,8 +25,8 @@ export interface DecAaIn {
   main: boolean;
   startM: number;
   endM: number;
-  /** The going along it, in order. */
-  going: Array<{ fromM: number; toM: number; cls: DecCls }>;
+  /** The going along it, in order; `riseM` the ascent inside the stretch (metres climbed, descents not counted). */
+  going: Array<{ fromM: number; toM: number; cls: DecCls; riseM?: number }>;
   narrows: Array<{ alongM: number; widthM: number; kind: 'crossing' | 'slow' | 'narrow' }>;
   /** Where own depth localities stand along it (the rearmost own Posn beside it), metres; null when none. */
   depthM: number | null;
@@ -36,6 +36,11 @@ export interface DecRates {
   go: [number, number];
   slow: [number, number];
   nogo: [number, number];
+  /**
+   * Men on foot pay the climb (MW p 81: 30-60 min per 300 m of ascent): minutes per 300 m [earliest, latest]; null for
+   * vehicles. The same figure the Intelligent Deployment tab's moves pay (PlanDoctrine terrain.kinds.mountain).
+   */
+  climbMinPer300?: [number, number] | null;
 }
 export interface DecArgs {
   aas: DecAaIn[];
@@ -114,7 +119,8 @@ export function decRatesFrom(doc: any, mover: 'armour' | 'mech' | 'dismounted'):
     const night = Array.isArray(v[1]) ? Math.min(...v[1]) : Number(v[1]);
     return [Number(v[0]) || d[0], night || d[1]];
   };
-  return { go: pair(t.go, [24, 24]), slow: pair(t.slow, [16, 8]), nogo: pair(t.nogo, [1, 0.1]) };
+  const climb = Array.isArray(r.mountain?.addMinPer300mAscent) ? (r.mountain.addMinPer300mAscent as [number, number]) : [30, 60];
+  return { go: pair(t.go, [24, 24]), slow: pair(t.slow, [16, 8]), nogo: pair(t.nogo, [1, 0.1]), climbMinPer300: mover === 'dismounted' ? [Number(climb[0]) || 30, Number(climb[1]) || 60] : null };
 }
 
 const SHOWS: Record<DecNai['kind'], string> = {
@@ -148,10 +154,14 @@ export function decide(a: DecArgs): DecResult {
         // Before the avenue: on the way in from the enemy's start, at GO.
         return t - ((aa.startM - alongM) / 1000) / a.rates.go[late ? 1 : 0];
       }
+      const climb = a.rates.climbMinPer300;
       for (const g of segs) {
         if (g.fromM >= alongM) break;
         const len = Math.min(alongM, g.toM) - g.fromM;
         t += (len / 1000) / speed(g.cls, late);
+        // The climb inside the stretch (its share, when the stretch is only partly covered): 30 min per 300 m at his
+        // earliest, 60 at his latest (MW p 81), on foot only.
+        if (climb && g.riseM) t += ((g.riseM * (len / Math.max(1e-6, g.toM - g.fromM))) / 300) * (climb[late ? 1 : 0] / 60);
       }
       return t;
     };

@@ -63,11 +63,20 @@ import platoonDoctrine from '../../Data/PlatoonDoctrine.json';
 import movementSpeeds from '../../Data/MovementSpeeds.json';
 import { waterRulesFrom } from '../MovementGuide/MovementGuideWater';
 import { checkCrossing, hRel as hClock, withMinefield, type Light } from './PlanCrossing';
-import type { PlanEntry, PlacementHooks, DrawnRead } from './DeploymentBuilderEngine';
+import type { PlanEntry, PlacementHooks, PlacementEnd, DrawnRead } from './DeploymentBuilderEngine';
+import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
+import { GeoTools } from '../../Support/GeoTools';
+import { getSetting, setSetting } from '../../Support/SettingsBus';
 
 export interface BuildTabHost {
-  /** Place this plan document through the Deployment Mgr's placement flow. */
-  place(entry: PlanEntry, doc: any): void;
+  /** Place this plan document through the Deployment Mgr's placement flow; `replaceLast`: it replaces the last built plan (one undo step). */
+  place(entry: PlanEntry, doc: any, opts?: { replaceLast?: boolean }): void;
+  /** The Ground Guide's threat marker (Web Mercator) while the guide is on and has one; else null. */
+  threat?(): XY | null;
+  /** The last built plan this session, while some of it is still on the map; else null. */
+  lastBuilt?(): { name: string; count: number } | null;
+  /** How many symbols are selected on the map (Check my plan's default scope). */
+  selectedCount?(): number;
   log(msg: string, ok: boolean): void;
   view(): MapView | SceneView | null;
   container(): HTMLElement | null;
@@ -84,7 +93,7 @@ export interface BuildTabHost {
 
 /** Roles a posn can be set to in Check my plan (a click walks them). */
 const ROLE_CYCLE: PosnKind[] = ['fwd', 'depth', 'res', 'cpen', 'alt', 'ignore'];
-const ROLE_LABEL: Record<PosnKind, string> = { fwd: 'Forward', depth: 'Depth', res: 'Reserve', cpen: 'C Pen', alt: 'Alternate', sup: 'Sup posn', sub: 'Inside', outline: 'Outline', dummy: 'Dummy', ignore: 'Left out' };
+const ROLE_LABEL: Record<PosnKind, string> = { fwd: 'Fwd', depth: 'Depth', res: 'Res', cpen: 'C Pen', alt: 'Alt', sup: 'Sup posn', sub: 'Inside', outline: 'Outline', dummy: 'Dummy', ignore: 'Left out' };
 const EN_ECHELONS = ['15', '16', '18', '21'];
 /** Slot kinds that are a sub-unit's posn (a Coy of a Bn plan). */
 const FOOTPRINT_ROLES = new Set(['fwd', 'depth', 'res', 'round']);
@@ -95,8 +104,7 @@ type Fitted = FittedLayout & { doc: ReturnType<typeof toPlanDocument>; whatIf?: 
 
 const DEFAULT_RECIPES_URL = '/MS/Data/Deployments/Recipes';
 const DEFAULT_ORBAT_URL = '/MS/Data/Orbat/PK';
-const R_EARTH = 6378137;
-const TASKS: { id: string; label: string; later?: string }[] = [
+const TASKS: { id: string; label: string }[] = [
   { id: 'defence', label: 'Defence' },
   { id: 'attack', label: 'Attack' },
   { id: 'ambush', label: 'Ambush' },
@@ -139,7 +147,7 @@ const ICONS: Record<string, string> = {
 const icon = (k: string, cls = ''): string => `<svg class="pb-ic${cls ? ` ${cls}` : ''}" viewBox="0 0 14 14" aria-hidden="true">${ICONS[k] ?? ''}</svg>`;
 const VERDICT_ICON: Record<CheckState, string> = { pass: 'check', warn: 'warn', fail: 'x', unchecked: 'dash' };
 /** A verdict: its word and an icon besides the colour. */
-const pillHtml = (st: CheckState): string => `<span class="pb-pill pb-${st}">${icon(VERDICT_ICON[st], 'pb-ic-sm')}${WORD[st]}</span>`;
+const pillHtml = (st: CheckState, word?: string): string => `<span class="pb-pill pb-${st}">${icon(VERDICT_ICON[st], 'pb-ic-sm')}${esc(word ?? WORD[st])}</span>`;
 /** Fails, then warnings, then not checked, then passes; the doctrine order kept within each. */
 const worstFirst = <T extends { st: CheckState }>(rows: T[]): T[] => (['fail', 'warn', 'unchecked', 'pass'] as CheckState[]).flatMap((s) => rows.filter((r) => r.st === s));
 interface BtnOpts { kind?: 'primary' | 'ghost'; sm?: boolean; icon?: string; after?: boolean; armed?: boolean; title?: string }
@@ -188,22 +196,32 @@ const reasonHtml = (c: Check): string => {
   return `<div class="pb-det-head">${esc(d.head)}</div>${items}${why}${fix}`;
 };
 /** A check as a row that leads with its verdict: the name, then the reason under it. */
-const ckRow = (st: CheckState, name: string, body: string): string => `<li class="pb-ck"><div>${pillHtml(st)}</div><div><div class="pb-ck-name">${esc(name)}</div>${body}</div></li>`;
+const ckRow = (st: CheckState, name: string, body: string, word?: string): string => `<li class="pb-ck"><div>${pillHtml(st, word)}</div><div><div class="pb-ck-name">${esc(name)}</div>${body}</div></li>`;
 /** Checks as rows, the worst first. */
-const ckList = (rows: Check[]): string => `<ul class="pb-checks">${worstFirst(rows).map((c) => ckRow(c.st, c.name, reasonHtml(c))).join('')}</ul>`;
+const ckList = (rows: Check[]): string => `<ul class="pb-checks">${worstFirst(rows).map((c) => ckRow(c.st, c.name, reasonHtml(c), c.word)).join('')}</ul>`;
 /** A row of plain text under a check's name. */
 const whyHtml = (s: string): string => `<div class="pb-ck-why">${esc(s)}</div>`;
 let previewSeq = 0;
+/**
+ * Run `fn` once the browser has painted what was just put on screen ("Fitting n layouts…"): after the next frame, or
+ * after 50 ms when no frame comes (a hidden page), so a synchronous fit never starts before the busy line shows.
+ */
+const afterPaint = (fn: () => void): void => {
+  let done = false;
+  const go = () => { if (done) return; done = true; setTimeout(fn, 0); };
+  requestAnimationFrame(go);
+  setTimeout(go, 50);
+};
 /**
  * The worst check on the cursor card, kept short so the card fits beside the cursor: its short lines (at most 3), a
  * one-line why and the first 2 fixes; the rest is in the Check step. Without a detail, one line as before.
  */
 const cardCheckHtml = (c: Check & { name: string }, word: string): string => {
   const d = c.detail;
-  if (!d) return `<div class="pb-card-w"><span class="pb-pill pb-${c.st}">${word}</span> ${esc(c.name)}: ${esc(c.reason)}</div>`;
+  if (!d) return `<div class="pb-card-w"><span class="pb-pill pb-${c.st}">${esc(word)}</span> ${esc(c.name)}: ${esc(c.reason)}</div>`;
   const lines = d.short ?? d.items ?? [];
   const more = (n: number, k: number) => (n > k ? `<li class="pb-card-dim">${n - k} more in the Check step</li>` : '');
-  return `<div class="pb-card-w"><span class="pb-pill pb-${c.st}">${word}</span> <b>${esc(c.name)}</b> · ${esc(d.head)}</div>`
+  return `<div class="pb-card-w"><span class="pb-pill pb-${c.st}">${esc(word)}</span> <b>${esc(c.name)}</b> · ${esc(d.head)}</div>`
     + (lines.length ? `<ul class="pb-card-items">${lines.slice(0, 3).map((x) => `<li>${esc(x)}</li>`).join('')}${more(lines.length, 3)}</ul>` : '')
     + (d.whyShort || d.why ? `<div class="pb-card-why"><b>Why</b> ${esc(d.whyShort ?? d.why)}</div>` : '')
     + (d.fix?.length ? `<div class="pb-card-fix"><b>Fix</b><ul>${d.fix.slice(0, 2).map((x) => `<li>${esc(x)}</li>`).join('')}${more(d.fix.length, 2)}</ul></div>` : '');
@@ -269,7 +287,14 @@ export class PlanBuildTab {
   private _probe: PlanGroundProbe | null = null;
   private _probeState: 'off' | 'loading' | 'ready' | 'missing' = 'off';
   private _probeUrl = '';
-  private _threat: XY | null = null;
+  /** The bundle url found missing: not asked again until the url changes or the user asks (Retry in the footer). */
+  private _probeMissingUrl = '';
+  /** The threat marked in this tab (null: the Ground Guide's marker, else the enemy symbols when the setting says so). */
+  private _ownThreat: XY | null = null;
+  /** The enemy symbols' side read for the threat (threat.fromEnemySymbols), kept a moment so a render does not re-read the map. */
+  private _enemyThreat: { at: XY | null; n: number; t: number } | null = null;
+  /** The panel is open (false: the map products are hidden with it). */
+  private _visible = true;
   private _arming: { remove(): void } | null = null;
   private _armKey: ((e: KeyboardEvent) => void) | null = null;
   private _layer: GraphicsLayer | null = null;
@@ -318,7 +343,9 @@ export class PlanBuildTab {
   private _waterRules = waterRulesFrom(movementDoctrine);
   private _light: Light = 'dark';
   /** A crossing: his minefield assumed in front of the obstacle (IBB S47 para 6: the home side drawn back, Breach lanes). */
-  private _mf = false;
+  private _mfCross = false;
+  /** An attack: his protective minefield in front of the Obj (Annex Q: lanes breached before H). */
+  private _mfAttk = false;
   private _plRules = plRulesFrom(platoonDoctrine);
   private _speeds = footSpeeds();
   /** An ambush's target: wheeled, tanks or on foot (M walks it while placing). */
@@ -376,13 +403,13 @@ export class PlanBuildTab {
   private _hAt: 'first' | 'last' | 'now' = 'first';
   private _soil: InundSoil = ((s: string) => (INUND_SOILS as readonly string[]).includes(s) ? (s as InundSoil) : 'loam')(String((planDoctrine as any).inundation?.soilDefault?.value ?? 'loam'));
   /**
-   * The artillery a plan may take: a Regt or Bty with a Bn defence or attack and a Bn or Bde crossing; a Div Arty (its
+   * The artillery a plan may take: a Regt or Bty with a Coy, Bn or Bde defence or attack and a Bn or Bde crossing; a Div Arty (its
    * Regts, one gun area each) with a Div crossing; none with the rest.
    */
   private _artyList(r: Recipe): ArtyType[] {
     if (!this._orbat) return [];
     if (r.task === 'crossing') return r.echelon === '21' ? (this._divArtyCache ??= ownDivArties(this._orbat, this._artyTypes)) : this._artyTypes;
-    return r.echelon === '16' && (r.task === 'defence' || r.task === 'attack') ? this._artyTypes : [];
+    return ['15', '16', '18'].includes(r.echelon) && (r.task === 'defence' || r.task === 'attack') ? this._artyTypes : [];
   }
   /** The Gun Deployment doctrine's figures the gun area is laid by (GunDoctrine.json). */
   private _artyDoc: ArtyDoctrine = (() => {
@@ -404,9 +431,32 @@ export class PlanBuildTab {
   private _atId: string | null = null;
   /** How many of its Coys are grouped (1 to its 3). */
   private _atCoys = 1;
+  /** Where the plan last rested or was placed (anchor, bearing, aim): Compare and Copy as Text fit there again after a chip changes. */
+  private _lastSpot: { anchor: XY; bearing: number; cursor: XY | null } | null = null;
+  /** The fit and result before this placement (a cancel puts them back), and the fit of the last copy placed in it. */
+  private _preFit: { fit: Fitted | null; result: SolveResult | null } | null = null;
+  private _placedFit: Fitted | null = null;
+  /** G's bundle reader opening (configure in flight). */
+  private _gunPending: Promise<SiteBundle | null> | null = null;
+  /** A second Place while the last built plan is on the map replaces it (default) or adds another. */
+  private _replaceLast = true;
+  /** Copy as Text could not reach the clipboard: the text shown to select by hand. */
+  private _fallbackText: string | null = null;
+  /** Recipes loaded of all (the loading line). */
+  private _loadCount = { done: 0, total: 0 };
+  /** Compare is fitting (a frame is given to paint "Fitting n layouts…" first). */
+  private _compareBusy = false;
+  /** The Options fold is open. */
+  private _optsOpen = false;
+  /** The key notice at the foot of the screen while placing. */
+  private _note: HTMLElement | null = null;
+  private _noteTimer: ReturnType<typeof setTimeout> | null = null;
+  private _noteHideTimer: ReturnType<typeof setTimeout> | null = null;
   // Check my plan (Phase 5)
   private _mode: 'build' | 'check' = 'build';
   private _checkScope: 'selected' | 'last' | 'all' = 'selected';
+  /** The user picked the scope (else it follows what there is: the selection, else the last placement). */
+  private _scopeChosen = false;
   private _checkRecs: DrawnRead['records'] | null = null;
   private _checkNote = '';
   private _checkKinds: Record<string, PosnKind> = {};
@@ -417,6 +467,7 @@ export class PlanBuildTab {
     this._box = box;
     this._host = host;
     this._box.addEventListener('click', this._onClick);
+    this._box.addEventListener('change', this._onChange);
     this._aside = host.aside?.() ?? null;
     this._aside?.addEventListener('click', this._onClick);
   }
@@ -427,14 +478,26 @@ export class PlanBuildTab {
   }
 
   public setSettings(settings: Record<string, any>): void {
+    const prevOrbat = this._orbatUrl();
     this._settings = settings ?? {};
     const create = this._settings.alternates?.create;
     if (this._altFromSettings && (create === 'visible' || create === 'hidden' || create === 'none')) this._alternates = create;
     const url = String(this._settings.recipesUrl || DEFAULT_RECIPES_URL).replace(/\/+$/, '');
     if (url !== this._recipesUrl) { this._recipesUrl = url; this._loadState = 'idle'; }
+    // a new ORBAT url: the ORBAT read again (the recipes stay)
+    else if (this._loadState === 'ready' && this._orbatUrl() !== prevOrbat) void this._loadOrbat().then(() => { if (!this._destroyed) { this._solve(); this._render(); } });
     if (this._settings.useTerrain === false) this._closeProbe();
+    // Auto switched off: the chosen layout stands
+    if (!this._autoOn) this._auto = false;
+    this._enemyThreat = null;
     if (this._box.isConnected && !this._box.hidden) this.shown();
+    else this._redrawMap();
   }
+
+  /** Auto may rank the layouts (planBuilder.auto.enabled). */
+  private get _autoOn(): boolean { return this._settings.auto?.enabled !== false; }
+
+  private _orbatUrl(): string { return String(this._settings?.orbatUrl || DEFAULT_ORBAT_URL).replace(/\/+$/, ''); }
 
   /** The tab came into view: load the recipes (and the terrain bundle when it is wanted) once, then draw. */
   public shown(): void {
@@ -443,17 +506,33 @@ export class PlanBuildTab {
     this._render();
   }
 
-  /** The map switched between 2D and 3D: the overlay layer moves to the new view. */
+  /**
+   * The map switched between 2D and 3D: the overlay layer moves to the new view with what it showed (the threat marker,
+   * Check my plan's rings, routes shown): its graphics are in Web Mercator and draw in either.
+   */
   public viewChanged(): void {
-    this._layer?.destroy();
+    const old = this._layer;
+    const gs = old ? old.graphics.toArray() : [];
+    if (old) { old.graphics.removeAll(); old.destroy(); }
     this._layer = null;
     this._disarm();
+    const layer = this._layerOn();
+    if (layer && gs.length) layer.addMany(gs);
     this._drawThreat();
+  }
+
+  /** The Mgr panel closed (false) or opened (true): the tab's map products hide and come back with it. */
+  public setVisible(on: boolean): void {
+    this._visible = on;
+    if (!on) { this._disarm(); this._hideNote(); }
+    if (this._layer) this._layer.visible = on;
   }
 
   public destroy(): void {
     this._destroyed = true;
+    this._removeNote();
     this._box.removeEventListener('click', this._onClick);
+    this._box.removeEventListener('change', this._onChange);
     this._box.innerHTML = '';
     this._aside?.removeEventListener('click', this._onClick);
     if (this._aside) this._aside.innerHTML = '';
@@ -482,10 +561,22 @@ export class PlanBuildTab {
       };
       const index = await get(`${base}/index.json`);
       const fams: Family[] = Array.isArray(index?.families) ? index.families : [];
-      const loaded: Recipe[] = [];
-      for (const f of fams) for (const id of f.recipes ?? []) {
-        try { loaded.push(await get(`${base}/${id}.json`)); } catch (e) { this._host.log(`Recipe ${id}: ${e instanceof Error ? e.message : String(e)}`, false); }
-      }
+      // every recipe at once, the count on the loading line
+      const ids = [...new Set(fams.flatMap((f) => f.recipes ?? []))];
+      this._loadCount = { done: 0, total: ids.length };
+      this._render();
+      let painted = 0;
+      const got = await Promise.all(ids.map(async (id) => {
+        try { return (await get(`${base}/${id}.json`)) as Recipe; }
+        catch (e) { this._host.log(`Recipe ${id}: ${e instanceof Error ? e.message : String(e)}`, false); return null; }
+        finally {
+          this._loadCount.done++;
+          // one render a frame at most
+          if (!painted && !this._destroyed) painted = requestAnimationFrame(() => { painted = 0; if (this._loadState === 'loading') this._render(); });
+        }
+      }));
+      if (painted) cancelAnimationFrame(painted);
+      const loaded = got.filter((r): r is Recipe => !!r);
       if (this._destroyed) return;
       const good: Recipe[] = [];
       for (const r of loaded) {
@@ -515,7 +606,7 @@ export class PlanBuildTab {
    * is said and left out. No ORBAT at all: the doctrine figures stand, said so.
    */
   private async _loadOrbat(): Promise<void> {
-    const base = String(this._settings.orbatUrl || DEFAULT_ORBAT_URL).replace(/\/+$/, '');
+    const base = this._orbatUrl();
     this._typesCache = null;
     this._atCache = null;
     this._artyCache = null;
@@ -651,7 +742,7 @@ export class PlanBuildTab {
     // a crossing with his minefield assumed (PlanCrossing.withMinefield), cached like the attack's variants
     if (base?.task === 'crossing') {
       let m: Recipe = base;
-      if (this._mf) {
+      if (this._mfCross) {
         const key = `${base.id}:mf`;
         m = this._ph2.get(key) ?? withMinefield(base, this._doc);
         this._ph2.set(key, m);
@@ -680,14 +771,14 @@ export class PlanBuildTab {
     }
     // a 3-Coy attack (Lt Cdo) has no Coy left for a second phase: one phase
     const phases = base?.forCoys === 3 ? 1 : this._phases;
-    if (!base || base.task !== 'attack' || (phases !== 2 && this._tanks === 'none' && !this._mf)) return base;
-    const e = this._mf ? this._engr : null;
-    const coys = this._coys, key = `${base.id}:${phases}:${coys}:${this._tanks}:${this._mf}:${e?.id ?? ''}:${this._engrCoys}`;
+    if (!base || base.task !== 'attack' || (phases !== 2 && this._tanks === 'none' && !this._mfAttk)) return base;
+    const e = this._mfAttk ? this._engr : null;
+    const coys = this._coys, key = `${base.id}:${phases}:${coys}:${this._tanks}:${this._mfAttk}:${e?.id ?? ''}:${this._engrCoys}`;
     let t = this._ph2.get(key);
     if (!t) {
       t = phases === 2 ? twoPhaseRecipe(base, this._doc, undefined, coys) : base;
       // his minefield in front of the Obj, then tanks with phase 1 (PlanTanks), after the second phase is laid
-      if (this._mf) t = withAttackMinefield(t, this._doc);
+      if (this._mfAttk) t = withAttackMinefield(t, this._doc);
       t = withTanks(t, this._doc, this._tanks, this._tankSqn);
       // the engineers who breach it (their Pls, TAMs; the p 450 table)
       if (e && this._orbat) t = { ...t, id: `${t.id}-en`, engr: { ...e, kinds: bridgeKinds(this._orbat.engrData ?? []), engrData: this._orbat.engrData } as any };
@@ -733,8 +824,7 @@ export class PlanBuildTab {
   /** A patrol's Obj or a recce's NAI follows the cursor while aiming: the aimed distance, ground metres. */
   private _aimM(anchor: XY, cursor: XY | null): number | null {
     if (!cursor || this._smallTask === 'ambush') return null;
-    const k = 1 / Math.cos(2 * Math.atan(Math.exp(anchor.y / R_EARTH)) - Math.PI / 2);
-    const d = Math.hypot(cursor.x - anchor.x, cursor.y - anchor.y) / k;
+    const d = GeoTools.mapUnitsToMeters(Math.hypot(cursor.x - anchor.x, cursor.y - anchor.y), new Point({ x: anchor.x, y: anchor.y, spatialReference: MERC }));
     return d > 50 ? d : null;
   }
 
@@ -789,6 +879,21 @@ export class PlanBuildTab {
     return this._enemyAt;
   }
 
+  /**
+   * The Operation or Unit changed: the choices that do not apply to the new task go back to their defaults; those
+   * that do stay (Day / Night between two attacks, or an attack and a patrol; an attack's tanks between Bn families).
+   */
+  private _resetForTask(task: string, prevTask: string, familyChanged: boolean): void {
+    if (task !== 'attack') { this._tanks = 'none'; this._phases = 1; this._ph2Coys = null; this._mfAttk = false; }
+    if (task !== 'attack' && task !== 'patrol') this._night = false;
+    if (task !== 'crossing') { this._light = 'dark'; this._mfCross = false; }
+    if (task !== 'ambush') this._mover = 'wheeled';
+    if (task !== 'recce') this._recceScreen = false;
+    if (task !== prevTask) { this._engrId = null; this._engrCoys = 0; this._atId = null; this._atCoys = 1; this._inundYds = 0; }
+    if (familyChanged) { this._defTanks = 0; this._atCoys = 1; this._engrCoys = 0; this._inundYds = 0; }
+    this._compare = null;
+  }
+
   private _pickDefaults(): void {
     const fams = this._families.filter((f) => f.task === this._task);
     if (!fams.some((f) => f.id === this._familyId)) this._familyId = fams[0]?.id ?? '';
@@ -800,6 +905,8 @@ export class PlanBuildTab {
   }
 
   private _solve(): void {
+    // a Compare made for the old choices is stale: it is fitted again (Compare here) where the plan last rested
+    this._compare = null;
     const r = this._rcp(this._recipeId);
     if (!r) { this._result = null; this._lastFit = null; return; }
     // ambush, patrol, recce: laid by the solver's shapes; no enemy force, ground kind or ORBAT rows
@@ -882,9 +989,11 @@ export class PlanBuildTab {
   // ── terrain ──────────────────────────────────────────────────────────────────────────────────────────────────
   private get _terrain(): boolean { return this._probeState === 'ready' && !!this._probe?.ready; }
 
-  private async _openProbe(): Promise<void> {
+  private async _openProbe(force = false): Promise<void> {
     const url = String(this._settings.bundleUrl || '/terrain-bundle').replace(/\/+$/, '');
     if (this._probe && this._probeUrl === url && this._probeState !== 'off') return;
+    // found missing at this url already: asked again only when the url changes or the user asks (Retry)
+    if (!force && this._probeState === 'missing' && this._probeMissingUrl === url) return;
     this._closeProbe();
     this._probeUrl = url;
     this._probeState = 'loading';
@@ -894,8 +1003,8 @@ export class PlanBuildTab {
     // in different tiles; with 64 the grids evicted each other and never finished loading
     const ok = await probe.configure(url, { cacheTiles: Math.max(Number(this._settings.cacheTiles) || 0, 256), useWorker: this._settings.useWorker !== false });
     if (this._probe !== probe || this._destroyed) { probe.destroy(); return; }
-    if (ok) { this._probeState = 'ready'; this._host.log(`Intelligent Deployment: terrain bundle at ${url} (${probe.dataLine()})`, true); }
-    else { this._probeState = 'missing'; probe.destroy(); this._probe = null; this._host.log(`Intelligent Deployment: no terrain bundle at ${url}: geometry only`, false); }
+    if (ok) { this._probeState = 'ready'; this._probeMissingUrl = ''; this._host.log(`Intelligent Deployment: terrain bundle at ${url} (${probe.dataLine()})`, true); }
+    else { this._probeState = 'missing'; this._probeMissingUrl = url; probe.destroy(); this._probe = null; this._host.log(`Intelligent Deployment: no terrain bundle at ${url}: geometry only`, false); }
     this._render();
   }
 
@@ -906,8 +1015,10 @@ export class PlanBuildTab {
     this._gunBundle?.destroy();
     this._gunBundle = null;
     this._gunBundleUrl = '';
+    this._gunPending = null;
     this._gunWanted = false;
-    this._probeState = 'off';
+    // a missing bundle stays known as missing (no new request on every show); a closed one is just off
+    if (this._probeState !== 'missing') this._probeState = 'off';
     this._probeUrl = '';
   }
 
@@ -924,6 +1035,50 @@ export class PlanBuildTab {
   }
 
   // ── the threat marker ────────────────────────────────────────────────────────────────────────────────────────
+  /**
+   * The threat the plan is laid against, and where it comes from: the marker set in this tab, else the Ground Guide's
+   * threat marker (one marker for every engine, as the Gun Deployment and Admin Area tools read it), else with
+   * `planBuilder.threat.fromEnemySymbols` the side of the enemy symbols nearest the map's centre; else none.
+   */
+  private _threatInfo(withEnemy = true): { at: XY; from: 'tab' | 'guide' | 'enemy'; word: string } | null {
+    if (this._ownThreat) return { at: this._ownThreat, from: 'tab', word: 'the threat marked in this tab' };
+    let g: XY | null = null;
+    try { g = this._host.threat?.() ?? null; } catch { g = null; }
+    if (g) return { at: g, from: 'guide', word: "the Ground Guide's threat marker" };
+    if (!withEnemy || this._settings.threat?.fromEnemySymbols !== true) return null;
+    const e = this._enemySide();
+    return e.at ? { at: e.at, from: 'enemy', word: `the enemy symbols on the map (${e.n} near the centre of the view)` } : null;
+  }
+
+  /** The point the plan faces / is checked against (see _threatInfo). */
+  private get _threat(): XY | null { return this._threatInfo()?.at ?? null; }
+
+  /**
+   * The enemy symbols' side: the hostile symbol nearest the centre of the view and those within 5 km of it, averaged
+   * (Web Mercator). Read again at most every 2 s.
+   */
+  private _enemySide(): { at: XY | null; n: number } {
+    const now = Date.now();
+    if (this._enemyThreat && now - this._enemyThreat.t < 2000) return this._enemyThreat;
+    let at: XY | null = null, n = 0;
+    try {
+      const rd = this._host.readDrawn?.('all');
+      const all = (rd ? readSymbols(rd.records) : []).filter((x) => x.side === 'enemy' && !x.pbRole && x.pts.length)
+        .map((x) => ({ x: x.pts.reduce((a, q) => a + q.x, 0) / x.pts.length, y: x.pts.reduce((a, q) => a + q.y, 0) / x.pts.length }));
+      const c = this._host.view()?.center;
+      const ctr = c ? this._merc(c) : null;
+      if (all.length) {
+        const near = ctr ? all.reduce((b, q) => (Math.hypot(q.x - ctr.x, q.y - ctr.y) < Math.hypot(b.x - ctr.x, b.y - ctr.y) ? q : b)) : all[0];
+        const r = GeoTools.metersToMapUnits(5000, new Point({ x: near.x, y: near.y, spatialReference: MERC }));
+        const grp = all.filter((q) => Math.hypot(q.x - near.x, q.y - near.y) <= r);
+        n = grp.length;
+        at = { x: grp.reduce((a, q) => a + q.x, 0) / n, y: grp.reduce((a, q) => a + q.y, 0) / n };
+      }
+    } catch { at = null; n = 0; }
+    this._enemyThreat = { at, n, t: now };
+    return this._enemyThreat;
+  }
+
   private _arm(): void {
     const view = this._host.view();
     if (!view) return;
@@ -932,9 +1087,9 @@ export class PlanBuildTab {
     this._arming = view.on('click', (evt: any) => {
       evt.stopPropagation?.();
       const mp = evt.mapPoint;
-      if (mp) this._threat = this._merc(mp);
+      if (mp) this._ownThreat = this._merc(mp);
       this._disarm();
-      this._msg = this._threat ? (this._mode === 'check' ? 'Threat marked: the plan is checked against it.' : 'Threat marked: the plan faces it, and one click places it.') : '';
+      this._msg = this._ownThreat ? (this._mode === 'check' ? 'Threat marked: the plan is checked against it.' : 'Threat marked: the plan faces it, and one click places it.') : '';
       this._drawThreat();
       if (this._mode === 'check' && this._checkRecs) this._runCheck();
       this._render();
@@ -948,10 +1103,12 @@ export class PlanBuildTab {
     if (this._armKey) document.removeEventListener('keydown', this._armKey);
     this._armKey = null;
   }
+  /** A map point in Web Mercator: geographic (WGS84 / NAD83) converted, any Web Mercator wkid as it is. */
   private _merc(p: any): XY {
-    if (p.spatialReference?.wkid === 4326) {
-      const la = Math.max(-85, Math.min(85, p.y));
-      return { x: (p.x * Math.PI * R_EARTH) / 180, y: R_EARTH * Math.log(Math.tan(Math.PI / 4 + (la * Math.PI) / 360)) };
+    const sr = p?.spatialReference;
+    if (sr && !GeoTools.isWebMercatorSR(sr) && (sr.isWGS84 || sr.isGeographic || sr.wkid === 4326 || sr.wkid === 4269)) {
+      const [x, y] = webMercatorUtils.lngLatToXY(p.x, Math.max(-85.0511287798, Math.min(85.0511287798, p.y)));
+      return { x, y };
     }
     return { x: p.x, y: p.y };
   }
@@ -961,7 +1118,7 @@ export class PlanBuildTab {
     if (!view?.map) return null;
     if (!this._layer || !view.map.layers.includes(this._layer)) {
       this._layer?.destroy();
-      this._layer = new GraphicsLayer({ id: 'ms-plan-builder', listMode: 'hide', title: 'Plan Builder' });
+      this._layer = new GraphicsLayer({ id: 'ms-plan-builder', listMode: 'hide', title: 'Plan Builder', visible: this._visible });
       view.map.add(this._layer);
     }
     return this._layer;
@@ -970,39 +1127,205 @@ export class PlanBuildTab {
     const layer = this._layerOn();
     if (!layer) return;
     layer.graphics.removeMany(layer.graphics.filter((g) => g.attributes?.kind === 'threat').toArray());
-    if (!this._threat) return;
-    const at = new Point({ x: this._threat.x, y: this._threat.y, spatialReference: MERC });
+    // only the tab's own marker is drawn here: the Ground Guide draws its own, the enemy symbols are on the map
+    if (!this._ownThreat) return;
+    const at = new Point({ x: this._ownThreat.x, y: this._ownThreat.y, spatialReference: MERC });
     layer.addMany([
       new Graphic({ geometry: at, symbol: new SimpleMarkerSymbol({ style: 'diamond', size: 16, color: [229, 72, 77, 0.85], outline: { color: [20, 24, 29], width: 1.5 } }), attributes: { kind: 'threat' } }),
       new Graphic({ geometry: at, symbol: new TextSymbol({ text: 'Threat', color: [255, 208, 209], haloColor: [20, 24, 29], haloSize: 1.5, yoffset: 14, font: { size: 10, weight: 'bold' } }), attributes: { kind: 'threat' } }),
     ]);
   }
 
+  // ── the key notice (foot of the screen while placing) ────────────────────────────────────────────────────────
+  /** The mode now (or why a key did nothing) and the keys that work, for 5 s at the foot of the screen. Never takes a click. */
+  private _showNote(c: { mode: string; text?: string; keys?: [string, string][]; warn?: boolean }, ms = 5000): void {
+    if (typeof document === 'undefined' || this._destroyed || !this._visible) return;
+    if (!this._note) {
+      this._note = document.createElement('div');
+      this._note.className = 'pb-keynote';
+      this._note.setAttribute('role', 'status');
+      this._note.setAttribute('aria-live', 'polite');
+      document.body.appendChild(this._note);
+    }
+    const el = this._note;
+    const keys = c.keys?.length
+      ? `<div class="pb-keynote-k">${c.keys.map(([k, what]) => `<span>${k.split(' ').map((x) => `<kbd>${esc(x)}</kbd>`).join('')}${esc(what)}</span>`).join('')}</div>`
+      : '';
+    el.innerHTML = `<div class="pb-keynote-h"><span class="pb-keynote-m${c.warn ? ' is-warn' : ''}">${esc(c.mode)}</span>${c.text ? `<span class="pb-keynote-t">${esc(c.text)}</span>` : ''}</div>${keys}`;
+    if (this._noteHideTimer) clearTimeout(this._noteHideTimer);
+    this._noteHideTimer = null;
+    el.style.display = 'block';
+    this._dockNote(el);
+    void el.offsetWidth;
+    el.classList.add('is-on');
+    if (this._noteTimer) clearTimeout(this._noteTimer);
+    this._noteTimer = setTimeout(() => this._hideNote(), ms);
+  }
+
+  private _hideNote(): void {
+    if (this._noteTimer) clearTimeout(this._noteTimer);
+    this._noteTimer = null;
+    const el = this._note;
+    if (!el || !el.classList.contains('is-on')) return;
+    el.classList.remove('is-on');
+    this._noteHideTimer = setTimeout(() => { this._noteHideTimer = null; if (!el.classList.contains('is-on')) el.style.display = 'none'; }, 220);
+  }
+
+  private _removeNote(): void {
+    if (this._noteTimer) clearTimeout(this._noteTimer);
+    if (this._noteHideTimer) clearTimeout(this._noteHideTimer);
+    this._noteTimer = this._noteHideTimer = null;
+    this._note?.remove();
+    this._note = null;
+  }
+
+  /** Dock above whatever covers the foot of the map in the middle (the Mgr's bottom bar, info bars): walk up until the map shows. */
+  private _dockNote(el: HTMLElement): void {
+    const W = window.innerWidth, H = window.innerHeight;
+    el.style.bottom = '56px';
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height || typeof document.elementsFromPoint !== 'function') return;
+    const free = (x: number, y: number): boolean => {
+      if (x < 0 || y < 0 || x >= W || y >= H) return false;
+      const top = document.elementsFromPoint(x, y).find((e) => e !== el && !el.contains(e) && !(e as HTMLElement).classList?.contains('pb-card'));
+      if (!top || top === document.body || top === document.documentElement) return true;
+      return !!top.closest('.esri-view-surface');
+    };
+    const cx = W / 2;
+    for (let b = 56; b <= H - r.height - 72; b += 8) {
+      const y0 = H - b - r.height - 4, y1 = H - b + 4;
+      const xs = [cx - r.width / 2 - 4, cx, cx + r.width / 2 + 4];
+      if (xs.every((x) => free(x, y0) && free(x, y1) && free(x, (y0 + y1) / 2))) { el.style.bottom = `${b}px`; return; }
+    }
+  }
+
+  // ── options (planBuilder.* through the settings bus: the Ctrl+K widget shows the same) ─────────────────────────────
+  /** Set one planBuilder setting: the bus sends it to SymbolEngine, which hands the tab its settings again. */
+  private _setOpt(path: string, raw: string): void {
+    const keys = path.split('.').filter(Boolean);
+    if (!keys.length) return;
+    let v: unknown = raw;
+    if (raw === 'true' || raw === 'false') v = raw === 'true';
+    else if (path === 'gmaDeg') v = raw.trim() === '' || !Number.isFinite(Number(raw)) ? null : Math.max(-30, Math.min(30, Number(raw)));
+    else if (path === 'labelSize') v = Math.max(5, Math.min(16, Math.round(Number(raw) || 7)));
+    else if (path === 'fit.restMs') v = Math.max(150, Math.min(1500, Math.round(Number(raw) || 350)));
+    else if (path === 'auto.maxLayouts') v = Math.max(1, Math.min(12, Math.round(Number(raw) || 6)));
+    try { setSetting(['planBuilder', ...keys], v); }
+    catch { /* no settings bus (a host without window.symbolEngine): set here only */ }
+    // laid over the tab's copy at once (a host without the bus, or one that answers later, still sees it)
+    const next = JSON.parse(JSON.stringify(this._settings ?? {}));
+    let node = next;
+    for (const k of keys.slice(0, -1)) node = node[k] = node[k] && typeof node[k] === 'object' ? node[k] : {};
+    node[keys[keys.length - 1]] = v;
+    if (path === 'alternates.create') this._altFromSettings = true;
+    this.setSettings(next);
+    if (path === 'alternates.create' || path === 'labelSize') this._solve();
+    this._render();
+  }
+
+  /** A number or text box in the Options fold changed. */
+  private _onChange = (e: Event): void => {
+    const t = e.target as HTMLInputElement | null;
+    const path = t?.dataset?.pbOpt;
+    if (!t || !path) return;
+    this._setOpt(path, t.type === 'checkbox' ? String(t.checked) : t.value);
+  };
+
+  /** The value of a planBuilder setting now (the bus first, else the tab's copy). */
+  private _optVal(path: string): unknown {
+    let v: unknown;
+    try { v = getSetting(['planBuilder', ...path.split('.')]); } catch { v = undefined; }
+    if (v !== undefined) return v;
+    return path.split('.').reduce<any>((n, k) => (n == null ? undefined : n[k]), this._settings);
+  }
+
+  /**
+   * Options: the settings with no control elsewhere in the tab (they stay in the Ctrl+K widget too), folded. Each goes
+   * through the settings bus.
+   */
+  private _optionsRow(): string {
+    const v = (p: string) => this._optVal(p);
+    // the toggles are two buttons, each carrying its value in data-v
+    const two = (p: string, label: string, def: boolean, title: string) => {
+      const on = (v(p) ?? def) !== false;
+      return `<div class="pb-seg pb-seg--sm" role="group" aria-label="${esc(label)}"><button type="button" data-pb="opt:${esc(p)}" data-v="true" aria-pressed="${on}" title="${esc(title)}">On</button><button type="button" data-pb="opt:${esc(p)}" data-v="false" aria-pressed="${!on}" title="${esc(title)}">Off</button></div>`;
+    };
+    const pick = (p: string, label: string, def: string, items: [string, string, string?][]) => {
+      const cur = String(v(p) ?? def);
+      return `<div class="pb-seg pb-seg--sm" role="group" aria-label="${esc(label)}">${items.map(([val, l, title]) => `<button type="button" data-pb="opt:${esc(p)}" data-v="${esc(val)}" aria-pressed="${cur === val}"${title ? ` title="${esc(title)}"` : ''}>${esc(l)}</button>`).join('')}</div>`;
+    };
+    const num = (p: string, label: string, def: number | '', min: number, max: number, step: number, unit: string, title: string) => {
+      const cur = v(p);
+      const val = cur === null || cur === undefined ? def : Number(cur);
+      return `<label class="pb-opt-num" title="${esc(title)}"><input type="number" data-pb-opt="${esc(p)}" value="${esc(val)}" min="${min}" max="${max}" step="${step}" aria-label="${esc(label)}"/><span>${esc(unit)}</span></label>`;
+    };
+    const body = this._optsOpen ? `<div class="pb-opts-body">
+      ${row('Auto', two('auto.enabled', 'Auto', true, 'Auto fits the layouts of the family where the plan rests and takes the best (needs the terrain)') + num('auto.maxLayouts', 'Most layouts', 6, 1, 12, 1, 'layouts at most', 'Auto fits at most this many layouts at a rest (the chosen one first)'))}
+      ${row('Rest', num('fit.restMs', 'Rest before the fit', 350, 150, 1500, 50, 'ms before the fit', 'How long the mouse stays still before the plan is fitted to the Gr'))}
+      ${row('En symbols', two('threat.fromEnemySymbols', 'Threat from en symbols', false, 'With no threat marker (here or the Ground Guide\'s), the plan faces the enemy symbols nearest the centre of the view'))}
+      ${row('Alt on ghost', two('alternates.show', 'Alternates on the ghost', false, 'Draw the alternates (created hidden) on the ghost while placing'))}
+      ${row('Alt created', pick('alternates.create', 'Alternates created', 'hidden', [['hidden', 'Hidden'], ['visible', 'Shown'], ['none', 'None']]))}
+      ${row('Rule lines', pick('map.ruleLines', 'Rule lines', 'selected', [['selected', 'Fail / warn', 'Verdict rings only on the posns that fail or warn'], ['all', 'All', 'A verdict ring on every posn, the fire-lift rings'], ['none', 'None', 'No verdict rings or fire-lift rings']]))}
+      ${row('Apch bands', two('map.approachBands', 'Approach bands', true, 'His approaches drawn on the map with their chokes'))}
+      ${row('Labels', num('labelSize', 'Label size', 7, 5, 16, 1, 'pt on built plans', 'Text size of the designations a built plan writes'))}
+      ${row('GMA', num('gmaDeg', 'GMA', '', -30, 30, 0.1, '° E +, empty: grid only', 'The grid-magnetic angle from the map sheet: route cards and night legs then give magnetic bearings too'))}
+    </div>` : '';
+    return `<div class="pb-opts"><button type="button" class="pb-more" data-pb="opts" aria-expanded="${this._optsOpen}">${this._optsOpen ? 'Hide the options' : 'Options'}</button>${body}</div>`;
+  }
+
+  /** Check my plan's scope until the user picks one: the selection, else the last placement this session, else the selection. */
+  private _defaultScope(): void {
+    if (this._scopeChosen) return;
+    let sel = 0, last = false;
+    try { sel = this._host.selectedCount?.() ?? 0; } catch { sel = 0; }
+    try { last = (this._host.readDrawn?.('last').records.length ?? 0) > 0; } catch { last = false; }
+    this._checkScope = sel > 0 ? 'selected' : last ? 'last' : 'selected';
+  }
+
   // ── actions ──────────────────────────────────────────────────────────────────────────────────────────────────
   private _onClick = (e: MouseEvent): void => {
     const t = (e.target as HTMLElement).closest<HTMLElement>('[data-pb]');
-    if (!t || t.getAttribute('aria-disabled') === 'true') return;
+    if (!t) return;
+    // a control that does not apply here says why (its tooltip) instead of doing nothing
+    if (t.getAttribute('aria-disabled') === 'true') {
+      this._msg = (t.getAttribute('title') ?? '').replace(/^Auto picked [^.]*\. /, '') || 'Not available for this plan.';
+      this._fallbackText = null;
+      this._render();
+      return;
+    }
     const [act, val] = (t.dataset.pb ?? '').split(':');
     this._msg = '';
+    this._fallbackText = null;
     switch (act) {
       case 'step': this._step = Number(val) || 1; break;
       case 'task': {
-        const task = TASKS.find((x) => x.id === val);
-        if (task?.later) { this._msg = `${task.label}: ${task.later}.`; break; }
-        this._task = val; this._defTanks = 0; this._auto = false; this._pickDefaults(); break;
+        if (!TASKS.some((x) => x.id === val)) break;
+        const prev = this._task, prevFam = this._familyId;
+        this._task = val; this._auto = false; this._pickDefaults();
+        this._resetForTask(val, prev, this._familyId !== prevFam);
+        this._solve();
+        break;
       }
-      case 'family': this._defTanks = 0; this._familyId = val; this._recipeId = ''; this._auto = false; this._pickDefaults(); break;
+      case 'family': {
+        const changed = val !== this._familyId;
+        this._familyId = val; this._recipeId = ''; this._auto = false;
+        this._resetForTask(this._task, this._task, changed);
+        this._pickDefaults();
+        break;
+      }
       case 'layout': this._recipeId = val; this._auto = false; this._solve(); break;
       case 'auto':
+        if (!this._autoOn) { this._msg = 'Auto is switched off in the Options (Auto ranks the layouts).'; break; }
         if (!this._terrain) { this._msg = 'Auto ranks the layouts on the ground: it needs terrain data.'; break; }
         this._auto = true; break;
       case 'moreTypes': this._allTypes = !this._allTypes; break;
       case 'detail': this._detail = val === 'pl' ? 'pl' : 'coy'; this._solve(); break;
       case 'alt': this._alternates = (val as any) || 'hidden'; this._altFromSettings = false; this._solve(); break;
       case 'threat': this._arm(); break;
-      case 'clearThreat': this._threat = null; this._disarm(); this._drawThreat(); if (this._mode === 'check' && this._checkRecs) this._runCheck(); break;
+      case 'clearThreat': this._ownThreat = null; this._disarm(); this._drawThreat(); if (this._mode === 'check' && this._checkRecs) this._runCheck(); break;
       case 'mode':
         this._mode = val === 'check' ? 'check' : 'build';
+        if (this._mode === 'check') this._defaultScope();
         if (this._mode === 'build') { this._clearProducts(); if (this._lastFit && this._step === 4) this._drawProducts(this._lastFit as Fitted); }
         else if (this._check) this._drawCheck(this._check);
         break;
@@ -1013,11 +1336,16 @@ export class PlanBuildTab {
       case 'ph2Coys': this._setCoys(val === '1' ? 1 : 2); break;
       case 'tanks': this._setTanks(val === 'close' || val === 'fire' ? val : 'none'); break;
       case 'mover': this._setMover(MOVERS.includes(val as Mover) ? (val as Mover) : 'wheeled'); break;
-      case 'mf': this._mf = val === 'on'; this._swapPlan(this._mf ? (this._isCrossing ? 'His minefield assumed: the home side drawn back, a lane to each crossing place' : 'His minefield assumed in front of the Obj: a lane for each assault Coy, breached before H') : 'No minefield known'); break;
+      case 'mf': {
+        const on = val === 'on';
+        if (this._isCrossing) this._mfCross = on; else this._mfAttk = on;
+        this._swapPlan(on ? (this._isCrossing ? 'His minefield assumed: the home side drawn back, a lane to each crossing place' : 'His minefield assumed in front of the Obj: a lane for each assault Coy, breached before H') : 'No minefield known');
+        break;
+      }
       case 'light': this._light = val === 'day' || val === 'moon' ? val : 'dark'; this._swapPlan(`Light: ${this._light === 'moon' ? 'moonlight' : this._light === 'dark' ? 'dark night' : 'day'}`); break;
       case 'ground': this._ground = (val as any) || 'auto'; this._solve(); if (this._mode === 'check' && this._checkRecs) this._runCheck(); break;
-      case 'checkScope': this._checkScope = (val as any) || 'selected'; break;
-      case 'checkRun': this._readAndCheck(); return;
+      case 'checkScope': this._checkScope = (val as any) || 'selected'; this._scopeChosen = true; break;
+      case 'checkRun': this._defaultScope(); this._readAndCheck(); return;
       case 'role': {
         const p = this._check?.posns.find((x) => x.id === val);
         if (!p) break;
@@ -1045,13 +1373,18 @@ export class PlanBuildTab {
       case 'defTanks': this._defTanks = Math.max(0, Math.min(3, Number(val) || 0)); this._solve(); break;
       case 'atCoys': this._atCoys = Math.max(1, Math.min(3, Number(val) || 1)); this._solve(); break;
       case 'retry': this._loadState = 'idle'; this.shown(); return;
+      case 'probeRetry': void this._openProbe(true); break;
       case 'place': this._place(); return;
       case 'copy': void this._copy(); return;
+      case 'refit': if (!this._refitAtSpot()) this._msg = 'Nothing to fit again: place the plan, or rest it on the map while placing.'; break;
+      case 'replaceLast': this._replaceLast = val !== 'add'; break;
+      case 'opts': this._optsOpen = !this._optsOpen; break;
+      case 'opt': this._setOpt(val, t.dataset.v ?? ''); return;
       case 'checkView':
         this._checkView = val === 'compare' ? 'compare' : 'plan';
-        if (this._checkView === 'compare' && !this._compare) this._runCompare();
+        if (this._checkView === 'compare' && !this._compare) { this._startCompare(); return; }
         break;
-      case 'compareRun': this._runCompare(); break;
+      case 'compareRun': this._startCompare(); return;
       case 'routes': this._toggleRoutes(); break;
       case 'useLayout':
         this._recipeId = baseId(val); this._auto = false; this._solve();
@@ -1075,6 +1408,8 @@ export class PlanBuildTab {
     if (!res) return;
     this._disarm();
     const out = this._docFor(res);
+    const th = this._threatInfo();
+    const faces = !!th && res.recipe.task !== 'attack' && res.recipe.task !== 'crossing' && res.recipe.task !== 'advance' && !SMALL_TASKS.includes(res.recipe.task);
     const entry: PlanEntry = {
       id: `built-${res.recipe.id}-${Date.now().toString(36)}`,
       name: `${res.recipe.name} (built)`,
@@ -1086,95 +1421,181 @@ export class PlanBuildTab {
       roles: out.roles,
       recipe: res.recipe.id,
       rotate: true,
-      // a defence faces the threat marker (one click); an attack is aimed from the objective toward the own side; an
-      // ambush is aimed up the road toward him, a patrol at its Obj, a recce at its NAI (the second click)
-      faceAt: this._threat && res.recipe.task !== 'attack' && res.recipe.task !== 'crossing' && res.recipe.task !== 'advance' && !SMALL_TASKS.includes(res.recipe.task) ? { ...this._threat } : undefined,
+      // a defence faces the threat (this tab's marker, the Ground Guide's, or the enemy symbols: one click); an attack
+      // is aimed from the objective toward the own side; an ambush up the road toward him, a patrol at its Obj, a recce
+      // at its NAI (the second click)
+      faceAt: faces ? { ...th!.at } : undefined,
       // geometry mode: the ground as set (none when Auto: nothing was read), the enemy and unit it was laid for
       meta: this._meta(res.recipe, this._ground === 'auto' ? null : this._ground, null, this._enemyFor(res.recipe, this._ground === 'auto' ? null : this._ground), this._unit(res.recipe)?.id ?? null),
+      // the alternates (created hidden) on the ghost only when planBuilder.alternates.show is on
+      ghostShowsHidden: this._settings.alternates?.show === true,
     };
     this._placing = { entry, baseDoc: out.doc, swapped: false };
+    this._preFit = { fit: this._lastFit, result: this._result };
+    this._placedFit = null;
     this._ranked = [];
     this._manual = {};
     this._jMoved.clear();
-    // J / Shift+J while placing (capture phase: the placement is modal, so it is ours, not another guide's J)
+    // J / Shift+J, G, R, P, T, M while placing (capture phase: the placement is modal, so it is ours, not another guide's)
     if (this._jKey) document.removeEventListener('keydown', this._jKey, true);
-    this._jKey = (e: KeyboardEvent) => {
-      const isR = e.key === 'r' || e.key === 'R', isP = e.key === 'p' || e.key === 'P', isT = e.key === 't' || e.key === 'T', isM = e.key === 'm' || e.key === 'M', isG = e.key === 'g' || e.key === 'G';
-      if (e.key !== 'j' && e.key !== 'J' && !isR && !isP && !isT && !isM && !isG) return;
-      const tgt = e.target as HTMLElement | null;
-      if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)) return;
-      // M: an ambush's target (wheeled, tanks, on foot): what NO-GO holds it on the road
-      if (isM) {
-        if (this._smallTask !== 'ambush' || e.ctrlKey || e.metaKey || e.altKey) return;
-        e.preventDefault();
-        e.stopPropagation();
-        this._setMover(MOVERS[(MOVERS.indexOf(this._mover) + 1) % MOVERS.length]);
-        this._render();
-        return;
-      }
-      // J on an ambush: the KZ to the best of the better sites along the Rd (the blue ring); Shift+J back where it was
-      if (this._smallTask === 'ambush' && (e.key === 'j' || e.key === 'J')) {
-        if (e.ctrlKey || e.metaKey || e.altKey) return;
-        e.preventDefault();
-        e.stopPropagation();
-        this._jumpAmbush(e.shiftKey);
-        return;
-      }
-      // G: the gun areas sited by the Gun Deployment finder; Shift+G back to the plan's (defence, attack, crossing)
-      if (isG) {
-        if (e.ctrlKey || e.metaKey || e.altKey || !this._terrain || this._isSmall || this._isAdvance) return;
-        e.preventDefault();
-        e.stopPropagation();
-        void this._siteGuns(e.shiftKey);
-        return;
-      }
-      // J moves a posn; a patrol, recce or crossing moves with the mouse (its better sites are shown on the map)
-      if (this._isSmall || this._isCrossing || this._isAdvance) return;
-      // R: phase 2 by both follow-up Coys, or C Coy with D Coy the reserve (two-phase attacks only)
-      if (isR) {
-        if (!this._isPh2 || e.ctrlKey || e.metaKey || e.altKey) return;
-        e.preventDefault();
-        e.stopPropagation();
-        this._setCoys(this._coys === 2 ? 1 : 2);
-        this._render();
-        return;
-      }
-      // T: no tanks, fire sp, close sp
-      if (isT) {
-        if (!this._isAttack || e.ctrlKey || e.metaKey || e.altKey) return;
-        e.preventDefault();
-        e.stopPropagation();
-        this._setTanks(this._tanks === 'none' ? 'fire' : this._tanks === 'fire' ? 'close' : 'none');
-        this._render();
-        return;
-      }
-      // P: the attack in one phase or two
-      if (isP) {
-        if (!this._isAttack || e.ctrlKey || e.metaKey || e.altKey) return;
-        e.preventDefault();
-        e.stopPropagation();
-        this._setPhases(this._phases === 2 ? 1 : 2);
-        this._render();
-        return;
-      }
-      if (!this._terrain) return;
-      e.preventDefault();
-      e.stopPropagation();
-      this._jump(e.shiftKey);
-    };
+    this._jKey = (e: KeyboardEvent) => this._placingKey(e);
     document.addEventListener('keydown', this._jKey, true);
     this._cursor = null;
     this._host.hooks({
       onGhost: (anchor, bearing, phase, screen, cursor) => this._onGhost(anchor, bearing, phase, screen, cursor ?? null),
       prepareCommit: (anchor, bearing, cursor) => this._prepareCommit(anchor, bearing, cursor ?? null),
-      onEnd: () => this._endPlacing(),
+      onEnd: (info) => this._endPlacing(info),
+      prompt: (phase) => this._prompt(phase),
     });
-    this._host.place(entry, out.doc);
+    const last = this._host.lastBuilt?.() ?? null;
+    this._host.place(entry, out.doc, { replaceLast: !!last && this._replaceLast });
+    this._showNote({ mode: `Placing ${res.recipe.name}${last && this._replaceLast ? ` (replaces ${last.name})` : ''}`, text: faces ? `Faces ${th!.word}` : this._prompt('anchor').text, keys: this._keysFor() });
+  }
+
+  /**
+   * The steps a placement says (the Mgr's bottom bar and status line, and the card): the plan's own first and second
+   * click, as the Enemy step tells them.
+   */
+  private _prompt(phase: 'anchor' | 'bearing'): { step: string; text: string } {
+    const r = this._result?.recipe;
+    const task = r?.task ?? '';
+    const faces = !!this._placing?.entry.faceAt;
+    if (phase === 'anchor') {
+      if (faces) return { step: 'Place the plan', text: `Click where the HQ goes: it faces ${this._threatInfo()?.word ?? 'the threat'}` };
+      const first = task === 'crossing' ? 'Click H on the water'
+        : task === 'advance' ? 'Click the SP of the advance'
+          : task === 'attack' ? 'Click the Obj'
+            : task === 'ambush' ? 'Click the KZ on the Rd'
+              : task === 'patrol' ? 'Click the SP'
+                : task === 'recce' ? (this._isScreen ? 'Click the Wdr RV in the main posn' : 'Click the SP')
+                  : r?.layout === 'canal' ? 'Click the point on the canal' : 'Click where the HQ goes';
+      return { step: 'Step 1 of 2', text: first };
+    }
+    const second = task === 'crossing' ? 'Aim across to the far bank, then click'
+      : task === 'advance' ? 'Aim along the axis of advance, then click'
+        : task === 'attack' ? 'Aim toward your own side (where the attack comes from), then click'
+          : task === 'ambush' ? 'Aim up the Rd toward where he comes from, then click'
+            : task === 'patrol' ? 'Move to the Obj and click'
+              : task === 'recce' ? (this._isScreen ? 'Move out to the ground he would watch you from, then click' : 'Move to the area to watch (NAI) and click')
+                : 'Aim toward the enemy, then click';
+    return { step: 'Step 2 of 2', text: second };
+  }
+
+  /** The keys that work for the plan in hand while it is placed, and what each does now (card foot, Place step, key notice). */
+  private _keysFor(): [string, string][] {
+    const k: [string, string][] = [['Click', this._placing?.entry.faceAt ? 'place' : 'set, then aim and place']];
+    const ter = this._terrain;
+    if (this._smallTask === 'ambush') {
+      if (ter) k.push(['J', 'KZ to the better site'], ['Shift J', 'back']);
+      k.push(['M', `target ${MOVER_LABEL[MOVERS[(MOVERS.indexOf(this._mover) + 1) % MOVERS.length]].toLowerCase()}`]);
+    } else if (ter && !this._isSmall && !this._isCrossing && !this._isAdvance) k.push(['J', 'worst posn to better Gr'], ['Shift J', 'back']);
+    const r = this._result?.recipe;
+    if (ter && r?.arty && ['defence', 'attack', 'crossing'].includes(r.task)) k.push(['G', 'site the gun area'], ['Shift G', 'back']);
+    if (this._isAttack) {
+      if (!r?.forCoys) k.push(['P', this._phases === 2 ? '1 phase' : '2 phases']);
+      if (this._isPh2) k.push(['R', `Ph 2 by ${this._coys === 2 ? 'C Coy only' : 'C, D Coys'}`]);
+      k.push(['T', this._tanks === 'none' ? 'tanks fire sp' : this._tanks === 'fire' ? 'tanks close sp' : 'no tanks']);
+    }
+    if (!this._placing?.entry.faceAt) k.push(['Right-click', 'reset the first click']);
+    k.push(['Esc', 'cancel']);
+    return k;
+  }
+
+  /** A key that does nothing for this plan says why (the key notice). */
+  private _keyWhy(key: string, why: string): void {
+    this._showNote({ mode: `${key}: ${why}`, keys: this._keysFor(), warn: true });
+  }
+
+  /** The keys while placing. */
+  private _placingKey(e: KeyboardEvent): void {
+    const low = e.key.length === 1 ? e.key.toLowerCase() : '';
+    if (!['j', 'r', 'p', 't', 'm', 'g'].includes(low)) return;
+    const tgt = e.target as HTMLElement | null;
+    if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.tagName === 'SELECT' || tgt.isContentEditable)) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const take = () => { e.preventDefault(); e.stopPropagation(); };
+    const K = e.shiftKey ? `Shift+${low.toUpperCase()}` : low.toUpperCase();
+    const r = this._result?.recipe;
+    switch (low) {
+      // M: an ambush's target (wheeled, tanks, on foot): what NO-GO holds it on the road
+      case 'm':
+        take();
+        if (this._smallTask !== 'ambush') { this._keyWhy('M', 'the target is for an ambush'); return; }
+        this._setMover(MOVERS[(MOVERS.indexOf(this._mover) + 1) % MOVERS.length]);
+        this._showNote({ mode: `Target: ${MOVER_LABEL[this._mover].toLowerCase()}`, keys: this._keysFor() });
+        this._render();
+        return;
+      // G: the gun areas sited by the Gun Deployment finder; Shift+G back to the plan's (defence, attack, crossing)
+      case 'g':
+        take();
+        if (!this._terrain) { this._keyWhy(K, 'needs the terrain data'); return; }
+        if (this._isSmall || this._isAdvance || !r?.arty) { this._keyWhy(K, this._isSmall || this._isAdvance ? 'no gun area on this plan' : 'choose the artillery in the Arty row first'); return; }
+        void this._siteGuns(e.shiftKey);
+        return;
+      case 'r':
+        take();
+        if (!this._isAttack) { this._keyWhy('R', 'Ph 2 by is for an attack'); return; }
+        if (!this._isPh2) { this._keyWhy('R', 'for an attack in two phases (P first)'); return; }
+        this._setCoys(this._coys === 2 ? 1 : 2);
+        this._showNote({ mode: `Ph 2 by ${this._coysWord()}`, keys: this._keysFor() });
+        this._render();
+        return;
+      case 't':
+        take();
+        if (!this._isAttack) { this._keyWhy('T', 'tanks are for an attack (a defence: the Tanks row)'); return; }
+        this._setTanks(this._tanks === 'none' ? 'fire' : this._tanks === 'fire' ? 'close' : 'none');
+        this._showNote({ mode: `Tanks: ${this._tanksWord()}`, keys: this._keysFor() });
+        this._render();
+        return;
+      case 'p':
+        take();
+        if (!this._isAttack) { this._keyWhy('P', 'phases are for an attack'); return; }
+        if (r?.forCoys) { this._keyWhy('P', 'a 3-Coy Bn attacks in one phase'); return; }
+        this._setPhases(this._phases === 2 ? 1 : 2);
+        this._showNote({ mode: this._phases === 2 ? `Two phases, Ph 2 by ${this._coysWord()}` : 'One phase, a Res kept', keys: this._keysFor() });
+        this._render();
+        return;
+      case 'j':
+        take();
+        // J on an ambush: the KZ to the best of the better sites along the Rd (the blue ring); Shift+J back where it was
+        if (this._smallTask === 'ambush') {
+          if (!this._terrain) { this._keyWhy(K, 'needs the terrain data'); return; }
+          this._jumpAmbush(e.shiftKey);
+          return;
+        }
+        // a patrol, recce, crossing or advance moves with the mouse (its better sites are shown on the map)
+        if (this._isSmall || this._isCrossing || this._isAdvance) { this._keyWhy(K, `a ${this._isCrossing ? 'crossing' : this._isAdvance ? 'advance' : this._smallTask} moves with the mouse: no posn to move`); return; }
+        if (!this._terrain) { this._keyWhy(K, 'needs the terrain data'); return; }
+        this._jump(e.shiftKey);
+        return;
+    }
   }
 
   // ── fit at rest ──────────────────────────────────────────────────────────────────────────────────────────────
+  /** The mouse moved only a few px (or the aim a few mrad) from where the plan rests: a hand's jitter, not a new spot. */
+  private _sameRest(anchor: XY, bearing: number | null, screen: { x: number; y: number } | null, cursor: XY | null): boolean {
+    const r = this._rest;
+    if (!r) return false;
+    // the anchor itself must not have moved (an ambush's J moves it while the mouse stays put)
+    const tol = Math.max(1, (Number((this._host.view() as any)?.resolution) || 1) * 4);
+    if (Math.hypot(r.anchor.x - anchor.x, r.anchor.y - anchor.y) > tol) return false;
+    if (screen && r.screen) return Math.hypot(screen.x - r.screen.x, screen.y - r.screen.y) <= 4;
+    return this._nearSpot(r, anchor, bearing ?? r.bearing, cursor);
+  }
+
+  /** Two spots the same within a few screen px (the view's resolution) and a few mrad. */
+  private _nearSpot(r: { anchor: XY; bearing: number; cursor?: XY | null }, anchor: XY, bearing: number, cursor: XY | null): boolean {
+    const tol = Math.max(1, (Number((this._host.view() as any)?.resolution) || 1) * 4);
+    if (Math.hypot(r.anchor.x - anchor.x, r.anchor.y - anchor.y) > tol) return false;
+    if (r.cursor && cursor) return Math.hypot(r.cursor.x - cursor.x, r.cursor.y - cursor.y) <= tol;
+    const d = Math.abs(((r.bearing - bearing + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
+    return d <= 0.005;
+  }
+
   private _onGhost(anchor: XY, bearing: number | null, _phase: 'anchor' | 'bearing', screen: { x: number; y: number } | null, cursor: XY | null = null): void {
     if (!this._placing) return;
+    // a jitter of a few px where the plan rests keeps the fit, J's and G's moves and the products
+    if (this._rest && !this._restTimer && this._sameRest(anchor, bearing, screen, cursor)) return;
     this._cursor = cursor;
     // moving: back to the quick layout, J's moves dropped, products off, the card says so
     const aimM = this._isSmall ? this._aimM(anchor, cursor) : null;
@@ -1194,10 +1615,10 @@ export class PlanBuildTab {
     if (this._restTimer) clearTimeout(this._restTimer);
     this._restTimer = null;
     this._rest = null;
-    const aimWord = this._isCrossing ? 'Aim across to the far bank, then click' : this._isAdvance ? 'Aim along the axis of advance, then click' : this._smallTask === 'ambush' ? 'Aim up the Rd toward where he comes from, then click'
-      : this._smallTask === 'patrol' ? 'Move to the Obj and click' : this._smallTask === 'recce' ? (this._isScreen ? 'Move out to the ground he would watch you from, then click' : 'Move to the area to watch (NAI) and click') : 'Aim it (move, then click)';
+    this._ranked = [];
+    const aimWord = this._prompt(_phase).text;
     if (!this._terrain || bearing === null) {
-      this._showCard(screen, this._terrain ? `<div class="pb-card-dim">${aimWord} to fit it to the ground</div>` : `<div class="pb-card-dim">Geometry only: ground not checked${aimM !== null ? ` · ${this._smallTask === 'patrol' ? 'Obj' : 'NAI'} ${fmtM(aimM)}` : ''}</div>`);
+      this._showCard(screen, this._terrain ? `<div class="pb-card-dim">${esc(_phase === 'anchor' ? aimWord : this._prompt('bearing').text)} to fit it to the ground</div>` : `<div class="pb-card-dim">${esc(aimWord)} · geometry only: Gr not checked${aimM !== null ? ` · ${this._smallTask === 'patrol' ? 'Obj' : 'NAI'} ${fmtM(aimM)}` : ''}</div>`);
       return;
     }
     this._showCard(screen, `<div class="pb-card-dim">Moving: quick ghost at ${this._isSmall ? 'the rule\'s' : 'doctrinal'} spacing${aimM !== null ? ` · ${this._smallTask === 'patrol' ? 'Obj' : 'NAI'} ${fmtM(aimM)}` : ''}</div>`);
@@ -1207,12 +1628,36 @@ export class PlanBuildTab {
     this._restTimer = setTimeout(() => { this._restTimer = null; this._fitAtRest(); }, ms);
   }
 
+  /** How many layouts a fit here runs: Auto's (capped by planBuilder.auto.maxLayouts) or the one chosen. */
+  private _fitIds(all = false): string[] {
+    const fam = this._families.find((f) => f.id === this._familyId);
+    if (!fam || !((this._auto && this._autoOn) || all)) return [this._recipeId];
+    const ids = this._famIds(fam);
+    if (all) return ids;
+    const cap = Math.max(1, Math.floor(Number(this._settings.auto?.maxLayouts) || ids.length));
+    // the chosen layout always among them, then the family's order
+    return [this._recipeId, ...ids.filter((id) => id !== this._recipeId)].filter((id) => ids.includes(id)).slice(0, cap);
+  }
+
   private _fitAtRest(): void {
     const p = this._placing, r = this._rest;
     if (!p || !r) return;
-    const ranked = this._fitAll(r.anchor, r.bearing);
-    if (!ranked.length) return;
-    this._show(ranked);
+    // the fit is synchronous: say what runs and give the browser a frame to paint it first
+    const n = this._fitIds().length;
+    this._showCard(r.screen, `<div class="pb-card-dim">${n > 1 ? `Fitting ${n} layouts…` : 'Fitting the plan to the Gr…'}</div>`);
+    afterPaint(() => {
+      if (this._placing !== p || this._rest !== r || this._destroyed) return;
+      let ranked: Fitted[];
+      try { ranked = this._fitAll(r.anchor, r.bearing); }
+      catch (err) {
+        const why = err instanceof Error ? err.message : String(err);
+        this._host.log(`Intelligent Deployment: the fit failed here (${why})`, false);
+        this._showCard(r.screen, `<div class="pb-card-dim">The fit failed here: ${esc(why)}. The quick ghost stands; move to try again.</div>`);
+        return;
+      }
+      if (!ranked.length) return;
+      this._show(ranked);
+    });
   }
 
   /** Take a fitted layout (or ranking) as the ghost: swap the plan, draw the products, update the card. */
@@ -1222,6 +1667,7 @@ export class PlanBuildTab {
     this._ranked = ranked;
     const best = ranked[0];
     this._lastFit = best;
+    this._lastSpot = { anchor: r.anchor, bearing: r.bearing, cursor: r.cursor ?? null };
     this._syncEntry(best);
     this._host.replace(best.doc.doc, true);
     p.swapped = true;
@@ -1243,20 +1689,20 @@ export class PlanBuildTab {
       this._result = res;
       return this._docFor(res).doc;
     }
-    // the click where it rests with J's moves (or an ambush, patrol, recce fitted there): keep what is shown; elsewhere fit afresh
-    const same = this._rest && this._lastFit && Math.hypot(this._rest.anchor.x - anchor.x, this._rest.anchor.y - anchor.y) < 1 && Math.abs(this._rest.bearing - bearing) < 1e-6;
-    const sameAim = !small || (!!this._rest?.cursor === !!this._cursor && (!this._cursor || Math.hypot(this._rest!.cursor!.x - this._cursor.x, this._rest!.cursor!.y - this._cursor.y) < 1));
-    const ranked = same && sameAim && (small || Object.keys(this._manual).length) ? [this._lastFit!] : this._fitAll(anchor, bearing);
+    // the click where it rests (within a few px: a hand's jitter) with J's / G's moves (or an ambush, patrol, recce
+    // fitted there): keep what is shown; elsewhere fit afresh
+    const same = !!this._rest && !!this._lastFit && this._nearSpot(this._rest, anchor, bearing, this._cursor);
+    const ranked = same && (small || Object.keys(this._manual).length) ? [this._lastFit!] : this._fitAll(anchor, bearing);
     if (!ranked.length) return null;
     this._lastFit = ranked[0];
+    this._lastSpot = { anchor, bearing, cursor: this._cursor };
     this._syncEntry(ranked[0]);
     return ranked[0].doc.doc;
   }
 
-  /** The recipes to fit: the chosen layout, or with Auto every layout of the family; best first (PlanFit.rankFits). */
+  /** The recipes to fit: the chosen layout, or with Auto the family's layouts (at most auto.maxLayouts); best first (PlanFit.rankFits). */
   private _fitAll(anchor: XY, bearing: number, all = false): Fitted[] {
-    const fam = this._families.find((f) => f.id === this._familyId);
-    const ids = (this._auto || all) && fam ? this._famIds(fam) : [this._recipeId];
+    const ids = this._fitIds(all);
     const out: Fitted[] = [];
     for (const id of ids) {
       const recipe = this._rcp(id);
@@ -1319,17 +1765,34 @@ export class PlanBuildTab {
     return { ...f, doc: this._docFor(f.raw) };
   }
 
-  /** The Gun Deployment tool's own bundle reader (SiteBundle: climate, what stands on the ground), opened once. */
-  private async _gunProbe(): Promise<SiteBundle | null> {
+  /**
+   * The Gun Deployment tool's own bundle reader (SiteBundle: climate, what stands on the ground): the open reader,
+   * 'pending' while it opens (a second G waits for the same), or null without a bundle url. A reader that failed to
+   * open is dropped, so the next G tries again.
+   */
+  private _gunProbe(): SiteBundle | 'pending' | null {
     const url = this._probeUrl;
     if (!url) return null;
-    if (this._gunBundle && this._gunBundleUrl === url) return this._gunBundle.ready ? this._gunBundle : null;
+    if (this._gunBundle && this._gunBundleUrl === url && !this._gunPending) return this._gunBundle.ready ? this._gunBundle : null;
+    if (this._gunPending && this._gunBundleUrl === url) return 'pending';
     this._gunBundle?.destroy();
     const b = new SiteBundle(() => { if (this._gunWanted) void this._siteGuns(false); });
     this._gunBundle = b;
     this._gunBundleUrl = url;
-    const ok = await b.configure(url, { cacheTiles: Math.max(Number(this._settings.cacheTiles) || 0, 256), useWorker: this._settings.useWorker !== false });
-    return ok && this._gunBundle === b ? b : null;
+    const pend = b.configure(url, { cacheTiles: Math.max(Number(this._settings.cacheTiles) || 0, 256), useWorker: this._settings.useWorker !== false })
+      .catch(() => false)
+      .then((ok) => {
+        if (this._gunBundle !== b) return null;
+        this._gunPending = null;
+        if (ok) return b;
+        b.destroy();
+        this._gunBundle = null;
+        this._gunBundleUrl = '';
+        this._host.log(`Intelligent Deployment: the gun finder's terrain reader did not open at ${url}`, false);
+        return null;
+      });
+    this._gunPending = pend;
+    return 'pending';
   }
 
   /**
@@ -1355,9 +1818,22 @@ export class PlanBuildTab {
       if (f) { this._jNote = 'G taken back: the gun areas where the plan put them.'; this._show([f]); }
       return;
     }
-    const b = await this._gunProbe();
+    const got = this._gunProbe();
+    if (got === 'pending') {
+      // opening: this G runs once it is open (a second G meanwhile only says so)
+      const first = !this._gunWanted;
+      this._gunWanted = true;
+      say('G: opening the Gr data for the gun finder…');
+      if (first) void this._gunPending?.then((x) => {
+        if (this._destroyed || this._rest !== r) return;
+        if (x) { if (this._gunWanted) void this._siteGuns(false); }
+        else { this._gunWanted = false; say('G: the Gr data did not open for the gun finder; G tries again.'); }
+      });
+      return;
+    }
+    const b = got;
     if (this._rest !== r || this._lastFit !== cur) return;
-    if (!b) { say('G: the terrain bundle did not open for the gun finder.'); return; }
+    if (!b) { say('G: the gun finder needs the terrain data.'); return; }
     if (!this._orbat) return;
     this._gunWeapons ??= gunWeapons({ weapons: this._orbat.weapons }, this._gunR.planFrac.value);
     const mid = (pts: XY[]): XY => ({ x: pts.reduce((s, q) => s + q.x, 0) / pts.length, y: pts.reduce((s, q) => s + q.y, 0) / pts.length });
@@ -1484,11 +1960,50 @@ export class PlanBuildTab {
     if (f) this._show([f]);
   }
 
-  /** Every layout of the family fitted where the last fit was (Compare). */
+  /** Every layout of the family fitted where the plan last rested or was placed (Compare). */
   private _runCompare(): void {
-    const f = this._lastFit;
-    if (!f || !this._terrain) { this._compare = null; return; }
-    this._compare = this._fitAll(f.anchor, f.bearing, true);
+    const at = this._lastSpot ?? (this._lastFit ? { anchor: this._lastFit.anchor, bearing: this._lastFit.bearing, cursor: null } : null);
+    if (!at || !this._terrain) { this._compare = null; return; }
+    const prev = this._cursor;
+    this._cursor = at.cursor;
+    try { this._compare = this._fitAll(at.anchor, at.bearing, true); }
+    catch (err) { this._compare = null; this._msg = `Compare failed: ${err instanceof Error ? err.message : String(err)}`; }
+    finally { this._cursor = prev; }
+  }
+
+  /** Compare with a frame first to paint "Fitting n layouts…" (the fits are synchronous). */
+  private _startCompare(): void {
+    if (!this._terrain || !(this._lastSpot || this._lastFit)) { this._runCompare(); this._render(); return; }
+    this._compareBusy = true;
+    this._render();
+    afterPaint(() => {
+      if (this._destroyed) return;
+      this._runCompare();
+      this._compareBusy = false;
+      this._render();
+    });
+  }
+
+  /**
+   * Fit the plan as now chosen where it last rested or was placed (after a chip changed it): the Check step and Copy as
+   * Text then have its trigger table, route card, H-hour sum or timeline again. False: no spot or no terrain.
+   */
+  private _refitAtSpot(): boolean {
+    const at = this._lastSpot;
+    const recipe = this._rcp(this._recipeId);
+    if (!at || !recipe || !this._terrain || this._placing) return false;
+    const prev = this._cursor;
+    this._cursor = at.cursor;
+    try {
+      const f = this._fitOne(recipe, at.anchor, at.bearing, {});
+      if (!f) return false;
+      this._lastFit = f;
+      this._result = f.res;
+      return true;
+    } catch (err) {
+      this._msg = `The fit failed: ${err instanceof Error ? err.message : String(err)}`;
+      return false;
+    } finally { this._cursor = prev; }
   }
 
   /** The entry the Mgr places carries the fitted layout's roles and hidden ids (Auto may change the layout). */
@@ -1520,10 +2035,43 @@ export class PlanBuildTab {
     };
   }
 
-  private _endPlacing(): void {
+  /**
+   * The placement ended (the Mgr's onEnd). Placed with Keep placing copies on (`again`): this copy's fit is kept for the
+   * Check step and the next copy is fitted at its own spot (the hooks stay). Placed: the Check step shows its fit.
+   * Cancelled: nothing landed in this run, so the fit and result before Place come back ("nothing placed").
+   */
+  private _endPlacing(info: PlacementEnd = { placed: false }): void {
     if (this._restTimer) clearTimeout(this._restTimer);
     this._restTimer = null;
     this._rest = null;
+    if (info.placed && this._lastFit) this._placedFit = this._lastFit;
+    if (info.again && this._placing && !this._destroyed) {
+      // the next copy starts from the quick layout; its own rest fits it
+      this._placing.swapped = true;
+      this._ranked = [];
+      this._manual = {};
+      this._jMoved.clear();
+      this._jNote = '';
+      this._ambushFrom = [];
+      this._noteNext = '';
+      this._clearProducts();
+      this._card?.remove();
+      this._card = null;
+      if (this._placedFit) { this._recipeId = baseId(this._placedFit.recipe.id); this._result = this._placedFit.res; this._lastFit = this._placedFit; }
+      this._showNote({ mode: 'Placed: click to place another copy', text: 'Each copy is fitted where it rests', keys: this._keysFor() });
+      this._render();
+      return;
+    }
+    const placedAny = !!this._placedFit;
+    if (!placedAny && this._preFit) {
+      this._lastFit = this._preFit.fit;
+      this._result = this._preFit.result ?? this._result;
+    } else if (this._placedFit) this._lastFit = this._placedFit;
+    this._preFit = null;
+    this._placedFit = null;
+    this._lastBuiltCache = null;
+    this._hideNote();
+    if (!placedAny && !this._destroyed && this._placing) this._msg = 'Placement cancelled: nothing placed.';
     this._placing = null;
     this._enemyAt = null;
     this._manual = {};
@@ -1539,12 +2087,13 @@ export class PlanBuildTab {
     this._card = null;
     this._compare = null;
     this._routesShown = false;
-    if (this._lastFit && !this._destroyed) {
+    if (this._destroyed) return;
+    if (placedAny && this._lastFit) {
       // what was placed: the Check step shows its fit
       this._recipeId = baseId(this._lastFit.recipe.id);
       this._result = this._lastFit.res;
-      this._render();
     }
+    this._render();
   }
 
   // ── what the fit draws ───────────────────────────────────────────────────────────────────────────────────────
@@ -1554,12 +2103,38 @@ export class PlanBuildTab {
     l.graphics.removeMany(l.graphics.filter((g) => g.attributes?.kind !== 'threat').toArray());
   }
 
+  /** planBuilder.map.approachBands: his approaches (bands with their chokes) on the map. */
+  private get _bandsOn(): boolean { return this._settings.map?.approachBands !== false; }
+
+  /**
+   * planBuilder.map.ruleLines: the rule lines (each posn's verdict ring, an attack's fire-lift rings) drawn for every
+   * posn ('all'), only those that fail or warn ('selected': the ones the card and the Check step point to; the
+   * default) or none.
+   */
+  private _ruleOn(st: CheckState): boolean {
+    const m = this._settings.map?.ruleLines;
+    if (m === 'none') return false;
+    if (m === 'all') return true;
+    return st === 'fail' || st === 'warn';
+  }
+
+  /**
+   * Draw again what the tab shows on the map after a setting changed: Check my plan's rings, or the fit while the
+   * plan rests (the threat marker always).
+   */
+  private _redrawMap(): void {
+    if (this._destroyed) return;
+    this._drawThreat();
+    if (this._mode === 'check' && this._check) this._drawCheck(this._check);
+    else if (this._placing && this._rest && this._lastFit) this._drawProducts(this._lastFit);
+  }
+
   private _drawProducts(f: Fitted): void {
     const layer = this._layerOn();
     if (!layer) return;
     this._clearProducts();
     const gs: Graphic[] = [];
-    for (const a of f.fit.approaches) {
+    for (const a of this._bandsOn ? f.fit.approaches : []) {
       const path = a.path.map((p) => [p.x, p.y]);
       if (path.length < 2) continue;
       gs.push(new Graphic({ geometry: new Polyline({ paths: [path], spatialReference: MERC }), symbol: new SimpleLineSymbol({ color: [255, 107, 111, a.main ? 0.9 : 0.6], width: a.main ? 3 : 2, style: a.main ? 'solid' : 'dash' }), attributes: { kind: 'apch' } }));
@@ -1571,8 +2146,9 @@ export class PlanBuildTab {
     gs.push(...this._attackGraphics(f));
     gs.push(...this._smallGraphics(f));
     gs.push(...this._crossGraphics(f));
-    // each posn's ground verdict as a ring at its centre
+    // each posn's ground verdict as a ring at its centre (the rule lines setting says which)
     for (const s of f.res.slots) {
+      if (!this._ruleOn(s.st)) continue;
       const w = toWorld(f.frame, s.centre);
       gs.push(new Graphic({ geometry: new Point({ x: w.x, y: w.y, spatialReference: MERC }), symbol: new SimpleMarkerSymbol({ style: 'circle', size: 13, color: [...RGB[s.st], 0.35] as any, outline: { color: RGB[s.st], width: 2.5 } }), attributes: { kind: 'status' } }));
     }
@@ -1606,8 +2182,10 @@ export class PlanBuildTab {
     };
     // two phases: the lifts on Obj 2 from H2, the follow-up Coys' way round Obj 1, H2 at SL 2
     const obj2 = f.raw.items.find((i) => i.role === 'obj2'), p2 = a.hSum?.phase2;
-    liftRings(obj.pts, a.hSum?.lifts ?? [], '', !!(obj2 && p2));
-    if (obj2 && p2) liftRings(obj2.pts, p2.lifts, 'Ph 2 ');
+    // the fire-lift rings are rule lines: off with planBuilder.map.ruleLines 'none'
+    const lifts = this._settings.map?.ruleLines !== 'none';
+    if (lifts) liftRings(obj.pts, a.hSum?.lifts ?? [], '', !!(obj2 && p2));
+    if (lifts && obj2 && p2) liftRings(obj2.pts, p2.lifts, 'Ph 2 ');
     const r2 = a.phase2?.route;
     if (r2 && r2.length >= 2 && p2) {
       gs.push(new Graphic({ geometry: new Polyline({ paths: [r2.map((p) => { const w = W(p); return [w.x, w.y]; })], spatialReference: MERC }), symbol: new SimpleLineSymbol({ color: [142, 193, 234, 0.9], width: 2, style: 'short-dot' }), attributes: { kind: 'route' } }));
@@ -1699,7 +2277,8 @@ export class PlanBuildTab {
       this._card.className = 'pb-card';
       box.appendChild(this._card);
     }
-    this._card.innerHTML = `${html}<div class="pb-card-foot">Click: place · Esc: cancel${this._isAttack ? ` · P: ${this._phases === 2 ? '1 phase' : '2 phases'} · T: ${this._tanks === 'none' ? 'tanks fire sp' : this._tanks === 'fire' ? 'tanks close sp' : 'no tanks'}` : ''}${this._isPh2 ? ` · R: Ph 2 by ${this._coys === 2 ? 'C Coy only' : 'C, D Coys'}` : ''}${this._smallTask === 'ambush' ? ` · M: target ${MOVER_LABEL[MOVERS[(MOVERS.indexOf(this._mover) + 1) % MOVERS.length]].toLowerCase()}` : ''}</div>`;
+    // every key that works for the plan in hand, and what it does now
+    this._card.innerHTML = `${html}<div class="pb-card-foot">${this._keysFor().map(([k, what]) => `${esc(k.replace(' ', '+'))}: ${esc(what)}`).join(' · ')}</div>`;
     const w = box.clientWidth, h = box.clientHeight;
     let x = screen.x + 22, y = screen.y + 22;
     if (x + 290 > w) x = screen.x - 300;
@@ -1712,14 +2291,16 @@ export class PlanBuildTab {
 
   private _cardHtml(ranked: Fitted[]): string {
     const best = ranked[0];
+    // no fit yet (a key pressed before the plan rested): the note alone
+    if (!best) return this._jNote ? `<div class="pb-card-dim">${esc(this._jNote)}</div>` : '';
     const worst = [...best.res.rows, ...best.res.slots.flatMap((s) => s.checks.map((c) => ({ ...c, name: `${s.label}: ${c.name}` })))]
       .find((c) => c.st === 'fail') ?? [...best.res.rows, ...best.res.slots.flatMap((s) => s.checks.map((c) => ({ ...c, name: `${s.label}: ${c.name}` })))].find((c) => c.st === 'warn');
     const rows = ranked.slice(0, 4).map((r, i) => `<div class="pb-card-rk${i === 0 ? ' pb-top' : ''}"><span>${esc(LAYOUT_LABEL[r.recipe.layout] ?? r.recipe.layout)}</span><i style="width:${r.fit.score}%"></i><span>${r.fit.score}</span></div>`).join('');
     const slid = best.fit.slides.length ? `<div class="pb-card-dim">${best.fit.slides.map((s) => slideWord(s)).join(', ')}</div>` : '';
     return `<b>${esc(best.recipe.name)}${this._auto ? ' (Auto)' : ''}</b>${best.fit.pending ? ' <span class="pb-card-dim">ground loading…</span>' : ''}
       ${ranked.length > 1 ? rows : `<div class="pb-card-rk pb-top"><span>Score</span><i style="width:${best.fit.score}%"></i><span>${best.fit.score}</span></div>`}
-      ${worst ? cardCheckHtml(worst, WORD[worst.st]) : ''}${slid}
-      ${this._jNote ? `<div class="pb-card-dim">${esc(this._jNote)}</div>` : best.fit.small ? this._smallCardLine(best) : best.fit.crossing ? this._crossCardLine(best) : worst && best.recipe.task !== 'advance' ? '<div class="pb-card-dim">J: the worst posn to better ground nearby</div>' : ''}`;
+      ${worst ? cardCheckHtml(worst, worst.word ?? WORD[worst.st]) : ''}${slid}
+      ${this._jNote ? `<div class="pb-card-dim">${esc(this._jNote)}</div>` : best.fit.small ? this._smallCardLine(best) : best.fit.crossing ? this._crossCardLine(best) : worst && best.recipe.task !== 'advance' ? '<div class="pb-card-dim">J: the worst posn to better Gr nearby</div>' : ''}`;
   }
 
   /** The card's last line for a crossing: the obstacle, the bridge, the tanks across, his observers. */
@@ -1793,7 +2374,7 @@ export class PlanBuildTab {
       : null;
     try {
       this._check = checkPlan(recs as any, this._doc, {
-        threat: this._threat, kinds: this._checkKinds, enemyOverride: override, terrain: this._ground,
+        threat: this._threatInfo(false)?.at ?? null, kinds: this._checkKinds, enemyOverride: override, terrain: this._ground,
         ground: this._terrain ? this._probe : null, orbat: this._orbat, recipes: Object.fromEntries([...this._recipes, ...[...this._ph2.values()].map((t) => [t.id, t] as const)]) as any,
       });
     } catch (e) {
@@ -1867,8 +2448,8 @@ export class PlanBuildTab {
     };
     const mid = (pts: XY[]) => ({ x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length });
     if (r.task === 'defence') {
-      for (const s of r.slots) { const p = r.posns.find((x) => x.id === s.role); if (p) { const c = mid(p.poly); ring(c.x, c.y, s.st, WORD[s.st]); } }
-      for (const a of r.fit?.approaches ?? []) {
+      for (const s of r.slots) { if (!this._ruleOn(s.st)) continue; const p = r.posns.find((x) => x.id === s.role); if (p) { const c = mid(p.poly); ring(c.x, c.y, s.st, WORD[s.st]); } }
+      for (const a of this._bandsOn ? r.fit?.approaches ?? [] : []) {
         const path = a.path.map((p) => [p.x, p.y]);
         if (path.length < 2) continue;
         gs.push(new Graphic({ geometry: new Polyline({ paths: [path], spatialReference: MERC }), symbol: new SimpleLineSymbol({ color: [255, 107, 111, a.main ? 0.9 : 0.6], width: a.main ? 3 : 2, style: a.main ? 'solid' : 'dash' }), attributes: { kind: 'apch' } }));
@@ -1881,6 +2462,7 @@ export class PlanBuildTab {
       }
     } else {
       for (const g of r.groups) {
+        if (!this._ruleOn(g.st)) continue;
         const c = g.obj ? mid(g.obj.pts) : g.axis.pts[g.axis.pts.length - 1];
         ring(c.x, c.y, g.st, g.label);
       }
@@ -1893,10 +2475,10 @@ export class PlanBuildTab {
     const xr = this._check as any;
     // an ambush, patrol, recce or crossing read as drawn: its rows, their why and fix, what to confirm
     const text = xr.small || xr.crossing
-      ? [xr.title.toUpperCase(), ...xr.read, ...xr.unclear, '', 'CHECKS', ...xr.rows.flatMap((c: Check) => [`  ${c.name.padEnd(20)} ${WORD[c.st].padEnd(11)} ${c.reason}`, ...detailLines(c)]), '', 'CONFIRM ON THE GROUND', ...xr.confirm.map((x: string) => `  - ${x}`)].join('\n')
+      ? [xr.title.toUpperCase(), ...xr.read, ...xr.unclear, '', 'CHECKS', ...xr.rows.flatMap((c: Check) => [`  ${c.name.padEnd(20)} ${(c.word ?? WORD[c.st]).padEnd(11)} ${c.reason}`, ...detailLines(c)]), '', 'CONFIRM ON THE GROUND', ...xr.confirm.map((x: string) => `  - ${x}`)].join('\n')
       : checkText(this._check);
-    try { await navigator.clipboard.writeText(text); this._msg = 'Copied to the clipboard.'; }
-    catch { this._msg = 'The clipboard is not available here.'; }
+    try { await navigator.clipboard.writeText(text); this._msg = 'Copied to the clipboard.'; this._fallbackText = null; }
+    catch { this._msg = 'The clipboard is not available here: select the text below and copy it.'; this._fallbackText = text; }
     this._render();
   }
 
@@ -2065,11 +2647,20 @@ export class PlanBuildTab {
   }
 
   /** Mark, move or clear the threat marker; while armed, the button says to click the map. */
-  private _threatButtons(o: { sm?: boolean; mark?: string; clear?: string; title?: string } = {}): string {
+  private _threatButtons(o: { sm?: boolean; mark?: string; clear?: string; title?: string; check?: boolean } = {}): string {
     if (this._arming) return `${btn('Click the map where he comes from', 'threat', { armed: true, sm: o.sm })}<span class="pb-keyhint"><kbd>Esc</kbd> stops</span>`;
-    const t = this._threat;
-    return btn(t ? 'Move the threat' : o.mark ?? 'Mark the threat on the map', 'threat', { icon: 'aim', sm: o.sm, title: o.title })
-      + (t ? btn(o.clear ?? 'Clear', 'clearThreat', { kind: 'ghost', sm: o.sm }) : '');
+    const own = this._ownThreat;
+    const th = this._threatInfo(!o.check);
+    const used = th ? `<span class="pb-keyhint" title="${esc(`The threat used: ${th.word}`)}">${esc(th.from === 'tab' ? 'marked here' : th.from === 'guide' ? 'Ground Guide marker' : `en symbols (${this._enemySide().n})`)}</span>` : '';
+    return btn(own ? 'Move the threat' : th ? 'Mark here instead' : o.mark ?? 'Mark the threat on the map', 'threat', { icon: 'aim', sm: o.sm, title: th && !own ? `Now from ${th.word}; a marker here is used instead` : o.title })
+      + (own ? btn(o.clear ?? 'Clear', 'clearThreat', { kind: 'ghost', sm: o.sm }) : '') + used;
+  }
+
+  /** Which threat the plan is laid against, and from where, in one line (none: what it falls back to). */
+  private _threatLine(check = false): string {
+    const th = this._threatInfo(!check);
+    if (th) return `<p class="pb-p pb-dim">Threat: ${esc(th.word)}${th.from !== 'tab' ? '. Mark one here to use it instead.' : '.'}</p>`;
+    return `<p class="pb-p pb-dim">No threat marked here or in the Ground Guide${this._settings.threat?.fromEnemySymbols === true ? ', and no enemy symbols on the map' : ''}${check ? ': the front is read from the enemy symbols, then a DCB or minefield in front.' : '.'}</p>`;
   }
 
   /** The verdicts at a glance: the heading (with the score when there is one), a bar and the counts. */
@@ -2088,7 +2679,8 @@ export class PlanBuildTab {
       <p class="pb-p pb-dim">Check a plan on the map: read as drawn, nothing moved; the same rules the build uses.</p>
       ${row('Read', scope)}
       ${this._check && [...SMALL_TASKS, 'crossing', 'advance'].includes(this._check.task as string) ? '' : `${this._enemyRows(this._check?.task ?? 'defence', null)}${this._groundRow()}`}
-      ${row('Threat', this._threatButtons({ sm: true, mark: 'Mark the threat', title: 'Sets the front; without it the front is read from the enemy symbols, then a DCB or minefield in front' }))}`;
+      ${row('Threat', this._threatButtons({ sm: true, mark: 'Mark the threat', title: 'Sets the front; without it the front is read from the enemy symbols, then a DCB or minefield in front', check: true }))}
+      ${this._threatLine(true)}`;
     const r = this._check;
     if (!r) return `${head}<div class="pb-empty">${icon('scan', 'pb-ic-lg')}<p>Select the plan's symbols (or place one from Templates), then <b>Read and check</b>.</p><p>Own and enemy symbols are both read: the enemy's give his force, his axes and his FUP.</p></div>`;
     const pill = pillHtml;
@@ -2111,14 +2703,29 @@ export class PlanBuildTab {
   }
 
   // ── copy ─────────────────────────────────────────────────────────────────────────────────────────────────────
+  /** What Copy as Text leaves out of a plan not fitted to the ground (said in the text itself), or '' when it is fitted. */
+  private _unfittedNote(): string {
+    const res = this._result;
+    if (!res || (res as any).mode === 'terrain') return '';
+    const t = res.recipe.task;
+    const parts = t === 'attack' ? 'the H-hour sum, fire lifts and weighed factors' : t === 'crossing' ? 'the crossing timeline and bridge sites'
+      : t === 'patrol' ? 'the route card' : t === 'ambush' ? 'the site and better sites' : t === 'recce' ? 'the OPs' : t === 'advance' ? 'the route on the Gr' : 'the trigger table';
+    return `NOT IN THIS TEXT: ${parts} and the Gr checks need the plan fitted to the Gr (${this._terrain ? 'place it, or rest it on the map while placing' : 'the terrain data is not loaded'}).`;
+  }
+
   private async _copy(): Promise<void> {
     if (!this._result) return;
-    const text = planText(this._result, this._unitLine(), this._triggerText());
+    // a chip changed the plan after it was fitted: fit it again where it was, so the text has its fitted parts
+    if ((this._result as any).mode !== 'terrain' && this._lastSpot && this._terrain && !this._placing) this._refitAtSpot();
+    const note = this._unfittedNote();
+    const text = planText(this._result, this._unitLine(), this._triggerText()) + (note ? `\n\n${note}` : '');
     try {
       await navigator.clipboard.writeText(text);
-      this._msg = 'Copied to the clipboard.';
+      this._msg = note ? 'Copied to the clipboard (geometry only: the fitted parts are not in it).' : 'Copied to the clipboard.';
+      this._fallbackText = null;
     } catch {
       this._msg = 'The clipboard is not available here: select the text below and copy it.';
+      this._fallbackText = text;
     }
     this._render();
   }
@@ -2146,8 +2753,10 @@ export class PlanBuildTab {
         return `<div class="pb-status" title="${esc(`Terrain: fitted at rest · ${d}`)}"><i></i><span class="t">Terrain ready</span><span class="d">Fitted at rest${d ? ` · ${esc(d)}` : ''}</span></div>`;
       }
       case 'loading': return '<div class="pb-status is-loading"><i></i><span class="t">Terrain loading…</span><span class="d">Geometry until it is in</span></div>';
-      case 'missing': return '<div class="pb-status is-off" title="No terrain bundle: geometry only, ground not checked"><i></i><span class="t">Geometry only</span><span class="d">No terrain bundle: ground not checked</span></div>';
-      default: return '<div class="pb-status is-off"><i></i><span class="t">Geometry only</span><span class="d">Ground not checked</span></div>';
+      case 'missing': return this._settings.useTerrain === false
+        ? '<div class="pb-status is-off"><i></i><span class="t">Geometry only</span><span class="d">Terrain off in Settings: Gr not checked</span></div>'
+        : `<div class="pb-status is-off" title="No terrain bundle at ${esc(this._probeMissingUrl)}: geometry only, Gr not checked"><i></i><span class="t">Geometry only</span><span class="d">No terrain bundle: Gr not checked</span></div>${btn('Retry', 'probeRetry', { kind: 'ghost', sm: true, title: 'Look for the terrain bundle again' })}`;
+      default: return `<div class="pb-status is-off"><i></i><span class="t">Geometry only</span><span class="d">${this._settings.useTerrain === false ? 'Terrain off in Settings: Gr not checked' : 'Gr not checked'}</span></div>`;
     }
   }
 
@@ -2160,8 +2769,8 @@ export class PlanBuildTab {
     const task = `${fam?.name ?? rec.name} · ${this._auto ? 'Auto' : LAYOUT_LABEL[rec.layout] ?? rec.layout}`;
     let enemy: string;
     if (rec.task === 'ambush') enemy = `Target: ${MOVER_LABEL[this._mover]}`;
-    else if (rec.task === 'crossing') enemy = `${this._light === 'moon' ? 'Moonlight' : this._light === 'dark' ? 'Dark night' : 'Day'}${this._mf ? ' · his mines' : ''}`;
-    else if (SMALL_TASKS.includes(rec.task)) enemy = this._threat ? 'Threat marked' : 'Aim on the map';
+    else if (rec.task === 'crossing') enemy = `${this._light === 'moon' ? 'Moonlight' : this._light === 'dark' ? 'Dark night' : 'Day'}${this._mfCross ? ' · his mines' : ''}`;
+    else if (SMALL_TASKS.includes(rec.task)) enemy = this._threat ? 'Threat set' : 'Aim on the map';
     else {
       const e = this._enemyFor(rec, this._ground === 'auto' ? null : this._ground);
       enemy = `${echelonLabel(this._doc, e.echelon)} · ${String((planDoctrine as any).enemy?.types?.[e.type]?.label ?? e.type)}`;
@@ -2182,6 +2791,17 @@ export class PlanBuildTab {
     }).join('')}</nav>`;
   }
 
+  /** The host's last built plan still on the map, read at most once a second (it reads the map). */
+  private _lastBuiltCache: { v: { name: string; count: number } | null; t: number } | null = null;
+  private _lastBuilt(): { name: string; count: number } | null {
+    const now = Date.now();
+    if (this._lastBuiltCache && now - this._lastBuiltCache.t < 1000) return this._lastBuiltCache.v;
+    let v: { name: string; count: number } | null = null;
+    try { v = this._host.lastBuilt?.() ?? null; } catch { v = null; }
+    this._lastBuiltCache = { v, t: now };
+    return v;
+  }
+
   private _render(): void {
     if (this._destroyed) return;
     const modes = seg([
@@ -2192,16 +2812,19 @@ export class PlanBuildTab {
     const head = `${this._aside ? '' : `<div class="pb-modes">${modes}</div>`}${this._mode === 'check' ? '' : this._stepper()}`;
     let body = '';
     if (this._mode === 'check') body = this._checkMyPlanView();
-    else if (this._loadState === 'loading' || this._loadState === 'idle') body = '<div class="pb-note">Loading recipes…</div>';
+    else if (this._loadState === 'loading' || this._loadState === 'idle') body = `<div class="pb-note">Loading recipes${this._loadCount.total ? ` ${this._loadCount.done} / ${this._loadCount.total}` : '…'}</div>`;
     else if (this._loadState === 'failed') body = `<div class="pb-note pb-bad">Recipes not loaded: ${esc(this._loadError)}</div>${btn('Retry', 'retry', { sm: true })}`;
     else if (!this._result) body = '<div class="pb-note">No recipe for this choice.</div>';
     else body = [this._stepTask, this._stepEnemy, this._stepPlace, this._stepCheck, this._stepCreate][this._step - 1].call(this);
-    const msg = this._msg ? `<div class="pb-msg" role="status">${esc(this._msg)}</div>` : '';
+    const msg = (this._msg ? `<div class="pb-msg" role="status">${esc(this._msg)}</div>` : '')
+      + (this._fallbackText ? `<div class="pb-code"><div class="pb-code-h"><span>Select and copy</span></div><pre class="pb-text" tabindex="0">${esc(this._fallbackText)}</pre></div>` : '');
     const next = this._step < STEPS.length ? btn(`Next: ${STEPS[this._step]}`, `step:${this._step + 1}`, { icon: 'next', after: true }) : '';
+    const last = this._mode === 'build' && this._result ? this._lastBuilt() : null;
+    const placeLbl = last && this._replaceLast ? 'Replace on Map' : 'Place on Map';
     const foot = this._mode === 'check'
       ? `<div class="pb-foot">${this._statusHtml()}${btn('Read and check', 'checkRun', { kind: 'primary', icon: 'scan' })}</div>`
       : this._result
-        ? `<div class="pb-foot">${this._statusHtml()}${next}${btn('Place on Map', 'place', { kind: 'primary', icon: 'pin' })}</div>`
+        ? `<div class="pb-foot">${this._statusHtml()}${next}${btn(placeLbl, 'place', { kind: 'primary', icon: 'pin', title: last ? (this._replaceLast ? `Replaces ${last.name} (one undo step); the Create step can add another instead` : `Adds another beside ${last.name}`) : undefined })}</div>`
         : '';
     // The body is rebuilt on every click: keep its scroll (and the focused button) while the page stays the same,
     // start at the top when the step or mode changes.
@@ -2231,13 +2854,15 @@ export class PlanBuildTab {
     const fams = this._families.filter((f) => f.task === this._task);
     const fam = this._families.find((f) => f.id === this._familyId);
     const layouts = this._famIds(fam).map((id) => this._recipes.get(id)!).filter(Boolean);
-    const tasks = seg(TASKS.map((t) => ({ on: t.id === this._task, label: t.label, data: `task:${t.id}`, title: t.later, disabled: !!t.later && !this._families.some((f) => f.task === t.id) })), { label: 'Operation' });
+    const tasks = seg(TASKS.map((t) => ({ on: t.id === this._task, label: t.label, data: `task:${t.id}`, disabled: !this._families.some((f) => f.task === t.id), title: this._families.some((f) => f.task === t.id) ? undefined : `${t.label}: no recipe loaded for it` })), { label: 'Operation' });
     const units = seg(fams.map((f) => ({ on: f.id === this._familyId, label: f.name, data: `family:${f.id}` })), { label: 'Unit' });
     const isBn = res.recipe.echelon === '16' && res.recipe.task === 'defence';
     // Auto leads the layouts; the layout it took where the plan last rested is ringed
     const picked = this._auto && this._lastFit ? baseId(this._lastFit.recipe.id) : null;
-    const auto = layouts.length > 1
-      ? { on: this._auto, label: 'Auto', data: 'auto', title: this._terrain ? 'Fit every layout where the plan rests and take the best' : 'Ranks the layouts on the ground: needs terrain data', disabled: !this._terrain }
+    // Auto (planBuilder.auto.enabled): ranks the layouts on the ground; without the terrain it says so on a click
+    const cap = Math.max(1, Math.floor(Number(this._settings.auto?.maxLayouts) || layouts.length));
+    const auto = layouts.length > 1 && this._autoOn
+      ? { on: this._auto, label: 'Auto', data: 'auto', title: this._terrain ? `Fit ${cap < layouts.length ? `up to ${cap} of the` : 'every'} layout${cap === 1 ? '' : 's'} where the plan rests and take the best` : 'Auto ranks the layouts on the ground: it needs terrain data', disabled: !this._terrain }
       : undefined;
     const layout = seg(layouts.map((r) => ({ on: !this._auto && r.id === this._recipeId, label: LAYOUT_LABEL[r.layout] ?? r.layout, data: `layout:${r.id}`, title: r.name, picked: r.id === picked })), { auto, label: 'Layout' });
     const attack = res.recipe.task === 'attack'
@@ -2255,8 +2880,8 @@ export class PlanBuildTab {
           { on: this._tanks === 'fire', label: 'Fire sp', data: 'tanks:fire', title: 'Infantry heavy: A Sqn from FUP (Tks) 2.5-3 km out to fire posns by the BOF, there as the infantry come as close to the Obj (IBB p214)' },
           { on: this._tanks === 'close', label: 'Close sp', data: 'tanks:close', title: 'Armour heavy: A Sqn less a troop from FUP (Tks) on its own axis converging on the Obj, rushing it from the assault line of the infantry; a troop covering from a flank (IBB pp 186-188)' }]) + keyHint('T'))
         + row('His Mf', seg([
-          { on: !this._mf, label: 'None', data: 'mf:off', title: 'No minefield known in front of the Obj' },
-          { on: this._mf, label: 'In front', data: 'mf:on', title: 'His protective minefield about 200 m in front of the Obj, 250-300 m deep (IC s111.5, s107): a lane for each assault Coy, breached before H (Breach row; the engineers in the Engrs row)' }]))
+          { on: !this._mfAttk, label: 'None', data: 'mf:off', title: 'No minefield known in front of the Obj' },
+          { on: this._mfAttk, label: 'In front', data: 'mf:on', title: 'His protective minefield about 200 m in front of the Obj, 250-300 m deep (IC s111.5, s107): a lane for each assault Coy, breached before H (Breach row; the engineers in the Engrs row)' }]))
       : '';
     const sq = this._tankSqn;
     const tankFacts = res.recipe.task === 'attack' && this._tanks !== 'none' && sq
@@ -2272,7 +2897,8 @@ export class PlanBuildTab {
         <div class="pb-sum">${esc(this._auto ? `${fam?.name ?? ''}: Auto (best layout where it rests)` : res.recipe.name)} <span class="pb-dim">${fmtM(res.frontageM)} × ${fmtM(res.depthM)} · ${res.items.length} symbols${fam?.unit ? ` · ${esc(fam.name)} (ORBAT)` : ''}</span></div>
         ${this._preview(res)}
         ${res.recipe.note ? `<p class="pb-p pb-dim">${esc(res.recipe.note)}</p>` : ''}
-      </div>`;
+      </div>
+      ${this._optionsRow()}`;
   }
 
   /** The Task step's own rows for a crossing (light, his mines), an ambush (its target) and a patrol (by day or night). */
@@ -2282,8 +2908,8 @@ export class PlanBuildTab {
       { on: this._light === 'moon', label: 'Moonlight', data: 'light:moon' },
       { on: this._light === 'dark', label: 'Dark night', data: 'light:dark', title: 'Night assault preferable (IBB S46 para 18 p237)' }]))
       + row('His mines', seg([
-        { on: !this._mf, label: 'None known', data: 'mf:off' },
-        { on: this._mf, label: 'Assumed (S47)', data: 'mf:on', title: 'IBB S47 para 6: 900-1000 m of mixed mines and wire in front of a defended obstacle: the FUPs drawn back behind it, a Breach lane to each crossing place, timed from Annex Q para 4' }]));
+        { on: !this._mfCross, label: 'None known', data: 'mf:off' },
+        { on: this._mfCross, label: 'Assumed (S47)', data: 'mf:on', title: 'IBB S47 para 6: 900-1000 m of mixed mines and wire in front of a defended obstacle: the FUPs drawn back behind it, a Breach lane to each crossing place, timed from Annex Q para 4' }]));
     if (task === 'ambush') return row('Target', seg(MOVERS.map((m) => ({ on: this._mover === m, label: MOVER_LABEL[m], data: `mover:${m}`,
       title: m === 'wheeled' ? 'Soft-skinned vehicles: a canal, embankment, cutting or close country beside the Rd holds them on it' : m === 'tracked' ? 'Tanks: only the ground NO-GO for tracks holds them on the Rd' : 'Men on foot: they leave a Rd almost anywhere' }))) + keyHint('M'));
     if (task === 'patrol') return row('Time', seg([
@@ -2314,7 +2940,7 @@ export class PlanBuildTab {
             ? howTo('click the <b>Wdr RV</b> in the main posn (where the screen withdraws to)', 'Move the cursor out to the <b>ground in front</b> he would watch the main posn from and click: the posts go between, laterally with intervals (IC s73 p378)')
             : howTo('click the <b>SP</b> (where the recce party leaves)', 'Move the cursor to the <b>area to watch</b> and click: the NAI goes there, the OPs between');
       const threat = rec.task === 'patrol'
-        ? `<div class="pb-actions">${this._threatButtons({ mark: 'Mark where he watches from' })}</div><p class="pb-p pb-dim">${t ? 'The routes keep out of the view from the threat marked.' : 'No threat marked: the routes keep out of the view from the Obj.'}</p>`
+        ? `<div class="pb-actions">${this._threatButtons({ mark: 'Mark where he watches from' })}</div><p class="pb-p pb-dim">${t ? `The routes keep out of the view from ${esc(this._threatInfo()?.word ?? 'the threat')}.` : 'No threat marked: the routes keep out of the view from the Obj.'}</p>`
         : '';
       return `<div class="pb-sum">${rec.task === 'ambush' ? 'Where he comes from' : rec.task === 'patrol' ? 'Where the patrol goes' : 'What to watch'}</div>${how}${threat}
         <p class="pb-p pb-dim">${this._terrain
@@ -2341,7 +2967,7 @@ export class PlanBuildTab {
       <div class="pb-sum">Where the enemy comes from</div>
       <div class="pb-actions">${this._threatButtons({ clear: 'Clear: aim by bearing' })}</div>
       ${t
-        ? '<p class="pb-p">The threat is marked: the plan turns to face it as it follows the cursor, and <b>one click</b> places it.</p>'
+        ? `<p class="pb-p">Threat: ${esc(this._threatInfo()?.word ?? 'marked')}. The plan turns to face it as it follows the cursor, and <b>one click</b> places it.</p>`
         : `<p class="pb-p pb-dim">No threat marked:</p>${howTo('click where the <b>HQ</b> goes', 'Click toward the <b>enemy</b>')}`}
       <p class="pb-p pb-dim">${this._terrain
         ? `When the mouse rests, his approaches are found (for his going, as wide as his corridors) from ${t ? 'the threat' : 'out along the front (assumed)'} to the plan and drawn in red; each is checked for direct fire from the forward posns, and the killing ground goes on the main one.`
@@ -2373,7 +2999,8 @@ export class PlanBuildTab {
       </dl>
       ${res.dropped.length ? `<div class="pb-callout pb-callout--warn">${icon('warn')}<span>Not placed without the ground: <b>${res.dropped.map((d) => esc(d.label)).join(', ')}</b>.</span></div>` : ''}
       <div class="pb-sum">Press Place on Map, then</div>
-      <div class="pb-keys">${how}${key('Esc', 'Cancels.')}${key('Ctrl+Z', 'Takes the whole plan back.')}</div>
+      <div class="pb-keys">${how}${this._keysFor().filter(([k]) => k !== 'Click').map(([k, what]) => key(k.replace(' ', '+'), `${what.charAt(0).toUpperCase()}${what.slice(1)}.`)).join('')}${key('Ctrl+Z', 'Takes the whole plan back.')}</div>
+      ${this._replaceRow()}
       <p class="pb-p pb-dim">The Templates tab's <b>Last placement</b> moves or removes it.</p>`;
   }
 
@@ -2389,15 +3016,20 @@ export class PlanBuildTab {
   private _compareView(): string {
     const pill = (st: CheckState | null) => (st ? pillHtml(st) : '<span class="pb-dim">—</span>');
     if (!this._terrain) return '<p class="pb-p pb-dim">Compare fits every layout to the same ground: it needs terrain data.</p>';
+    const fam = this._families.find((f) => f.id === this._familyId);
+    if (this._compareBusy) return `<div class="pb-empty">${icon('layers', 'pb-ic-lg')}<p>Fitting ${this._famIds(fam).length} layouts…</p></div>`;
     const list = this._compare;
-    if (!list || !list.length) return `<div class="pb-empty">${icon('layers', 'pb-ic-lg')}<p>Compare fits every layout where the plan was.</p><p>Place the plan once, or rest it on the map while placing.</p>${btn('Compare here', 'compareRun', { sm: true })}</div>`;
+    const spot = this._lastSpot || this._lastFit;
+    if (!list || !list.length) return spot
+      ? `<div class="pb-empty">${icon('layers', 'pb-ic-lg')}<p>Compare fits every layout where the plan last rested.</p>${btn('Compare here', 'compareRun', { sm: true })}</div>`
+      : `<div class="pb-empty">${icon('layers', 'pb-ic-lg')}<p>Compare fits every layout where the plan was.</p><p>Place the plan once, or rest it on the map while placing.</p></div>`;
     const W = ((planDoctrine as any).scoreWeights ?? {}) as Record<string, number>;
     const attack = list[0].recipe.task === 'attack';
     const fpill = (v: number) => `<span class="pb-pill pb-${v >= 0.75 ? 'pass' : v >= 0.4 ? 'warn' : 'fail'}">${Math.round(v * 100)}</span>`;
     const head = list.map((f, i) => `<th>${i === 0 ? '★ ' : ''}${esc(LAYOUT_LABEL[f.recipe.layout] ?? f.recipe.layout)}</th>`).join('');
     const small = SMALL_TASKS.includes(list[0].recipe.task) || list[0].recipe.task === 'crossing' || list[0].recipe.task === 'advance';
     // an ambush, patrol or recce: its own rows side by side (hover a cell for its reason)
-    const smallRows = () => [...new Set(list.flatMap((f) => f.res.rows.map((r) => r.name)))].map((name) => `<tr><td>${esc(name)}</td>${list.map((f) => { const r = f.res.rows.find((x) => x.name === name); return r ? `<td title="${esc(r.reason)}">${pill(r.st)}</td>` : '<td>—</td>'; }).join('')}</tr>`).join('');
+    const smallRows = () => [...new Set(list.flatMap((f) => f.res.rows.map((r) => r.name)))].map((name) => `<tr><td>${esc(name)}</td>${list.map((f) => { const r = f.res.rows.find((x) => x.name === name); return r ? `<td title="${esc(r.reason)}">${pillHtml(r.st, r.word)}</td>` : '<td>—</td>'; }).join('')}</tr>`).join('');
     const rows = small ? smallRows() : attack
       ? (list[0].fit.attack?.factors ?? []).map((fa) => `<tr><td>${esc(fa.label)} <span class="pb-dim">×${fa.w}</span></td>${list.map((f) => { const x = f.fit.attack?.factors.find((y) => y.key === fa.key); return x ? `<td title="${esc(x.reason)}">${fpill(x.v)}</td>` : '<td>—</td>'; }).join('')}</tr>`).join('')
       : SCORE_ROWS.map((s) => `<tr><td>${esc(s.label)} <span class="pb-dim">${W[s.key] != null ? `×${W[s.key]}` : ''}</span></td>${list.map((f) => `<td>${pill(scoreRowState(f.res.rows, s.rows))}</td>`).join('')}</tr>`).join('');
@@ -2417,9 +3049,12 @@ export class PlanBuildTab {
     const fit = this._lastFit;
     const title = `Checks ${fitted
       ? `<span class="pb-dim">fitted where it was placed${fit?.fit.pending ? ' (some ground was still loading)' : ''}</span>`
-      : `<span class="pb-dim">(grey: needs ${this._terrain ? 'a placement: the ground is read where the plan lands' : 'terrain data'}, never counted as a pass)</span>`}`;
+      : `<span class="pb-dim">(grey: needs ${this._terrain ? (this._lastSpot ? 'the plan fitted again where it was (a choice changed it)' : 'a placement: the Gr is read where the plan lands') : 'terrain data'}, never counted as a pass)</span>`}`;
+    const refit = !fitted && this._lastSpot && this._terrain && !this._placing
+      ? btn('Fit again where it was', 'refit', { sm: true, icon: 'scan', title: 'A choice changed the plan after it was fitted: fit it again at the same spot' }) : '';
     return `
       ${this._tally(res.rows, title, fitted && fit ? fit.fit.score : null)}
+      <div class="pb-actions">${btn('Copy as Text', 'copy', { sm: true, icon: 'copy' })}${refit}</div>
       ${fitted && fit && fit.fit.slides.length ? `<p class="pb-p pb-dim">${fit.fit.slides.map((s) => slideWord(s)).join(', ')}.</p>` : ''}
       ${ckList(res.rows)}
       ${res.slots.length ? `<div class="pb-sum">Posns</div><ul class="pb-checks">${res.slots.map((s: SlotResult) => ckRow(s.st, s.label, whyHtml(s.checks.map((c) => `${c.name}: ${c.st === 'unchecked' ? 'not checked' : c.reason}`).join(' · ')))).join('')}</ul>` : ''}
@@ -2428,12 +3063,25 @@ export class PlanBuildTab {
       ${!this._lastFit?.whatIf?.triggers.length && res.alternates.length ? `<div class="pb-sum">Triggers</div><table class="pb-t">${res.alternates.map((a) => `<tr><td>Heavy shelling on ${esc(a.ofLabel)}</td><td>${esc(a.ofLabel)} → ${esc(a.label)}</td><td>${a.min} min</td></tr>`).join('')}</table>` : ''}`;
   }
 
+  /** A built plan from this session still on the map: the next Place replaces it (default) or adds another. */
+  private _replaceRow(): string {
+    const last = this._lastBuilt();
+    if (!last) return '';
+    return row('Last plan', seg([
+      { on: this._replaceLast, label: 'Replace the last plan', data: 'replaceLast:replace', title: `${last.name} (${last.count} symbols) goes when the new one lands: one undo step` },
+      { on: !this._replaceLast, label: 'Add another', data: 'replaceLast:add', title: `${last.name} stays on the map` },
+    ], { sm: true, label: 'Last plan' }));
+  }
+
   private _stepCreate(): string {
     const res = this._result!;
+    const note = this._unfittedNote();
     return `
       <p class="pb-p pb-dim">Create on Map is <b>Place on Map</b>: ordinary symbols, one undo step, each tagged with its role.</p>
+      ${this._replaceRow()}
+      ${note && this._lastSpot && this._terrain ? `<div class="pb-actions">${btn('Fit again where it was', 'refit', { sm: true, icon: 'scan', title: 'A choice changed the plan after it was fitted: fit it again at the same spot' })}</div>` : ''}
       <div class="pb-code"><div class="pb-code-h"><span>Plan as text</span>${btn('Copy as Text', 'copy', { kind: 'ghost', sm: true, icon: 'copy' })}</div>
-        <pre class="pb-text">${esc(planText(res, this._unitLine(), this._triggerText()))}</pre></div>`;
+        <pre class="pb-text">${esc(planText(res, this._unitLine(), this._triggerText()) + (note ? `\n\n${note}` : ''))}</pre></div>`;
   }
 
   // ── what-if: the trigger table and the routes ────────────────────────────────────────────────────────────────

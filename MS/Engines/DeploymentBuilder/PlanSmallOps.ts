@@ -26,6 +26,7 @@ import type { FitFrame, FitLayoutInput, FitResult, FittedLayout } from './PlanFi
 import { RouteScanner, bearingOf, distToLine, groundDist, offsetPt, pointInRing, type GoingSets, type MercXY, type NearLine, type RouteReading, type Rules, type Station } from '../MovementGuide/MovementGuideScan';
 import { ambushSiteAt, ambushSites, planPatrol, stationAtChain, type AmbushShape, type AmbushSite } from '../MovementGuide/MovementGuidePlans';
 import { patrolCard, plRulesFrom, type PatrolCard, type PlFootSpeeds, type PlProbe } from '../PlatoonGuide/PlatoonGuideRead';
+import { nightMarchChart } from '../NightMarch/NightMarchRead';
 
 /** The bundle reader the small ops read: the Movement Guide's (PlanGroundProbe hands it over), with the movers' going. */
 export interface SmallProbe extends PlProbe {
@@ -52,6 +53,12 @@ export interface SmallReading {
   exposed?: MercXY[][];
   dead?: MercXY[][];
   marks?: { x: number; y: number; label: string }[];
+  /**
+   * Patrol: the Night March chart on the route out (SP to the Obj: NightMarchRead, the same engine as the Night March
+   * tool and the attack's march): legs with grid bearings, paces and night minutes, the march time, the stretches inside
+   * the En night and thermal sights, the chart's cautions. Read only when the Night March rules are given.
+   */
+  night?: { legs: { i: number; bearingDeg: number; gridDeg: number; distM: number; paces: number; min: number; sight: string }[]; grid: string; lengthM: number; paces: number; marchMin: number; thermalAtM: number | null; nightAtM: number | null; checks: string[] };
   /** Patrol: the route card, leg by leg (out and back), for the Check step and Copy as Text. `bearingDeg` is true (the
    *  line drawn); `gridDeg` is the grid bearing in `grid` (the 1:50k sheets' grid, else UTM), and mils and magnetic
    *  (grid - GMA) are worked from it. */
@@ -78,6 +85,8 @@ interface SmallRead {
 const D2R = Math.PI / 180;
 const kOf = (y: number) => 1 / Math.cos(2 * Math.atan(Math.exp(y / 6378137)) - Math.PI / 2);
 const fmtM = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`);
+/** A bearing as 0-359 (a negative one, west of north, turned round). */
+const deg360 = (d: number) => ((Math.round(d) % 360) + 360) % 360;
 const fmtMin = (m: number) => (m >= 60 ? `${Math.floor(m / 60)} h ${String(Math.round(m % 60)).padStart(2, '0')}` : `${Math.round(m)} min`);
 const ctr = (pts: XY[]): XY => ({ x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length });
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -503,8 +512,10 @@ function readAmbush(c: Ctx): SmallRead {
   const rvB = fig(doc, 'smallOps.ambush.rvM', [750, 900]);
   rows.push({ name: 'RV', st: L.meetingM >= rvB[0] - 1 && L.meetingM <= rvB[1] + 1 ? 'pass' : 'warn', reason: `${fmtM(L.meetingM)} back from the Rd, ${compass(bearingOf(kzC, L.meeting))} (wants ${rvB[0]}-${rvB[1]} m, R)` });
   const reinf = st.reinforcementKm;
+  /** His QRF's time to the KZ from a post `km` away (smallOps.ambush.qrfKmh / qrfTurnOutMin; 30 km/h and 5 min: E). */
+  const qrfMin = (km: number) => Math.round((km / one(doc, 'smallOps.ambush.qrfKmh', 30)) * 60 + one(doc, 'smallOps.ambush.qrfTurnOutMin', 5));
   rows.push(reinf === null ? { name: 'Reinforcements', st: 'pass', reason: `no post or Police within ${A.reinforcementKm} km` }
-    : { name: 'Reinforcements', st: 'warn', reason: `a post or Police ${reinf.toFixed(1)} km away`, detail: { head: `Post / Police ${reinf.toFixed(1)} km away`, why: `His quick reaction force can be on the KZ in about ${Math.round((reinf / 30) * 60 + 5)} min (30 km/h and 5 min to turn out: E).`, whyShort: `QRF in ~${Math.round((reinf / 30) * 60 + 5)} min`, fix: ['Keep the action short: spring, kill, go', 'A stop on his road in from the post', ...betterFix] } });
+    : { name: 'Reinforcements', st: 'warn', reason: `a post or Police ${reinf.toFixed(1)} km away`, detail: { head: `Post / Police ${reinf.toFixed(1)} km away`, why: `His quick reaction force can be on the KZ in about ${qrfMin(reinf)} min (${one(doc, 'smallOps.ambush.qrfKmh', 30)} km/h and ${one(doc, 'smallOps.ambush.qrfTurnOutMin', 5)} min to turn out: E).`, whyShort: `QRF in ~${qrfMin(reinf)} min`, fix: ['Keep the action short: spring, kill, go', 'A stop on his road in from the post', ...betterFix] } });
   const villages = st.places.filter((p) => p.distM <= A.villageKm * 1000);
   rows.push(villages.length ? { name: 'Village', st: 'warn', reason: `${villages.map((v) => v.name ?? 'a village').slice(0, 2).join(', ')} within ${A.villageKm} km`, detail: { head: `${villages.map((v) => v.name ?? 'a village').slice(0, 2).join(', ')} within ${A.villageKm} km`, why: 'People round the KZ: warning to him before it springs, and civilians in the arcs.', fix: ['Fix the arcs clear of the village', 'Move the KZ further from it', ...betterFix] } }
     : { name: 'Village', st: 'pass', reason: `no village within ${A.villageKm} km` });
@@ -635,7 +646,17 @@ function readPatrol(c: Ctx): SmallRead {
     const frvB = fig(doc, 'smallOps.patrol.frvM', [400, 500]);
     // the FRV: as drawn (Check my plan) or 450 m short along the route
     const frvAt: MercXY | null = dr ? dr.frv?.pts[0] ?? null : out.fmp ? [out.fmp.x, out.fmp.y] : null;
-    const frvM = frvAt ? (dr ? groundDist(frvAt, objC) : out.lengthM - out.fmp!.chainM) : 0;
+    // as drawn: along the drawn route out from the FRV to its end (as the build measures it), else straight to the Obj
+    const alongOut = (at: MercXY): number | null => {
+      if (!outP || outP.length < 2) return null;
+      let bi = 0, bd = Infinity;
+      outP.forEach((q, i) => { const d = groundDist(q, at); if (d < bd) { bd = d; bi = i; } });
+      if (bd > 200) return null;
+      let m = 0;
+      for (let i = bi + 1; i < outP.length; i++) m += groundDist(outP[i - 1], outP[i]);
+      return m;
+    };
+    const frvM = frvAt ? (dr ? alongOut(frvAt) ?? groundDist(frvAt, objC) : out.lengthM - out.fmp!.chainM) : 0;
     const frvIn = frvM >= frvB[0] - 1 && frvM <= frvB[1] + 1;
     if (!frvAt) rows.push({ name: 'FRV', st: 'warn', reason: dr ? 'no FRV drawn short of the Obj' : `the route is too short for an FRV ${frvB[0]}-${frvB[1]} m short of the Obj` });
     else {
@@ -665,6 +686,15 @@ function readPatrol(c: Ctx): SmallRead {
     for (const x of out.checks.slice(0, 3)) confirm.push(x);
   }
   confirm.push('The FRV: hidden from the Obj; the check points on the air photo', 'Paces counted (120 = 100 m) and bearings set for each leg');
+  // the Night March chart on the way out (NightMarchRead): the same legs the Night March tool would give the patrol
+  let nightChart: SmallReading['night'] | undefined;
+  if (inp.nmRules && outP && outP.length >= 2 && !dr) {
+    try {
+      const kind = inp.terrain && inp.terrain !== 'auto' ? inp.terrain : 'plains';
+      const ch = nightMarchChart({ path: outP, objective: outP[outP.length - 1], echelon: 'platoon', gmaDeg: inp.gmaDeg ?? null, hHourMin: null, terrainKind: kind === 'obstacle' ? 'plains' : kind, probe: mov as unknown as PlProbe, patrolRules: inp.plRules ?? plRulesFrom(null), foot, speeds, classLabel: (k) => mov.classLabel(k) }, inp.nmRules);
+      nightChart = { legs: ch.legs.map((l) => ({ i: l.i, bearingDeg: deg360(l.bearingDeg), gridDeg: deg360(l.gridDeg), distM: Math.round(l.distM), paces: l.paces, min: l.minNight, sight: l.sight })), grid: ch.grid.name, lengthM: Math.round(ch.lengthM), paces: ch.paces, marchMin: ch.timing.marchMin, thermalAtM: ch.sights?.thermal.enterAtM ?? null, nightAtM: ch.sights?.night.enterAtM ?? null, checks: ch.checks.filter((c) => c.tone !== 'ok').slice(0, 4).map((c) => c.text) };
+    } catch { nightChart = undefined; }
+  }
   const marks: SmallReading['marks'] = [];
   for (const d of out?.dangers ?? []) marks.push({ x: d.x, y: d.y, label: d.label });
   for (const o of out?.obstacles ?? []) marks.push({ x: o.x, y: o.y, label: o.label });
@@ -674,8 +704,9 @@ function readPatrol(c: Ctx): SmallRead {
     geom, extra, rows, confirm, pending, score: Math.max(0, 100 - 25 * fails - 6 * warns),
     small: {
       task: 'patrol', out: outP, back: backP, exposed: out ? segs(out.exposed) : [], dead: out ? segs(out.dead) : [], marks,
-      legs: ([['Out', out], ['In', back]] as const).flatMap(([way, cd]) => (cd?.legs ?? []).map((l) => ({ way, i: l.i, bearingDeg: Math.round(l.bearingDeg) % 360, gridDeg: Math.round(l.gridDeg) % 360, magDeg: inp.gmaDeg === null || inp.gmaDeg === undefined || !Number.isFinite(inp.gmaDeg) ? null : Math.round(((l.gridDeg - inp.gmaDeg) % 360 + 360) % 360) % 360, mils: Math.round((l.gridDeg * 6400) / 360) % 6400, distM: Math.round(l.distM), paces: l.paces, minDay: Math.round(l.minDay), minNight: Math.round(l.minNight), feature: l.endFeature ? (l.endFeature.name ? `${l.endFeature.label} ${l.endFeature.name}` : l.endFeature.label) : null }))),
+      legs: ([['Out', out], ['In', back]] as const).flatMap(([way, cd]) => (cd?.legs ?? []).map((l) => ({ way, i: l.i, bearingDeg: deg360(l.bearingDeg), gridDeg: deg360(l.gridDeg), magDeg: inp.gmaDeg === null || inp.gmaDeg === undefined || !Number.isFinite(inp.gmaDeg) ? null : Math.round(((l.gridDeg - inp.gmaDeg) % 360 + 360) % 360) % 360, mils: Math.round((deg360(l.gridDeg) * 6400) / 360) % 6400, distM: Math.round(l.distM), paces: l.paces, minDay: Math.round(l.minDay), minNight: Math.round(l.minNight), feature: l.endFeature ? (l.endFeature.name ? `${l.endFeature.label} ${l.endFeature.name}` : l.endFeature.label) : null }))),
       grid: out?.grid ?? back?.grid,
+      night: nightChart,
     },
   };
 }

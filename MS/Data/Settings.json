@@ -775,7 +775,8 @@
       "enabled": true,
       "side": "right",
       "tab": true,
-      "topPx": 54
+      "topPx": 54,
+      "extScale": "area"
     },
     "extended": {
       "keys": true,
@@ -828,7 +829,8 @@
         "lzClass": 4,
         "lzPoints": 4,
         "template": "auto",
-        "mapTemplate": true
+        "mapTemplate": true,
+        "lrWeights": {}
       }
     },
     "aor": {
@@ -964,7 +966,8 @@
     "mover": "auto",
     "keep": true,
     "hHour": "",
-    "orbatUrl": "/MS/Data/Orbat/PK"
+    "orbatUrl": "/MS/Data/Orbat/PK",
+    "utcOffsetH": 5
   },
   "compare": {
     "bundleUrl": "/terrain-bundle",

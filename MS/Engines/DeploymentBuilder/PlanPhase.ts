@@ -124,7 +124,9 @@ export function defaultSide(r: Recipe): 1 | -1 {
   if (r.layout === 'left-flank') return -1;
   if (r.layout === 'right-flank') return 1;
   const bof = r.slots.find((s) => s.role === 'bof')?.shape;
-  const x = bof?.ctrl?.[0] ?? bof?.base?.[0]?.[0] ?? 0;
+  // where the BOF sits (its base line), as the tanks read it (PlanTanks), not the point it fires toward
+  const base: [number, number][] | undefined = bof?.base;
+  const x = base?.length ? base.reduce((a, p) => a + p[0], 0) / base.length : bof?.ctrl?.[0] ?? 0;
   return x > 0 ? -1 : 1;
 }
 
@@ -192,7 +194,7 @@ export interface Phase2Find {
   route: XY[];
   side: 1 | -1;
   offDeg: number;
-  obj2From: 'enemy' | 'highGround' | 'assumed';
+  obj2From: 'marked' | 'enemy' | 'highGround' | 'assumed';
   rows: Check[];
 }
 
@@ -201,7 +203,7 @@ export interface Phase2Find {
  * on the map (plan metres); `choke` his MSR behind the objectives. Both sides round Obj 1 are tried (and 15° either way):
  * FUP 2 hidden from Obj 2 first, then the shorter way from the FUP, no NO-GO on the axis, the LOE nearer his MSR.
  */
-export function findPhase2(res: SolveResult, f: FitFrame, g: PlanGround, doc: DoctrineSet, enemyAt: XY[] | null, choke: MsrChoke | null): Phase2Find | null {
+export function findPhase2(res: SolveResult, f: FitFrame, g: PlanGround, doc: DoctrineSet, enemyAt: XY[] | null, choke: MsrChoke | null, marked: XY | null = null): Phase2Find | null {
   const item = (role: string) => res.items.find((i) => i.role === role);
   const obj = item('obj'), obj2 = item('obj2'), fup = item('fup');
   if (!obj || !obj2 || !fup) return null;
@@ -223,7 +225,11 @@ export function findPhase2(res: SolveResult, f: FitFrame, g: PlanGround, doc: Do
     .filter((e) => e.d >= search[0] && e.d <= search[1] && e.cos >= Math.SQRT1_2 && clearOf1(e.p))
     .sort((a, b) => dist(a.p, o2.c) - dist(b.p, o2.c));
   let O2 = o2.c, obj2Why = '';
-  if (known.length) {
+  if (marked && clearOf1(marked)) {
+    // the user marked Obj 2 on the map: it stands, whatever is drawn or lies higher
+    O2 = marked; out.obj2From = 'marked';
+    obj2Why = `where you marked it, ${fmtM(dist(marked, o1.c))} behind Obj 1`;
+  } else if (known.length) {
     O2 = known[0].p; out.obj2From = 'enemy';
     obj2Why = `on the enemy posn drawn ${fmtM(known[0].d)} behind Obj 1`;
   } else {

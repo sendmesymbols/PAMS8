@@ -56,7 +56,17 @@ export interface IpbGrid {
 /** A man-made obstacle read from a symbol on the map, in grid cells. */
 export interface IpbObstacle {
   kind: 'area' | 'line';
+  /** Grid pixels (the coding's `x0` / `y0` are taken off inside). */
   pts: Array<[number, number]>;
+  /**
+   * The movers it stops (IPB p 10: minefields, tank ditches, barriers; wire stops men, a ditch stops vehicles). Left
+   * out: every mover. `lane`: not an obstacle but a way through one (a safe lane, a breach, a bridge over a ditch):
+   * its cells are cleared of man-made obstacles after they are burnt.
+   */
+  stops?: IpbMover[];
+  lane?: boolean;
+  /** Half-width of a line, cells (default 1: three cells wide). */
+  halfCells?: number;
 }
 export interface IpbRules {
   slowUphillPct: number;
@@ -416,16 +426,21 @@ export function codeIpb(a: IpbArgs): IpbCoding {
   }
 
   // Man-made obstacles from symbols.
-  const manMade = new Uint8Array(a.obstacles && a.obstacles.length ? n : 0);
+  const obstacles = (a.obstacles ?? []).filter((o) => o.lane || !o.stops || o.stops.includes(a.mover));
+  const manMade = new Uint8Array(obstacles.length ? n : 0);
   if (manMade.length) {
+    let val = 1;
     const mark = (x: number, y: number) => {
       const bx = Math.round(x) - x0;
       const by = Math.round(y) - y0;
-      if (bx >= 0 && by >= 0 && bx < w && by < h) manMade[by * w + bx] = 1;
+      if (bx >= 0 && by >= 0 && bx < w && by < h) manMade[by * w + bx] = val;
     };
-    for (const o of a.obstacles as IpbObstacle[]) {
+    // Obstacles first, then the lanes through them (a lane clears what it crosses).
+    for (const o of [...obstacles.filter((o) => !o.lane), ...obstacles.filter((o) => o.lane)]) {
       const p = o.pts;
       if (p.length < 2) continue;
+      val = o.lane ? 0 : 1;
+      const hw = Math.max(0, Math.round(o.halfCells ?? 1));
       if (o.kind === 'area' && p.length >= 3) {
         let ax = Infinity, bxx = -Infinity, ay = Infinity, byy = -Infinity;
         for (const q of p) {
@@ -442,7 +457,7 @@ export function codeIpb(a: IpbArgs): IpbCoding {
               const [xj, yj] = p[j];
               if (yi > y + 0.5 !== yj > y + 0.5 && x + 0.5 < ((xj - xi) * (y + 0.5 - yi)) / (yj - yi) + xi) inside = !inside;
             }
-            if (inside) manMade[(y - y0) * w + (x - x0)] = 1;
+            if (inside) manMade[(y - y0) * w + (x - x0)] = val;
           }
       }
       for (let i = 1; i < p.length; i++) {
@@ -452,7 +467,7 @@ export function codeIpb(a: IpbArgs): IpbCoding {
         for (let s = 0; s <= steps; s++) {
           const x = xa + ((xb - xa) * s) / steps;
           const y = ya + ((yb - ya) * s) / steps;
-          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) mark(x + dx, y + dy);
+          for (let dy = -hw; dy <= hw; dy++) for (let dx = -hw; dx <= hw; dx++) mark(x + dx, y + dy);
         }
       }
     }

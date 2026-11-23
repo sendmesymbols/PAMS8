@@ -56,7 +56,10 @@ export class PlanGroundProbe implements PlanGround {
   dataLine(): string { return this._probe.dataLine(); }
 
   going(profile: 'dismounted' | 'tracked' | 'gun') {
-    const p = (this._probe.rules as any)?.profiles?.[profile] ?? {};
+    // a profile the bundle's rules lack is read as the nearest it has (a gun is towed or tracked: the tracked going; tracked
+    // falls back to foot), never as all GO
+    const P = (this._probe.rules as any)?.profiles ?? {};
+    const p = P[profile] ?? (profile === 'gun' ? P.tracked : undefined) ?? (profile !== 'dismounted' ? P.dismounted : undefined) ?? {};
     return { nogo: new Set<number>(p.nogo ?? []), caution: new Set<number>(p.caution ?? []) };
   }
 

@@ -105,6 +105,7 @@ import { GroundGuideIpbMap } from './GroundGuideIpbMap';
 import { arrowHeadFrac, arrowTail, attackArrow, findCorridors, simplifyLine, type IpbAa, type IpbFrame } from './GroundGuideIpbCorridors';
 import { ipbAreas } from './GroundGuideIpbShapes';
 import { fireCoverage } from './GroundGuideIpbFire';
+import { compareLeftRight } from './GroundGuideIpbCompare';
 import { pfKey, proforma, type PfGroupIn, type PfMeasures, type PfSign } from './GroundGuideIpbProforma';
 import { GroundGuideIpbApchMap } from './GroundGuideIpbApchMap';
 import { airIpb, airRulesFrom, type AirExisting, type AirLine, type AirLz, type AirObstruction } from './GroundGuideIpbAir';
@@ -1064,6 +1065,7 @@ export default class GroundGuide {
     if (so && typeof so === 'object') {
       flag('scope.enabled', so.enabled, (b) => (next.scope.enabled = b));
       pick('scope.side', so.side, ['right', 'left'] as const, (x) => (next.scope.side = x));
+      pick('scope.extScale', so.extScale, ['area', 'spot'] as const, (x) => (next.scope.extScale = x));
       flag('scope.tab', so.tab, (b) => (next.scope.tab = b));
       num('scope.topPx', so.topPx, 0, 400, (n) => (next.scope.topPx = n), true);
     }
@@ -1131,6 +1133,13 @@ export default class GroundGuide {
           else bad('extended.ipb.template', ip.template, `must be one of ${ids.join(', ')}`);
         }
         flag('extended.ipb.mapTemplate', ip.mapTemplate, (b) => (next.extended.ipb.mapTemplate = b));
+        if (ip.lrWeights !== undefined) {
+          if (ip.lrWeights && typeof ip.lrWeights === 'object' && !Array.isArray(ip.lrWeights)) {
+            const w: Record<string, number> = {};
+            for (const [k2, v2] of Object.entries(ip.lrWeights as Record<string, unknown>)) if (typeof v2 === 'number' && Number.isFinite(v2)) w[k2] = Math.max(0, Math.min(3, Math.round(v2)));
+            next.extended.ipb.lrWeights = w;
+          } else bad('extended.ipb.lrWeights', ip.lrWeights, 'must be an object of factor id to weight 0-3');
+        }
         if (ip.hHour !== undefined) {
           if (typeof ip.hHour === 'string' && (ip.hHour.trim() === '' || /^([01]?\d|2[0-3]):([0-5]\d)$/.test(ip.hHour.trim()))) next.extended.ipb.hHour = ip.hHour.trim();
           else bad('extended.ipb.hHour', ip.hHour, 'must be HH:MM (24 h) or empty');
@@ -1273,6 +1282,7 @@ export default class GroundGuide {
     document.addEventListener('ms-gg-ipb-create', this._ipbCreateH);
     document.addEventListener('ms-gg-ipb-tpl', this._tplPickH);
     document.addEventListener('ms-gg-ipb-pf', this._pfClickH);
+    document.addEventListener('ms-gg-ipb-lrw', this._lrwH);
     this._emitState('enabled');
     if (this._manifest) {
       this._firstUseHint();
@@ -1292,6 +1302,7 @@ export default class GroundGuide {
     document.removeEventListener('ms-gg-ipb-create', this._ipbCreateH);
     document.removeEventListener('ms-gg-ipb-tpl', this._tplPickH);
     document.removeEventListener('ms-gg-ipb-pf', this._pfClickH);
+    document.removeEventListener('ms-gg-ipb-lrw', this._lrwH);
     this._setExt(false, false, false, 'guide'); // leaving the Ground Guide closes the Extended View (user, 2026-11-12)
     this._syncThreat();
     this._pauseDraw();
@@ -1590,7 +1601,20 @@ export default class GroundGuide {
     }
     const extPart = !extOn ? '' : !ext ? 'x-' : `x${source === 'drawing' ? '' : (this._scopeExtRd?.key ?? '')}|${extKey(ext)}|${ext.sight ? 1 : 0}${ext.plan ? 1 : 0}|${this._scopePlanKey}`;
     const code = isPoint ? echelonCodeOf(effSidc) : null;
-    const level = scopeLevel(code, needM, !!ext && isPoint);
+    // The area read's scale (scope.extScale: area; user, 2026-11-23: the rail's IPB lines described things mostly off
+    // its map): with the IPB avenues on, the frame is centred on the area read and holds all of it; the symbol, its
+    // rings and frontage are drawn where the symbol is (`spot`). The reading itself stays at the spot.
+    const spot: MercXY = centre;
+    let frameCentre: MercXY = centre;
+    const areaFrame = this._opts.scope.extScale === 'area' && extOn && isPoint && this._apchOn() ? this._apch?.view?.frame : null;
+    if (areaFrame && areaFrame.length === 4) {
+      const xs = areaFrame.map((p) => p[0]), ys = areaFrame.map((p) => p[1]);
+      frameCentre = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
+      const kf = Math.cosh(frameCentre[1] / 6378137);
+      needM = Math.max(needM, ...areaFrame.map((p) => Math.hypot(p[0] - frameCentre[0], p[1] - frameCentre[1]) / kf), Math.hypot(spot[0] - frameCentre[0], spot[1] - frameCentre[1]) / kf * 1.1);
+    }
+    const level = scopeLevel(code, needM, (!!ext && isPoint) || !!areaFrame);
+    centre = frameCentre;
     const north = this._north;
     const half = scopeHalf(level.radiusM, north);
     const m = this._manifest;
@@ -1627,7 +1651,7 @@ export default class GroundGuide {
           /* the rail does without the cover line */
         }
       }
-      ext = this._scopeExtProducts(ext, centre, profile, v?.footprint?.frontageM || DEFAULT_FRONTAGE_M);
+      ext = this._scopeExtProducts(ext, spot, profile, v?.footprint?.frontageM || DEFAULT_FRONTAGE_M);
       // The map centre is not a position: no better one is offered for it.
       if (source === 'centre' && ext.plan?.better) ext = { ...ext, plan: { ...ext.plan, better: null } };
     }
@@ -1685,6 +1709,7 @@ export default class GroundGuide {
       closed: geometry.type === 'polygon',
       clearAt: v?.clear?.at && isPoint ? local(v.clear.at) : null,
       loading: ctx.waiting || feats.pending || !!ext?.pending,
+      spot: spot === frameCentre ? [0, 0] : local(spot),
     };
     this._scopeKey = frame.loading ? '' : key; // still loading: the next tile draws it again
     this._scope.render(frame);
@@ -1984,6 +2009,11 @@ export default class GroundGuide {
     };
     const fromFrame = (aM: number, qM: number): MercXY => pt(aM, qM);
     const obj = ip.apchEnd === 'through' || thr.allRound ? null : this._apchObjective(at, sidc, side, toFrame, lengthM, F.w, mcWidthM, k, over.objectiveAt ?? null, over.objectiveLabel);
+    // Obstacles drawn on the map inside the area (minefields, ditches, wire; lanes through them): part of the coding.
+    const obstacles = this._ipbObstacles(side, (p) => {
+      const [al, ac] = toFrame(p);
+      return al >= -500 && al <= lengthM + 8500 && Math.abs(ac) <= F.w / 2 + 500;
+    });
     // The turning approach needs the ground behind the objective (its MSR, up to 8 km): the area read runs that far,
     // grown in steps of a quarter of its width so the coding is not worked out again for every small move.
     if (obj && ip.turn) {
@@ -1994,11 +2024,70 @@ export default class GroundGuide {
     const tAt = this._threatMerc();
     const ech = echelonCodeOf(sidc);
     // The area and its coding (worked out once per area); the objective below changes only the approaches onto it.
-    const codeKey = [hq, fk, side, Math.round(anchor[0]), Math.round(anchor[1]), Math.round(lengthM), thr.allRound ? 'all' : Math.round(thr.bearingDeg), o.sectorDeg, mover, month, ip.season, ip.avlbSpanM, this._opts.bundleUrl].join('|');
+    const obsKey = obstacles.map((ob) => `${ob.key}${ob.lane ? 'L' : ''}${ob.decoy ? 'D' : ''}:${ob.pts.map((p) => `${Math.round(p[0] / 20)},${Math.round(p[1] / 20)}`).join(';')}`).join('/');
+    const codeKey = [hq, fk, side, Math.round(anchor[0]), Math.round(anchor[1]), Math.round(lengthM), thr.allRound ? 'all' : Math.round(thr.bearingDeg), o.sectorDeg, mover, month, ip.season, ip.avlbSpanM, this._opts.bundleUrl, obsKey].join('|');
     const r10 = (p: MercXY | null | undefined): string => (p ? `${Math.round(p[0] / 10)},${Math.round(p[1] / 10)}` : '');
     const objKey = obj ? [r10(obj.at), Math.round(obj.frontageM), Math.round(obj.depthM), r10(obj.from?.at), Math.round(obj.from?.halfWidthM ?? 0), ip.fupM, ip.turn ? 't' : ''].join(',') : '';
     const key = [codeKey, ech ?? '', ip.apchEnd, objKey].join('|');
-    return { hq, fk, note, row, F, mcWidthM, spacingM, thr, side, mover, month, anchor, start, axisDeg, lengthM, corners, k, key, codeKey, obj, toFrame, fromFrame, ech: ech ? (ECH_SHORT[ech] ?? null) : null, threatAssumed: !(o.threat === 'point' && tAt) && over.threatDeg === undefined };
+    return { hq, fk, note, row, F, mcWidthM, spacingM, thr, side, mover, month, anchor, start, axisDeg, lengthM, corners, k, key, codeKey, obj, toFrame, fromFrame, obstacles, ech: ech ? (ECH_SHORT[ech] ?? null) : null, threatAssumed: !(o.threat === 'point' && tAt) && over.threatDeg === undefined };
+  }
+
+  /**
+   * The obstacle symbols on the map for one side's movement (IPB p 10: minefields, tank ditches, barriers are NO-GO;
+   * IpbDoctrine `coding.manMade.symbols`: who each stops, which symbols are lanes). An obstacle stops whoever crosses
+   * it, whichever side laid it; a lane (safe lane, breach, bridge) only serves the side that made it; a decoy minefield
+   * only works on the other side (`coding.manMade.sides`, E). `inArea` keeps those in the area read.
+   */
+  private _ipbObstacles(side: 'enemy' | 'own', inArea: (p: MercXY) => boolean): Array<{ key: string; name: string; kind: 'area' | 'line'; pts: MercXY[]; stops: IpbMover[]; lane: boolean; decoy: boolean; own: boolean; id: string }> {
+    const D: any = IPB_DOCTRINE;
+    const table = D.coding?.manMade?.symbols ?? {};
+    const stops: Record<string, { name: string; stops: IpbMover[]; decoy?: boolean }> = table.stops ?? {};
+    const lanes: Record<string, string> = table.lanes ?? {};
+    const out: ReturnType<GroundGuide['_ipbObstacles']> = [];
+    for (const g of this._placedGraphics()) {
+      const t = g.geometry?.type;
+      if (t !== 'polyline' && t !== 'polygon') continue;
+      const s = normaliseSidc(graphicSidc(g));
+      const ck = s ? catalogKey(s) : null;
+      if (!ck || (!stops[ck] && !lanes[ck])) continue;
+      const laidByOwn = sideOf(s) !== 'hostile'; // friend, neutral, unknown: ours
+      const moverOwn = side === 'own';
+      const lane = !!lanes[ck];
+      if (lane && laidByOwn !== moverOwn) continue; // the other side's lane is not yours to use
+      const decoy = !!stops[ck]?.decoy;
+      if (decoy && laidByOwn === moverOwn) continue; // your own decoy does not stop you
+      const shape = toMercatorShape(g.geometry);
+      const parts = shape?.parts?.filter((p: MercXY[]) => p.length >= 2) ?? [];
+      for (const part of parts) {
+        if (!part.some((p: MercXY) => inArea(p))) continue;
+        out.push({ key: ck, name: lane ? lanes[ck] : stops[ck].name, kind: t === 'polygon' ? 'area' : 'line', pts: part.map((p: MercXY) => [p[0], p[1]] as MercXY), stops: lane ? [] : stops[ck].stops, lane, decoy, own: laidByOwn, id: String(g.attributes?.id ?? '') });
+      }
+    }
+    return out.slice(0, 200);
+  }
+
+  /** The obstacles read for the cards: a note and the list, with own fire's cover of own obstacles (en's options). */
+  private _ipbObstacleNotes(fr: ReturnType<GroundGuide['_apchFrame']>, base: { frame: MercXY[]; anchor: MercXY; mover: IpbMover }): { note: string | null; list: NonNullable<IpbApchView['obstacles']> } {
+    const obs = fr.obstacles.filter((ob) => !ob.lane);
+    const lanes = fr.obstacles.filter((ob) => ob.lane);
+    if (!obs.length && !lanes.length) return { note: null, list: [] };
+    const movers: IpbMover[] = ['armour', 'mech', 'dismounted'];
+    // Own fire over own obstacles, read only for the enemy's movement (the ones that are meant to stop him).
+    const posns = fr.side === 'enemy' ? this._ipbPosns({ frame: base.frame, anchor: base.anchor, mover: base.mover } as IpbApchView, 'own') : [];
+    const k = fr.k;
+    const list = obs.map((ob) => {
+      const stopsThis = ob.stops.includes(fr.mover);
+      let covered: boolean | null = null;
+      if (fr.side === 'enemy' && ob.own) {
+        covered = ob.pts.some((p) => posns.some((q) => Math.hypot(p[0] - q.at[0], p[1] - q.at[1]) / k <= q.effM));
+      }
+      const who = ob.stops.length === movers.length ? 'everyone' : ob.stops.map((m) => (m === 'armour' ? 'armour' : m === 'mech' ? 'mech' : 'inf')).join(', ');
+      return { name: ob.name, kind: ob.kind, own: ob.own, stops: ob.stops, stopsThis, covered, at: ob.pts[Math.floor(ob.pts.length / 2)], text: `${ob.name}: stops ${who}${stopsThis ? '' : ` (not a ${fr.mover === 'dismounted' ? 'dismounted' : fr.mover} mover: left out)`}${covered === false ? '; NOT covered by own fire' : covered ? '; under own fire' : ''}` };
+    });
+    const counted = list.filter((x) => x.stopsThis).length;
+    const uncovered = list.filter((x) => x.covered === false).length;
+    const note = `${counted} obstacle${counted === 1 ? '' : 's'} from the map coded NO-GO${list.length > counted ? ` (${list.length - counted} not for this mover)` : ''}${lanes.length ? `, ${lanes.length} lane${lanes.length === 1 ? '' : 's'} through` : ''}${uncovered ? `; ${uncovered} not covered by own fire (ATP 2-01.3 para 4-14: an obstacle not covered by fire is only a delay)` : ''}.`;
+    return { note, list };
   }
 
   /**
@@ -2257,7 +2346,9 @@ export default class GroundGuide {
       if (grid.pending) return 'pending';
       const [lon] = mercatorToLngLat(fr.anchor[0], fr.anchor[1]);
       // The coding's arguments are kept: the situation template codes the same box again for its other movers.
-      cargs = { grid, rules: this._ipbRules, moveDeg: fr.axisDeg, month: fr.month, lonLat: [lon, lat] as [number, number], avlbSpanM: ip.avlbSpanM, season: ip.season, box: [Math.floor(x0 - grid.px0), Math.floor(y0 - grid.py0), Math.ceil(x1 - grid.px0), Math.ceil(y1 - grid.py0)] as [number, number, number, number] };
+      // The obstacles in grid pixels; a line three cells wide (90 m), so a sample cannot slip between two cells.
+      const obstacles = fr.obstacles.map((ob) => ({ kind: ob.kind, pts: ob.pts.map((p) => { const [px, py] = mercToPx(p[0], p[1], z, ts); return [px - grid.px0, py - grid.py0] as [number, number]; }), stops: ob.stops, lane: ob.lane, halfCells: ob.lane ? 0 : 1 }));
+      cargs = { grid, rules: this._ipbRules, moveDeg: fr.axisDeg, month: fr.month, lonLat: [lon, lat] as [number, number], avlbSpanM: ip.avlbSpanM, season: ip.season, obstacles, box: [Math.floor(x0 - grid.px0), Math.floor(y0 - grid.py0), Math.ceil(x1 - grid.px0), Math.ceil(y1 - grid.py0)] as [number, number, number, number] };
       coding = codeIpb({ ...cargs, mover: fr.mover });
       this._apchCodeCache.set(fr.codeKey, { grid, coding, cargs });
       while (this._apchCodeCache.size > 2) this._apchCodeCache.delete(this._apchCodeCache.keys().next().value!);
@@ -2372,6 +2463,9 @@ export default class GroundGuide {
     const LET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
     let aas: IpbApchAa[];
     const notes = [...r.notes, ...(fr.note ? [fr.note] : [])];
+    // The obstacles read, who each stops, and (own obstacles, the en's options) whether own fire covers it (ATP 4-14).
+    const obsView = this._ipbObstacleNotes(fr, base);
+    if (obsView.note) notes.push(obsView.note);
     if (end === 'through' || !ob) {
       aas = book;
       if (end !== 'through' && !ob && !fr.thr.allRound) notes.unshift(fr.side === 'own' ? 'No Obj in the area read: drag the Threat marker onto the en Posn, or place an en symbol ahead. Showing the Apchs through the area.' : 'No Obj: showing the Apchs through the area.');
@@ -2394,6 +2488,7 @@ export default class GroundGuide {
       codingText: ipbSummaryText(coding),
       ms: { coding: coding.ms, corridors: r.ms },
       apchEnd: end,
+      obstacles: obsView.list,
       objective: ob && objRing ? { at: ob.at, ring: objRing, frontageM: ob.frontageM, depthM: ob.depthM, label: ob.label, source: ob.source, assumed: ob.assumed, fupM: ip.fupM, from: ob.from?.at ?? null, turn: choke } : null,
     };
     // The coding's picture belongs to the area too.
@@ -3087,6 +3182,7 @@ export default class GroundGuide {
     v.wx = this._ipbWxFor(v);
     v.air = ip.air ? this._ipbAirFor(a) : undefined;
     v.template = ip.template !== 'off' ? this._ipbTemplateFor(a) : undefined;
+    v.compare = this._ipbCompareFor(v, fire);
     if (ip.proforma) {
       this._pfInputs = [{ head: '', side: v.side, aas: this._pfMeasuresFor({ view: v, grid: a.grid }, fire) }];
       this._pfPending = true;
@@ -3136,6 +3232,56 @@ export default class GroundGuide {
     this._scopeSoon(0, true);
   }
 
+  /**
+   * Own attack: the left approach against the right, factor by factor (IC s15.12 b; `GroundGuideIpbCompare`), read off
+   * the approaches onto the objective and his fire on them; undefined for the en's options or without an objective.
+   */
+  private _ipbCompareFor(v: IpbApchView, fire: IpbFireView | null): IpbApchView['compare'] {
+    if (v.side !== 'own' || !v.objective || v.apchEnd === 'through') return undefined;
+    const onto = v.aas.filter((a) => a.onto);
+    if (!onto.length) return undefined;
+    const D: any = IPB_DOCTRINE;
+    const factors = ((D.ownAttack?.factors ?? []) as Array<{ id: string; label: string; weight: number; basis: string; src?: string }>).map((f) => ({ id: f.id, label: f.label, weight: Number(f.weight) || 1, basis: f.basis, src: f.src }));
+    const ob = v.objective;
+    const k = Math.cosh(v.anchor[1] / 6378137);
+    const ab = (v.axisDeg * Math.PI) / 180;
+    // Which side of the axis the MSR choke lies (across, metres; negative left as the mover sees).
+    const chokeSideM = ob.turn ? ((ob.turn.at[0] - ob.at[0]) * Math.cos(ab) - (ob.turn.at[1] - ob.at[1]) * Math.sin(ab)) / k : null;
+    const apchs = onto.map((a) => {
+      const fl = fire?.lines.find((l) => l.id === a.id);
+      const fupAlong = a.lengthM - (a.assaultM ?? 0);
+      const seg = fl?.segs.find((s) => s.fromM <= fupAlong && fupAlong <= s.toM) ?? fl?.segs[fl.segs.length - 1];
+      return {
+        id: a.id,
+        onto: a.onto as 'left' | 'right' | 'frontal' | 'turn',
+        lengthM: a.lengthM,
+        goPct: a.goPct,
+        narrows: a.narrows.length,
+        assaultM: a.assaultM ?? 0,
+        assaultNogoPct: a.assaultNogoPct ?? 0,
+        sideM: a.sideM,
+        fire: fl ? { coveredPct: fl.coveredPct, seenPct: fl.seenPct, atFup: seg?.state ?? null } : null,
+      };
+    });
+    return compareLeftRight({ apchs, factors, weights: this._opts.extended.ipb.lrWeights, chokeSideM, fupM: ob.fupM });
+  }
+
+  /** A weight chip in the Left or Right tile was clicked: the factor's weight 0-3, kept in the settings; the compare again. */
+  private readonly _lrwH = (e: Event): void => {
+    const root = this._detail.element;
+    if (!root || !(e.target instanceof Node) || !root.contains(e.target)) return;
+    const d = (e as CustomEvent).detail;
+    if (!d || typeof d.id !== 'string' || typeof d.w !== 'number') return;
+    const w = { ...this._opts.extended.ipb.lrWeights, [d.id]: Math.max(0, Math.min(3, Math.round(d.w))) };
+    this.setOptions({ extended: { ...this._opts.extended, ipb: { ...this._opts.extended.ipb, lrWeights: w } } });
+    setSetting(['groundGuide', 'extended', 'ipb', 'lrWeights'], w);
+    const a = this._apch;
+    if (a?.view) {
+      a.view.compare = this._ipbCompareFor(a.view, a.view.fire ?? null);
+      this._refreshLive();
+    }
+  };
+
   /** A proforma cell was clicked: the suggested sign, then +, −, ?, and back to the suggested one. */
   private readonly _pfClickH = (e: Event): void => {
     const root = this._detail.element;
@@ -3183,10 +3329,19 @@ export default class GroundGuide {
     const halfMc = Math.min(250, (a.view?.mcWidthM ?? 500) / 2);
     const rr = Math.max(1, Math.round(halfMc / Math.max(1, c.res)));
     const codeAt = (x: number, y: number): number => (x >= 0 && y >= 0 && x < c.w && y < c.h ? c.code[y * c.w + x] : IPB.NODATA);
+    // The climb along the way (MW p 81: men on foot pay 30-60 min per 300 m of ascent), from the grid's 30 m elevation.
+    const elevAt = (x: number, y: number): number => (x >= 0 && y >= 0 && x < g.w && y < g.h ? g.elev[y * g.w + x] : NaN);
+    let lastE = NaN;
     for (let s = aa.startM; s < endM; s += 100) {
       const at = this._alongAt(pts, s + 50);
       const [px, py] = mercToPx(at[0], at[1], z, ts);
       const x = Math.floor(px - g.px0 - c.x0), y = Math.floor(py - g.py0 - c.y0);
+      const e = elevAt(x + c.x0, y + c.y0);
+      let rise = 0;
+      if (Number.isFinite(e)) {
+        if (Number.isFinite(lastE) && e > lastE) rise = e - lastE;
+        lastE = e;
+      }
       let code = codeAt(x, y);
       if (code === IPB.NOGO) {
         let best: number = code;
@@ -3200,8 +3355,10 @@ export default class GroundGuide {
       }
       const cls: DecCls = code === IPB.GO ? 'go' : code === IPB.SLOW || code === IPB.NC ? 'slow' : code === IPB.NOGO ? 'nogo' : 'na';
       const prev = going[going.length - 1];
-      if (prev && prev.cls === cls) prev.toM = Math.min(endM, s + 100);
-      else going.push({ fromM: s, toM: Math.min(endM, s + 100), cls });
+      if (prev && prev.cls === cls) {
+        prev.toM = Math.min(endM, s + 100);
+        prev.riseM = (prev.riseM ?? 0) + rise;
+      } else going.push({ fromM: s, toM: Math.min(endM, s + 100), cls, riseM: rise });
     }
     return { pts, endM, going };
   }
@@ -3300,7 +3457,7 @@ export default class GroundGuide {
     };
     const hh = /^([01]?\d|2[0-3]):([0-5]\d)$/.test(ip.hHour.trim()) ? ip.hHour.trim() : null;
     return {
-      rates: { mover: v.mover, go: rates.go, slow: rates.slow, nogo: rates.nogo },
+      rates: { mover: v.mover, go: rates.go, slow: rates.slow, nogo: rates.nogo, climbMinPer300: rates.climbMinPer300 ?? null, climbM: Object.fromEntries([...along.entries()].map(([id, L]) => [id, L.going.reduce((t2, g2) => t2 + (g2.riseM ?? 0), 0)]).filter(([, m2]) => (m2 as number) >= 30)) },
       fromThreat: !!tAt,
       hHour: hh,
       profiles: r.profiles.map((p) => {

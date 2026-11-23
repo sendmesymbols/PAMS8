@@ -164,7 +164,9 @@ export function engrRafts(e: EngrType, widthM: number, li: number, kinds: Return
   if (!k) return null;
   const col: number = widthM <= 75 ? 0 : widthM <= 150 ? 1 : widthM <= 300 ? 2 : -1;
   if (col < 0) return { row: { name: 'Engr rafts', st: 'warn', reason: `${Math.round(widthM)} m: wider than the raft table's 300 m (p ${k.page})` }, firstMin: null, sqnMin: null };
-  const per = (k.tripsPerH as number[])[col] ?? 1, build = (k.buildMin as number[])[li] ?? 0;
+  const per = (k.tripsPerH as number[])[col], build = (k.buildMin as number[])[li];
+  // a cell the chart leaves blank ("-") reads 0: not printed for this gap or light, never an infinite time
+  if (!(per > 0) || !Number.isFinite(build)) return { row: { name: 'Engr rafts', st: 'unchecked', reason: `the ${k.label}: the raft table (p ${k.page}) prints no ${!(per > 0) ? `round trips for a ${Math.round(widthM)} m gap` : `build time ${LIGHT[li]}`}: time the rafts with the engineers` }, firstMin: null, sqnMin: null };
   const first = Math.round(build + 60 / per / 2), all = Math.round(build + (sqn * 60) / per);
   const us = kinds.rafts.us5;
   return {

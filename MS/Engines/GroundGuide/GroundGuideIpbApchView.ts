@@ -53,6 +53,16 @@ const CSS = `
 .ms-gia-acts{display:flex;flex-wrap:wrap;gap:6px}
 .ms-gia-btn{padding:5px 11px;border-radius:7px;border:1px solid rgba(142,193,234,.55);background:rgba(142,193,234,.12);color:#e6f1fb;font:650 12.5px/1.3 ${FONT};cursor:pointer}
 .ms-gia-btn:hover{background:rgba(142,193,234,.24)}
+table.ms-gia-lr{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+table.ms-gia-lr th{font-weight:650;color:#c3cbd3;text-align:left;padding:2px 4px;border-bottom:1px solid rgba(255,255,255,.16)}
+table.ms-gia-lr th.ms-n,table.ms-gia-lr td.ms-n{text-align:center}
+table.ms-gia-lr td{padding:3px 4px;border-bottom:1px solid rgba(255,255,255,.07);vertical-align:middle}
+table.ms-gia-lr td.ms-best{color:#74dca3;font-weight:750}
+table.ms-gia-lr tr.ms-tot td{border-top:1px solid rgba(255,255,255,.2);border-bottom:0;font-weight:750;color:#fff;padding-top:5px}
+.ms-gia-w{display:inline-flex;gap:1px}
+.ms-gia-w button{width:16px;height:16px;padding:0;border:1px solid rgba(255,255,255,.25);border-radius:3px;background:transparent;color:#9aa3ad;font:650 10px/14px ${FONT};cursor:pointer}
+.ms-gia-w button.ms-on{background:#8ec1ea;border-color:#8ec1ea;color:#14181d}
+.ms-gia-w button:hover{border-color:#8ec1ea}
 .ms-gia-btn.ms-all{border-color:#8ec1ea;background:rgba(142,193,234,.28);color:#fff}
 table.ms-gia-pf{border-collapse:collapse;font:400 11.5px/1.15 ${FONT};color:#e6eaee}
 table.ms-gia-pf th{font-weight:650;color:#c3cbd3;padding:0 1px;text-align:center}
@@ -368,6 +378,7 @@ export function apchTiles(o: GroundGuideOcoka): HTMLElement[] {
     const pf = proformaTile(v);
     if (pf) out.push(pf);
     else if (v.proforma === null) out.push(tile('Proforma · Relative Merits of Apchs', note('Being worked out.')));
+    if (v.compare) out.push(compareTile(v));
     out.push(createTile(v));
   } else {
     out.push(tile('Apchs (IPB)', note(v.notes.join(' ') || 'No corridor through the area.')));
@@ -379,6 +390,7 @@ export function apchTiles(o: GroundGuideOcoka): HTMLElement[] {
   const rows: Array<[string, string]> = [
     ['Whose', v.side === 'enemy' ? "The en's options against you (X for yours)" : "Your options against the threat (X for the en's)"],
     ['Apchs end', endLine(v)],
+    ['Obstacles', v.obstacles?.length ? v.obstacles.map((o) => o.text).join('. ') : 'None drawn in the area read (minefields, ditches, wire and lanes on the map join the coding; IPB p 10)'],
     ['Read as', `${v.hqLabel}${v.forEch ? ` for your ${v.forEch}` : ''}: ${v.aaFor} Apchs of ${v.mcFor} corridors (book p 7)`],
     ['Corridor', `${fmtDistance(v.mcWidthM)} wide; corridors of one Apch at most ${km(v.spacingM)} apart (book p 12, ATP T4-2)`],
     ['Area', `${v.frameKm[0]} x ${v.frameKm[1]} km facing the threat${v.threatAssumed ? ' (a direction only: drag the Threat marker for a place)' : ''}`],
@@ -415,6 +427,66 @@ function createTile(v: IpbApchView, cooOnly = false): HTMLElement {
   btn('apchs', `${side} Apchs`, `The avenues as attack arrows (Main Attk for the best going, Sp Attk for the others)`);
   btn('all', 'All three', 'COO, corridors and avenues together');
   return tile('Create on Map', acts, note('Ordinary symbols: saved with the plan, exported, edited like any other. Making one again replaces it; Ctrl+Z undoes it in one step.'));
+}
+
+// ── own attack: left against right (tab 3) ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * The left approach against the right, factor by factor (IC s15.12 b): a row a factor with its weight 0-3 (click to set,
+ * `ms-gg-ipb-lrw` up to the Ground Guide), the left and right cells (the reason on hover), the frontal for reference, the
+ * weighted score at the foot and the side preferred.
+ */
+function compareTile(v: IpbApchView): HTMLElement {
+  const c = v.compare!;
+  const tbl = el('table', 'ms-gia-lr') as HTMLTableElement;
+  const head = el('tr');
+  for (const [t, n] of [['Factor', false], ['Wt', true], [`Lt${c.sides[0].apch ? ` (${c.sides[0].apch})` : ''}`, true], [`Rt${c.sides[1].apch ? ` (${c.sides[1].apch})` : ''}`, true], [`Frontal${c.sides[2].apch ? ` (${c.sides[2].apch})` : ''}`, true]] as Array<[string, boolean]>) head.append(el('th', n ? 'ms-n' : undefined, t));
+  tbl.append(head);
+  const cell = (side: (typeof c.sides)[number], id: string): HTMLElement => {
+    const x = side.cells[id];
+    const td = el('td', 'ms-n', x ? (x.unread ? '·' : (x.v * 100).toFixed(0)) : '—');
+    if (x) td.title = x.reason;
+    return td;
+  };
+  for (const f of c.factors) {
+    const tr = el('tr');
+    const name = el('td', undefined, f.label);
+    name.title = `${f.basis === 'D' ? f.src ?? 'doctrine' : f.basis === 'U' ? 'your rule' : 'a proposal'} · weight ${f.w} of 3`;
+    const w = el('span', 'ms-gia-w');
+    for (let n = 0; n <= 3; n++) {
+      const b = el('button', n <= f.w && f.w > 0 && n > 0 ? 'ms-on' : undefined, String(n)) as HTMLButtonElement;
+      b.type = 'button';
+      b.title = `Weight ${n}`;
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        b.dispatchEvent(new CustomEvent('ms-gg-ipb-lrw', { bubbles: true, detail: { id: f.id, w: n } }));
+      });
+      w.append(b);
+    }
+    const wt = el('td', 'ms-n');
+    wt.append(w);
+    tr.append(name, wt, cell(c.sides[0], f.id), cell(c.sides[1], f.id), cell(c.sides[2], f.id));
+    tbl.append(tr);
+  }
+  const tot = el('tr', 'ms-tot');
+  tot.append(el('td', undefined, 'Score'), el('td', 'ms-n', ''));
+  for (const s of c.sides) {
+    const td = el('td', `ms-n${c.best === s.side ? ' ms-best' : ''}`, s.score === null ? '—' : `${s.score}`);
+    tot.append(td);
+  }
+  tbl.append(tot);
+  const lead = c.best ? `${c.best === 'left' ? 'Left' : 'Right'} by ${c.marginPts} points` : c.sides[0].score !== null && c.sides[1].score !== null ? 'Left and right level' : 'One side only';
+  return tile(`Left or Right · ${lead}`, tbl, note(`${c.notes.join(' ')} Cells 0-100 (a dot: not read here); hover for the reason. Click a weight to set it (IC s15.12 b factors, your weights kept).`));
+}
+
+/** Copy as Text: the left against the right. */
+function compareText(v: IpbApchView): string[] {
+  const c = v.compare;
+  if (!c) return [];
+  const L: string[] = [`Left or right (IC s15.12 b): ${c.best ? `${c.best} by ${c.marginPts} points` : 'not decided by the factors'}. Scores ${c.sides.map((s) => `${s.side} ${s.score ?? '-'}`).join(', ')}.`];
+  for (const f of c.factors) L.push(`  ${f.label} (weight ${f.w}): ${c.sides.map((s) => `${s.side} ${s.cells[f.id] ? `${s.cells[f.id].unread ? 'not read' : (s.cells[f.id].v * 100).toFixed(0)}: ${s.cells[f.id].reason}` : '-'}`).join('; ')}.`);
+  for (const n of c.notes) L.push(`  ${n}`);
+  return L;
 }
 
 // ── fire on the avenues (tab 1) ─────────────────────────────────────────────────────────────────────────────────────
@@ -871,6 +943,9 @@ export function decisionTiles(o: GroundGuideOcoka): HTMLElement[] {
   const rt = el('div', 'ms-gx-list');
   const rows: Array<[string, string]> = [
     ['Rates', `${dv.rates.mover === 'dismounted' ? 'Foot' : 'Vehicles'}: GO ${dv.rates.go[0]} / ${dv.rates.go[1]}, SLOW-GO ${dv.rates.slow[0]} / ${dv.rates.slow[1]}, NO-GO ${dv.rates.nogo[0]} / ${dv.rates.nogo[1]} km/h, day / night (book p 18)`],
+    ...(dv.rates.climbMinPer300
+      ? ([['Climb', `${dv.rates.climbMinPer300[0]}-${dv.rates.climbMinPer300[1]} min per 300 m of ascent on foot, earliest / latest (MW p 81)${dv.rates.climbM && Object.keys(dv.rates.climbM).length ? `: ${Object.entries(dv.rates.climbM).map(([id, m]) => `${id} climbs ${Math.round(m)} m`).join(', ')}` : ''}`]] as Array<[string, string]>)
+      : []),
     ['From', dv.fromThreat ? 'The Threat marker\'s place: the way in at GO' : "The area's edge (the threat is only a direction): drag the Threat marker to the en's assembly area for times from his start"],
     ['DP lead', dpLead(dv)],
   ];
@@ -950,6 +1025,7 @@ export function apchText(o: GroundGuideOcoka): string[] {
   const L: string[] = [];
   L.push(`IPB ${v.side === 'enemy' ? 'enemy' : 'own'} avenues for a ${v.aaFor} (${v.hqLabel}: ${v.mcFor} corridors ${fmtDistance(v.mcWidthM)}, at most ${km(v.spacingM)} apart; book pp 7, 12; ATP T4-2). Area ${v.frameKm[0]} x ${v.frameKm[1]} km, ${v.mover}, moving ${Math.round(v.axisDeg)}°.`);
   L.push(`Apchs end: ${endLine(v)}.`);
+  if (v.obstacles?.length) L.push(`Obstacles from the map: ${v.obstacles.map((o) => o.text).join('; ')}.`);
   for (const a of v.aas) {
     L.push(`${a.viable ? `Apch ${a.id}` : `Lone corridor ${a.id}1`} (${aaRole(a)}): ${aaLine(v, a)}; median ${km(a.medianWidthM)} wide.`);
     for (const n of a.narrows) L.push(`  Narrows: ${narrowsWord(n)}, ${km(n.alongM)} in.`);
@@ -957,6 +1033,7 @@ export function apchText(o: GroundGuideOcoka): string[] {
   for (const x of v.crossovers) L.push(`Crossover ${x.id}: ${x.a} to ${x.b}, ${km(x.alongM)} in.`);
   for (const n of v.notes) L.push(n);
   L.push('Ranked on the going (a proposal). NO-GO does not mean impassable. Check on the ground.');
+  L.push(...compareText(v));
   L.push(...proformaText(o));
   return L;
 }

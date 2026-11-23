@@ -9,7 +9,7 @@
  * planner reads them when he edits), ruled tables, pictures inline. Fair and draft copies as in AprcHtml.
  */
 
-import { lines, numberOf, shown, tableOf, type AprcCopy, type AprcDoc, type AprcTable } from './AprcModel';
+import { STALE_MARK, lines, numberOf, shown, tableOf, type AprcCopy, type AprcDoc, type AprcTable } from './AprcModel';
 
 export interface DocxImage {
   /** PNG bytes. */
@@ -32,10 +32,10 @@ function run(text: string, o: RunOpt = {}): string {
   return `<w:r>${pr ? `<w:rPr>${pr}</w:rPr>` : ''}<w:t xml:space="preserve">${x(text)}</w:t></w:r>`;
 }
 const TAB = '<w:r><w:tab/></w:r>';
-function p(inner: string, o: { align?: 'center' | 'right'; left?: number; hanging?: number; before?: number; after?: number; keep?: boolean; pageBreak?: boolean } = {}): string {
+function p(inner: string, o: { align?: 'center' | 'right'; left?: number; hanging?: number; before?: number; after?: number; line?: number; keep?: boolean; pageBreak?: boolean } = {}): string {
   const ind = o.left || o.hanging ? `<w:ind w:left="${o.left ?? 0}"${o.hanging ? ` w:hanging="${o.hanging}"` : ''}/>` : '';
   const tabs = o.hanging ? `<w:tabs><w:tab w:val="left" w:pos="${o.left ?? 0}"/></w:tabs>` : '';
-  const sp = `<w:spacing w:before="${o.before ?? 0}" w:after="${o.after ?? 100}"/>`;
+  const sp = `<w:spacing w:before="${o.before ?? 0}" w:after="${o.after ?? 160}"${o.line ? ` w:line="${o.line}" w:lineRule="auto"` : ''}/>`;
   return `<w:p><w:pPr>${o.keep ? '<w:keepNext/>' : ''}${o.pageBreak ? '<w:pageBreakBefore/>' : ''}${tabs}${sp}${ind}${o.align ? `<w:jc w:val="${o.align}"/>` : ''}</w:pPr>${inner}</w:p>`;
 }
 
@@ -44,7 +44,7 @@ function table(t: AprcTable, left: number): string {
   const ws = (t.widths?.length === t.head.length ? t.widths : t.head.map(() => 1 / t.head.length)).map((w) => Math.round(w * total));
   const bd = (k: string) => `<w:${k} w:val="single" w:sz="6" w:space="0" w:color="222222"/>`;
   const cell = (text: string, w: number, head: boolean) =>
-    `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${head ? '<w:shd w:val="clear" w:color="auto" w:fill="EEEEEE"/>' : ''}</w:tcPr>${p(run(text || ' ', { b: head, size: 22 }), { after: 40, before: 40 })}</w:tc>`;
+    `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${head ? '<w:shd w:val="clear" w:color="auto" w:fill="EEEEEE"/>' : ''}</w:tcPr>${p(run(text || ' ', { b: head, size: 22 }), { after: 40, before: 40, line: 276 })}</w:tc>`;
   const row = (cells: string[], head: boolean) => `<w:tr>${head ? '<w:trPr><w:tblHeader/></w:trPr>' : ''}${cells.map((c, i) => cell(c, ws[i] ?? ws[0], head)).join('')}</w:tr>`;
   return `<w:tbl><w:tblPr><w:tblW w:w="${total}" w:type="dxa"/><w:tblInd w:w="${left}" w:type="dxa"/><w:tblBorders>${['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(bd).join('')}</w:tblBorders><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>${ws.map((w) => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${row(t.head, true)}${t.rows.map((r) => row(r, false)).join('')}</w:tbl>${p('', { after: 60 })}`;
 }
@@ -107,7 +107,7 @@ export function docxFiles(doc: AprcDoc, copy: AprcCopy, images: Record<string, D
     if (l.p.head) inner += run(l.p.head, { u: true }) + run('. ');
     inner += s.text === null ? run(RULE) : run(s.text);
     if (copy === 'draft') {
-      if (s.text !== '' || l.p.table) inner += run(`  [${s.proposal ? 'PROPOSAL' : s.mark}${s.stale ? ', GR CHANGED SINCE' : ''}]`, { b: true, size: 16, color: s.proposal || s.mark === 'YOU JUDGE' ? '7A5200' : s.mark === 'GR' ? '11663B' : s.mark === 'MAP' ? '143E94' : '4A535D' });
+      if (s.text !== '' || l.p.table) inner += run(`  [${s.proposal ? 'PROPOSAL' : s.mark}${s.stale ? `, ${STALE_MARK[s.why ?? 'gr'].toUpperCase()}` : ''}]`, { b: true, size: 16, color: s.proposal || s.mark === 'YOU JUDGE' ? '7A5200' : s.mark === 'GR' ? '11663B' : s.mark === 'MAP' ? '143E94' : '4A535D' });
     }
     B.push(p(inner, { left, hanging: STEP, keep: !!l.p.table || !!l.p.figure }));
     if (copy === 'draft' && s.text === null && l.p.prompts.length) B.push(p(run(l.p.prompts.join(' · '), { i: true, size: 20, color: '6A5A2A' }), { left }));
@@ -150,7 +150,7 @@ export function docxFiles(doc: AprcDoc, copy: AprcCopy, images: Record<string, D
   const field = '<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>';
   const header = `${XML}<w:hdr ${NS}>${p(field, { align: 'center', after: 0 })}${p(run(marking), { align: 'center', after: 0 })}</w:hdr>`;
   const footer = `${XML}<w:ftr ${NS}>${p(run(marking), { align: 'center', after: 0 })}</w:ftr>`;
-  const styles = `${XML}<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial" w:eastAsia="Arial"/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-GB"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="100" w:line="264" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style></w:styles>`;
+  const styles = `${XML}<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial" w:eastAsia="Arial"/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-GB"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="160" w:line="360" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style></w:styles>`;
   const out: Record<string, string | Uint8Array> = {
     '[Content_Types].xml': `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>`,
     '_rels/.rels': `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`,

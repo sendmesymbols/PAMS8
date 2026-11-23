@@ -454,6 +454,17 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     max: 400,
     step: 2,
     help: 'Space left free at the top of the map for the toolbar, so the rail does not cover it. The rail is scaled down to fit the height that is left.',
+  },
+  {
+    path: ['groundGuide', 'scope', 'extScale'],
+    label: 'Rail scale with the Ext View on',
+    group: 'Gr Scope (V)',
+    type: 'enum',
+    options: [
+      { value: 'area', label: 'The area read: the whole IPB area with its approaches, Obj, FUPs, MSR choke, NAIs / TAIs / DPs and LZs; the symbol drawn where it is' },
+      { value: 'spot', label: 'The ground round the symbol, as without F' },
+    ],
+    help: "With F on and the IPB avenues read, the rail's lines 1-5 describe products over a 14 x 28 km (Bde) or 30 x 48 km (Div) area; at the spot scale most of them lay off its map.",
     keywords: ['scope', 'rail', 'top', 'toolbar', 'offset', 'margin'],
   },
   // ── Gr Scope AOR scale (Shift+V): the area of ops read as an appreciation's Gr and Weather ──

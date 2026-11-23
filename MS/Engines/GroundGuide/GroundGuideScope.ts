@@ -116,6 +116,12 @@ export interface ScopeFrame {
   clearAt: [number, number] | null;
   /** Map tiles still on their way. */
   loading: boolean;
+  /**
+   * Where the symbol (the spot read) sits in the frame, ground metres east / north of the frame's centre: [0, 0] unless
+   * the Extended View draws the rail at the area read's scale (`scope.extScale: area`), when the frame is centred on
+   * the area and the symbol, its rings and frontage are drawn here.
+   */
+  spot?: [number, number];
 }
 
 export interface ScopeHandlers {
@@ -814,17 +820,19 @@ export class GroundGuideScope {
     };
     const mark = (x: number, y: number, r: number) => boxes.push([x - r, y - r, x + r, y + r]);
 
-    // Range rings.
+    // Range rings, round the symbol (the frame's centre unless the rail is at the area read's scale).
+    const sp = f.spot ?? [0, 0];
+    const scx = X(sp[0], sp[1]).toFixed(1), scy = Y(sp[0], sp[1]).toFixed(1);
     for (const d of sc.level.rings) {
       const r = (d * kpx).toFixed(1);
-      s += `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${CAS}" stroke-width="2.6" opacity=".35"/><circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="1.1"/>`;
+      s += `<circle cx="${scx}" cy="${scy}" r="${r}" fill="none" stroke="${CAS}" stroke-width="2.6" opacity=".35"/><circle cx="${scx}" cy="${scy}" r="${r}" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="1.1"/>`;
     }
 
     // The shape being judged: the frontage (and the clear ground where S moves it), or the line / area as drawn.
     const labels: Array<[number, number, string, string, number]> = [];
     const e = f.echelon;
     if (e && f.clearAt) s += this._ghost(f, e, X, Y, c, S, mark, labels);
-    if (e) s += footprintSvg(e, 0, 0, v?.footprint?.front ?? null, X, Y, kpx, boxes);
+    if (e) s += footprintSvg(e, sp[0], sp[1], v?.footprint?.front ?? null, X, Y, kpx, boxes);
     else if (f.outline) {
       for (const part of f.outline) {
         const pts = f.closed && part.length >= 4 ? Float64Array.from([...part, part[0], part[1]]) : part;
@@ -937,7 +945,7 @@ export class GroundGuideScope {
       let ok = true;
       for (const d of sc.level.rings) {
         const a = (qb * Math.PI) / 180;
-        const t = label(c + Math.sin(a) * d * kpx - 8, c - Math.cos(a) * d * kpx + 2, fmtDistance(d), '#d7dde3', FS.meta);
+        const t = label(Number(scx) + Math.sin(a) * d * kpx - 8, Number(scy) - Math.cos(a) * d * kpx + 2, fmtDistance(d), '#d7dde3', FS.meta);
         if (!t) ok = false;
         out += t;
       }
@@ -950,10 +958,11 @@ export class GroundGuideScope {
 
     // The spot: the symbol's facing, or a reticle for the map centre.
     if (f.source === 'centre') {
-      s += `<g stroke-linecap="round"><path d="M${c - 11} ${c}H${c - 4}M${c + 4} ${c}H${c + 11}M${c} ${c - 11}V${c - 4}M${c} ${c + 4}V${c + 11}" stroke="${CAS}" stroke-width="4.5"/><path d="M${c - 11} ${c}H${c - 4}M${c + 4} ${c}H${c + 11}M${c} ${c - 11}V${c - 4}M${c} ${c + 4}V${c + 11}" stroke="#ffffff" stroke-width="2"/></g>`;
+      const cx = Number(scx), cy = Number(scy);
+      s += `<g stroke-linecap="round"><path d="M${cx - 11} ${cy}H${cx - 4}M${cx + 4} ${cy}H${cx + 11}M${cx} ${cy - 11}V${cy - 4}M${cx} ${cy + 4}V${cy + 11}" stroke="${CAS}" stroke-width="4.5"/><path d="M${cx - 11} ${cy}H${cx - 4}M${cx + 4} ${cy}H${cx + 11}M${cx} ${cy - 11}V${cy - 4}M${cx} ${cy + 4}V${cy + 11}" stroke="#ffffff" stroke-width="2"/></g>`;
     } else {
       const b = (e?.facingDeg ?? 0) + f.northDeg;
-      s += `<g transform="translate(${c} ${c}) rotate(${b.toFixed(1)})"><path d="M0 -12 L8.5 9 L0 4 L-8.5 9Z" fill="#ffffff" stroke="${CAS}" stroke-width="1.8" stroke-linejoin="round"/></g>`;
+      s += `<g transform="translate(${scx} ${scy}) rotate(${b.toFixed(1)})"><path d="M0 -12 L8.5 9 L0 4 L-8.5 9Z" fill="#ffffff" stroke="${CAS}" stroke-width="1.8" stroke-linejoin="round"/></g>`;
     }
     // North, the scale bar, and a word while the map's tiles are still coming.
     s += `<g transform="translate(16 18)"><circle r="11" fill="rgba(11,13,16,.55)" stroke="#8a96a3"/><path d="M0 -8 L4 1 L-4 1Z" fill="#e8ebee" transform="rotate(${f.northDeg.toFixed(1)})"/>${halo(0, 9, 'N', 'middle', '#e8ebee', 10, FW.bold)}</g>`;

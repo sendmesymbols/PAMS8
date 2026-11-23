@@ -17,7 +17,7 @@
 import type { AorApproach, AorDefLine, AorReading, AorSide } from '../GroundGuide/GroundGuideAor';
 import { aorName, aorSheetRows, aorWords, type AorFrame } from '../GroundGuide/GroundGuideScopeAor';
 import { moonState, sunAltitude } from '../GroundGuide/GroundGuideOcoka';
-import { APCH_HEADS_ATTK, DP_HEADS, ITG_HEADS_ATTK, MA, TASK_HEAD_ATTK, para, slug, taskRowsAttk, type AprcBasis, type AprcConfirm, type AprcFrame, type AprcPara, type AprcPatch, type AprcTable } from './AprcModel';
+import { APCH_HEADS_ATTK, BACKWARD_EVENTS, DP_HEADS, ITG_HEADS_ATTK, MA, TASK_HEAD_ATTK, para, slug, taskRowsAttk, uniqueId, type AprcBasis, type AprcConfirm, type AprcFrame, type AprcPara, type AprcPatch, type AprcTable } from './AprcModel';
 
 const km = (m: number): string => (m / 1000).toFixed(1);
 const pct = (x: number): string => `${Math.round(x)} %`;
@@ -45,6 +45,9 @@ export interface AprcLight {
   utcOffsetH: number;
   date: string;
 }
+
+/** The zone the times are in, in words: "UTC+5, PKT" for Pakistan Standard Time, else the offset alone. */
+export const zoneWord = (h: number): string => `UTC${h >= 0 ? '+' : ''}${h}${h === 5 ? ', PKT' : ''}`;
 
 /**
  * First and last light at a place on a date: the sun 6 degrees below the horizon (civil twilight), found by stepping
@@ -77,7 +80,18 @@ export interface AprcObsn {
   clearMedianM: number;
   country: string;
   overlook: { riseM: number; distM: number; compass: string } | null;
+  /** Read at this many points along the apch (`seenPct` their mean), with the spread and where it was least. */
+  points?: number;
+  minSeenPct?: number;
+  maxSeenPct?: number;
+  worstNear?: string | null;
 }
+
+/** "about 41 % (28-55 % at 3 points; least near X)": the share seen, with its spread when read at more than one point. */
+const seenWords = (ob: AprcObsn): string =>
+  `about ${pct(ob.seenPct)}${(ob.points ?? 1) > 1 && ob.minSeenPct !== undefined && ob.maxSeenPct !== undefined ? ` (${Math.round(ob.minSeenPct)}-${pct(ob.maxSeenPct)} at ${ob.points} points${ob.worstNear ? `; least near ${ob.worstNear}` : ''})` : ''}`;
+const obsnCalc = (ob: AprcObsn | null): AprcBasis =>
+  calc((ob?.points ?? 1) > 1 ? `Read at ${ob!.points} points along the home side of the apch: the share seen is their mean, the clear distance their median; a chance` : 'Read at one point on the apch; the share seen is a chance');
 
 export interface AprcGroundIn {
   reading: AorReading;
@@ -98,6 +112,8 @@ export interface AprcGroundIn {
   drawnObs?: string[];
   /** True when the threat is a place the user marked (the attack: the own start is known). */
   threatMarked: boolean;
+  /** The threat marker in words ("the Threat marker, 6.2 km N of Qila Mor"), when the host gives one. */
+  threatWords?: string | null;
   readAt: string;
   /**
    * An attack (`attk`): the reading was taken round the objective (the MITG) from the attacker's side, so its apchs
@@ -115,6 +131,14 @@ export interface AprcWritten {
   patches: AprcPatch[];
   confirm: AprcConfirm[];
   frame?: AprcFrame;
+}
+
+/**
+ * Lines of def from the front: by their depth behind the front (the line through the MITG, which has none, last), then
+ * by letter; as many as the AOR reading gives.
+ */
+export function frontFirst(ls: AorDefLine[]): AorDefLine[] {
+  return [...ls].sort((a, b) => (a.depthM ?? Infinity) - (b.depthM ?? Infinity) || String(a.id).localeCompare(String(b.id)));
 }
 
 const AOR_WORD: Record<string, string> = { boundaries: 'Bdy symbols', box: 'a drawn box', echelon: 'the echelon frame round the MITG' };
@@ -140,7 +164,7 @@ export function writeGround(g: AprcGroundIn): AprcWritten {
   const confirm: AprcConfirm[] = w.confirm.map((text) => ({ text: text.replace(/NCGDB/g, '1:50k map'), paras: ['gr.apchs'] }));
   const goingData = data(`Going: the terrain classes at 30 m (land cover with the 1:50k map's canals, rivers, BUAs) read for ${mover}, ${season}`);
   const featData = data('Rds, canals, rivers, bridges and places: the 1:50k map');
-  const frameIn = input(`AOR: ${AOR_WORD[f.used] ?? f.used}${f.note ? ` (${f.note})` : ''}; MITG ${mitg}; threat ${g.threatMarked ? 'marked on the map' : 'assumed forward of the AOR'}`);
+  const frameIn = input(`AOR: ${AOR_WORD[f.used] ?? f.used}${f.note ? ` (${f.note})` : ''}; MITG ${mitg}; threat ${g.threatWords ?? (g.threatMarked ? 'marked on the map' : 'assumed forward of the AOR')}`);
 
   // 5. Gen Description
   {
@@ -171,7 +195,7 @@ export function writeGround(g: AprcGroundIn): AprcWritten {
       const rows = aorSheetRows(r, a);
       const ob = g.obsn?.[a.side] ?? null;
       const obText = ob
-        ? `Gr obsn: about ${pct(ob.seenPct)} of the ground within ${km(ob.radiusM)} km is in view from a point on it${ob.near ? ` near ${ob.near}` : ''}; clear to ${Math.round(ob.clearMedianM / 10) * 10} m before the first dead or screened ground (median of all dirs); ${COUNTRY_WORD[ob.country] ?? ob.country}.${ob.overlook ? ` Overlooked from ground ${Math.round(ob.overlook.riseM)} m higher, ${km(ob.overlook.distM)} km ${ob.overlook.compass}.` : ''} A chance, not a fact.`
+        ? `Gr obsn: ${seenWords(ob)} of the ground within ${km(ob.radiusM)} km is in view from ${(ob.points ?? 1) > 1 ? 'points along it' : `a point on it${ob.near ? ` near ${ob.near}` : ''}`}; clear to ${Math.round(ob.clearMedianM / 10) * 10} m before the first dead or screened ground (median of all dirs); ${COUNTRY_WORD[ob.country] ?? ob.country}.${ob.overlook ? ` Overlooked from ground ${Math.round(ob.overlook.riseM)} m higher, ${km(ob.overlook.distM)} km ${ob.overlook.compass}.` : ''} A chance, not a fact.`
         : null;
       const id = `gr.apch.${a.side.toLowerCase()}`;
       return para(id, `${a.side} Apch`, {
@@ -181,7 +205,7 @@ export function writeGround(g: AprcGroundIn): AprcWritten {
           const text = h === 'Obsn' ? obText : t === null ? null : cap1(t);
           const basis: AprcBasis[] =
             h === 'Capacity' ? [goingData, input(`Corridor taken for the threat: ${km(r.corridorM)} km`), calc('The narrowest ground between NO-GO areas along the apch; canals and streams are crossings, not narrowings')]
-            : h === 'Obsn' ? [data('Sight: the 30 m elevation with building density, crops by month, trees and bunds (the Extended View)'), calc('Read at one point on the apch; the share seen is a chance')]
+            : h === 'Obsn' ? [data('Sight: the 30 m elevation with building density, crops by month, trees and bunds (the Extended View)'), obsnCalc(ob)]
             : h === 'Tfc' || h === 'Cover' ? [goingData, calc('A band 1 km wide along the apch')]
             : [featData];
           return para(`${id}.${slug(h)}`, h, { draft: text, state: text === null ? 'yours' : 'gr', basis: text === null ? [] : basis, prompts: text === null ? ['Not in the data: from recce'] : [] });
@@ -212,12 +236,13 @@ export function writeGround(g: AprcGroundIn): AprcWritten {
       children: [para('gr.itg.mitg.effs', 'Effs if Lost', { prompts: r.apchs.length ? facts : facts.slice(1) }), r.apchs.length || r.thruRoad || r.msr ? para('gr.itg.mitg.sig', 'Significance', { draft: sig, state: 'gr', basis: [featData, frameIn] }) : para('gr.itg.mitg.sig', 'Significance')],
     }));
     const seen = new Set<string>([mitg]);
+    const used = new Set<string>(['gr.itg.mitg', 'gr.itg.more']);
     for (const l of r.lines) {
       if (l.role !== 'FDLs' && l.role !== 'Depth') continue;
       for (const b of l.buas) {
         if (!b || seen.has(b)) continue;
         seen.add(b);
-        kids.push(para(`gr.itg.${slug(b)}`, b, { draft: `Astride an apch on Line ${l.id}.`, state: 'judge', basis: [featData, calc('A BUA within 800 m of an apch where a line of def cuts it')] }));
+        kids.push(para(uniqueId(used, `gr.itg.${slug(b)}`), b, { draft: `Astride an apch on Line ${l.id}.`, state: 'judge', basis: [featData, calc('A BUA within 800 m of an apch where a line of def cuts it')] }));
       }
     }
     if (r.map.itg.length) kids.push(para('gr.itg.more', null, { draft: `${cap1(plural(r.map.itg.length, 'more candidate'))} in the AOR from the data (high ground, crossings, junctions): shown on the trace.`, state: 'judge', basis: [data('ITG candidates: the bundle features flagged as important ground')] }));
@@ -266,12 +291,12 @@ export function writeGround(g: AprcGroundIn): AprcWritten {
     if (v && (v.fogPct !== null || v.lt2kmPct !== null)) s.push(`Visibility: ${[v.fogPct !== null ? `fog on ${pct(v.fogPct)} of days` : '', v.hazePct !== null ? `haze or dust on ${pct(v.hazePct)}` : '', v.lt2kmPct !== null ? `under 2 km on ${pct(v.lt2kmPct)}` : '', v.meanViewKm !== null ? `mean view ${v.meanViewKm.toFixed(1)} km` : ''].filter(Boolean).join(', ')}${v.stationKm !== null && v.stationKm > 100 ? ` (nearest station ${Math.round(v.stationKm)} km away: a guide only)` : ''}.`);
     if (g.wx && (g.wx.marginal.length || g.wx.unfavourable.length)) s.push(`Against the IPB weather values: ${[g.wx.unfavourable.length ? `unfavourable for ${list(g.wx.unfavourable)}` : '', g.wx.marginal.length ? `marginal for ${list(g.wx.marginal)}` : ''].filter(Boolean).join('; ')}.`);
     const lt = g.light;
-    if (lt) s.push(`On ${lt.date}: first lt ${lt.firstLight ?? 'none'}, last lt ${lt.lastLight ?? 'none'} hrs (UTC${lt.utcOffsetH >= 0 ? '+' : ''}${lt.utcOffsetH}); moon ${lt.moonPct} % lit.`);
+    if (lt) s.push(`On ${lt.date}: first lt ${lt.firstLight ?? 'none'}, last lt ${lt.lastLight ?? 'none'} hrs (${zoneWord(lt.utcOffsetH)}); moon ${lt.moonPct} % lit.`);
     s.push(`Going read ${season}.`);
     const basis: AprcBasis[] = [];
     if (wx) basis.push(data(`Climate: ${wx.source}${wx.dataDate ? ` (${wx.dataDate})` : ''}, the mean for the month, not a forecast`));
     if (v) basis.push(data('Visibility: the monthly station grid'));
-    if (lt) basis.push(calc('First and last light: the sun 6 degrees below the horizon, worked out from date and place'));
+    if (lt) basis.push(calc(`First and last light: the sun 6 degrees below the horizon, worked out from date and place; times in ${zoneWord(lt.utcOffsetH)} (groundAppreciation.utcOffsetH), not the computer's zone`));
     if (g.wx && (g.wx.marginal.length || g.wx.unfavourable.length)) basis.push(rule('Weather critical values: IPB book Annex A pp 19-20'));
     patches.push({ id: 'gr.met', draft: s.length > 1 ? s.join(' ') : null, state: s.length > 1 ? 'gr' : 'yours', basis, prompts: s.length > 1 ? [] : ['Temperature, rain, visibility, first and last light, moon'] });
     confirm.push({ text: 'Met conditions are the mean of the month: take the forecast before H.', paras: ['gr.met'] });
@@ -294,8 +319,7 @@ export function writeGround(g: AprcGroundIn): AprcWritten {
       state: ranked.length < 2 ? 'yours' : 'judge',
       basis: ranked.length < 2 ? [] : [featData, calc('Metalled Rds joining two apchs inside the AOR')],
     });
-    const order = 'WXYZ';
-    const linesOrd = [...r.lines].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+    const linesOrd = frontFirst(r.lines);
     const lineText = (l: AorDefLine): string =>
       `${l.name}, ${km(l.frontM)} km between bdys${l.obstacle ? `, along ${l.obstacle}` : ''}${l.lateral ? ', a lateral Rd behind it' : ''}${l.depthM !== null ? `, ${km(l.depthM)} km behind ${border ? `the ${border}` : 'the front of the AOR'}` : ''}.`;
     const pri = (['FDLs', 'Depth', 'Screen'] as const).map((role) => r.lines.find((l) => l.role === role)).filter((l): l is AorDefLine => !!l);
@@ -335,6 +359,18 @@ export function writeGround(g: AprcGroundIn): AprcWritten {
       const t = dp[k] ?? null;
       patches.push({ id: `gr.ded.dp1.${k}`, draft: t, state: t ? 'judge' : 'yours', basis: t ? [calc('From the lines of def and the pri of apchs above')] : [] });
     }
+    // DP 2: the def stepped back, its FDLs on the depth line, the line DP 1 holds as the FDLs a screen in front of it
+    const deeper = depth ? frontFirst(r.lines).filter((l) => l !== depth && l.role !== 'Str Pt' && l.depthM !== null && depth.depthM !== null && l.depthM > depth.depthM) : [];
+    patches.push(
+      depth
+        ? {
+            id: 'gr.ded.dp2',
+            draft: `FDLs on Line ${depth.id} (${depth.name}, ${km(depth.frontM)} km between bdys${depth.obstacle ? `, along ${depth.obstacle}` : ''})${fdl ? `; Line ${fdl.id} (${fdl.name}) held by a screen in front` : ''}; ${deeper.length ? `depth on Line ${deeper[0].id} (${deeper[0].name})` : `the Str Pt ${mitg}`}. Weigh it against DP 1: more depth to his first fight, less ground forward.`,
+            state: 'judge',
+            basis: [featData, calc('The second def possibility: the def stepped back to the depth line of the AOR reading, the FDLs line of DP 1 a screen; a proposal to compare with DP 1')],
+          }
+        : { id: 'gr.ded.dp2', draft: null, state: 'yours', basis: [], prompts: ['No depth line was read: write the second possibility'] },
+    );
   }
 
   return {
@@ -347,7 +383,7 @@ export function writeGround(g: AprcGroundIn): AprcWritten {
       month: f.month,
       season: f.season === 'wet' ? 'wet' : 'dry',
       aor: `${AOR_WORD[f.used] ?? f.used}${f.used !== f.source ? ` (asked: ${AOR_WORD[f.source] ?? f.source})` : ''}`,
-      threat: g.threatMarked ? 'marked on the map' : 'assumed forward of the AOR',
+      threat: g.threatWords ?? (g.threatMarked ? 'marked on the map' : 'assumed forward of the AOR'),
       readAt: g.readAt,
     },
   };
@@ -359,7 +395,7 @@ export function writeGround(g: AprcGroundIn): AprcWritten {
 const MIRROR: Record<AorSide, AorSide> = { Lt: 'Rt', Cen: 'Cen', Rt: 'Lt' };
 const mirrorText = (s: string | null | undefined): string | null => (s === null || s === undefined ? null : s.replace(/\b(Lt|Rt)\b/g, (m) => (m === 'Lt' ? 'Rt' : 'Lt')));
 const OBS_WORD = (ob: AprcObsn, toward: string): string =>
-  `about ${pct(ob.seenPct)} of the ground within ${km(ob.radiusM)} km is in view${toward}; clear to ${Math.round(ob.clearMedianM / 10) * 10} m before the first dead or screened ground (median of all dirs); ${COUNTRY_WORD[ob.country] ?? ob.country}.`;
+  `${seenWords(ob)} of the ground within ${km(ob.radiusM)} km is in view${toward}; clear to ${Math.round(ob.clearMedianM / 10) * 10} m before the first dead or screened ground (median of all dirs); ${COUNTRY_WORD[ob.country] ?? ob.country}.`;
 
 /** Capacity of an apch for the attacker: the book's Bde figure, the IPB corridor widths below it. */
 function capacityAttk(a: AorApproach): { text: string; basis: AprcBasis[] } {
@@ -402,7 +438,7 @@ function writeGroundAttk(g: AprcGroundIn): AprcWritten {
       const textOf = (h: string): string | null => {
         if (h === 'Capacity') return cap.text;
         if (h === 'Depl Areas') return null;
-        if (h === 'Obsn and F of F') return ob ? `Gr obsn: ${OBS_WORD(ob, ` from a point on it${ob.near ? ` near ${ob.near}` : ''}`)}${ob.overlook ? ` Overlooked from ground ${Math.round(ob.overlook.riseM)} m higher, ${km(ob.overlook.distM)} km ${ob.overlook.compass}.` : ''} A chance, not a fact.` : null;
+        if (h === 'Obsn and F of F') return ob ? `Gr obsn: ${OBS_WORD(ob, (ob.points ?? 1) > 1 ? ' from points along it' : ` from a point on it${ob.near ? ` near ${ob.near}` : ''}`)}${ob.overlook ? ` Overlooked from ground ${Math.round(ob.overlook.riseM)} m higher, ${km(ob.overlook.distM)} km ${ob.overlook.compass}.` : ''} A chance, not a fact.` : null;
         const t = rows.get(h);
         return t === undefined || t === null ? null : t;
       };
@@ -414,7 +450,7 @@ function writeGroundAttk(g: AprcGroundIn): AprcWritten {
           const text = raw === null ? null : mirrorText(cap1(raw));
           const basis: AprcBasis[] =
             h === 'Capacity' ? [goingData, ...cap.basis]
-            : h === 'Obsn and F of F' ? [data('Sight: the 30 m elevation with building density, crops by month, trees and bunds (the Extended View)'), calc('Read at one point on the apch; the share seen is a chance')]
+            : h === 'Obsn and F of F' ? [data('Sight: the 30 m elevation with building density, crops by month, trees and bunds (the Extended View)'), obsnCalc(ob)]
             : h === 'Tfc' || h === 'Cover' ? [goingData, calc('A band 1 km wide along the apch')]
             : [featData];
           const page = ['Dir Keeping', 'Significance'].includes(h) ? 3 : 2;
@@ -460,6 +496,7 @@ function writeGroundAttk(g: AprcGroundIn): AprcWritten {
     ];
     // his localities: the BUAs astride the apchs on the lines facing the attack (his likely FDLs, then depth)
     const seen = new Set<string>([r.mitg.name]);
+    const used = new Set<string>(['gr.itg.mitg', 'gr.itg.more']);
     for (const role of ['FDLs', 'Depth'] as const) {
       const l = r.lines.find((x) => x.role === role);
       if (!l) continue;
@@ -468,7 +505,7 @@ function writeGroundAttk(g: AprcGroundIn): AprcWritten {
         seen.add(b);
         const side = l.buas.length === 3 ? sideOf(SIDES[i]) : null;
         others.push({ name: b, line: l, side });
-        kids.push(para(`gr.itg.${slug(b)}`, b, { draft: `Astride the ${side ? `${side} ` : ''}apch on Line ${l.id}, his likely ${role === 'FDLs' ? 'FDLs' : 'depth'} facing the attk.`, state: 'judge', basis: [featData, calc('A BUA within 800 m of an apch where a line across the apchs cuts it; the lines are the ones a defender of the MITG would hold')] }));
+        kids.push(para(uniqueId(used, `gr.itg.${slug(b)}`), b, { draft: `Astride the ${side ? `${side} ` : ''}apch on Line ${l.id}, his likely ${role === 'FDLs' ? 'FDLs' : 'depth'} facing the attk.`, state: 'judge', basis: [featData, calc('A BUA within 800 m of an apch where a line across the apchs cuts it; the lines are the ones a defender of the MITG would hold')] }));
       });
     }
     if (r.map.itg.length) kids.push(para('gr.itg.more', null, { draft: `${cap1(plural(r.map.itg.length, 'more candidate'))} in the area from the data (high ground, crossings, junctions): shown on the trace.`, state: 'judge', basis: [data('ITG candidates: the bundle features flagged as important ground')] }));
@@ -507,8 +544,7 @@ function writeGroundAttk(g: AprcGroundIn): AprcWritten {
       basis: [featData, calc('Metalled Rds joining two apchs inside the area read')],
     });
     // his lines between own start and the objective: the phases they suggest
-    const order = 'WXYZ';
-    const front = [...r.lines].filter((l) => l.role === 'FDLs' || l.role === 'Depth').sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+    const front = frontFirst(r.lines.filter((l) => l.role === 'FDLs' || l.role === 'Depth'));
     if (front.length) patches.push({
       id: 'gr.ded.c.phases',
       draft: `${front.map((l, i) => `Phase ${i + 1}: his ${l.role === 'FDLs' ? 'FDLs' : 'depth'} on Line ${l.id} (${[...new Set(l.buas.filter((x): x is string => !!x))].join(', ') || l.name})`).join('; ')}; then ${mitg}. Lines ${front.map((l) => l.id).join(' and ')} lie ${front.map((l) => (l.depthM !== null ? `${km(l.depthM)} km` : '?')).join(' and ')} past ${border ? `the ${border}` : 'the front of the area read'}.`,
@@ -682,6 +718,8 @@ export interface AprcSymbolIn {
   /** Where it is, in words ("gen area X", "1.2 km N of X"). */
   where: string | null;
   planned?: boolean;
+  /** A HQ (2525D HQ / TF / dummy amplifier 2 or 6; a dummy HQ is not one). */
+  hq?: boolean;
 }
 
 const ECH: Record<string, string> = { '11': 'Team', '12': 'Sqd', '13': 'Sec', '14': 'Pl', '15': 'Coy', '16': 'Bn', '17': 'Regt', '18': 'Bde', '21': 'Div', '22': 'Corps', '23': 'Army' };
@@ -705,8 +743,18 @@ export function forceLine(units: AprcSymbolIn[]): string {
 const where = (units: AprcSymbolIn[], max = 6): string =>
   units.slice(0, max).map((u) => `${u.label || u.name}${u.ech && ECH[u.ech] ? ` (${ECH[u.ech]})` : ''}${u.where ? ` ${u.where}` : ''}`).join('; ') + (units.length > max ? `; and ${units.length - max} more` : '');
 
-export function writeSymbols(symbols: AprcSymbolIn[]): AprcWritten & { drawnObs: string[]; enForce: string | null; ownWhere: string | null } {
+export function writeSymbols(symbols: AprcSymbolIn[], o: { attack?: boolean } = {}): AprcWritten & { drawnObs: string[]; enForce: string | null; ownWhere: string | null } {
   const patches: AprcPatch[] = [];
+  // HQ as marked: Comd and Sig (the attack: Loc of HQ)
+  const hqs = symbols.filter((s) => s.side === 'own' && s.hq);
+  if (hqs.length)
+    patches.push({
+      id: o.attack ? 'plan.comd.hq' : 'plan.comd',
+      draft: `${o.attack ? '' : 'HQ as marked: '}${hqs.slice(0, 6).map((u) => `${u.label || u.name}${u.ech && ECH[u.ech] ? ` (${ECH[u.ech]} HQ)` : ' (HQ)'}${u.where ? ` ${u.where}` : ''}`).join('; ')}.`,
+      state: 'map',
+      basis: [input('HQ symbols on the map, as drawn')],
+      ...(o.attack ? {} : { prompts: ['Sigs: comms, wrls silence, code words'] }),
+    });
   const en = symbols.filter((s) => s.side === 'enemy' && isUnit(s));
   const own = symbols.filter((s) => s.side === 'own' && isUnit(s));
   const mapIn = input('Symbols on the map, as drawn');
@@ -894,6 +942,16 @@ export function writeEnemy(e: AprcEnemyIn): AprcWritten {
     if (Math.abs(opts[0].endH[0] - opts[1].endH[0]) >= WEIGH_MIN.hours) patches.push({ id: 'en.danger', draft: `Along ${fastest.id}: he is onto ${e.objective} earliest, at ${whenText(fastest.endH[0], hMin)}.`, state: 'judge', basis: [how, calc('Most dangerous taken as the earliest onto the objective; a proposal')] });
   }
 
+  // Most probable: the IPB reading's main avenue (the best going of those viable); his intent decides
+  const main = av.find((a) => a.main) ?? null;
+  if (main)
+    patches.push({
+      id: 'en.probable',
+      draft: `Along ${main.id}${main.onto ? ` (${main.onto})` : ''}: the main avenue of the IPB reading, most GO of those viable (${pct(main.goPct)}${main.through.length ? `, through ${list(main.through.slice(0, 3))}` : ''}); he is onto ${e.objective} at ${whenText(main.endH, hMin)}.`,
+      state: 'judge',
+      basis: [avIn, calc("Most probable taken as the IPB reading's main avenue, most GO of those viable; his aim and his doctrine decide: a proposal, no book figure")],
+    });
+
   // His reactions against own counter actions: the TAIs and the decisions before them.
   const rows: string[][] = [];
   for (const t of [...e.tais].sort((a, b) => a.earliestH - b.earliestH)) {
@@ -1053,11 +1111,14 @@ export function writeStrength(s: AprcStrengthIn, o: { attack?: boolean; disposns
     const ratio = coysEn > 0 ? coysOwn / coysEn : null;
     patches.push({
       id: 'own.str',
-      draft: `Own: ${unitsText(s.own)}${s.ownAssumed ? ' (assumed)' : ''}. En: ${unitsText(s.en)}${s.enAssumed ? ' (assumed)' : ''}.${ratio !== null ? ` Manoeuvre Coys ${ratio.toFixed(1)} : 1 own to en: ${ratio > 3 ? 'more than the 3 : 1 an attacker wants' : 'short of the 3 : 1 an attacker wants; phase the attk or ask for more tps'}.` : ''}`,
+      draft: `Own: ${unitsText(s.own)}${s.ownAssumed ? ' (assumed)' : ''}. En: ${unitsText(s.en)}${s.enAssumed ? ' (assumed)' : ''}.${ratio !== null ? ` Manoeuvre Coys ${ratio.toFixed(1)} : 1 own to en: ${ratio > 3 ? 'more than the 3 : 1 an attacker wants' : 'short of the 3 : 1 an attacker wants'}.` : ''}`,
       state: s.enAssumed || s.ownAssumed ? 'judge' : 'map',
       table: { head: ['Ser', 'Arms', 'En', 'Own', 'Ratio'], rows, widths: [0.08, 0.36, 0.2, 0.2, 0.16] },
       basis,
     });
+    // the advice is the planner's to take: a proposal of its own, not part of the figures
+    if (ratio !== null && ratio <= 3)
+      patches.push({ id: 'own.ded.addl', draft: `Manoeuvre Coys ${ratio.toFixed(1)} : 1 own to en, short of 3 : 1: phase the attk so each phase has 3 : 1 where it strikes, or ask for more tps.`, state: 'judge', basis: [rule('An attacker wants more than 3 : 1, applied sequentially (MW p 80)'), calc('Manoeuvre Coys summed over each side (ORBAT)')] });
     const ownComp = s.own.map((u) => `${u.count} x ${u.name}: ${n1(u.coys)} manoeuvre Coys${u.plsPerCoy ? ` of ${u.plsPerCoy} Pls` : ''}${u.strength ? `, ${u.strength.toLocaleString('en-GB')} all ranks` : ''}${u.atgm ? `, ${u.atgm} ATGM launchers` : ''}${u.mortars ? `, ${u.mortars} mortars` : ''}`).join('; ');
     patches.push({ id: 'own.comp', draft: `${ownComp}.${o.disposns ? ` Disposns: ${o.disposns}.` : ''}`, state: s.ownAssumed ? 'judge' : 'map', basis: [data(`ORBAT: ${[...new Set(s.own.map((u) => u.src))].join('; ')}`), ...(o.disposns ? [input('Symbols on the map, as drawn')] : []), ...(s.ownAssumed ? [input(`Own assumed: ${s.ownAssumed}`)] : [])] });
     return { patches, confirm: s.enAssumed ? [{ text: `En strength is assumed (${s.enAssumed}): mark his posns on the map for the real figures.`, paras: ['own.str'] }] : [] };
@@ -1107,9 +1168,9 @@ export interface AprcTimeIn {
 }
 
 /** Time Req: the rows the data gives, the others ruled for the planner. */
-export function writeTimeReq(t: AprcTimeIn): AprcWritten {
+export function writeTimeReq(t: AprcTimeIn): AprcWritten & { reqH: number | null } {
   const patches: AprcPatch[] = [];
-  if (!t.move && !t.prep && !t.mines) return { patches, confirm: [] };
+  if (!t.move && !t.prep && !t.mines) return { patches, confirm: [], reqH: null };
   const rows: string[][] = [];
   const basis: AprcBasis[] = [];
   let low = 0;
@@ -1139,7 +1200,7 @@ export function writeTimeReq(t: AprcTimeIn): AprcWritten {
   rows.push(['e.', 'Wire obs / denial plan', '', ''], ['f.', 'Cam and clt', '', ''], ['g.', 'Coord / unforeseen', '', '']);
   rows.push(['', 'Total time', low ? `${Math.round(low)} +` : '', 'At least, from the rows filled; work in parallel shortens it']);
   patches.push({ id: 'ts.req', draft: '', state: 'judge', table: { head: ['S/No', 'Activity', 'Time (hrs)', 'From'], rows, widths: [0.08, 0.32, 0.14, 0.46] }, basis });
-  return { patches, confirm: t.move ? [{ text: 'The move in is a straight line: take the road distance and the column length from the Move Planner.', paras: ['ts.req'] }] : [] };
+  return { patches, confirm: t.move ? [{ text: 'The move in is a straight line: take the road distance and the column length from the Move Planner.', paras: ['ts.req'] }] : [], reqH: low || null };
 }
 
 // ── grouping and tasks from a plan ───────────────────────────────────────────────────────────────────────────────
@@ -1166,8 +1227,9 @@ export function writeCoyTasks(coys: AprcCoyIn[]): AprcWritten {
   const list2 = coys.filter((c) => c.kind in KIND_ORDER).sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.label.localeCompare(b.label));
   if (!list2.length) return { patches, confirm: [] };
   const planIn = input('The plan on the map, as checked (Check my plan)');
+  const used = new Set<string>();
   const kids = list2.map((c) => {
-    const id = `plan.exec.tasks.${slug(c.label)}`;
+    const id = uniqueId(used, `plan.exec.tasks.${slug(c.label) || 'posn'}`);
     const tasks: string[] = [];
     if (c.kind === 'res') tasks.push(`Be in res ${c.span ?? 'as shown on the trace'} by ${AprcRuleText}.`);
     else tasks.push(`Take up def posn ${c.span ?? 'as shown on the trace'} by ${AprcRuleText}.`);
@@ -1190,3 +1252,185 @@ export function writeCoyTasks(coys: AprcCoyIn[]): AprcWritten {
   return { patches, confirm: [] };
 }
 const AprcRuleText = '________';
+
+// ── fire on the avenues (the Extended View's IPB fire reading) ───────────────────────────────────────────────────
+
+export interface AprcFireIn {
+  /** Whose posns fire: own (the defence) or the en's. */
+  posnSide: 'own' | 'enemy';
+  posns: number;
+  /** Some posns had no range in the catalogue (small arms' 300 m taken). */
+  assumedRange: boolean;
+  lines: Array<{ id: string; coveredPct: number; screenedPct: number; deadPct: number; outPct: number; seenPct: number; gaps: Array<{ fromM: number; toM: number; kind: 'd' | 's' | 'o' }> }>;
+  killing: Array<{ on: string; kind: 'narrows' | 'stretch'; widthM: number | null; lengthM: number; alongM: number; where: string | null }>;
+}
+
+const GAP_WORD: Record<string, string> = { d: 'dead', s: 'screened', o: 'out of range' };
+
+/**
+ * DP 1's Killing Areas, DF, Surv and Obs Plans from the fire of own posns on the en's avenues: the killing area
+ * candidates, the gaps dir fire does not reach, what the posns see. All proposals: the comd designates.
+ */
+export function writeFire(f: AprcFireIn): AprcWritten {
+  const patches: AprcPatch[] = [];
+  if (f.posnSide !== 'own' || !f.lines.length) return { patches, confirm: [] };
+  const fireData = data(`Fire: ${plural(f.posns, 'own posn')} on the map over the en's avenues, sight from the 30 m elevation with buildings, crops and trees (the Extended View's IPB fire reading)${f.assumedRange ? '; posns with no range in the catalogue taken at 300 m' : ''}`);
+  const k = f.killing.slice(0, 4);
+  if (k.length)
+    patches.push({
+      id: 'gr.ded.dp1.killing',
+      draft: `${cap1(list(k.map((x) => `${x.kind === 'narrows' ? `the narrows${x.widthM ? ` (${km(x.widthM)} km wide)` : ''}` : `a ${km(x.lengthM)} km stretch under fire`} on ${x.on}, ${km(x.alongM)} km along${x.where ? ` (${x.where})` : ''}`)))}.`,
+      state: 'judge',
+      basis: [fireData, rule("Killing area candidates: an avenue's narrows under fire, and covered stretches of 1 km or more (OoW Vol I pp 42-45); the comd designates the killing areas")],
+    });
+  const gaps = f.lines.flatMap((l) => l.gaps.map((g) => ({ ...g, on: l.id }))).filter((g) => g.toM - g.fromM >= 300);
+  const dead = gaps.filter((g) => g.kind !== 'o').sort((a, b) => b.toM - b.fromM - (a.toM - a.fromM)).slice(0, 6);
+  const gapText = (g: (typeof gaps)[number]) => `${g.on} ${km(g.fromM)}-${km(g.toM)} km along (${GAP_WORD[g.kind]})`;
+  if (dead.length) patches.push({ id: 'gr.ded.dp1.df', draft: `DF tgts on the ground own dir fire cannot reach: ${dead.map(gapText).join('; ')}.`, state: 'judge', basis: [fireData, calc('Gaps: 300 m or more of an avenue not under dir fire from own posns; indirect fire on the dead and screened ones is a proposal, no book figure')] });
+  patches.push({
+    id: 'gr.ded.dp1.surv',
+    draft: `Seen from own posns: ${f.lines.map((l) => `${l.id} ${pct(l.seenPct)} of its length`).join(', ')}.${f.lines.some((l) => l.seenPct < 70) ? ' The stretches not seen want an OP or a ptl.' : ''}`,
+    state: 'judge',
+    basis: [fireData, calc('Seen: a stretch in view of any posn within its obsn reach; the OPs on what is not seen are a proposal')],
+  });
+  if (k.length) patches.push({ id: 'gr.ded.dp1.obs', draft: `Obs to hold him where own fire covers him: ${list(k.map((x) => `on ${x.on} ${km(x.alongM)} km along`))}. An obs no fire covers only delays him.`, state: 'judge', basis: [fireData, calc('Obs sited on the killing area candidates above, where own dir fire covers them; a proposal')] });
+  const out = gaps.filter((g) => g.kind === 'o');
+  return { patches, confirm: out.length ? [{ text: `Out of reach of own dir fire: ${out.slice(0, 4).map(gapText).join('; ')}: check the posns' ranges on the ground.`, paras: ['gr.ded.dp1.df'] }] : [] };
+}
+
+// ── his heliborne force (the Extended View's IPB air reading) ────────────────────────────────────────────────────
+
+export interface AprcAirIn {
+  lzs: Array<{ id: string; rank: number; where: string | null; why: string; existing: string | null }>;
+  dzs: Array<{ id: string; rank: number; where: string | null; why: string }>;
+  routes: Array<{ id: string; to: string; lengthM: number; seenPct: number }>;
+  band: string;
+}
+
+/** En Sit common deductions: his likely LZs and DZs and low-level air avenues, a proposal. */
+export function writeAir(a: AprcAirIn): AprcWritten {
+  const patches: AprcPatch[] = [];
+  const lz = [...a.lzs].sort((x, y) => x.rank - y.rank).slice(0, 3);
+  const dz = [...a.dzs].sort((x, y) => x.rank - y.rank).slice(0, 2);
+  if (!lz.length && !dz.length) return { patches, confirm: [] };
+  const z = (x: { id: string; where: string | null; existing?: string | null }) => `${x.id}${x.where ? ` ${x.where}` : ''}${x.existing ? ` (${x.existing})` : ''}`;
+  const rt = [...a.routes].slice(0, 2);
+  patches.push({
+    id: 'en.ded.common',
+    draft: `Heliborne: his likeliest ${lz.length ? `LZs ${list(lz.map(z))}` : ''}${lz.length && dz.length ? '; ' : ''}${dz.length ? `DZs ${list(dz.map(z))}` : ''}.${rt.length ? ` Low-level air avenues (${a.band}): ${rt.map((r) => `${r.id} to ${r.to}, ${km(r.lengthM)} km, ${pct(r.seenPct)} of it seen from own posns`).join('; ')}.` : ''} Cover them with OPs and AD.`,
+    state: 'judge',
+    basis: [data("Air: the Extended View's IPB air reading (slope, room, approach, existing helipads, sight from own posns)"), rule('LZ / DZ and air avenue factors: IPB book pp 5-6; landing point sizes FM 3-21.38 (US figures, to confirm with Army Aviation)')],
+  });
+  return { patches, confirm: [{ text: 'His LZs and DZs are read from the ground: walk the likeliest and site the OPs over them.', paras: ['en.ded.common'] }] };
+}
+
+// ── time data (the defence) and the backward calc (the attack) ───────────────────────────────────────────────────
+
+export interface AprcTimeDataIn {
+  /** H as a clock time on D Day, or null. */
+  hHour: string | null;
+  /** The Time Req total (at least), hours, or null. */
+  reqH: number | null;
+  /** His earliest at the FDLs, hours from H (unopposed), or null. */
+  fdlH: number | null;
+}
+
+/** Time Data: D Day, by when the def is occupied and ready, from H and the Time Req. */
+export function writeTimeData(t: AprcTimeDataIn): AprcWritten {
+  const patches: AprcPatch[] = [];
+  const hMin = parseHHour(t.hHour);
+  const hIn = input(`H: ${t.hHour || 'not set'} on D Day (the sheet's H, else the Ground Guide's IPB H)`);
+  if (hMin !== null) patches.push({ id: 'ts.data.d-day', draft: `H at ${clockAt(hMin, 0).replace(' D Day', '')} on D Day.`, state: 'map', basis: [hIn] });
+  if (t.reqH !== null && t.reqH > 0)
+    patches.push({ id: 'ts.data.time-by-which-def-to-be-occupied', draft: `Not later than ${whenText(-t.reqH, hMin)}: the Time Req, at least ${Math.round(t.reqH)} h, back from H. Work done in parallel gives more time.`, state: 'judge', basis: [hIn, calc('H less the Time Req total (a floor: the rows it could fill); a proposal')] });
+  if (hMin !== null || t.fdlH !== null)
+    patches.push({ id: 'ts.data.time-by-which-def-to-be-ready', draft: `By ${hMin === null ? 'H' : `H (${clockAt(hMin, 0)})`}: he sets out at H${t.fdlH !== null ? ` and can be at the FDLs from ${whenText(t.fdlH, hMin)}, unopposed` : ''}.`, state: 'judge', basis: [hIn, ...(t.fdlH !== null ? [calc("His earliest at the FDLs: the en options, at the IPB book's unopposed rates (p 18)")] : []), calc('Ready by H: a proposal')] });
+  return { patches, confirm: [] };
+}
+
+/** The attack's H-hour sum in minutes from H (a plan's; PlanAttack.hSumRow), any part may be missing. */
+export interface AprcHSumIn {
+  leaveBeforeMin: number | null;
+  objMin: number | null;
+  h2Min: number | null;
+  obj2Min: number | null;
+}
+
+/** "H", "H+42 min", "H-1 h 30" (PlanAttack.hRelText) to minutes from H; null when it is none of these. */
+export function parseHRel(s: string): number | null {
+  const t = s.trim();
+  if (t === 'H') return 0;
+  let m = /^H\+(\d+) min$/.exec(t);
+  if (m) return Number(m[1]);
+  m = /^H-(\d+) h (\d+)$/.exec(t);
+  if (m) return -(Number(m[1]) * 60 + Number(m[2]));
+  return null;
+}
+
+/** The H-hour sum read from its check row's words ("leave the Assy Area H-1 h 30 ...; on the Obj H+42 min ..."). */
+export function hSumFromText(reason: string): AprcHSumIn | null {
+  const at = (re: RegExp): number | null => {
+    const m = re.exec(reason);
+    return m ? parseHRel(m[1]) : null;
+  };
+  const leave = at(/leave the Assy Area (H(?:[-+][^;(,]*)?)/);
+  const h: AprcHSumIn = {
+    leaveBeforeMin: leave === null ? null : -leave,
+    objMin: at(/on (?:the Obj|Obj 1) (H(?:[-+][^;(,]*)?)/),
+    h2Min: at(/H2 (H(?:[-+][^;(,]*)?)/),
+    obj2Min: at(/on Obj 2 (H(?:[-+][^;(,]*)?)/),
+  };
+  return Object.values(h).some((v) => v !== null) ? h : null;
+}
+
+/** Time Calc of the attack: H on its row; with the plan's H-hour sum the march, the assault and Phase 2 too. */
+export function writeTimeCalcAttk(hHour: string | null, h: AprcHSumIn | null): AprcWritten {
+  const hMin = parseHHour(hHour);
+  if (hMin === null && !h) return { patches: [], confirm: [] };
+  const rows = BACKWARD_EVENTS.map((e, i) => [String(i + 1), e, '', '']);
+  const row = (event: string): string[] => rows.find((r) => r[1] === event)!;
+  const when = (min: number) => whenText(min / 60, hMin);
+  row('H hr')[3] = hMin === null ? 'H' : `H (${clockAt(hMin, 0)})`;
+  if (h && h.leaveBeforeMin !== null) {
+    row('FAA to FUP')[2] = `${Math.round(h.leaveBeforeMin)} min`;
+    row('FAA to FUP')[3] = when(-h.leaveBeforeMin);
+  }
+  if (h && h.objMin !== null) {
+    row('FUP to Obj Phase 1')[2] = `${Math.round(h.objMin)} min`;
+    row('FUP to Obj Phase 1')[3] = when(h.objMin);
+  }
+  if (h && h.h2Min !== null) row('A hr (not later than)')[3] = when(h.h2Min);
+  if (h && h.obj2Min !== null) {
+    row('SL to Obj Phase 2')[2] = h.h2Min !== null ? `${Math.round(h.obj2Min - h.h2Min)} min` : '';
+    row('SL to Obj Phase 2')[3] = when(h.obj2Min);
+  }
+  const basis: AprcBasis[] = [input(`H: ${hHour || 'not set'} on D Day`)];
+  if (h) basis.push(calc("From the plan's H-hour sum: the march at day / night rates (IBB p 18), forming up, the assault at its pace, the fire lifting at each ring (IC s66 p 305)"));
+  return { patches: [{ id: 'ts.calc', draft: '', state: 'judge', table: { head: ['Ser', 'Events', 'Time Req', 'Running Time'], rows, widths: [0.08, 0.5, 0.2, 0.22] }, basis }], confirm: [] };
+}
+
+// ── adm (the Admin Area finder) ──────────────────────────────────────────────────────────────────────────────────
+
+export interface AprcAdmIn {
+  /** What was looked for ("BAA", "Unit Ech"). */
+  kind: string;
+  sites: Array<{ rank: number; where: string | null; tone: string; verdict: string }>;
+}
+
+const TONE_WORD: Record<string, string> = { ok: 'passes', warn: 'needs work', unknown: 'not read', bad: 'fails' };
+
+/** Adm and Log: the Admin Area finder's best sites, a proposal to walk. */
+export function writeAdm(a: AprcAdmIn): AprcWritten {
+  const s = [...a.sites].sort((x, y) => x.rank - y.rank).slice(0, 3);
+  if (!s.length) return { patches: [], confirm: [] };
+  const cut = (t: string) => (t.length > 120 ? `${t.slice(0, 117).replace(/\s+\S*$/, '')}…` : t);
+  return {
+    patches: [{
+      id: 'plan.adm',
+      draft: `${a.kind}: ${s.map((x) => `site ${x.rank}${x.where ? ` ${x.where}` : ''} (${TONE_WORD[x.tone] ?? x.tone}${x.verdict ? `: ${cut(x.verdict).replace(/\.$/, '')}` : ''})`).join('; ')}.`,
+      state: 'judge',
+      basis: [data("The Admin Area finder's last result: each site's rows carry their rule with book and page (AdminDoctrine.json)"), calc('The best sites as the finder ranks them; a proposal')],
+    }],
+    confirm: [{ text: `${a.kind} site: walk it before it is chosen.`, paras: ['plan.adm'] }],
+  };
+}

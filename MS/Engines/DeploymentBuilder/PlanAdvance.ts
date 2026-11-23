@@ -291,7 +291,8 @@ export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFr
   // report lines: laid on the water ahead of the SP (or read as drawn)
   const RL_MAX = 4, apart = rlApartM ?? F.rlApart;
   let lines: { label: string; s: number }[];
-  if (drawnRls) lines = drawnRls;
+  // drawn report lines with no axis drawn are measured from the SP (checkAdvance): on the fallback axis the SP lies spAt in
+  if (drawnRls) lines = axis ? drawnRls : drawnRls.map((l) => ({ ...l, s: l.s + ax.spAt }));
   else {
     lines = [];
     // the features ahead, at least `apart` between them; within that, the bigger obstacle wins (a canal or river over a

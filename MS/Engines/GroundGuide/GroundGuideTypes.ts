@@ -432,11 +432,16 @@ export interface GroundGuideIpbOptions {
   template: string;
   /** The template's elements on the map (where doctrine puts them, where the ground lets them be). */
   mapTemplate: boolean;
+  /**
+   * Own attack, left against right (IC s15.12 b; IpbDoctrine `ownAttack.factors`): the user's weights 0-3 by factor id
+   * over the doctrine's (2026-11-23). Empty: the doctrine's.
+   */
+  lrWeights: Record<string, number>;
 }
 
 /** Rates, event template and decision support over the IPB avenues (extended.ipb.decision), Web Mercator. */
 export interface IpbDecisionView {
-  rates: { mover: 'armour' | 'mech' | 'dismounted'; go: [number, number]; slow: [number, number]; nogo: [number, number] };
+  rates: { mover: 'armour' | 'mech' | 'dismounted'; go: [number, number]; slow: [number, number]; nogo: [number, number]; climbMinPer300?: [number, number] | null; climbM?: Record<string, number> };
   /** Times count from the threat marker's place (true) or from the area's edge (false). */
   fromThreat: boolean;
   hHour: string | null;
@@ -684,6 +689,10 @@ export interface IpbApchView {
   /** The situation template (extended.ipb.template): undefined while off or not worked out yet. */
   template?: IpbTemplateView | null;
   ms: { coding: number; corridors: number };
+  /** Own attack: the left approach against the right, factor by factor (GroundGuideIpbCompare); undefined when not an own attack onto an objective. */
+  compare?: import('./GroundGuideIpbCompare').CmpResult;
+  /** The obstacle symbols read into the coding (IPB p 10), who each stops, and own fire's cover of own ones. */
+  obstacles?: Array<{ name: string; kind: 'area' | 'line'; own: boolean; stops: Array<'armour' | 'mech' | 'dismounted'>; stopsThis: boolean; covered: boolean | null; at: MercXY; text: string }>;
   /** Where the approaches end (extended.ipb.apchEnd), and the objective they end on (null: the book's avenues only). */
   apchEnd?: 'objective' | 'through' | 'both';
   objective?: {
@@ -785,6 +794,12 @@ export interface GroundGuideScopeOptions {
   tab: boolean;
   /** Room kept free above the rail at the top of the map for the host's toolbar, px (inside any `view.padding`). */
   topPx: number;
+  /**
+   * With the Extended View on and the IPB avenues read: `area` (default) centres the rail on the area read and holds all
+   * of it (the approaches, the objective, FUPs, MSR choke, NAIs, TAIs, DPs, LZs), the symbol drawn where it is; `spot`
+   * keeps the ground round the symbol as without F (2026-11-23).
+   */
+  extScale: 'area' | 'spot';
 }
 
 export interface GroundGuideGoingOptions {
@@ -1626,8 +1641,8 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   cover: { enabled: true, card: 'lines', where: 'grotbc', radiusM: 500, focus: true },
   sections: { ground: true, roads: true, buildings: true, weather: true, obstacles: true, style: 'compact', radiusKm: 3, roadDensity: true, roadDensityKm: 5, roadDensityStyle: 'rows', roadDensityLead: 'afterRain', detail: true, gStyle: 'auto', rStyle: 'auto', oStyle: 'auto', bStyle: 'auto', wStyle: 'auto' },
   speed: { enabled: true, card: 'line', light: 'day', road: 'convoy', load: 'combat', mover: 'auto', legend: true },
-  scope: { enabled: true, side: 'right', tab: true, topPx: 54 },
-  extended: { keys: true, lasts: 'symbol', threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapApproaches: true, mapBetter: true, layerFire: true, layerKeyGr: true, layerApchs: false, layerAir: false, layerDecision: false, overlay: 'auto', ipb: { readFor: 'defence', apchEnd: 'objective', fupM: 1100, turn: true, mover: 'auto', season: 'coding', avlbSpanM: 18, paint: 'hatch', apchs: true, hq: 'auto', mapCorridors: true, labels: 'auto', createAs: 'attack', fire: true, mapFire: true, proforma: true, pfHead1: '', pfHead2: '', decision: true, mapDecision: true, reactionH: 0, hHour: '', air: true, mapAir: true, airBand: 'contour', lzClass: 4, lzPoints: 4, template: 'auto', mapTemplate: true }, eye: 'auto', surface: true },
+  scope: { enabled: true, side: 'right', tab: true, topPx: 54, extScale: 'area' },
+  extended: { keys: true, lasts: 'symbol', threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapApproaches: true, mapBetter: true, layerFire: true, layerKeyGr: true, layerApchs: false, layerAir: false, layerDecision: false, overlay: 'auto', ipb: { readFor: 'defence', apchEnd: 'objective', fupM: 1100, turn: true, mover: 'auto', season: 'coding', avlbSpanM: 18, paint: 'hatch', apchs: true, hq: 'auto', mapCorridors: true, labels: 'auto', createAs: 'attack', fire: true, mapFire: true, proforma: true, pfHead1: '', pfHead2: '', decision: true, mapDecision: true, reactionH: 0, hHour: '', air: true, mapAir: true, airBand: 'contour', lzClass: 4, lzPoints: 4, template: 'auto', mapTemplate: true, lrWeights: {} }, eye: 'auto', surface: true },
   aor: { keys: true, scale: 'spot', layout: 'deductions', style: 'trace', orient: 'north', source: 'echelon', box: null, echelon: 'auto', leadKm: 4, corridorM: 0, profile: 'tracked' },
 };
 

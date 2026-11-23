@@ -173,11 +173,16 @@
       { "unit": "Battalion, two companies up", "frontageM": 4500, "depthM": [3000, 4000], "src": "IBB Annex U App 6, p481" },
       { "unit": "Battalion, three companies up", "frontageM": 6500, "depthM": [2500, 3000], "src": "IBB Annex U App 6, p481" },
       { "unit": "Battalion along an anti-tank ditch", "frontageM": [2750, 4115], "frontageXM": [3000, 4500], "depthM": [1850, 2757], "depthXM": [2000, 3000], "companyM": 1200, "gapM": 450, "gapXM": 500, "maskPositionM": [900, 1500], "src": "IBB Annex V App 9, p485" },
-      { "unit": "Battalion, normal terrain", "frontageM": 3000, "depthM": 2000, "src": "IC s113 (capabilities of the infantry battalion, defence)" },
-      { "unit": "Battalion, obstacle-oriented defence", "frontageM": 6000, "depthM": 3000, "src": "IC s113 (same)" },
-      { "unit": "Mountain infantry battalion, defence", "frontageM": [6000, 8000], "src": "IC s113 (modified battalions)" },
-      { "unit": "Battalion, set-piece attack in plains", "frontageM": 400, "depthM": [1000, 1500], "src": "IC s113 (same)" },
-      { "unit": "Infantry division, defence", "frontageM": [20000, 30000], "frontageObstacleM": [60000, 80000], "src": "IC s113 (infantry and mountain divisions)" }
+      { "unit": "Battalion, normal terrain", "frontageM": 3000, "depthM": 2000, "src": "IC s113 p 658 (the Foxland infantry battalion, the enemy: his capabilities, not own doctrine)" },
+      { "unit": "Battalion, obstacle-oriented defence", "frontageM": 6000, "depthM": 3000, "src": "IC s113 p 658 (the Foxland battalion, the enemy)" },
+      { "unit": "Mountain infantry battalion, defence", "frontageM": [6000, 8000], "src": "IC s113 p 658 (the Foxland mountain battalion, the enemy: 6000-8000 m on dominating heights; no own mountain Bn frontage is printed in MW, so this stands in and says so)" },
+      { "unit": "Battalion, set-piece attack in plains", "frontageM": 400, "depthM": [1000, 1500], "src": "IC s113 p 663 (the Foxland battalion, the enemy: 400 m wide, 1000-1500 m deep)" },
+      { "unit": "Infantry division, defence", "frontageM": [20000, 30000], "frontageObstacleM": [60000, 80000], "src": "IC s113 p 658 (the Foxland infantry division, the enemy: a compact sector 20-30 km wide and deep, 60-80 km on an anti-tank obstacle)" },
+      { "unit": "Brigade, two battalions up", "frontageM": [10000, 12000], "depthM": [4000, 6000], "src": "OoW Vol I Annexes B-D pp 103-105: a Bde (X) 10-12 km wide, 4-6 km deep, only a yardstick" },
+      { "unit": "Infantry division, two to three axes", "frontageM": [20000, 36000], "depthM": [8000, 16000], "src": "OoW Vol I Annex C p 104 (two independent axes, a Bde of 10-12 km on each, about 16 km between, each 4-8 km deep) and Annex D p 105 (three axes on an extended frontage, 10-12 km each); only a guideline. Depth: two Bde depths, the depth Bde behind the forward ones (calc)" },
+      { "unit": "Brigade, night attack in plains, two battalions up", "frontageM": [1100, 1500], "src": "GSP 1947 Inf Div in Battle s19 para 12 d p 86: a brigade attacking at night in the plains with two battalions up occupies a frontage of 1100-1500 metres from a brigaded FUP; desert 3000-4000 m (p 87)" },
+      { "unit": "Battalion, night attack in plains (half a brigade two up)", "frontageM": [550, 750], "src": "Half of the brigade two up (GSP p 86, 1100-1500 m): calc" },
+      { "unit": "Company, night attack in plains (half a battalion two up)", "frontageM": [275, 375], "src": "A quarter of the brigade two Bns up (GSP p 86, 1100-1500 m), half the Bn row: calc" }
     ],
     "rules": [
       { "rule": "The frontage of a company, platoon or section cannot be extended; a battalion's frontage grows by widening the gaps.", "src": "IC s84.6b" },

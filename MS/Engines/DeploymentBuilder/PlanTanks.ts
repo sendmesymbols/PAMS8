@@ -79,6 +79,10 @@ export function withTanks(r: Recipe, doc: DoctrineSet, mode: TankMode, sqn?: Rec
   const add = (s: RecipeSlot) => out.slots.push(s);
   add({ role: 'tkFup', kind: 'area', sym: '25140302', label: 'FUP (Tks)', order: 2, shape: { pts: [P(F.x - fn.x * 200, F.y - fn.y * 200), P(F.x + fn.x * 200, F.y + fn.y * 200)].map(toRecipe) }, terrainRule: { unseenFrom: 'threat', notIn: ['noGo', 'water'] } });
   add({ role: 'tkSqn', kind: 'point', sym: '10120500', label: mode === 'close' ? 'A Sqn (-)' : 'A Sqn', echelon: '15', order: 3, shape: { at: toRecipe(P(F.x - fu.x * 150, F.y - fu.y * 150)) } });
+  // the Sqn's harbour behind FUP (Tks), off the infantry's axis: hidden, by a track, the move up timed in the H-hour sum
+  const hb = num(doc, 'attack.tanks.harbourBehindFupM', 2000);
+  const H = P(F.x - fu.x * hb + fn.x * 150 * Math.sign(aside || 1), F.y - fu.y * hb + fn.y * 150 * Math.sign(aside || 1));
+  add({ role: 'tkHarbour', kind: 'area', sym: '25150200', label: 'Sqn Harbour', order: 2, shape: { rect: { acrossM: Math.round(H.x), backM: Math.round(-H.y), wM: 500, hM: 400 } }, terrainRule: { unseenFrom: 'threat', notIn: ['noGo', 'water'], prefer: ['roadAccess'] } });
   if (mode === 'close') {
     // the tanks' own axis converging on where the infantry enter the Obj (IBB p186), and the rear troop on the BOF's flank
     add({ role: 'tkAxis', kind: 'area', sym: '25151403', label: 'Tks', order: 3, shape: { pts: [P(F.x + fu.x * 150, F.y + fu.y * 150), P(E.x + fu.x * 100, E.y + fu.y * 100)].map(toRecipe), widthM: 300 } });
@@ -91,7 +95,7 @@ export function withTanks(r: Recipe, doc: DoctrineSet, mode: TankMode, sqn?: Rec
   out.name = `${r.name}, tanks in ${mode === 'close' ? 'close' : 'fire'} sp`;
   out.tanks = mode;
   if (sqn) out.tankSqn = { ...sqn };
-  out.note = `${r.note ?? ''} Tanks (PlanTanks, ${mode === 'close' ? 'close sp, armour heavy' : 'fire sp, infantry heavy'}): FUP (Tks) ${fmtM(back)} from the Obj (IBB p214: out of his ATGMs' reach, no common FUP), ${fmtM(Math.abs(aside))} aside of the infantry's axis.`.trim();
+  out.note = `${r.note ?? ''} Tanks (PlanTanks, ${mode === 'close' ? 'close sp, armour heavy' : 'fire sp, infantry heavy'}): FUP (Tks) ${fmtM(back)} from the Obj (IBB p214: out of the En ATGMs' reach, no common FUP), ${fmtM(Math.abs(aside))} aside of the infantry's axis; the Sqn harbour ${fmtM(hb)} behind FUP (Tks) (E), its move up in the H-hour sum.`.trim();
   return out;
 }
 
@@ -297,6 +301,9 @@ export function addTankTimes(h: HSum, res: SolveResult, f: FitFrame | null, g: P
   const o1 = boxOf(obj.pts);
   const F = centre(fup.pts);
   const kmh = num(doc, `attack.tanks.moveKmh.${night ? 'night' : 'day'}`, night ? 8 : 16);
+  // the Sqn's move from its harbour to FUP (Tks): on tracks at the tank rate, before the FUP is left
+  const harbour = item('tkHarbour');
+  const harbourMove = harbour ? (() => { const w = trackWalk([centre(harbour.pts), F], f, g); return { w, min: Math.round(((w.goM + w.slowM) / 1000 / kmh) * 60) }; })() : null;
   const slowFactor = (() => { const r = doctrineAt(doc, 'moves.tankKmh') as { go?: number; slow?: number } | undefined; return r?.go && r?.slow ? r.go / r.slow : 1.5; })();
   const pace = h.paceMinPer100m;
   const infAt = (m: number) => h.objAt - Math.round((m / 100) * pace);
@@ -333,6 +340,7 @@ export function addTankTimes(h: HSum, res: SolveResult, f: FitFrame | null, g: P
     const rushMin = Math.max(1, Math.round((rush / 1000 / num(doc, 'attack.tanks.rushKmh', 15)) * 60));
     const onObj = Math.max(tAl + rushMin, h.objAt - Math.round(num(doc, 'attack.tanks.aheadMin', 1)));
     const tRush = onObj - rushMin;
+    if (harbourMove) steps.push({ label: 'Sqn leaves its harbour for FUP (Tks)', distM: Math.round(harbourMove.w.goM + harbourMove.w.slowM), min: harbourMove.min, at: leave - harbourMove.min - 10 });
     steps.push({ label: `Tanks leave FUP (Tks)${night ? ' (night)' : ''}`, distM: Math.round(w.goM + w.slowM), min: travel, at: leave });
     if (tRush > tAl) steps.push({ label: 'Tanks at the assault line, firing the infantry on', distM: 0, min: tRush - tAl, at: tAl });
     steps.push({ label: 'Tanks rush the Obj', distM: rush, min: rushMin, at: tRush });
@@ -347,9 +355,11 @@ export function addTankTimes(h: HSum, res: SolveResult, f: FitFrame | null, g: P
     const path = route && route.length >= 2 ? route : [F, Pf];
     const w = trackWalk(path, f, g);
     const travel = minOf(w);
-    // option a: at the fire posns as the infantry come as close to the Obj, at H at the latest
+    // option a: at the fire posns as the infantry come as close to the Obj; fire posns farther out than the SL (the
+    // infantry are not yet closing before H) are manned at H, never before it
     const tF = Math.max(0, infAt(dF));
     const leave = tF - travel;
+    if (harbourMove) steps.push({ label: 'Sqn leaves its harbour for FUP (Tks)', distM: Math.round(harbourMove.w.goM + harbourMove.w.slowM), min: harbourMove.min, at: (() => { const first = steps[0]?.at; return (first ?? 0) - harbourMove.min - 10; })() });
     steps.push({ label: `Tanks leave FUP (Tks) for the fire posns${night ? ' (night)' : ''}`, distM: Math.round(w.goM + w.slowM), min: travel, at: leave });
     steps.push({ label: `Tanks firing from ${fmtM(dF)} out`, distM: 0, min: Math.max(0, h.objAt - tF), at: tF });
     h.tanks = { mode, leaveAt: leave, atAt: tF, onObjAt: null, lengthM: Math.round(w.goM + w.slowM) };
@@ -363,6 +373,25 @@ export function addTankTimes(h: HSum, res: SolveResult, f: FitFrame | null, g: P
     });
     rows.push(goingRow(w, 'the Sqn\'s way to its fire posns'));
   }
-  h.steps = [...h.steps, ...steps].sort((a, b) => a.at - b.at);
+  // called again on the same sum (a re-fit): the tanks' earlier steps are replaced, never doubled
+  h.steps = [...h.steps.filter((x) => !/^Tanks /.test(x.label)), ...steps].sort((a, b) => a.at - b.at);
   return rows;
+}
+
+/**
+ * FUP (Tks) against the En anti-tank guided missiles: the tanks form up out of their reach (IBB S44 para 16 a p 213:
+ * the En ATGMs reach 1500-3500 m, so the tank FUP is 2500-3000 m out). `enAtgmM` is the longest ATGM range of the En
+ * unit's weapons (ORBAT), `src` names it; null: the doctrine's band stands (atFramework.atgmRangeM).
+ */
+export function tankFupVsEnAtgm(res: SolveResult, doc: DoctrineSet, enAtgmM: number | null, src: string | null): Check | null {
+  const obj = res.items.find((i) => i.role === 'obj'), fup = res.items.find((i) => i.role === 'tkFup');
+  if (!obj || !fup) return null;
+  const gap = boxGap(boxOf(obj.pts), centre(fup.pts));
+  const reach = enAtgmM ?? num(doc, 'atFramework.atgmRangeM', 3000);
+  const what = enAtgmM ? (src ?? 'the En ATGMs (ORBAT)') : 'the Baktar Shikan class of ATGM, 3 km (Amplification p 1.2; no En ATGM range in the ORBAT for this unit)';
+  const margin = num(doc, 'attack.tanks.atgmMarginM', 300);
+  return gap >= reach + margin
+    ? { name: 'FUP (Tks) vs En ATGM', st: 'pass', reason: `${fmtM(gap)} from the Obj: beyond ${what} (${fmtM(reach)}) by ${fmtM(gap - reach)} (IBB S44 para 16 a p 213: the tanks form up out of the En ATGMs' reach)` }
+    : { name: 'FUP (Tks) vs En ATGM', st: gap >= reach ? 'warn' : 'fail', reason: `${fmtM(gap)} from the Obj: ${gap >= reach ? 'only just beyond' : 'inside'} the reach of ${what} (${fmtM(reach)})`,
+      detail: { head: `FUP (Tks) ${gap >= reach ? 'just beyond' : 'inside'} the En ATGM reach`, why: 'Tanks forming up within the En ATGM reach are engaged before they move (IBB p 213-214: the FUP distance is set by the En anti-tank weapons).', fix: [`Move FUP (Tks) back to ${fmtM(reach + margin)} or more`, 'Hull-down ground or a crest between (IBB p 215)', 'Smoke on the Obj while the tanks form up'] } };
 }

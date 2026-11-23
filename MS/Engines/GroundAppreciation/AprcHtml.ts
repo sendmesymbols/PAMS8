@@ -11,24 +11,24 @@
  * proposals, and annexes: Confirm on Gr, the basis of each drafted paragraph, the data.
  */
 
-import { lines, numberOf, shown, tableOf, type AprcCopy, type AprcDoc, type AprcFigure, type AprcPara, type AprcTable } from './AprcModel';
+import { STALE_MARK, lines, numberOf, shown, tableOf, type AprcCopy, type AprcDoc, type AprcFigure, type AprcPara, type AprcTable } from './AprcModel';
 
 export const esc = (s: unknown): string => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
 
 /** Styles of the page, scoped under `.aprc-doc`. Paper colours on purpose: it is a printed page, in the app too. */
 export const APRC_DOC_CSS = `
-.aprc-doc{background:#fff;color:#111;font:12pt/1.45 Arial,Helvetica,sans-serif;text-align:left}
+.aprc-doc{background:#fff;color:#111;font:12pt/1.65 Arial,Helvetica,sans-serif;text-align:left}
 .aprc-doc *{box-sizing:border-box}
-.aprc-doc .ap-mkg{text-align:center;font-weight:700;letter-spacing:.02em;min-height:1.45em}
+.aprc-doc .ap-mkg{text-align:center;font-weight:700;letter-spacing:.02em;min-height:1.65em}
 .aprc-doc .ap-addr{margin:6pt 0 12pt auto;width:16em;line-height:1.8}
 .aprc-doc .ap-rule{display:inline-block;border-bottom:1px solid #444;min-width:9em;height:1.1em;vertical-align:-2px}
 .aprc-doc .ap-rule.long{min-width:22em;max-width:100%}
 .aprc-doc .ap-title,.aprc-doc .ap-part{text-align:center;font-weight:700;text-decoration:underline;margin:14pt 0 8pt}
-.aprc-doc .ap-group{font-weight:700;text-decoration:underline;margin:10pt 0 4pt}
-.aprc-doc .ap-p{display:grid;grid-template-columns:2.6em minmax(0,1fr);margin:5pt 0;break-inside:avoid-page}
+.aprc-doc .ap-group{font-weight:700;text-decoration:underline;margin:12pt 0 6pt}
+.aprc-doc .ap-p{display:grid;grid-template-columns:2.6em minmax(0,1fr);margin:8pt 0;break-inside:avoid-page}
 .aprc-doc .ap-p.d1{margin-left:2.6em}.aprc-doc .ap-p.d2{margin-left:5.2em}.aprc-doc .ap-p.d3{margin-left:7.8em}.aprc-doc .ap-p.d4{margin-left:10.4em}
 .aprc-doc .ap-h{text-decoration:underline}
-.aprc-doc table{border-collapse:collapse;margin:6pt 0 8pt;font-size:11pt;width:100%}
+.aprc-doc table{border-collapse:collapse;margin:6pt 0 8pt;font-size:11pt;line-height:1.4;width:100%}
 .aprc-doc th,.aprc-doc td{border:1px solid #222;padding:3pt 6pt;text-align:left;vertical-align:top;height:1.9em}
 .aprc-doc th{font-weight:700;background:#eee}
 .aprc-doc figure{margin:8pt 0 10pt;break-inside:avoid-page}
@@ -44,7 +44,7 @@ export const APRC_DOC_CSS = `
 .aprc-doc .ap-anx{break-before:page;margin-top:18pt}
 .aprc-doc .ap-anx h4{text-align:center;text-decoration:underline;font-size:12pt;margin:0 0 8pt}
 .aprc-doc .ap-anx ol{margin:0;padding-left:2em}
-.aprc-doc .ap-anx li{margin:3pt 0}
+.aprc-doc .ap-anx li{margin:5pt 0}
 .aprc-doc .ap-basis{font-size:10.5pt;margin:4pt 0}
 .aprc-doc .ap-basis b{font-weight:700}
 .aprc-doc .ap-read{font-size:10pt;color:#444;margin-top:10pt}
@@ -70,7 +70,7 @@ function paraHtml(p: AprcPara, depth: number, lab: string, copy: AprcCopy, figs:
   let extra = '';
   if (copy === 'draft') {
     if (s.text !== '' || p.table) extra += `<span class="ap-mk ${MARK_CLASS[s.mark]}">${s.proposal ? 'PROPOSAL' : s.mark}</span>`;
-    if (s.stale) extra += `<span class="ap-mk STALE">GR CHANGED SINCE</span>`;
+    if (s.stale) extra += `<span class="ap-mk STALE">${esc(STALE_MARK[s.why ?? 'gr'].toUpperCase())}</span>`;
     if (s.text === null && p.prompts.length) extra += `<br><span class="ap-hint">${esc(p.prompts.join(' · '))}</span>`;
   }
   let html = `<div class="ap-p d${Math.min(depth, 4)}${s.proposal ? ' ap-prop' : ''}" data-id="${esc(p.id)}"><span class="ap-n">${esc(lab)}</span><span class="ap-b">${head}${body}${extra}</span></div>`;
@@ -123,14 +123,29 @@ export function bodyHtml(doc: AprcDoc, copy: AprcCopy, o: { marking?: boolean } 
 }
 const cap = (s: string): string => s[0].toUpperCase() + s.slice(1);
 
-/** A whole document for the print window: A4, the page number and the marking's ruled line in the page margins. */
-export function printHtml(doc: AprcDoc, copy: AprcCopy): string {
-  const m = '________________';
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(doc.title)}</title><style>
-@page{size:A4;margin:22mm 20mm 20mm 25mm;@top-center{content:counter(page) "\\A ${m}";white-space:pre;font:700 11pt Arial,sans-serif;text-align:center}@bottom-center{content:"${m}";font:700 11pt Arial,sans-serif}}
+/**
+ * The name the exports carry: Aprc, the place, the date and the copy ("Aprc_Qila_Mor_2027-02-15_draft"). The print
+ * window takes it as its title, so Save as PDF offers it as the file name.
+ */
+export function aprcFileBase(doc: AprcDoc | null, copy: AprcCopy, date = new Date()): string {
+  const place = (doc?.frame?.place ?? 'aprc').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'aprc';
+  return `Aprc_${place}_${date.toISOString().slice(0, 10)}${copy === 'draft' ? '_draft' : ''}`;
+}
+
+/**
+ * A whole document for the print window: A4. The marking's ruled line heads and foots every printed page from a
+ * repeating table head and foot (Chrome and Firefox repeat them on each page; no margin boxes needed); the page number
+ * sits in the top margin where the browser draws margin boxes (Chrome, Edge), and is left out where it does not.
+ */
+export function printHtml(doc: AprcDoc, copy: AprcCopy, o: { title?: string } = {}): string {
+  const rule = '<div class="ap-mkg"><span class="ap-rule"></span></div>';
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(o.title ?? aprcFileBase(doc, copy))}</title><style>
+@page{size:A4;margin:16mm 20mm 14mm 25mm;@top-center{content:counter(page);font:700 11pt Arial,sans-serif;text-align:center}}
 html,body{margin:0;background:#fff}
 ${APRC_DOC_CSS}
+.ap-sheet{width:100%;border-collapse:collapse;border:0;margin:0;font-size:inherit}
+.ap-sheet>thead>tr>td,.ap-sheet>tfoot>tr>td,.ap-sheet>tbody>tr>td{border:0;padding:0;height:auto}
+.ap-sheet>thead .ap-mkg{padding-bottom:6mm}.ap-sheet>tfoot .ap-mkg{padding-top:6mm}
 @media screen{body{background:#777}.aprc-doc{max-width:210mm;margin:10mm auto;padding:22mm 20mm 20mm 25mm;box-shadow:0 2px 14px rgba(0,0,0,.4)}}
-@media print{.aprc-doc .ap-mkg{display:none}}
-</style></head><body><div class="aprc-doc">${bodyHtml(doc, copy)}</div></body></html>`;
+</style></head><body><div class="aprc-doc"><table class="ap-sheet"><thead><tr><td>${rule}</td></tr></thead><tfoot><tr><td>${rule}</td></tr></tfoot><tbody><tr><td>${bodyHtml(doc, copy, { marking: false })}</td></tr></tbody></table></div></body></html>`;
 }
