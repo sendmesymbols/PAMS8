@@ -1812,7 +1812,9 @@ export class PlanBuildTab {
    */
   private _checkBuiltSmall(records: DrawnRead['records'], recipeId: string): void {
     const syms = readSymbols(records).filter((s) => s.pbRole && s.pbRecipe === recipeId);
-    const base = this._recipes.get(baseId(recipeId));
+    const base0 = this._recipes.get(baseId(recipeId));
+    // an advance read with the report lines' spacing and the march's H as set (as the build lays it)
+    const base = base0?.task === 'advance' ? this._rcpBase(base0.id) ?? base0 : base0;
     if (!base || !syms.length) { this._msg = 'Nothing of that plan to read.'; this._render(); return; }
     const mfd = /-mf(-en)?(-gun)?(-ad)?$/.test(recipeId) ? withMinefield(base, this._doc) : base;
     // the artillery and AD it was built with (pbMeta.arty, .ad): their gun areas and FUs back on the plan so their

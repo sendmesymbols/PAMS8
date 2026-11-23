@@ -355,5 +355,39 @@ check('No Movement Guide reader: the geometry stands, the ground rows grey', g0.
   check('...fitted on the canal like the 4-Coy layout: the same crossing rows (Obstacle, Boats, Bridge)', ['Obstacle', 'Boats', 'Bridge'].every((x) => row(f3.res.rows, x)) && row(f3.res.rows, 'Obstacle')?.st === row(F.fitLayout(inpOf(rec('bn-cross-two-up'), H)).res.rows, 'Obstacle')?.st, f3.res.rows.map((x) => x.name).slice(0, 8).join(', '));
 }
 
+// ── Check my plan on a looping canal: a crossing built there reads back as built ──────────────────────────────────────
+// Seen in the app on the Lahore Minor: the gun area 4 km back stretched the canal read for the drawn plan round a bend,
+// and the fronts (650/900 m) and the bridgehead (2.7 km) read back other than built (650/650 m, 3.8 km).
+{
+  const A = await import('../../MS/Engines/DeploymentBuilder/PlanArty.ts');
+  const fdA = { id: 'arty-regt-fd', name: 'Fd Regt', unit: 'regt', guns: 18, partner: null, weapon: { id: '122-mm-how', name: '122 mm How', planM: 10620, maxM: 11800, minM: 0, sp: false }, src: 'test',
+    band: [1000, 3540], bandSrc: 'GunDoctrine front', areaM: [1000, 1000], areaSrc: 'GunDoctrine areas', room: [0.9, 0.7] };
+  // the test canal straight to 3 km east of H, then doubling back 300 m behind the home bank to 1 km east of H (beside
+  // FUP 2), then south and on east: the reach the build reads stops short of the bend; one stretched by the gun area
+  // (2.5-3.5 km back) took the loop in, and FUP 2 read 5.0 km wide against it
+  const bentXY = [...at(-8000, 0), ...at(3000, 0), ...at(3000, -300), ...at(1000, -300), ...at(1000, -800), ...at(9000, -800)];
+  const dOf = (x, y) => M.distToLine([x, y], bentXY);
+  const elevB = (x, y) => { const a = dOf(x, y); return land(local(x, y).e) + (a < 30 ? 1.5 : a <= 45 ? 3 : 0); };
+  const clsB = (x, y) => { const a = dOf(x, y); return a < 30 ? 20 : a <= 45 ? 24 : 2; };
+  const sightB = (ox, oy, eyeM, tx, ty, targetM) => {
+    const d = M.groundDist([ox, oy], [tx, ty]), steps = Math.max(2, Math.ceil(d / 15)), e0 = elevB(ox, oy) + eyeM, e1 = elevB(tx, ty) + targetM;
+    for (let i = 1; i < steps; i++) { const t = i / steps; if (elevB(ox + (tx - ox) * t, oy + (ty - oy) * t) > e0 + (e1 - e0) * t) return 0; }
+    return 1;
+  };
+  const probeB = { ...probe, cls: clsB, elev: elevB, sight: sightB, sight2: (...a) => { const v = sightB(...a); return { p: v, pTerrain: v }; }, raster: () => 0, features: () => [],
+    lines: (x, y, r, kinds) => (kinds.has('canal') && dOf(x, y) <= r + 50 ? [{ kind: 'canal', xy: bentXY, attrs: { n: 'Bent Test Canal', t: 'MainCanal', w: 60, dp: 3, bl: 2, br: 3, b: 3 } }] : []) };
+  const groundB = { ...ground, cls: clsB, elev: elevB, sight: sightB, mov: () => probeB };
+  const r = A.withArty(rec('bde-cross-two-up'), doc, fdA);
+  const fl = F.fitLayout(inpOf(r, H, { ground: groundB }));
+  const d = {};
+  for (const i of fl.raw.items) { if (d[i.role]) continue; const w = (p) => { const q = world(fl, p); return [q.x, q.y]; }; d[i.role] = { pts: i.pts.map(w), ...(i.base ? { base: { start: w(i.base.start), mid: w(i.base.mid), end: w(i.base.end) } } : {}) }; }
+  const c = C.checkCrossing(inpOf(r, H, { ground: groundB }), d);
+  const ga = it(fl.raw, 'gunArea').pts.map((p) => nOfW(world(fl, p)));
+  const names = ['Fronts', 'Phase 1', 'Bridgehead', 'Arty reach', 'Assy areas', 'Observed fire'];
+  check('Looping canal: a Bde crossing with its Fd Regt (the gun area over 1 km back) read back by Check my plan as built: Fronts, Phase 1, Bridgehead, Arty reach, Assy areas and Observed fire the same',
+    Math.min(...ga) < -1000 && !!c && names.every((nm) => row(c.rows, nm) && row(c.rows, nm).reason === row(fl.res.rows, nm)?.reason),
+    c ? names.map((nm) => `${nm}: ${row(fl.res.rows, nm)?.reason?.slice(0, 50)} / ${row(c.rows, nm)?.reason?.slice(0, 50)}`).join(' | ') : 'null');
+}
+
 console.log(`\n${n - fails} of ${n} checks passed`);
 process.exit(fails ? 1 : 0);

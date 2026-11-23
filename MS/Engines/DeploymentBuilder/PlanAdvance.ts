@@ -153,7 +153,7 @@ function project(path: XY[], p: XY): { i: number; q: XY; s: number } {
 const lenOf = (path: XY[]) => path.reduce((s, p, i) => (i ? s + Math.hypot(p.x - path[i - 1].x, p.y - path[i - 1].y) : 0), 0);
 
 /** The axis as laid: the Main Body through the SP to the covering troops (plan metres), and how far along it the SP is. */
-export interface AdvAxis { path: XY[]; spAt: number; routed: boolean; pending: boolean; drawn?: boolean }
+export interface AdvAxis { path: XY[]; spAt: number; routed: boolean; pending: boolean; drawn?: boolean; legs?: { rear: boolean; fwd: boolean } }
 
 /**
  * The axis on the ground: the least-cost way for tracks over the bundle's going (PlanGround.avenues: NO-GO avoided,
@@ -177,7 +177,7 @@ export function routeAxis(items: { role: string; pts: XY[] }[], f: FitFrame, g: 
     return { pts: [a, ...loc.slice(1, -1), b], routed: true };
   };
   const rear = leg(mb, sp), fwd = leg(sp, ct);
-  return { path: [...rear.pts, ...fwd.pts.slice(1)], spAt: lenOf(rear.pts), routed: rear.routed && fwd.routed, pending };
+  return { path: [...rear.pts, ...fwd.pts.slice(1)], spAt: lenOf(rear.pts), routed: rear.routed && fwd.routed, pending, legs: { rear: rear.routed, fwd: fwd.routed } };
 }
 
 /** The water features the axis crosses, in order: where along it, the water, how it is crossed. */
@@ -266,9 +266,11 @@ export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFr
   const straight = Math.hypot(ax.path[ax.path.length - 1].x - ax.path[0].x, ax.path[ax.path.length - 1].y - ax.path[0].y);
   const onRoad = [...R.roads.values()].reduce((s, v) => s + v, 0);
   const roadTxt = R.roads.size ? `; ${Math.round((onRoad / total) * 100)} % on roads (${[...R.roads.entries()].sort((a, b) => b[1] - a[1]).map(([c, m]) => `${ROAD[c]} ${fmtM(m)}`).join(', ')})` : '; none of it on a road';
+  // one leg routed, the other not: say which leg is straight
+  const oneLeg = !ax.routed && ax.legs && ax.legs.rear !== ax.legs.fwd ? (ax.legs.rear ? 'from the SP to the C Tps' : 'from the Main Body to the SP') : '';
   rows.push(ax.routed
     ? { name: 'Axis route', st: total > straight * F.detour + 1 ? 'warn' : 'pass', reason: `${ax.drawn ? 'the axis as drawn (no way searched: its going and crossings read along it)' : 'the least-cost way for tracks over the bundle\'s going (NO-GO avoided, SLOW-GO dear)'}, the Main Body through the SP to the C Tps: ${km(total)} against ${km(straight)} straight (${(total / straight).toFixed(2)} times; warn over ${F.detour}, E)${roadTxt}. Not a road route: the march table and the roads' classes are the Move Planner's` }
-    : { name: 'Axis route', st: 'unchecked', reason: `${ax.pending ? 'the ground for the route is still loading' : 'no way for tracks found in the bundle\'s grid (about 25 km across)'}: the straight line read instead${roadTxt}` });
+    : { name: 'Axis route', st: 'unchecked', reason: `${ax.pending ? 'the ground for the route is still loading' : `no way for tracks found${oneLeg ? ` ${oneLeg}` : ''} in the bundle's grid (about 25 km across)${R.xs.some((x) => x.how === null) ? ', with water across the axis and no bridge on it (Crossings on the axis): bridge it, or another axis' : ''}`}: ${oneLeg ? 'that leg read on the straight line, the other along its way' : 'the straight line read instead'}${roadTxt}` });
   // the going
   const share = R.bad / R.n;
   const gst: CheckState = R.worst > F.run[1] ? 'fail' : R.worst > F.run[0] || share > F.nogoWarn ? 'warn' : 'pass';
@@ -315,7 +317,12 @@ export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFr
   else {
     const sorted = [...lines].sort((a, b) => a.s - b.s);
     const bounds = sorted.map((l, i) => `${i ? sorted[i - 1].label.replace(/ \(.*$/, '') : 'SP'} to ${l.label.replace(/ \(.*$/, '')} ${fmtM(l.s - (i ? sorted[i - 1].s : ax.spAt))}`);
-    rows.push({ name: 'Report lines', st: 'pass', reason: `${sorted.map((l) => `${l.label} ${where(l.s)}`).join('; ')} (on the water features across the axis, at least ${km(apart)} apart: ${rlApartM ? 'as set' : 'the default, E'}; a report line is usually a terrain feature across the zone: OoW Vol II glossary). Bounds: ${bounds.join(', ')}` });
+    // as drawn (Check my plan): nothing laid, the spacing set (or the default) checked between them
+    const close = drawnRls ? sorted.slice(1).map((l, i) => ({ a: sorted[i], b: l, d: l.s - sorted[i].s })).filter((p) => p.d < apart * 0.95) : [];
+    const how = drawnRls
+      ? `read as drawn, at least ${km(apart)} apart wanted: ${rlApartM ? 'as set' : 'the default, E'}${close.length ? `; ${close.map((p) => `${p.a.label} to ${p.b.label} only ${fmtM(p.d)}`).join(', ')}` : ''}`
+      : `on the water features across the axis, at least ${km(apart)} apart: ${rlApartM ? 'as set' : 'the default, E'}`;
+    rows.push({ name: 'Report lines', st: close.length ? 'warn' : 'pass', reason: `${sorted.map((l) => `${l.label} ${where(l.s)}`).join('; ')} (${how}; a report line is usually a terrain feature across the zone: OoW Vol II glossary). Bounds: ${bounds.join(', ')}` });
   }
   // the flank guards
   const tracked = g.going('tracked');
@@ -507,7 +514,7 @@ export function checkAdvance(inp: FitLayoutInput, drawn: AdvDrawn): { rows: Chec
   }
   // each drawn report line where it meets the axis, measured along it
   const rlDrawn = Object.keys(drawn).filter((r) => /^rl\d$/.test(r)).map((r) => { const c = centre(drawn[r].pts.map(loc)); return { label: `RL ${r.slice(2)}`, s: axis ? project(axis.path, c).s : c.y - head.y }; });
-  const gr = advanceGroundRows(items, frame, ground, ctx.doc, axis, rlDrawn.length ? rlDrawn : null);
+  const gr = advanceGroundRows(items, frame, ground, ctx.doc, axis, rlDrawn.length ? rlDrawn : null, recipe.advance?.rlApartM ?? null);
   const rows = [...advanceRows(items, ctx.doc), ...gr.rows];
   const names = (r: string) => recipe.slots.find((s) => s.role === r)?.label || r;
   const need = ['sp', 'ctps', 'vanGd', 'mainGd', 'mainBody', 'flankL', 'flankR'];

@@ -101,6 +101,14 @@ check('PlanFit.fitLayout hands an advance to fitAdvance', !!f5 && !!row(f5.res.r
   check('a routing reader: the axis laid along its way (the arrow bends), Axis route passes with the length against straight', row(fr.res.rows, 'Axis route')?.st === 'pass' && /times; warn over 1\.5/.test(row(fr.res.rows, 'Axis route').reason) && axItem.pts.length >= 4 && axItem.pts.some((p) => Math.abs(p.x - axItem.pts[0].x) > 1000), row(fr.res.rows, 'Axis route')?.reason);
   check('...the share on roads named with the class (Cl 60+)', /on roads \(Cl 60\+/.test(row(fr.res.rows, 'Axis route').reason), row(fr.res.rows, 'Axis route')?.reason);
   check('...a way round 9 km out: over 1.5 times the straight line, warn', row(V.fitAdvance(inp({ ...mk(() => open), avenues: dog(9000) })).res.rows, 'Axis route')?.st === 'warn');
+  // a reader that finds no way, and a canal across the axis with no bridge (seen west of Lahore: the Ravi): the row says why
+  const nw = V.fitAdvance(inp({ ...mk((x, y) => (band(y, 2000) ? CANAL : open)), avenues: () => [] }));
+  check('...no way found with unbridged water across the axis: Axis route not checked, and it names the water (bridge it, or another axis)', row(nw.res.rows, 'Axis route')?.st === 'unchecked' && /no bridge on it \(Crossings on the axis\)/.test(row(nw.res.rows, 'Axis route').reason), row(nw.res.rows, 'Axis route')?.reason?.slice(0, 160));
+  check('...no way found on open ground: no water named', !/no bridge on it/.test(row(V.fitAdvance(inp({ ...mk(() => open), avenues: () => [] })).res.rows, 'Axis route')?.reason ?? ''));
+  // the rear leg (to the SP, the click) finds no way, the forward leg does (seen in the app west of Lahore): only the
+  // rear leg is straight, and the row says so
+  const half = V.fitAdvance(inp({ ...mk(() => open), avenues: (a, b) => (Math.hypot(b.x - A.x, b.y - A.y) < 200 ? [] : dog(1500)(a, b)) }));
+  check('...the rear leg with no way, the forward leg routed: the row names the rear leg as the straight one', row(half.res.rows, 'Axis route')?.st === 'unchecked' && /no way for tracks found from the Main Body to the SP/.test(row(half.res.rows, 'Axis route').reason) && /that leg read on the straight line, the other along its way/.test(row(half.res.rows, 'Axis route').reason), row(half.res.rows, 'Axis route')?.reason?.slice(0, 200));
   // a bridge whose water the bundle does not show beside it: still an obstacle crossed, a report line on it
   const deck = V.fitAdvance(inp(mk((x, y) => (band(y, 2000) && Math.abs(x - A.x) < 300 ? BR60 : open))));
   check('a bridge with no water read beside it: named water under a bridge, RL 1 on the bridge', /water under a bridge 1\.7 km ahead of the SP: a Cl 60\+ bridge/.test(row(deck.res.rows, 'Crossings on the axis')?.reason ?? '') && /RL 1 \(bridge\)/.test(row(deck.res.rows, 'Report lines')?.reason ?? ''), `${row(deck.res.rows, 'Crossings on the axis')?.reason?.slice(0, 90)} | ${row(deck.res.rows, 'Report lines')?.reason?.slice(0, 40)}`);
@@ -121,6 +129,14 @@ check('PlanFit.fitLayout hands an advance to fitAdvance', !!f5 && !!row(f5.res.r
   check('Check my plan: RL 1 read as drawn (about 1.7 km ahead), the crossing on the Cl 60+ bridge', /RL 1 1\.[67] km ahead of the SP/.test(row(cc.rows, 'Report lines')?.reason ?? '') && row(cc.rows, 'Crossings on the axis')?.st === 'pass', `${row(cc.rows, 'Report lines')?.reason?.slice(0, 80)} | ${row(cc.rows, 'Crossings on the axis')?.st}`);
   // the axis as drawn is not a way searched (seen in the app: the build's straight fallback read back as 'the least-cost way')
   check('...Axis route says the axis as drawn, never the least-cost way', /^the axis as drawn/.test(row(cc.rows, 'Axis route')?.reason ?? '') && !/least-cost/.test(row(cc.rows, 'Axis route')?.reason ?? ''), row(cc.rows, 'Axis route')?.reason?.slice(0, 80));
+  // report lines as drawn, checked against the spacing set (seen in the app: Check my plan quoted the default 1 km, E,
+  // whatever was set): an RL 2 drawn 600 m beyond RL 1
+  const rl1 = b60.raw.items.find((i) => i.role === 'rl1');
+  const d2 = { ...dd, rl2: { pts: rl1.pts.map((p) => { const w = F.toWorld(b60.frame, { x: p.x, y: p.y + 600 }); return [w.x, w.y]; }) } };
+  const rlDef = row(V.checkAdvance(inp(mk(bridged(BR60))), d2).rows, 'Report lines');
+  check('...RL 2 drawn 600 m beyond RL 1, no spacing set: read as drawn, warns against the default 1 km', rlDef?.st === 'warn' && /read as drawn, at least 1\.0 km apart wanted: the default, E; RL 1 to RL 2 only [56]\d0 m/.test(rlDef.reason), rlDef?.reason?.slice(0, 160));
+  const rlSet = row(V.checkAdvance({ ...inp(mk(bridged(BR60))), recipe: { ...rec, advance: { rlApartM: 500 } } }, d2).rows, 'Report lines');
+  check('...with 500 m set: passes, the spacing quoted as set', rlSet?.st === 'pass' && /at least 0.5 km apart wanted: as set/.test(rlSet.reason), rlSet?.reason?.slice(0, 160));
 }
 
 // ── the march (the Move Planner's road engine) and the halting areas ────────────────────────────────────────────────
