@@ -519,6 +519,8 @@ export default class GroundAppreciation {
   private _drawn: any[] = [];
   /** The last ground reading (its AOR trace is drawn again, dark, for the slides). */
   private _aor: { reading: AorReading; frame: AorFrame } | null = null;
+  /** A Read finished in this session (so `_lastEnemy` is what that reading found, not missing after a reload). */
+  private _readHere = false;
   private _slideMaps: DeckOptions['maps'] | null = null;
 
   constructor(getView: () => any, host: GroundAppreciationHost = {}) {
@@ -676,7 +678,7 @@ export default class GroundAppreciation {
    * or null when the engine is off or another Read overtook this one. `at` ([lng, lat]) sets the MITG for a host; without
    * it the MITG is a VG symbol, else the selected symbol, else the map centre.
    */
-  async read(o: { at?: [number, number] | null; from?: [number, number] | null } = {}): Promise<AprcDoc | null> {
+  async read(o: { at?: [number, number] | null; from?: [number, number] | null; waitGuide?: boolean } = {}): Promise<AprcDoc | null> {
     if (!this._enabled) return null;
     // words typed in the paragraph box are the planner's before the new reading comes in
     this._commitDirty();
@@ -691,19 +693,30 @@ export default class GroundAppreciation {
     const notes: string[] = [];
     try {
       // 1. the ground, through the Ground Guide (the attack: round the obj, from own side)
-      const guide = this._host.guide?.() ?? null;
+      let guide = this._host.guide?.() ?? null;
       const graphic = this._host.selected?.()[0] ?? null;
       const start = attk ? this._attkStart(o.from ?? null) : null;
       let aor: { reading: AorReading; frame: AorFrame } | null = null;
+      // just turned on (`waitGuide`), or still loading its terrain data: wait until the data is in (or has failed)
+      if (o.waitGuide || (guide?.isEnabled && guide.status?.state === 'loading')) {
+        this._msg = 'Waiting for the terrain data…';
+        this._render();
+        guide = await this._guideSettled(seq);
+        if (seq !== this._readSeq) return null;
+      }
       if (!guide?.isEnabled) notes.push('Ground Guide is off: the Gr paragraphs are not read.');
       else {
-        for (let i = 0; i < 12 && guide.status?.state === 'loading'; i++) await new Promise((r) => setTimeout(r, 500));
         const so = this._opts;
         const side = attk ? (start ? { from: start.ll } : { away: true }) : {};
         aor = await withTimeout<{ reading: AorReading; frame: AorFrame } | null>(guide.aorAround(Array.isArray(o.at) ? o.at : null, { graphic, echelon: so.echelon === 'auto' ? undefined : so.echelon, profile: so.mover === 'auto' ? undefined : so.mover, ...side }), 60000);
         if (!aor) notes.push(guide.status?.state === 'ready' ? 'The ground could not be read here: outside the terrain data, or it did not load in time.' : 'No terrain data: the Gr paragraphs are not read.');
       }
       if (seq !== this._readSeq) return null;
+      // an attack read with nothing marked says what it took, and how to put it right
+      if (attk && aor) {
+        if (!o.at && !graphic) notes.push('Obj: a VG symbol, else the map centre. Select the obj and Read again.');
+        if (!start) notes.push('Own start not marked: taken opposite the threat. Check an attack plan (FUP or axis) and Read again.');
+      }
 
       // 2. the symbols on the map
       const symbols = await this._symbols(aor?.reading ?? null);
@@ -812,6 +825,7 @@ export default class GroundAppreciation {
       doc.confirm = doc.confirm.filter((c, i, all) => all.findIndex((x) => x.text === c.text) === i);
       this._doc = carryOver(prev, doc);
       this._docVer++;
+      this._readHere = true;
       this._note = notes.join(' ');
       const c = counts(this._doc);
       this._msg = `Read: ${c.gr} from Gr, ${c.map} from the map, ${c.judge} proposals, ${c.yours} yours`;
@@ -830,6 +844,31 @@ export default class GroundAppreciation {
         this._render();
       }
     }
+  }
+
+  /**
+   * The Ground Guide once it is on and its terrain data has settled (ready, failed, or no bundle set), waiting up to two
+   * minutes for the data to load; null when it never came on or another Read overtook this one.
+   */
+  private async _guideSettled(seq: number, capMs = 120000): Promise<any | null> {
+    const t0 = Date.now();
+    for (;;) {
+      if (seq !== this._readSeq) return null;
+      const g = this._host.guide?.() ?? null;
+      const st = g?.isEnabled ? g.status?.state : null;
+      // 'failed' counts once the guide has had a moment to start its load (it reads 'failed' before configure runs)
+      if (st === 'ready' || st === 'no-bundle-url' || (st === 'failed' && Date.now() - t0 > 1500)) return g;
+      if (Date.now() - t0 > capMs) return g?.isEnabled ? g : null;
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  }
+
+  /** True when this sheet holds a reading (ground or map), not only the empty headings. */
+  private _wasRead(doc: AprcDoc | null): boolean {
+    if (!doc) return false;
+    if (doc.frame || doc.sources.length) return true;
+    const c = counts(doc);
+    return c.gr + c.map > 0;
   }
 
   private _toMerc(r: AorReading, p: AorXY): [number, number] {
@@ -1285,7 +1324,6 @@ export default class GroundAppreciation {
   loadPlanExtra(data: unknown): boolean {
     const ok = this.fromJSON(data);
     if (ok) {
-      this._lastEnemy = null;
       this._msg = 'Opened with the plan: Read again for the pictures';
       this._render();
     }
@@ -1473,6 +1511,11 @@ export default class GroundAppreciation {
   }
   /** Start again: every heading, nothing written. The planner's words go too. */
   clear(): void {
+    // a Read still running would land on the cleared sheet (of the old kind): it is dropped
+    this._readSeq++;
+    this._busy = false;
+    this._lastEnemy = null;
+    this._readHere = false;
     this._doc = newDoc(this._opts.kind);
     this._sel = null;
     this._dirty = null;
@@ -1502,6 +1545,11 @@ export default class GroundAppreciation {
   }
   fromJSON(doc: any): boolean {
     if (!doc || doc.version !== 1 || !Array.isArray(doc.parts)) return false;
+    // the opened sheet is not the last reading: a Read still running is dropped, and H has no en options of its to re-time
+    this._readSeq++;
+    this._busy = false;
+    this._lastEnemy = null;
+    this._readHere = false;
     this._doc = doc as AprcDoc;
     this._sel = null;
     this._dirty = null;
@@ -1864,10 +1912,10 @@ export default class GroundAppreciation {
           if (v) this.setOptions({ deck: v as AprcDeckKind });
           return void this.makeSlides(v ? (v as AprcDeckKind) : this._opts.deck);
         case 'guide':
+          // one click: the guide comes on, and the sheet reads once its terrain data is in
           this._host.turnOnGuide?.();
-          this._msg = 'Ground Guide on: press Read when the terrain data has loaded';
           this._note = '';
-          return this._render();
+          return void this.read({ waitGuide: true });
         case 'clear':
           if (!this._clearArmed) {
             this._clearArmed = true;
@@ -1951,11 +1999,22 @@ export default class GroundAppreciation {
         return this._render();
       }
       this.setOptions({ hHour: v });
-      if (this._doc && this._lastEnemy) {
-        applyPatches(this._doc, writeEnemy({ ...this._lastEnemy, hHour: v || this._hHour(this._host.guide?.() ?? null) }).patches);
+      const doc = this._doc;
+      if (doc && this._lastEnemy) {
+        applyPatches(doc, writeEnemy({ ...this._lastEnemy, hHour: v || this._hHour(this._host.guide?.() ?? null) }).patches);
         this._msg = v ? `H ${v}: the en's times re-timed` : 'H cleared';
         this._changed();
-      } else this._msg = 'H set: Read again to time the en options';
+        return;
+      }
+      // H clocks only the en options of a defence. A reading kept from an earlier session lost them: read again to time
+      // them; a reading made here without them has nothing to time; with no reading yet, the first Read uses H.
+      const read = this._wasRead(doc);
+      if (read && doc!.kind === 'def' && doc!.frame && !this._readHere) return void this.read();
+      this._msg = !read
+        ? `${v ? `H ${v}` : 'H cleared'}: the en options are timed from it when you Read`
+        : doc!.kind !== 'def'
+          ? `${v ? `H ${v}` : 'H cleared'}: it clocks the en options of a defence; this sheet has none`
+          : `${v ? `H ${v}` : 'H cleared'}: this reading has no en options to time`;
       return this._render();
     }
     if (k === 'kind') {
@@ -1970,8 +2029,14 @@ export default class GroundAppreciation {
           return;
         }
       }
+      // A sheet that held a reading is read again for the new kind (the planner asked for a reading once: it is kept
+      // current); a sheet never read only takes the new headings, the first Read stays his.
+      const wasRead = this._wasRead(this._doc);
       this.setOptions({ kind: next });
-      if (this._doc && this._doc.kind !== this._opts.kind) this.clear();
+      if (this._doc && this._doc.kind !== this._opts.kind) {
+        this.clear();
+        if (wasRead) void this.read();
+      }
     }
   }
 
@@ -2519,7 +2584,7 @@ export default class GroundAppreciation {
     const note = this._part('note');
     const noteText = this._note || (guideOff && !fr ? 'Ground Guide is off: the Gr paragraphs are read through it.' : '');
     note.classList.toggle('on', !!noteText);
-    note.innerHTML = noteText ? `${UI.warn}<span class="ap-note-t">${esc(noteText)}</span>${guideOff && this._host.turnOnGuide ? '<button class="ap-btn sm" data-a="guide">Turn on Ground Guide</button>' : ''}` : '';
+    note.innerHTML = noteText ? `${UI.warn}<span class="ap-note-t">${esc(noteText)}</span>${guideOff && this._host.turnOnGuide && !this._busy ? '<button class="ap-btn sm" data-a="guide" title="Turns the Ground Guide on (its cursor card and keys come with it) and reads once the terrain data has loaded">Turn on Ground Guide and read</button>' : ''}` : '';
 
     const wMin = this._part('winmin'), wMax = this._part('winmax');
     const minWord = this._win === 'min' ? 'Restore' : 'Minimize', maxWord = this._win === 'max' ? 'Restore down' : 'Maximize';
