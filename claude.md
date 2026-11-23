@@ -392,7 +392,12 @@ MS/
   paragraph's prompts citing the book's sheet), drafted on **Read** from the ground (through the Ground Guide only:
   `guide.aorAround()` = the Gr Scope AOR reading on demand, the rail need not be open; sections, cover and the Extended
   View's sight at the MITG and on each approach), the symbols on the map (`planRecordsOf` → `readSymbols`) and the last
-  Check my plan (`DeploymentBuilderEngine.planCheck`). A paragraph is GR / MAP / YOU JUDGE (a proposal) / YOURS (a ruled
+  Check my plan (`DeploymentBuilderEngine.planCheck`). Aprc never turns the guide on by itself (it is the user's switch):
+  with it off, one click on **Turn on Ground Guide and read** turns it on and reads once the terrain data is in
+  (`read({ waitGuide: true })`, up to 2 min; Read also waits while the guide is loading). Once a sheet holds a reading it
+  is kept current: changing Defence / Attack reads again (a sheet never read only takes the new headings), H re-times
+  the en options (re-reads a defence kept from an earlier session, else says why nothing changed); an attack read notes
+  the obj / own start it assumed. `clear()` and `fromJSON()` drop a Read still running. A paragraph is GR / MAP / YOU JUDGE (a proposal) / YOURS (a ruled
   line); what the planner writes is his and is never overwritten (stale-marked when the reading changes); a proposal prints
   in the fair copy only once accepted; "Ref to whites" is never printed; the address block is titles and ruled lines, and
   the marking at head and foot of every page is a ruled line too (no marking text is held).
