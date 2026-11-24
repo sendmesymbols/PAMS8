@@ -282,6 +282,28 @@ for (const [gapM, want] of [[3000, 'avenue'], [650, 'lone'], [300, 'none']]) {
   check("the book's time: the climbing avenue takes a third as long again and ranks below the flat one", !!goA && !!slA && slA.hoursDay > goA.hoursDay * 1.3 && goA.rank < slA.rank, goA && slA ? `${(goA.hoursDay * 60).toFixed(0)} vs ${(slA.hoursDay * 60).toFixed(0)} min · steep ${slA.steepPct.toFixed(0)} %` : rs.aas.map((a) => `${a.id} steep ${a.steepPct.toFixed(0)} %`).join(', '));
 }
 
+// 12 SLOW-GO weighs what the book's day rates make it (user, 24 Nov 2026: follow the book rates): GO km/h over SLOW-GO
+// km/h (IPB p 18). A SLOW-GO band 300 m deep across the way with a 900 m GO gap 2.7 km off the axis: at the vehicles' day
+// ratio (24 / 16 = 1.5) and on foot (4 / 2.4 = 1.67) the frontal approach crosses the band; at 3 (the vehicles' night
+// ratio 24 / 8, and the weight without the rates) it goes round through the gap.
+{
+  const gapY = 150 - 90;
+  const band = coding(({ set }) => {
+    for (let y = 0; y < H; y++) {
+      if (Math.abs(y - gapY) <= 15) continue;
+      for (let x = X(3500); x < X(3500) + 10; x++) set(x, y, IPB.SLOW, WHY.VEG);
+    }
+  });
+  const objB = { alongM: 8000, acrossM: 0, frontageM: 500, depthM: 0, fupM: 1100, from: { alongM: 1000, acrossM: 0, halfWidthM: 250 } };
+  const frontal = (rates) => findCorridors({ coding: band, frame, mcWidthM: 500, spacingM: 2000, sectorDeg: 90, objective: objB, rates }).onto.find((a) => a.onto === 'frontal');
+  const yAt = (a) => { for (let k = 0; a && k < a.line.length / 2; k++) if (Math.abs(a.line[k * 2] - X(3500) - 5) < 1.5) return a.line[k * 2 + 1]; return NaN; };
+  const way = (a) => (Math.abs(yAt(a) - gapY) <= 16 ? 'gap' : Math.abs(yAt(a) - 150) <= 16 ? 'cross' : `y ${yAt(a).toFixed(0)}`);
+  const veh = way(frontal({ goKmh: 24, slowKmh: 16 })), foot = way(frontal({ goKmh: 4, slowKmh: 2.4 }));
+  const night = way(frontal({ goKmh: 24, slowKmh: 8 })), none = way(frontal(null));
+  check("SLOW-GO at the book's day ratio: the approach crosses a 300 m SLOW-GO band (vehicles 1.5, foot 1.67)", veh === 'cross' && foot === 'cross', `vehicles ${veh}, foot ${foot}`);
+  check('SLOW-GO at 3 (night ratio 24 / 8, or no rates given): the approach goes round through the gap 2.7 km off', night === 'gap' && none === 'gap', `night ${night}, no rates ${none}`);
+}
+
 // 9 Cost: a Bde frame (14 x 28 km at 30 m) on synthetic ground.
 {
   const BW = 940, BH = 520;

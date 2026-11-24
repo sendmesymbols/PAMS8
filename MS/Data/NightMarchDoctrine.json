@@ -48,15 +48,17 @@
   "sights": {
     "basis": "R",
     "rule": "Enemy night sights reach 1000-1200 m, thermal 3000-4000 m.",
+    "src": "IBB App 4 pp 408-409 'Night vision devices - Indian Army': artillery NVD 1200 / 1000 m, PNOD 3000 / 2500 m, MIRA 4000 m detection (pages added 24 Nov 2026, Doctrine_Review R19)",
     "nightM": 1200,
     "thermalM": 4000,
     "thermalNearM": 3000
   },
   "layout": {
-    "basis": "E",
-    "note": "FUP size and the places in it: a proposal (two up, one or two back), to be corrected. Front = the start line's length.",
+    "basis": "D",
+    "note": "Front = the start line's length = the assault frontage by night: a Coy 250 m ('our conventional frontage for a company assault at night'), a Bn two up 450-650 m, the lower figure laid (IBB S47 para 17 a p 248). The Pl's 100 m is E (no own figure printed; the En's is 75 m, IC s114 p 684). Depths and the places in the FUP are E (two up, one or two back).",
+    "refs": [{ "book": "IBB", "page": "248", "quote": "Coincidentally this corresponds to our conventional frontage for a company assault at night", "role": "rule" }, { "book": "IBB", "page": "248", "quote": "Each battalion assaulting with two companies up would attack a frontage of 450-650 metres", "role": "rule" }],
     "platoon": { "frontM": 100, "depthM": 60, "fupMin": 10, "slots": [["1 Sec", 0, 0], ["2 Sec", 1, 0], ["3 Sec", 0.5, 1], ["Pl HQ", 0.5, 0.55]] },
-    "company": { "frontM": 200, "depthM": 120, "fupMin": 20, "slots": [["1 Pl", 0, 0], ["2 Pl", 1, 0], ["3 Pl", 0.5, 1], ["Coy HQ", 0.5, 0.55]] },
+    "company": { "frontM": 250, "depthM": 120, "fupMin": 20, "slots": [["1 Pl", 0, 0], ["2 Pl", 1, 0], ["3 Pl", 0.5, 1], ["Coy HQ", 0.5, 0.55]] },
     "battalion": { "frontM": 450, "depthM": 300, "fupMin": 30, "slots": [["A Coy", 0, 0], ["B Coy", 1, 0], ["C Coy", 0, 1], ["D Coy", 1, 1], ["Tac HQ", 0.5, 0.5]] }
   },
   "marking": {

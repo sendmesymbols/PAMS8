@@ -1263,7 +1263,7 @@ NAI that confirms it (the first on its avenue); every NAI carries the COA its av
 An **entry NAI is a line** across the avenue as wide as it is there (at most 1.5 spacings; ATP 6-20: an NAI may be a point,
 a line or an area), drawn with ticks at its ends and written by Create on Map as a thin NAI area; crossings and narrows stay
 point NAIs. The *Courses of Action* tile sits after the time ladder in tab 5; Copy as Text carries it. Checks: `node
-tools/ipb-test/decision.mjs` (31). Verified in the app (Sialkot, Pl, threat N): COA 1 A (best going, H+0:53), COA 2 D
+tools/ipb-test/decision.mjs` (31; 39 since the doctrine review). Verified in the app (Sialkot, Pl, threat N): COA 1 A (best going, H+0:53), COA 2 D
 (2 % under your fire, fastest, H+0:37), entry NAIs 3,000 m lines, NAI 4 confirms COA 2. The template's own avenue is not yet
 carried to the COA (COA 1 is the best going, which is where the template lead is laid anyway).
 
@@ -1745,7 +1745,45 @@ over landing areas (D, OoW Vol I pp 61-63, MW p 258), the cost weights (E).
   areas for aircraft to avoid; separation lateral / altitude / time with the ALO, B-28, no figure), within 500 m named near
   it (E). Tab 4 tile (per avenue, zones, GTLs, notes), rail row, Copy as Text; on the map the GTLs dotted in the range
   colour with a ✕ mark at each crossing and a word on each zone an avenue runs through. Nothing is filled from the terrain.
-- **Not read yet**: wind (both approach directions are listed).
+- **Wind** (`extended.ipb.wind`, on; added 2026-11-24; pure `GroundGuideWind.ts`, `node tools/ipb-test/wind.mjs` 34
+  checks): the bundle's wind grid (`grotbc.wind`, `wind/wind.json` + `wind.bin`, 1.9 MB: ERA5 1990-2019 normal at 0.25°,
+  mean u / v and mean speed at 00 / 06 / 12 / 18 UTC = 05 / 11 / 17 / 23 PKT per month, read from Google's WeatherBench 2
+  copy, no account; sources.lock `era5_wind`), loaded only when a reading asks for it. Gives where the wind usually comes
+  from, its steadiness (|mean vector| / mean speed: under 0.3 "variable", nothing decided; from 0.6 "steady"; E) and a
+  day / night turn of 90° or more (E). Annex A keeps WorldClim's mean speed for the limits and adds the direction (NBC
+  rows: where smoke and agents drift, IBB p 109, OoW Vol II p 93) plus a Wind line in each Wx tile; each LZ is read for
+  landing and taking off into the wind (FM 3-21.38, T, page unverified: run in from the downwind sector, leave by the
+  upwind one, on its approaches clear by 10 : 1; light under 3 kt any clear approach, E); each DZ names the drift and the
+  release side (E, no drift distance); proforma g gives each avenue's heading against the wind (behind it, into it,
+  across it; the user signs it). A normal, not a forecast: valley winds narrower than 28 km are not in it, no gusts.
+  Added to the live bundle in place by `tools/terrain-pipeline/scripts/add_wind_to_bundle.py` (no rebuild);
+  `fetch_era5_wind.py` + `wind.py` (Makefile `era5wind`, `wind`) keep it in a full build.
+- **Doctrine review applied** (24 Nov 2026, `Doctrine_Review.md` Ground Guide R1-R64; `node tools/ipb-test/review.mjs` 27
+  checks, decision.mjs 39, template.mjs 33; every new ref found on its page by `tools/doctrine-refs/verify.py --write`,
+  IpbDoctrine / OcokaDoctrine now read IBB from the Literature copy, printed + 17). Decision tab: men on foot in mountains
+  (ground within 5 km rising 400 m, `_ipbMountain`) move at MW p 81's 3 km/h by day, 0.5 by night, and pay the descent
+  (30-60 min per 600 m) as well as the climb everywhere; the En FUP on each approach onto the Obj is an NAI and a TAI
+  (OoW Vol I p 51); reading the En defence (X: your options) adds the Indian reserves ladder (Bn 1 h, Bde 2-4 h, Div 4-6 h,
+  Corps 12-16 h after the decision: IDD p 5) as a tile and a note; the counter-attack DP names the cues of the En main
+  effort (OoW Vol I p 54); counter-attack minutes cited to IBB p 306. Templates: the Indian Bde defence by IDD pp 2-5
+  (BOPs and a screen ahead of the obstacle, two Bns on it 5 km apart, a depth Bn 1.5 km behind, the Bde reserve 2-4 h; the
+  same 33 / 50 / 17 as Fig 6, placed as IDD has it), a security-zone phase, the strike bridgehead 8 km wide by 6 deep as
+  PlanDoctrine (own OoW II p 50 size taken for the En: E) with a second break-out from Br H 2 (DW p 12), new `def-desert`
+  (nodal points, DW pp 14-18; picked when half the ground round is desert, `desertTest`) and `def-mtn` (MW p 84), an
+  infiltration group in `mtn-attk`. Air: firm desert flats rank higher for LZs (DW p 66), the En heliborne landing named
+  with its size and own counter-measures (OoW Vol I p 62, IBB pp 126, 343-344), the wrong MW p 256 helipad cite dropped.
+  Coding: wet snow slides on 15-20 degrees noted (MW p 282), the Rann's salt lakes NO-GO for tracks all year (MIB p 262,
+  data), dunes and sand named (DW p 54). Night sights: image intensifiers nil on a haze or fog day, thermal unchanged in
+  haze (IBB pp 10-13); IBB App 4's devices marked the En's (Indian), own GP/NVB-4A without a range. Speeds: MW's mountain
+  foot rule (about 1.2 km/h up a 20 % climb), no after-rain slowing on desert, sand and dunes (MIB p 261), tracked slope
+  factors refitted to the M113's 60 % (MIB p 323), MW's mule loads and days. Symbols.json: 81 mm minimum 550 m (IBB p 57),
+  the AD missile triple one weapon (Anza Mk-1, IBB p 82). Bundle rules (rules.yaml and the live rules.json, no re-tiling):
+  the MIB symbol judged tracked, salt-pan ground cover (DW p 8), the dune / sand reasons cited; dunes kept NO-GO for wheels
+  (safety first, said why). Kept on purpose: the AVLB 18 m as the water threshold (a 24 m ditch is doctrine from IBB p 331,
+  the stricter 18 m kept), dune ground concealment at 2 (DW p 8 says considerable). Data only (not read by an engine yet):
+  desert mist 50-100 m (MIB p 261), desert and mountain observation rows, snow and ice thicknesses (MW pp 68-74), typical
+  canal bridge classes (IBB p 330); the AOR names demolition approval (OoW I p 43), headworks to deny and the Thar lines of
+  defence (DW p 4) as text, not as map features. Blocked: R64 (SO's Hbk Sec 12 FLOT / bomb line pages missing).
 
 Cost: 50-350 ms per area (one eye or none: about 120 ms; the Threat marker as an eye with a Bde area: 355 ms), with the
 fire, once per area or Posn change; nothing while F is off. Checks: `node tools/ipb-test/air.mjs` (29: an LZ on a plain,
@@ -1798,7 +1836,7 @@ pages; a handling note: KYE-2019 is SECRET):
 - **Unconfirmed**: the Fig 6 and Fig 7 readings (figure images, no text layer) are marked `confirmed: false` in the library
   and said in the Templates tile until the user confirms them. Templates are rough approximations, not fact (p 32).
 
-Checks: `node tools/ipb-test/template.mjs` (27: doctrinal places on open ground, the FUP distance, the assault Bn gps either
+Checks: `node tools/ipb-test/template.mjs` (33 since the doctrine review; 27 at first: doctrinal places on open ground, the FUP distance, the assault Bn gps either
 side, the Sp Attk on Apch 2, fixed objectives, no crossing, tanks out of a swamp to GO with the inf left where it is, guns
 off a hill, a known symbol kept and only for its kind, a missing Apch 2, the crossing site, a 6 x 8 km bridgehead with its
 NO-GO share, the break-out force outside the area, a defence template beyond the FDL, the Auto picks, unconfirmed flags,
@@ -2318,4 +2356,9 @@ defaults to `/terrain-bundle`), then draw a symbol over the synthetic area aroun
 
 ### Approach engines, review fixes (24 Nov 2026)
 
-Ground (`GroundGuideIpbCorridors.ts`, `corridors.mjs` 53 checks): slope judged along each way's own heading from the elevation (`elev` arg; a cell coded for slope alone is passable, a climb at the SLOW-GO figure three times dearer, at NO-GO impassable, diagonal steps by their components; a `steep` narrows with `slopePct`); free width measured square to the way; strips one avenue wide (Bde 5, Div 4 on open ground); two ways through one narrows merge; the turning approach's bonus 15-30 by its cost ratio; the book's day time (`rates` arg, `hoursDay`) in the rank and reasons; the guide reads the enemy's mover off his symbols in the area (`_enemyMoverIn`). Air (`GroundGuideIpbAir.ts`, `air.mjs` 33 checks): terrain rise in the 10 : 1 approach test; existing sites favoured for own LZs only; the other side's AD symbols (`hisAd`, `Rng.ad`, `air.cost.ad` 3 E) a cost on the avenues, rings on the tab's picture, `adPct` per route.
+Ground (`GroundGuideIpbCorridors.ts`, `corridors.mjs` 55 checks): SLOW-GO's routing weight is the book's day ratio for the mover (GO over SLOW-GO km/h, IPB p 18: vehicles 1.5, foot 1.67; 3 without the rates; user, 24 Nov 2026); slope judged along each way's own heading from the elevation (`elev` arg; a cell coded for slope alone is passable, a climb at the SLOW-GO figure three times dearer, at NO-GO impassable, diagonal steps by their components; a `steep` narrows with `slopePct`); free width measured square to the way; strips one avenue wide (Bde 5, Div 4 on open ground); two ways through one narrows merge; the turning approach's bonus 15-30 by its cost ratio; the book's day time (`rates` arg, `hoursDay`) in the rank and reasons; the guide reads the enemy's mover off his symbols in the area (`_enemyMoverIn`). Air (`GroundGuideIpbAir.ts`, `air.mjs` 33 checks): terrain rise in the 10 : 1 approach test; existing sites favoured for own LZs only; the other side's AD symbols (`hisAd`, `Rng.ad`, `air.cost.ad` 3 E) a cost on the avenues, rings on the tab's picture, `adPct` per route.
+
+
+### Objective and assault frontages by ground (24 Nov 2026)
+
+The approaches' objective box takes its frontage x depth from the books by side, echelon and the ground at it (`GroundGuideFrontage.ts`; OcokaDoctrine `frontage.objective`, rows in `frontage.rows` with refs checked by verify.py; `tools/ipb-test/frontage.mjs` 36 checks). Ground: mountains (IpbTemplates mountainTest), an obstacle across half the front within 1.5 km, desert (desertTest), else plains. Own: Coy / Pl / Sec never extended (IBB S59 para 6 b p 326); Bn 3000-5000 m in the plains (IBB S53 para 4 c p 277), the extended two-up row 4500 m in the desert and mountains (DW pp 24, 56; MW pp 148, 150), 2750-4115 m on a canal or ditch (IBB Annex V pp 483-485, x = yards); Bde 10-12 km (OOW1), 8-10 km on a ditch cum bund (GSP p 119). En: IDD p 3 on the bund, IC s113 Foxland elsewhere; the own row stands in where none is printed and says so. The assault frontage by night (IBB S47 para 17 a p 248 own; IC s114 p 684 his) with the day rule (OOW2 s9 p 36; DW p 47; MW p 79) shows in tab 3 Read As and Copy as Text, never on map labels.

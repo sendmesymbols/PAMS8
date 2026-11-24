@@ -1,0 +1,214 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": false
+  },
+  "id": "mib-def-fixing",
+  "family": "mib-def-mob",
+  "layout": "fixing",
+  "echelon": "16",
+  "unit": "inf-bn-mib",
+  "basis": "D",
+  "name": "MIB Gp Mobile Def: fixing force (Annex P)",
+  "frontageRow": null,
+  "subRow": null,
+  "alternates": [],
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "flanks",
+    "reserveReach"
+  ],
+  "note": "A MIB Gp in the fixing force of an Armd Bde's mobile defence (MIB s23 pp 156-181; Annex P pp 357-359: the Bn less two Coys, a tank Sqn and an SP field Bty, about 6 km wide and 10 km deep in open country). A Coy Gp (less a Pl, a tank Tp) on the left checks; B Coy Gp on the right checks, then contains; each with a Pl strong point in depth; the killing zone in the centre, where the Bde forces the En; the reserve, the tank Sqn less two Tps and two Pls, held behind A Coy for the immediate counter-attack (Annex P paras 6-11). Strong points Pl to Coy, all round, in depth, the APCs in the locality (paras 21-22 pp 170-171); the Bn's portion of the Bde screen in front (para 24 a p 172). The Bde's mixed minefield on the left.",
+  "slots": [
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "A Coy Gp (less a Pl, + Tk Tp)",
+      "order": 1,
+      "echelon": "15",
+      "size": {
+        "wM": 1500,
+        "hM": 700
+      },
+      "seed": {
+        "acrossM": -1800,
+        "backM": -2500
+      },
+      "rule": {},
+      "terrainRule": {
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "B Coy Gp (less a Pl, + Tk Tp)",
+      "order": 1,
+      "echelon": "15",
+      "size": {
+        "wM": 1500,
+        "hM": 700
+      },
+      "seed": {
+        "acrossM": 1800,
+        "backM": -2500
+      },
+      "rule": {},
+      "terrainRule": {
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "spA",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "Pl SP (A Coy Gp), depth",
+      "order": 3,
+      "echelon": "14",
+      "shape": {
+        "rect": {
+          "acrossM": -1800,
+          "backM": -600,
+          "wM": 300,
+          "hM": 250
+        }
+      }
+    },
+    {
+      "role": "spB",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "Pl SP (B Coy Gp), depth",
+      "order": 3,
+      "echelon": "14",
+      "shape": {
+        "rect": {
+          "acrossM": 1800,
+          "backM": -600,
+          "wM": 300,
+          "hM": 250
+        }
+      }
+    },
+    {
+      "role": "kz",
+      "kind": "area",
+      "sym": "25242300",
+      "label": "Killing Zone",
+      "order": 3,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -1500,
+          "wM": 1500,
+          "hM": 3000
+        }
+      }
+    },
+    {
+      "role": "scr",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "Screen (Bn portion)",
+      "order": 3,
+      "echelon": "14",
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -4500,
+          "wM": 5000,
+          "hM": 300
+        }
+      }
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "Res: Tk Sqn less 2 Tps + 2 Pls",
+      "order": 2,
+      "echelon": "15",
+      "size": {
+        "wM": 1500,
+        "hM": 700
+      },
+      "seed": {
+        "acrossM": -1500,
+        "backM": 1500
+      },
+      "rule": {
+        "reach": {
+          "slots": [
+            "fwdL",
+            "fwdR"
+          ],
+          "withinMin": {
+            "doctrine": "cpen.coyMin"
+          }
+        }
+      },
+      "terrainRule": {
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      },
+      "mounted": true
+    },
+    {
+      "role": "atMines",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "inFrontOf": [
+          "fwdL"
+        ],
+        "distM": {
+          "doctrine": "standoff.obstacleInFrontM"
+        },
+        "depthM": {
+          "doctrine": "standoff.protectiveMinefieldDepthM"
+        }
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bn HQ",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          800
+        ]
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111402",
+      "label": "81 mm Mor (central)",
+      "order": 6,
+      "shape": {
+        "at": [
+          0,
+          300
+        ]
+      }
+    }
+  ]
+}

@@ -45,6 +45,11 @@ export interface AorFrame {
   month: string;
   loading: boolean;
   keys: { detail: boolean };
+  /**
+   * The line of denial given by the higher comd (a line's letter, W X Y Z), marked on the map and named "Line of Denial"
+   * beside its letter (OoW Vol I pp 17-18). Optional: the Aprc sets it from the aim's limitations; absent, none is marked.
+   */
+  denial?: string | null;
 }
 
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -86,7 +91,7 @@ export function aorCapacity(a: AorApproach, corridorM: number): { short: string;
   return { short: `Narrows ${km(w)}`, long: `Narrows to ${km(w)} km between NO-GO areas: less than the ${km(corridorM)} km a ${who} needs` };
 }
 
-export function aorWords(r: AorReading, f: Pick<AorFrame, 'season' | 'month' | 'used' | 'source' | 'profileLabel'>): AorWords {
+export function aorWords(r: AorReading, f: Pick<AorFrame, 'season' | 'month' | 'used' | 'source' | 'profileLabel' | 'denial'>): AorWords {
   const ranked = [...r.apchs].sort((a, b) => a.rank - b.rank);
   const first = ranked[0];
   const fdl = r.lines.find((l) => l.role === 'FDLs') ?? null;
@@ -112,7 +117,8 @@ export function aorWords(r: AorReading, f: Pick<AorFrame, 'season' | 'month' | '
     apch: first
       ? [ranked.map((a) => a.side).join(' › '), `${first.side}: ${km(first.pastM)} km past ${border ?? 'the front'}, ${first.through.length} BUAs, ${first.obstacles.length ? `${first.obstacles.length} water obs` : 'no water obs'}`]
       : ['None found', 'The going blocks every way from the threat side'],
-    line: [roles.map((l) => `${l.role} ${l.id}`).join(' · ') || 'No line found', fdl ? `${fdl.id} ${fdl.name} · ${km(fdl.frontM)} km` : ''],
+    // the line of denial given (guide.setAorDenial, the Aprc's limitations) named beside the roles
+    line: [`${roles.map((l) => `${l.role} ${l.id}`).join(' · ') || 'No line found'}${f.denial && r.lines.some((l) => l.id === f.denial) ? ` · Denial ${f.denial}` : ''}`, fdl ? `${fdl.id} ${fdl.name} · ${km(fdl.frontM)} km` : ''],
     itg: [`${r.mitg.name} · ${meet} apch${meet === 1 ? '' : 's'} meet`, [r.thruRoad ? `Rd ${aorName(r.thruRoad.name)} ${r.thruRoad.cls ?? ''} through it`.replace(/\s+through/, ' through') : '', r.msr ? `MSR ${km(r.msr.distM)} km` : ''].filter(Boolean).join(' · ')],
     dml: d0 ? [`Br over ${d0.water}, ${d0.side} apch${r.dml.length > 1 ? ` (+${r.dml.length - 1})` : ''}`, `${km(d0.bridgeM)} km off the crossing · class not recorded`] : ['No water across the apchs', ''],
     msr: [r.msr ? `${aorName(r.msr.name)} ${r.msr.cls ?? ''} · ${km(r.msr.distM)} km off MITG` : 'No MSR within 1.5 km of the MITG', lat ? `Laterals: ${lat}` : 'No metalled lateral between apchs'],
@@ -121,6 +127,9 @@ export function aorWords(r: AorReading, f: Pick<AorFrame, 'season' | 'month' | '
   const confirm: string[] = [];
   if (f.used !== f.source) confirm.push(f.source === 'boundaries' ? 'No Bdy symbols on both sides of the MITG: the AOR is the echelon frame. Draw the bdys or pick another source.' : 'No box drawn: the AOR is the echelon frame. Draw the box from the rail.');
   if (r.country === 'Canal plains' || r.country === 'Plains') confirm.push('DCB and ditches are not in the bundle: draw them as obstacle symbols; a line of def may follow them.');
+  if (r.country === 'Canal plains' || r.country === 'Riverine') confirm.push('Headworks in or near the AOR are denied to the En in the Punjab plains (OoW Vol I p 44): mark them as VPs.');
+  if (r.country === 'Desert') confirm.push('Thar: the canals in the green belt and the villages in the desert belt make the lines of defence (DW p 4): check the lines against them.');
+  if (r.dml.length) confirm.push("Blowing an important bridge needs the higher commander's approval, with the counter-attack in mind (OoW Vol I p 43); keep as reserve demolitions the bridges own counter-attack and SZ troops need to come back over (IDD p 6, by analogy: your decision).");
   if (r.bridges.inAor) confirm.push(`Bridge class: ${r.bridges.inAor - r.bridges.classed} of ${r.bridges.inAor} bridges in the AOR carry no load class.`);
   if (r.thruRoad) confirm.push(`Rd ${aorName(r.thruRoad.name)} through ${r.mitg.name}: the 1:50k map records ${r.thruRoad.cls ?? 'no class'}; confirm it.`);
   confirm.push('30 m elevation: BUAs, bunds and kidney bunds a few metres high do not show; check heights and dominance.');
@@ -172,7 +181,7 @@ export function aorSheetRows(r: AorReading, a: AorApproach): Array<[string, stri
 }
 
 /** The appreciation paragraph, in AprDf's numbering, for Copy as Text. */
-export function aorText(r: AorReading, f: Pick<AorFrame, 'season' | 'month' | 'used' | 'source' | 'profileLabel' | 'echelon'>): string {
+export function aorText(r: AorReading, f: Pick<AorFrame, 'season' | 'month' | 'used' | 'source' | 'profileLabel' | 'echelon' | 'denial'>): string {
   const w = aorWords(r, f);
   const L: string[] = [];
   L.push(`GR AND WEATHER · ${f.echelon} AOR, def ${r.mitg.name} · ${f.profileLabel}, ${f.month}, ${f.season === 'wet' ? 'after rain' : 'dry'} · ${r.country}`);
@@ -197,12 +206,12 @@ export function aorText(r: AorReading, f: Pick<AorFrame, 'season' | 'month' | 'u
   L.push(`   a. Pri of Apchs. ${w.ranked.map((a) => a.side).join(', ')} (shortest past the border, least terrain friction).`);
   L.push(`   b. Pri of Comb of Apchs. ${r.laterals.length ? r.laterals.map((l) => `${l.a} and ${l.b} (${l.n} laterals)`).join('; ') : 'No metalled lateral joins the apchs'}.`);
   L.push('   c. Lines of Def.');
-  r.lines.forEach((l, i) => L.push(`      (${i + 1}) Line ${l.id}. ${l.name}, ${km(l.frontM)} km between bdys${l.obstacle ? ` (along ${l.obstacle})` : ''}.`));
+  r.lines.forEach((l, i) => L.push(`      (${i + 1}) Line ${l.id}${f.denial === l.id ? ' (Line of Denial, given by the higher comd: OoW Vol I pp 17-18)' : ''}. ${l.name}, ${km(l.frontM)} km between bdys${l.obstacle ? ` (along ${l.obstacle})` : ''}.`));
   const pri = ['FDLs', 'Depth', 'Screen'].map((role) => r.lines.find((l) => l.role === role)).filter(Boolean) as AorDefLine[];
   if (pri.length) L.push(`      Pri: ${pri.map((l) => `Line ${l.id}`).join(', ')}.`);
   if (w.dp) L.push(`   d. DP 1 (without premises). ${w.dp}. Bias of def ${w.ranked[0]?.side ?? '—'}.`);
   if (w.sub) L.push(`   e. Frontage. ${w.sub.replace(/^Frontage /, '')}.`);
-  if (r.dml.length) L.push(`   f. Prelim dml. ${r.dml.map((d) => `Br over ${d.water} on the ${d.side} apch (${Math.round(d.bridgeM)} m off the crossing, class not recorded)`).join('; ')}.`);
+  if (r.dml.length) L.push(`   f. Prelim dml. ${r.dml.map((d) => `Br over ${d.water} on the ${d.side} apch (${Math.round(d.bridgeM)} m off the crossing, class not recorded)`).join('; ')}. Blowing an important bridge needs the higher commander's approval, with the counter-attack in mind (OoW Vol I p 43); keep as reserve demolitions the bridges own counter-attack and SZ troops need to come back over (IDD p 6, by analogy: your decision).`);
   L.push('');
   L.push('Confirm on Gr:');
   w.confirm.forEach((c, i) => L.push(`   ${i + 1}. ${c}`));
@@ -299,9 +308,10 @@ export function aorMapSvg(r: AorReading, f: AorFrame, w: number, h: number, labe
   for (const b of r.map.borders) o.push(`<polyline points="${pts(b.p)}" fill="none" stroke="${C.wb}" stroke-width="2" stroke-dasharray="9 3 2 3"/>`);
   // The AOR's outline: its bdys (the two long sides) marked with the echelon.
   o.push(`<polygon points="${pts(r.outline)}" fill="none" stroke="${C.bdy}" stroke-width="1.6" stroke-linejoin="round"/>`);
-  // Lines of def.
+  // Lines of def; the line of denial given (`f.denial`) under a wide band of its own.
   if (on.line)
     for (const l of r.lines) {
+      if (f.denial && l.id === f.denial) o.push(`<polyline points="${pts(l.cut)}" fill="none" stroke="${C.own}" stroke-width="12" stroke-opacity=".22" stroke-linecap="round" stroke-linejoin="round"/>`);
       const sw = l.role === 'FDLs' ? 3.2 : l.role === 'Depth' ? 2.2 : 1.6;
       const dash = l.role === 'FDLs' || l.role === 'Depth' ? '' : ' stroke-dasharray="6 4"';
       o.push(`<polyline points="${pts(l.cut)}" fill="none" stroke="${C.own}" stroke-width="${sw}"${dash}/>`);
@@ -362,6 +372,12 @@ export function aorMapSvg(r: AorReading, f: AorFrame, w: number, h: number, labe
         const a = l.cut[0], b = l.cut[1];
         const left = X(a) < X(b) ? a : b;
         label(X(left) + 12, Y(left) - 7, l.role, { c: C.own });
+      }
+      if (f.denial && l.id === f.denial && l.cut.length) {
+        // beside the letter at the right-hand end, below it (the role sits above the left-hand one)
+        const right = l.cut.reduce((p, q) => (X(q) > X(p) ? q : p), l.cut[0]);
+        const rx = X(right), ry = Y(right);
+        label(rx > w - 110 ? rx - 12 : rx + 12, ry + 18, 'Line of Denial', { c: C.own, w: 800, a: rx > w - 110 ? 'end' : 'start' });
       }
     }
   if (on.itg) label(X([0, 0]) - 12, Y([0, 0]) + 18, `${r.mitg.name} · MITG`, { c: C.itg });

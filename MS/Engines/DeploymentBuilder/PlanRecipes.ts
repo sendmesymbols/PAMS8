@@ -40,6 +40,8 @@ export interface RecipeSlot {
   count?: Num | Range;
   /** Placed only with the terrain (e.g. a killing ground on the approach's chokepoint). */
   terrainOnly?: boolean;
+  /** A reserve that moves on tracks (armour, a mech unit): timed at the tank rate, not on foot. */
+  mounted?: boolean;
   /**
    * Explicit geometry in plan metres [acrossM, backM] (backM negative = toward the enemy), for control measures an
    * attack lays by distance: `at` (a point), `pts` (a line or area through these), `rect` (an area), `base` + `ctrl`
@@ -100,7 +102,7 @@ export interface Recipe {
   phase2Side?: 1 | -1;
   /** A tank Sqn with the attack (PlanTanks.withTanks): in the fire support role, or in close support (armour heavy). */
   tanks?: 'fire' | 'close';
-  /** Tank Sqns grouped to a Bn defence (PlanTanks.withDefTanks): their harbours beside the reserve, the C Pen force at the tank rate. */
+  /** Tank Sqns grouped to a Bn defence (PlanTanks.withDefTanks): their leaguers beside the reserve (MIB p 68), the C Pen force at the tank rate. */
   defTanks?: number;
   /** Engineers with a crossing (PlanBuildTab): the unit, its Pls and equipment, and the bridge tables it builds from. */
   engr?: import('./PlanEngr').EngrType & { kinds: ReturnType<typeof import('./PlanEngr').bridgeKinds> };
@@ -130,7 +132,7 @@ export interface Recipe {
 export const SMALL_TASKS: readonly string[] = ['ambush', 'patrol', 'recce'];
 
 export const TASKS = ['defence', 'attack', 'crossing', 'advance', 'ambush', 'patrol', 'recce', 'withdrawal'] as const;
-export const LAYOUTS = ['two-up', 'three-up', 'one-up', 'all-round', 'canal', 'rev-slope', 'frontal', 'left-flank', 'right-flank', 'two-phase', 'night', 'line', 'l', 'v', 'patrol', 'two-ops', 'three-ops', 'four-bn', 'two-bde', 'area', 'screen', 'armd-lead'] as const;
+export const LAYOUTS = ['two-up', 'three-up', 'one-up', 'all-round', 'canal', 'rev-slope', 'frontal', 'left-flank', 'right-flank', 'two-phase', 'night', 'line', 'l', 'v', 'patrol', 'two-ops', 'three-ops', 'four-bn', 'two-bde', 'area', 'screen', 'armd-lead', 'three-axes', 'delay', 'by-day', 'ridge', 'penetrant', 'lateral', 'pass', 'valley', 'mtn', 'bua', 'fixing'] as const;
 export const ECHELONS = ['13', '14', '15', '16', '17', '18', '21'] as const;
 export const CHECK_NAMES = ['approaches', 'facingThreat', 'gaps', 'depth', 'flanks', 'exposure', 'killingGr', 'alternates', 'reserveReach', 'mutualSupport', 'fieldOfFire', 'backBlast', 'dfMinRange', 'deadGroundFront', 'fupDistance', 'assaultFrontage', 'bofFlank', 'bofRange', 'morReach', 'fireLift'] as const;
 

@@ -161,7 +161,8 @@ check('PlanFit.fitLayout hands an advance to fitAdvance', !!f5 && !!row(f5.res.r
   check('...an Adv Gd of 60 vehicles (5.5 km): under the 8 km, pass', sr?.st === 'pass', sr?.reason.match(/Adv Gd[^;]*long by day/)?.[0]);
   const has = fm.raw.items.filter((i) => /^ha\d$/.test(i.role));
   const rl1 = fm.raw.items.find((i) => i.role === 'rl1');
-  check('halting areas: HA 1, HA 2, one a report line, 1 km short of it, beside the axis on the right', has.length === 2 && has[0].label === 'HA 1' && rl1 && Math.abs((has[0].pts.reduce((s, p) => s + p.y, 0) / 4) - (rl1.pts[0].y + rl1.pts[1].y) / 2 + 1000) < 5 && has[0].pts.every((p) => p.x > 0) && row(fm.res.rows, 'Halting areas')?.st === 'pass', has.map((h) => `${h.label} ${Math.round(h.pts[0].x)},${Math.round(h.pts[0].y)}`).join(' '));
+  // on bare open ground both sides score alike: the first tried (right, no shift) stays; no tree cover in it, so it warns (IBB p 160)
+  check('halting areas: HA 1, HA 2, one a report line, 1 km short of it, beside the axis on the right; on bare ground no cover: warn', has.length === 2 && has[0].label === 'HA 1' && rl1 && Math.abs((has[0].pts.reduce((s, p) => s + p.y, 0) / 4) - (rl1.pts[0].y + rl1.pts[1].y) / 2 + 1000) < 5 && has[0].pts.every((p) => p.x > 0) && row(fm.res.rows, 'Halting areas')?.st === 'warn' && /0 % under trees/.test(row(fm.res.rows, 'Halting areas').reason), has.map((h) => `${h.label} ${Math.round(h.pts[0].x)},${Math.round(h.pts[0].y)}`).join(' '));
   const big = { ...m, serials: [{ ...m.serials[0], vehicles: 400 }, m.serials[1]] };
   check('an Adv Gd of 400 vehicles: its column longer than 8 km, the Main Body closes on it: warn', row(V.fitAdvance({ ...inp(gnd), recipe: { ...rec, march: big } }).res.rows, 'March')?.st === 'warn');
   // the settings from the tab: report lines 3 km apart, H at last light

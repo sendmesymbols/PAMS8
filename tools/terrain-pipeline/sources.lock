@@ -235,7 +235,7 @@ sources:
       - name: "{var}/{hour_chunk}.{day_chunk}.0.0"
         url: https://storage.googleapis.com/weatherbench2/datasets/era5-hourly-climatology/1990-2019_6h_1440x721.zarr/{var}/{hour_chunk}.{day_chunk}.0.0      # zarr chunk, 3 hours x 3 days x globe, blosc/lz4, ~28 MB
     fetched_by: scripts/fetch_era5_wind.py        # one chunk of days per month (round the 15th), both hour chunks, u / v / speed: 72 chunks, cut to the aoi
-    sha256: PENDING   # aggregate over work/raw/era5_wind/chunks.json, written after the fetch
+    sha256: 8a7c1b5792ead88d6b1c4a9fb5e87c7960402ca7229ffac7823d9b87d33d8ad8   # aggregate: sha256 of the sorted "name sha256" lines of work/raw/era5_wind/chunks.json; fetched 2026-11-24, 72 chunks, 1345 MB
 
   # WorldPop (updated 2026-11-04, population count at 100 m since 2026-11-05). Owner's rule: where WorldPop offers two
   # choices take the LATEST and the COARSER one, so 2026 (the current year; 2027-2030 are projections) and 1 km. The

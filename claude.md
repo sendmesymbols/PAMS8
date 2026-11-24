@@ -194,7 +194,7 @@ MS/
   canals and bridges), lines of def W X Y and Z through the MITG with roles and the frontage test, the MITG, bridges to
   demolish, the MSR and laterals, and NO-GO / SLOW-GO only. The AOR comes from Bdy symbols, a dragged box or the echelon
   frame; the MITG is a VG symbol, else the selected symbol or the map centre. Layout A/B/C, Trace/Dark and North/Threat up
-  switch on the fly from the rail's foot. `guide.setScopeScale()`, `setAor()`, `aorReading()`, `aorText()`. Mockup:
+  switch on the fly from the rail's foot. `guide.setScopeScale()`, `setAor()`, `aorReading()`, `aorText()`; `setAorDenial('X' | null)` marks the line of denial the higher comd gave on the trace, the Lines row, the D sheet and Copy as Text (not kept in the settings; the Aprc passes its own). Mockup:
   `ground-guide-aor-options.html`.
   **F** turns the **Extended View** on and off (user, 2026-11-12; it replaced the separate OCOKA lens, and the name OCOKA is
   not shown any more). It is NOT kept in the settings: it starts off, F or turning the guide off clears it, and nothing in it
@@ -230,9 +230,10 @@ MS/
   corridors and avenues of approach: least-cost ways from strips of the area, an avenue = two corridors side by side,
   narrows, crossovers; drawn as the MS attack arrows (layer `ms-ground-guide-ipb-apch`), in tab 3 (replacing the single
   path), on the rail. Pure engine `GroundGuideIpbCorridors.ts`, map `GroundGuideIpbApchMap.ts`, tab 3
-  `GroundGuideIpbApchView.ts`; `guide.ipbApproaches()`, `ipbApproachesAround()`; `node tools/ipb-test/corridors.mjs` (53 checks).
+  `GroundGuideIpbApchView.ts`; `guide.ipbApproaches()`, `ipbApproachesAround()`; `node tools/ipb-test/corridors.mjs` (55 checks).
   Review fixes (24 Nov 2026): the slope is judged along each way's own heading from the elevation (a cell coded for slope
-  alone is passable; a climb at the SLOW-GO figure is three times dearer, at NO-GO impassable, diagonal steps judged by
+  alone is passable; SLOW-GO, and a climb at the SLOW-GO figure, weigh the book's day ratio for the mover, GO over SLOW-GO
+  km/h (vehicles 1.5, foot 1.67; 3 without the rates; user, 24 Nov 2026), a climb at NO-GO is impassable, diagonal steps judged by
   their components; a 'steep' narrows with its %), the free width is measured square to the way, strips are one avenue
   wide (Bde 5, Div 4 on open ground), two ways through one narrows are one avenue, the turning approach ranks first only
   while the way round is as good going (bonus 15-30 by cost), the book's day time is in the rank (8 points an hour) and the
@@ -242,7 +243,14 @@ MS/
   flanking from an FUP `ipb.fupM` (1,100 m) short, flanks first, the last 3 km on their side, and (`ipb.turn`) a turning
   approach round the objective to a choke on the MSR behind it (road network MSR flag, `GroundGuideRoads.edgesIn`; bridge >
   defile > junction), ranked first; or the book's avenues through the area (they may pass the Posn); fire, decision,
-  template and proforma follow them.
+  template and proforma follow them. The objective's frontage comes from the books by side, echelon and the ground at it
+  (`GroundGuideFrontage.ts`, OcokaDoctrine `frontage.objective` over `frontage.rows`; `node tools/ipb-test/frontage.mjs`, 36
+  checks; 24 Nov 2026): own Coy / Pl / Sec never extended (IBB S59 para 6 b p 326), a Bn 3000-5000 m in the plains (IBB S53
+  para 4 c p 277), IBB's extended two-up row in the desert and mountains (DW pp 24, 56; MW pp 148, 150: no figure printed),
+  IBB Annex V on a canal or ditch (x = yards); the En's own figures (IDD p 3 on the bund, IC s113 / s114 Foxland), the own row
+  standing in where none is printed, said so. Tab 3's Read As and Copy as Text give the Obj frontage and the assault frontage
+  by night with what the books say by day (IBB S47 para 17 a p 248; OOW2 s9 p 36; DW p 47; MW p 79), with book and page;
+  never on map labels.
   Tab 3's **Create on Map** (Phase 3; `guide.createIpbOverlay('coo' | 'corridors' | 'apchs' | 'all')`) writes them as
   ordinary symbols via `loadSymbolFromJSON` (SymbolEngine passes `setCreator`, run as one undo step; making it again
   replaces the last set): No Go / Slow Go areas traced from the coding (`GroundGuideIpbShapes.ts`, `node
@@ -267,7 +275,7 @@ MS/
   before the depth localities; new tab **5 Decision** (time ladder, decision support picture, decisions, event matrix),
   map stars (`ipb.mapDecision`), rail line 5, Create on Map NAI / TAI / Decision Pt; **Annex A** weather (`annexA`: GSOD
   visibility, WorldClim temperature / wind; tiles Wx for Fire in tab 1, Wx for Mnvr in tab 3). `node
-  tools/ipb-test/decision.mjs` (31 checks). COA 1 most likely / COA 2 most dangerous (`decisionPoints.coa`, E; ATP 2-01.3
+  tools/ipb-test/decision.mjs` (39 checks). COA 1 most likely / COA 2 most dangerous (`decisionPoints.coa`, E; ATP 2-01.3
   6-7..6-13) with the NAI that confirms each; entry NAIs are lines across the avenue (ATP 6-20). On foot the times add the MW p 81 climb (30-60 min per 300 m of ascent from
   the grid's elevation along the avenue; vehicles pay nothing), the same figure the Intelligent Deployment tab's moves pay.
   With F on the Gr Scope rail draws at the area read's scale (`scope.extScale: area`): centred on the area, the symbol and
@@ -285,12 +293,22 @@ MS/
   what each means for the side that flies, `IpbDoctrine airspace`, FM 3-09 2024 App B pp B-9, B-20, B-27; joint definitions
   unverified) and own gun-target lines from PAA / artillery symbols to the targets (Obj and his Posns, or TAIs and the Threat),
   avenues crossing or within 500 m (E) flagged; tab 4 tile, rail row, text, dotted lines and ✕ marks on the map.
+  **Wind** (`ipb.wind`, `GroundGuideWind.ts`, `node tools/ipb-test/wind.mjs` 34 checks; 24 Nov 2026): the bundle's wind grid
+  (`grotbc.wind`: ERA5 1990-2019 normal, 0.25°, four hours a day, from the WeatherBench 2 copy; patched into the live bundle by
+  `add_wind_to_bundle.py`, no rebuild) gives the usual direction, steadiness and day / night turn; in Annex A (direction beside
+  WorldClim's speed, where smoke drifts: IBB p 109, OoW Vol II p 93), each LZ's run-in from downwind and departure upwind on its
+  10 : 1 approaches (FM 3-21.38, T, unverified), each DZ's drift and proforma g (`IpbDoctrine wind`).
+  **Doctrine review applied** (24 Nov 2026, `Doctrine_Review.md` R1-R64; `node tools/ipb-test/review.mjs` 27 checks): mountain
+  foot rates and descent in the Decision tab (MW p 81, `_ipbMountain`), the En FUP as a TAI, the Indian reserves ladder (IDD
+  p 5), the Indian Bde defence by IDD pp 2-5, `def-desert` / `def-mtn` templates (`desertTest`), firm desert LZs (DW p 66),
+  image intensifiers nil in haze / fog (IBB p 13), MW mountain foot and mule figures, desert going after rain (MIB p 261),
+  the M113's 60 % grade, 81 mm min 550 m, the AD triple Anza only; see 15-ground-guide.md for what stayed data only.
   Phase 7: **situation templates** (`ipb.template` auto | id | off, `GroundGuideIpbTemplate.ts`, tab 5 page 2
   `GroundGuideIpbTemplateView.ts`): a doctrinal template from `MS/Data/IpbTemplates.json` (IDP Bde CC, DSF Div BG, Strike
   Corps bridgehead, Mtn Div attack, Inf Bde / Inf Div defence; KYE-2019, OoW, DW, IBB figures with pages; Fig 6 / 7 readings
   unconfirmed) laid along the avenues, each element judged on its mover's IPB coding (tanks off NO-GO, guns off hills),
   moved to the nearest usable ground, known enemy symbols never moved; template phases; map (`ipb.mapTemplate`), rail row,
-  Create on Map 'template'; `node tools/ipb-test/template.mjs` (27 checks).
+  Create on Map 'template'; `node tools/ipb-test/template.mjs` (33 checks).
   **X** (with F on) or the *Whose options* switch at the left of the Ground Detail's key bar turns the reading between the
   en's options against you (`readFor: defence`) and yours against the threat (`attack`). A mode key (F, Shift+F, X, [ ], J,
   V, Shift+V, H, P) shows the **key notice** at the foot of the screen for 5 s: the mode now and the keys that work in it
@@ -449,7 +467,20 @@ MS/
   only the times (`retime`); typed cells keyed by the row's first column (old "r,c" migrated); Cancel while reading, a
   Changed filter with "Before this Read", Undo (Ctrl+Z) for Clear / Give back / Open / kind, a message history (M);
   light times in `groundAppreciation.utcOffsetH` (5, PKT), never the browser's zone; JSON saved without pictures by
-  default. Pure writers `AprcWrite.ts`; `node tools/aprc-test/run.mjs` (244 checks).
+  default. Pure writers `AprcWrite.ts`; `node tools/aprc-test/run.mjs` (352 checks). The doctrine books (24 Nov 2026, `AprcBooks.ts`): gun deployment and quick-attack times, a Line of Denial, leading En option and contingencies, desert / mountain prompts, mules and porters, Adm and Log prompts and a casualty estimate from the ORBAT, each with book and page (`Doctrine_Review.md`). A third kind, **Withdrawal** (`wdr`, `outlineWdr`, `writeGroundWdr`, `writeTsWdr`): OoW Vol III's main decisions (pp 6-7) and factors (pp 7-16), what the plan must fix, Annexes P / Q for the sketch; its Limitations box (new posn, denied until, no rearward move before, clear of a line by, delay, by day). In the mountains the attack's climb is read from the 30 m elevation through `sectionsAround` (a typed climb overrides it); the line of denial is drawn on the para 6 trace and the slides, and passed to the guide (`guide.setAorDenial`) so the Gr Scope AOR trace marks it too; turning the Aprc off takes it back.
+  **The two Aprc books** (24 Nov 2026; `AprcMechs.ts` pure, `writeMechs` at the end of every Read and on any sheet input):
+  Understanding Aprc (Bn study guide, text layer) and Mechs of Aprc (Attk); a pamphlet's figure drives, the guide's beside it
+  (user's ruling). The Aim's **Limitations** box (`setLimits`, `doc.limits`: as far fwd as tac feasible, no pen beyond a line,
+  def at all costs, attrition, ready / captured by, max destr, at ni, bunkers ...) drafts the aim and lays the def
+  (`layoutDef`: FDLs 5-8 km past the border, depth on the line of no pen; Coys up on IBB p 481 with the guide's table beside;
+  screens, protective dets, C Pen / Res / Use of Armr DP heads), Course A as the book's paragraph and its analysis under the
+  book's heads; a **Vis of En Op** para at the guide's linear model and the reactions table in prep / aslt / C attk phases;
+  header **D Day** (date) and **Now** (D-time) for first / last lt, the moon, the time aval day / ni and essential timings
+  (`setDDay`, `setNow`); the Time Req's standard list (specimen hours, OoW Vol I p 39 for a Bn's 36 h); the attack's apchs
+  tested on the planning parameters (FUP in own area, BUA in Ph 1, MITG in Ph 1, En seen ...), capacity on the IPB widths, the
+  Time Calc worked out in the book's 18 rows (reproduces both books' specimens) with the moon shift; an **ANX P: SKETCH** part
+  listing the details to be marked against the map; the books' writing rules flagged (`styleNotes`). See
+  `MS/Docs/22-ground-appreciation.md` "The two Aprc books".
 - **Deployment Mgr Intelligent Deployment tab** (was "Build"; `PlanBuilder_Plan.md`; Phases 0–8 built 15 Nov 2026: geometry, terrain fit, Auto /
   Compare / J) — on by default (`features.planBuilder`; it loads nothing until the tab is opened), `planBuilder.*`.
   J while the plan rests moves the worst posn to better ground (never leaving the plan worse), Shift+J takes it back;
@@ -463,7 +494,7 @@ MS/
   (`planBuilder.labelSize`). **Enemy and ground** (`PlanContext.ts`, `PlanDoctrine.enemy` / `terrain`): En force Coy / Bn /
   Bde / Div (Auto one up in defence, 3 : 1) sizes the approaches (he attacks on the corridors of the level below, IPB p 7)
   and the force ratio; En type Inf / Mech / Armd sets his going, rates and FUP (IBB pp 201, 214); Ground Auto / Plains /
-  Obstacle / Desert / Mountains (Auto read off the bundle where the plan rests) sets frontages (IC s113), gaps, flanks,
+  Obstacle / Desert / Mountains (Auto read off the bundle where the plan rests) sets frontages (a Bn: normal 3-5 km in the plains, IBB p 277, an extended frontage there warns, IBB S59; extended in the desert and mountains, DW p 24, MW p 148; an obstacle IC s113; a desert attack by day twice the night assault frontage, DW p 47), gaps, flanks,
   foot rates and the layout tried first. Phase 5 **Check my plan** (`PlanCheck.ts`; the tab's Build a plan / Check my
   plan switch): reads the selected symbols, the last placement or all (`SerializationEngine.planRecordsOf`, Mgr
   `readDrawn`), maps roles (label, SIDC, size; planned = D line; outline; front from marker > enemy symbols > arcs /
@@ -477,7 +508,7 @@ MS/
   arm file read as one list (`mergeOwn`, 358 units) so a child in another arm's file is found, ranges from the unit's weapons, its ATGM pairs sited on
   the tank approaches + AT cover row, a mounted reserve for APC units, force ratio own Coys vs the en unit of Sec 13, the
   minefield in time (engr p 439); `node tools/planbuilder-test/orbat.mjs` (88). **Tanks in a Bn defence** (`PlanTanks.withDefTanks`, `Recipe.defTanks`, Tanks row 0-3 Sqns):
-  harbours beside the reserve, the Sqns the C Pen force at tank rate (`PlanWhatIf` `tk-cpen-*` triggers), Tank harbour row, counted in
+  leaguers beside the reserve (MIB p 68), the Sqns the C Pen force at tank rate (`PlanWhatIf` `tk-cpen-*` triggers), Tank leaguer row, counted in
   the force, read back by Check my plan (`pbMeta.defTanks`); Tps on a Coy Def; the first unit also to the Sup posns; Tank AT cover row with
   the gun at `atFramework.tankGunEffM` 2500 m (basis E: Sec 1, re-read unlocked on 19 Nov, prints a gun range only for the Al-Zarrar; IC s105 para 21c: tanks in defence counter-attack, AT weight only where inescapable) (`tanks.mjs` 86). The tank Sqn with an attack is the ORBAT's (`tankSqnOf`, 14 tanks, `Recipe.tankSqn`;
   counted in the force ratio; gun ranges are printed for 1 of 13 tanks, so the doctrine's stand) and the IABG / Armd Div are Bde / Div
@@ -486,10 +517,11 @@ MS/
   read back by Check my plan (`pbMeta.arty`); on the crossings too (a Div bridgehead takes a Div Arty, one gun area a Regt,
   `ownDivArties`, `gunArea2`...); **G** while a Bn plan rests sites the gun area with `GunDeploymentFind.findGunAreas` on its own
   `SiteBundle` (Gun site row; `GunDeployment.ts` untouched); `node tools/planbuilder-test/arty.mjs` (41). **AD** (`PlanAD.ts`, AD row:
-  an AD Bty / Regt as fire units sited round the VPs: bridges, gun areas, HQ, Assy, reserve; AD cover; `PlanDoctrine.ad` E; `ad.mjs` 21).
+  an AD Bty / Regt as fire units sited round the VPs (in the desert the reserve first, DW p 63): bridges, gun areas, HQ, Assy, reserve; AD cover; `PlanDoctrine.ad` E; `ad.mjs` 21).
   **Air lift** (`PlanAvn.ts`: the Air Aslt Bn by the Air Aslt Sqn, waves and build-up; `PlanDoctrine.airAslt` E; `avn.mjs` 10).
   **AT on the Obj** (`PlanAttack.atOnObj`: an attack's ATGM pairs, the AT Coys grouped, facing his counter-attack ways in); G sites a crossing's gun areas too; `bn3-cross-two-up` (Lt Cdo).
   **Advance** (`PlanAdvance.ts`, OoW Vol II Fig 2: an Armd Bde advance to contact, echelon rows; on the ground the axis routed for tracks, its crossings and bridge classes, report lines and bounds, halting areas, the march timed by the Move Planner's road engine; RL apart and H set in the tab; Fig 2 read from the page text under the highlights; `advance.mjs` 42).
+  Also a **Bn Adv Gd** (`bn-advance-one-up`: vanguard a Coy group, IBB Fig 12 night spacing, main guard 300-400 m back by night, flanks cleared 800 m by day, Bn HQ one bound behind the vanguard, tanks in it, who leads read from the country: IBB pp 133-150, MIB pp 81-84; `advance.bn.*`) and an **Armd Div on a broad front** (`div-advance-two-bde`: two Bdes on two axes, each routed and read, axes 3-8 km apart E: OoW Vol II pp 52-53, DW pp 35, 55; `advance.div.*`; `advanceKind`); halting areas sited on the ground right or left of the axis for cover, firm ground and entry (`siteHaltingAreas`, IBB p 160, OoW Vol II p 12, `advance.haScore` E). Second round of book gaps (24 Nov 2026, `node tools/planbuilder-test/gaps2.mjs`): a second obstacle beyond a bridgehead taken inside the BH line (OoW Vol II p 51, `crossing.secondObstacle`); an RR and its alternative in each forward locality of the Bn defences, row RR (IBB S8 pp 38-42, `atFramework.rr`); the Div Arty in groups behind each forward Bde on a Div defence (OoW Vol I p 83, `divArty`); AD sites on dominating features in the mountains (MW p 247, `adMountainRows`); the desert reserve share (DW p 26, row Reserve share judged in `groundNotes`); Mine gaps on the reserve's routes (OoW Vol I pp 38, 42) and the En quick attack 30-60 / 60-100 min from contact (MIB p 89) in the what-if; Check my plan runs `PlanMountain.layoutRows` on a plan built from a mountain recipe.
   **Inundation** (`PlanEngr.inundation` / `withInundation`, Inundate row on a Bn Def: engr table 20, pp 452-453). Engr Bn Coys
   shared out between Bns (`engrShare`, Engr Coys chips). **Engineers** (`PlanEngr.ts`, Engrs row on
   Bn / Coy Def and the crossings): an ORBAT engineer unit's Pls and MMLs in Mines in time (p 439), its bridging (AVLB, AM-50, ribbon,
@@ -546,9 +578,16 @@ MS/
   by night** (`bn-wdr-night`, `PlanWithdrawal.ts`: old HQ, aim back, new main posn; rear parties, RVs, EPs, routes back,
   intermediate posn beyond En field artillery and behind an obstacle (class grid + mapped canals / rivers), programme from
   last light; Check my plan `checkWithdrawal`; `withdrawal.mjs`); Coy Attk, Bde Def, Div Def, Bde Attk recipes; **three
-  phases** (`threePhaseRecipe`, P cycles 1-2-3) and an Obj 2 the user marks; the tank Sqn harbour and its move; FUP (Tks)
+  phases** (`threePhaseRecipe`, P cycles 1-2-3) and an Obj 2 the user marks; the tank Sqn's Assy area (MIB p 118; was "harbour") and its move; FUP (Tks)
   against the En ATGM range from the ORBAT; Corps bridging when the span passes the division's 84 m; the patrol's Night
   March chart. Plan Builder texts say En / Own, never his / he.
+  **Frontages by ground, cited (24 Nov 2026)**: own rows only (the Foxland rows of IC s113 / s114 and IDD are the En's):
+  an obstacle Bn IBB Annex V 2750-4115 m (pp 483-485), a mountain Bn IBB's extended rows (MW prints no figure), a Coy 1200-1500
+  m (AMP p 1.10), a Pl post 300 m (IBB Annex U App 7) with AMP p 1.3's 500 m most; the assault row by echelon
+  (`attack.assaultRowByEch`: Coy 250 m, Bn two up 450-650 m, IBB S47 para 17 a p 248; Bde GSP p 86, desert p 87) judged by
+  day and by night on every ground (`assaultFrontageCheck`: desert twice by day, DW p 47; mountains narrower, MW p 79; plains
+  wider by day with no figure, OOW2 s9 p 36: warns, never fails); a Bde / Div beyond its row on extended ground warns
+  (`frontageRowCheck`). No figure rests on the IBB p 277 margin tables ("Source: ARIB", a reader's note): check.mjs guards it. **Doctrine gaps (24 Nov 2026,** `Doctrine_Review.md`; `node tools/planbuilder-test/gaps.mjs`): `div-def-three-axes` (OOW1 Annex D), a Bn HQ in every Bn defence (IBB p 23), an AT Res in Bde / Div defences (OOW1 p 45), `groundNotes` (the mountain / desert / night / attack rules of MW, DW, MIB, IBB, OOW2 appended to rows, run last in the build, the fit and Check my plan), the mountain breach without lanes (MW pp 86, 106, 113), Mortars whole or split (IBB pp 54, 61), Coy RVs 200-500 yd (IBB p 381), crossing twin obstacle / regulated water / APC swim (IDD p 8, MIB pp 278-280). **Plan types (24 Nov 2026,** `Doctrine_Review.md`; `node tools/planbuilder-test/plantypes.mjs`, 78): `bn-delay` (`PlanDelay.ts`: DP 1-3 a 4.2 km hop apart, MIB pp 233-239, OOW3 p 29), `bn-wdr-day` (leap-frog through the depth, MIB pp 223-224, OOW3 pp 40-43), `bde-wdr-night` / `div-wdr-night` (`PlanWithdrawalFmn.ts`, OOW3 Annex P: two int posns, covering tps, flank guard, axes, Dml belt), mountain Bn Def ridge / penetrant / lateral / pass / valley and Bn Attk (Mtn) (`PlanMountain.ts`, MW pp 78-162), Bn Attk / Def (BUA) and the MIB Gp fixing force (`PlanBua.ts`, IBB S49 / S58, MIB s23 + Annex P); their rows through `PlanMountain.layoutRows` (build, fit, Check my plan). Withdrawal checks (`withdrawal.mjs`, 37): int posn view and flanks, rear parties per approach (MG 457 m, OOW3 p 27), Coy check pts, BL, passage lanes through the int posn (OOW3 Annex Q, pp 19, 48, 67).
   Review fixes (23 Nov 2026), checked by `node tools/planbuilder-fixes/run.mjs` (18): the ground's kind needs class data
   (elevation alone is never "plains"); no approach found is grey, never a Pass; Check my plan faces each posn by its drawn
   open face and times the drawn Sup / C Pen posns; the alternate's move one way (foot rate x under-fire factor + settle);
@@ -565,7 +604,7 @@ MS/
   never Pass. Terrain fit (`planBuilder.useTerrain`, pure `PlanFit.ts`; bundle reader `PlanGroundProbe.ts` = an own
   MovementGuideProbe + `findAvenue`; `node tools/planbuilder-test/fit.mjs`): quick ghost while the mouse moves, after
   `fit.restMs` at rest the fitted ghost (posns slid out of NO-GO; Auto = best layout), tank approaches from the threat
-  marker in red, a ring per posn by verdict and a card at the cursor; the click fits again and places the fitted plan; a
+  marker in red, a verdict marker per posn (the card's icon on a dark disc, a tag naming the posn and its worst check outside its outline, the latest late move marked on its route: the user's pick M2) and a card at the cursor (the user's pick C "Ledger" of `plan-builder-card-options.html`, 500 px: the fit score, every fail and warn as a row worst first with the first laid-out one open, a race for late moves, Why and Fix, passes counted, layouts with why Auto ranks them, key caps; GroundGuideTokens sizes); the click fits again and places the fitted plan; a
   marked threat makes the plan face it and one click place it (`PlanEntry.faceAt`, Mgr `setPlacementHooks`). Coy =
   doctrine 1500 × 600–800 m. Symbols made as in 2525D: FEBA (FDL) `25140400`, LOA (LOE) `25140900`, FPF `25240703`,
   PAA (gun area) `25240501` / `25240502`; Security Zone local `00000161` (2525D has none); lettering is geometry (`MS/Support/StrokeFont.ts`).

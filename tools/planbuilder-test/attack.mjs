@@ -233,9 +233,28 @@ const O = centre(it(base, 'obj').pts), F0 = centre(it(base, 'fup').pts);
   const fl = F.fitLayout(inpOf(rec('coy-attk-right-flank'), flatG));
   const fu = row(fl.res.rows, 'FUP from the Obj'), fd = row(fl.res.rows, 'FUP finder'), af = row(fl.res.rows, 'Assault frontage');
   check('Coy Attk: the FUP pulled in to 1.0-1.2 km off the Pl Obj (IBB p201), the finder names the pull', fu?.st === 'pass' && /in to 1\.0 km-1\.2 km off the Obj/.test(fd?.reason ?? ''), `${fu?.reason} | ${fd?.reason}`);
-  check('...the assault frontage judged on the Company row, not the Bn one', /Company, night attack in plains/.test(af?.reason ?? ''), af?.reason);
+  check('...the assault frontage judged on the Company row (IBB S47 para 17 a p 248: 250 m by night), not the Bn one', /Company, night attack: IBB S47 para 17 a p 248/.test(af?.reason ?? ''), af?.reason);
   const bde = F.fitLayout(inpOf(rec('bde-attk-two-up'), flatG));
   check('Bde Attk: the assault frontage judged on the Brigade row (GSP p 86)', /Brigade, night attack in plains, two battalions up/.test(row(bde.res.rows, 'Assault frontage')?.reason ?? ''), row(bde.res.rows, 'Assault frontage')?.reason);
+}
+
+// ── the desert: a night attack takes half the day's frontage (DW s12 para 18 a p 47) ───────────────────────────
+{
+  const C = await import('../../MS/Engines/DeploymentBuilder/PlanContext.ts');
+  const ar = S.solveRecipe(rec('bn-attk-frontal'), ctx, {}).rows;
+  const base = row(ar, 'Assault frontage');
+  check('the solver carries the assault width and its night limit (IBB p 248: a Bn two up 450-650 m) for the ground to judge again', base?.m > 0 && base?.limitM === 650, `${base?.m} / ${base?.limitM}`);
+  const at = (kind, night, w = 1200) => row(C.applyContext([{ ...base, m: w, st: 'warn' }], doc, '16', 'attack', 0, 2, null, { kind, source: 'user' }, {}, night), 'Assault frontage');
+  check('desert by day: a Bn assault 1.2 km wide passes, twice the night row\'s 650 m (DW p 47)', at('desert', false).st === 'pass' && /1\.3 km/.test(at('desert', false).reason) && /DW s12 para 18 a p 47/.test(at('desert', false).reason), at('desert', false).reason);
+  check('desert by night: 1.2 km warns, the night row 650 m, with a fix (narrow it, or by day / bright moonlight)', at('desert', true).st === 'warn' && at('desert', true).detail?.fix?.length === 2, at('desert', true).reason);
+  check('desert by night: 600 m passes, 700 m warns (IBB p 248: 450-650 m)', at('desert', true, 600).st === 'pass' && at('desert', true, 700).st === 'warn', `${at('desert', true, 600).st} / ${at('desert', true, 700).st}`);
+  check('desert, light not known (a drawn plan): 1.2 km warns "by day or in bright moonlight only"', at('desert', null).st === 'warn' && /by day or in bright moonlight only/.test(at('desert', null).reason), at('desert', null).reason);
+  check('plains by day: 1.2 km warns "no day figure printed: judge it" (OOW2 s9 para 2 c p 36), never fails', at('plains', false).st === 'warn' && /no day figure is printed/.test(at('plains', false).reason) && /OOW2 s9 para 2 c p 36/.test(at('plains', false).reason) && !at('plains', false).detail, at('plains', false).reason);
+  check('plains by night: 1.2 km warns with a fix; 600 m passes (IBB p 248)', at('plains', true).st === 'warn' && at('plains', true).detail?.fix?.length === 2 && at('plains', true, 600).st === 'pass', at('plains', true).reason);
+  check('plains by day: 600 m passes, the night figure, and says a day attack may be wider', at('plains', false, 600).st === 'pass' && /wider frontage is allowed/.test(at('plains', false, 600).reason), at('plains', false, 600).reason);
+  check('mountains: 1.2 km warns by day too: narrower than open ground (MW p 79; GSP p 86), with a fix', at('mountain', false).st === 'warn' && /MW p 79/.test(at('mountain', false).reason) && at('mountain', false).detail?.fix?.length === 2, at('mountain', false).reason);
+  check('mountains: 600 m passes by day and by night', at('mountain', false, 600).st === 'pass' && at('mountain', true, 600).st === 'pass', at('mountain', true, 600).reason);
+  check('no ground fails an assault frontage (the books print limits by night only)', ['plains', 'obstacle', 'desert', 'mountain'].every((k) => [true, false, null].every((nt) => at(k, nt, 3000).st !== 'fail')));
 }
 
 console.log(`\n${n} checks, ${fails} failed`);

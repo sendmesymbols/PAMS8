@@ -24,7 +24,11 @@ export interface AdFu { name: string; weapons: AdWeapon[]; effM: number }
 export interface AdType { id: string; name: string; unit: 'regt' | 'bty'; fus: AdFu[]; src: string }
 
 /** What the plan carries of its AD (Recipe.ad): the unit, its FUs in the order they are sited, the figures used. */
-export interface AdOnPlan extends AdType { releaseM: number; minFus: number; siteM: [number, number]; assumedNote: string | null }
+export interface AdOnPlan extends AdType {
+  releaseM: number; minFus: number; siteM: [number, number]; assumedNote: string | null;
+  /** The ground the AD was sited for (the desert has its own order of VPs, DW p 63); null when not known. */
+  ground?: string | null;
+}
 
 const num = (v: unknown, fb: number) => (typeof v === 'number' && isFinite(v) ? v : fb);
 const short = (s: string) => s.replace(/\s*\(.*\)\s*$/, '').trim();
@@ -81,27 +85,36 @@ export function ownAdTypes(o: OrbatSet, doc: DoctrineSet | null = null): AdType[
 }
 
 /** The AD for a plan, with the doctrine's figures. */
-export function adOnPlan(a: AdType, doc: DoctrineSet): AdOnPlan {
+export function adOnPlan(a: AdType, doc: DoctrineSet, ground: string | null = null): AdOnPlan {
   const site = doctrineAt(doc, 'ad.siteM');
   const assumed = a.fus.some((f) => f.weapons.some((w) => w.assumed));
   return {
     ...a,
     releaseM: num(doctrineAt(doc, 'ad.releaseM'), 1500),
     minFus: num(doctrineAt(doc, 'ad.minFus'), 2),
+    ground,
     siteM: Array.isArray(site) && site.length === 2 ? [Number(site[0]), Number(site[1])] : [300, 1000],
     assumedNote: assumed ? `the Tps' SAM Launcher is not named in the chart: taken as the ${a.fus.flatMap((f) => f.weapons).find((w) => w.assumed)!.name} (as set)` : null,
   };
 }
 
-/** VP roles in priority: [pattern, what it is, priority (1 first)]. */
-const VP: [RegExp, string, number][] = [
-  [/^bridge\d*$/, 'the bridge', 1],
-  [/^gunArea\d*$/, 'the gun area', 1],
-  [/^hq$/, 'the HQ', 2],
-  [/^(assy\d*|vwa)$/, 'the Assy area', 3],
-  [/^res$/, 'the reserve', 3],
+/**
+ * VP roles in priority: [pattern, what it is, priority (1 first), priority in the desert]. The set is the books' (OOW1
+ * s6 p 27: HQs, armour concentrations, gun areas, reserves and vital bridges get the higher priority); the order among
+ * them off the desert is a decision (PlanDoctrine ad.vps, E). In the desert the order is printed (ad.vps.desert, D: DW
+ * s18 para 5 p 63): reserves, then key HQs, then gun areas, logistic installations and assault engineers, then MSR
+ * bottlenecks; crossing sites the highest in a break-in (DW p 64). The tank Sqn's Assy area before an attack (role
+ * tkHarbour: MIB p 118) is an armour concentration (OOW1 p 27).
+ */
+const VP: [RegExp, string, number, number][] = [
+  [/^bridge\d*$/, 'the bridge', 1, 1],
+  [/^gunArea\d*$/, 'the gun area', 1, 3],
+  [/^hq$/, 'the HQ', 2, 2],
+  [/^tkHarbour\d*$/, 'the tank Assy area', 2, 2],
+  [/^(assy\d*|vwa)$/, 'the Assy area', 3, 3],
+  [/^res$/, 'the reserve', 3, 1],
 ];
-export const vpOf = (role: string) => { const v = VP.find(([re]) => re.test(role)); return v ? { what: v[1], pri: v[2] } : null; };
+export const vpOf = (role: string, ground: string | null = null) => { const v = VP.find(([re]) => re.test(role)); return v ? { what: v[1], pri: ground === 'desert' ? v[3] : v[2] } : null; };
 
 /** A slot's centre in recipe metres (x across, y back toward home), when its shape gives one. */
 function centreOf(s: Recipe['slots'][number]): [number, number] | null {
@@ -115,11 +128,11 @@ function centreOf(s: Recipe['slots'][number]): [number, number] | null {
 }
 
 /** The plan's VPs in recipe metres, in priority (a defence's reserve from its footprint). */
-export function vpsOf(r: Recipe, doc: DoctrineSet): { role: string; what: string; pri: number; x: number; y: number }[] {
+export function vpsOf(r: Recipe, doc: DoctrineSet, ground: string | null = null): { role: string; what: string; pri: number; x: number; y: number }[] {
   const fp = footprints(doc, r);
   const out: { role: string; what: string; pri: number; x: number; y: number }[] = [];
   for (const s of r.slots) {
-    const v = vpOf(s.role);
+    const v = vpOf(s.role, ground);
     if (!v) continue;
     const c = centreOf(s) ?? (() => { const b = fp.find((q) => q.role === s.role); return b ? [b.x, b.y] as [number, number] : null; })();
     if (c) out.push({ role: s.role, ...v, x: c[0], y: c[1] });
@@ -137,12 +150,12 @@ const SITE_DEG = [-40, 40, 180, -100, 100, 0];
  */
 export function withAd(r: Recipe, doc: DoctrineSet, a: AdOnPlan): Recipe {
   if (r.ad) return r;
-  const vps = vpsOf(r, doc);
+  const vps = vpsOf(r, doc, a.ground ?? null);
   if (!vps.length) return r;
   const out: Recipe = JSON.parse(JSON.stringify(r));
   const at = new Map<string, number>();
   const where: string[] = [];
-  // the order the FUs go: the first-priority VPs (bridges, gun areas) in turn until each has `minFus` (the AD cover row
+  // the order the FUs go: the first-priority VPs (bridges, gun areas; in the desert the reserve and bridges) in turn until each has `minFus` (the AD cover row
   // wants that many over each), then every VP in priority, round again while FUs are left
   const first = vps.filter((v) => v.pri === 1);
   const order = [...Array.from({ length: a.minFus }, () => first).flat(), ...vps.filter((v) => v.pri > 1)];
@@ -172,18 +185,19 @@ const fmtM = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math
  * FU). Fail when a first-priority VP (a bridge, a gun area) has none; warn when one has fewer than `minFus` or another
  * VP has none. Plan metres; the FUs read from their `adN` items. Empty with no AD.
  */
-export function adRows(items: { role: string; pts: XY[] }[], recipe: Pick<Recipe, 'ad'>): Check[] {
+export function adRows(items: { role: string; pts: XY[] }[], recipe: Pick<Recipe, 'ad'>, ground: string | null = null): Check[] {
   const a = recipe.ad as AdOnPlan | undefined;
   if (!a) return [];
+  const gk = ground ?? a.ground ?? null;
   const fus = a.fus.map((f, i) => ({ f, it: items.find((x) => x.role === `ad${i + 1}` && x.pts.length) })).filter((x) => !!x.it).map((x) => ({ f: x.f, c: centre(x.it!.pts) }));
-  const vps = items.filter((i) => vpOf(i.role) && i.pts.length);
+  const vps = items.filter((i) => vpOf(i.role, gk) && i.pts.length);
   if (!fus.length || !vps.length) return [];
   const seen = new Set<string>();
   const parts: string[] = [];
   let st: CheckState = 'pass';
   const worse = (s: CheckState) => { const o = ['pass', 'warn', 'fail']; if (o.indexOf(s) > o.indexOf(st)) st = s; };
-  for (const v of vps.sort((p, q) => vpOf(p.role)!.pri - vpOf(q.role)!.pri)) {
-    const { what, pri } = vpOf(v.role)!;
+  for (const v of vps.sort((p, q) => vpOf(p.role, gk)!.pri - vpOf(q.role, gk)!.pri)) {
+    const { what, pri } = vpOf(v.role, gk)!;
     const c = centre(v.pts);
     const n = fus.filter((u) => u.f.effM - Math.hypot(u.c.x - c.x, u.c.y - c.y) >= a.releaseM).length;
     const no = v.role.match(/(\d+)$/)?.[1];
@@ -198,5 +212,40 @@ export function adRows(items: { role: string; pts: XY[] }[], recipe: Pick<Recipe
   }
   const ranges = [...new Set(a.fus.flatMap((f) => f.weapons).map((w) => `${w.name} ${fmtM(w.effM)}`))].join(', ');
   const fix = st === 'pass' ? '' : `; more fire units (${a.unit === 'bty' ? 'a Regt, or a second Bty' : 'a second Regt'}) or a longer reach (RBS-70 Bolide 8 km, 57 mm 6 km: p 317)`;
-  return [{ name: 'AD cover', st, reason: `${a.name} (${a.fus.length} fire units; ${ranges} slant), the FUs that engage ${fmtM(a.releaseM)} out: ${parts.join('; ')}; ${a.minFus} wanted over the bridges and gun areas${fix}${a.assumedNote ? `; ${a.assumedNote}` : ''}. Clear arcs, the radar's cover and the early warning: on the ground` }];
+  return [{ name: 'AD cover', st, reason: `${a.name} (${a.fus.length} fire units; ${ranges} slant), the FUs that engage ${fmtM(a.releaseM)} out: ${parts.join('; ')}; ${a.minFus} wanted over ${gk === 'desert' ? 'the reserve and the bridges (desert: reserves first, then HQs, then gun areas, DW p 63; crossing sites highest, DW p 64)' : gk === 'mountain' ? 'the bridges and gun areas; in the mountains the AD is concentrated on the defiles on the main axis, the gun areas and the logistic installations (MW p 247)' : 'the bridges and gun areas'}${fix}${a.assumedNote ? `; ${a.assumedNote}` : ''}. Clear arcs, the radar's cover and the early warning: on the ground` }];
+}
+
+/**
+ * AD sites in the mountains (MW p 247: the run-ins are canalized and the AD weapons cover them fairly well from dominating
+ * features): each fire unit's site against the ground within `ad.mountains.siteRadiusM`; within `siteTolM` of its highest
+ * point it is on a dominating feature, else the nearest higher site is named. Warns when fewer than half stand on one.
+ * World points through `toWorld` (the fit's frame); unchecked while the elevation is not loaded.
+ */
+export function adMountainRows(items: { role: string; pts: XY[] }[], recipe: Pick<Recipe, 'ad'>, toWorld: (p: XY) => XY, elev: (x: number, y: number) => number, doc: DoctrineSet): Check[] {
+  const a = recipe.ad as AdOnPlan | undefined;
+  if (!a) return [];
+  const R = num(doctrineAt(doc, 'ad.mountains.siteRadiusM'), 500), tol = num(doctrineAt(doc, 'ad.mountains.siteTolM'), 10);
+  const fus = a.fus.map((f, i) => ({ f, it: items.find((x) => x.role === `ad${i + 1}` && x.pts.length) })).filter((x) => !!x.it).map((x) => ({ f: x.f, c: centre(x.it!.pts) }));
+  if (!fus.length) return [];
+  // plan metres face the front (+y): the height's direction said as the plan sees it
+  const DIRS = ['ahead', 'ahead right', 'right', 'behind right', 'behind', 'behind left', 'left', 'ahead left'];
+  let read = 0, on = 0;
+  const below: string[] = [];
+  for (const u of fus) {
+    const w0 = toWorld(u.c), e0 = elev(w0.x, w0.y);
+    if (!Number.isFinite(e0)) continue;
+    let top = e0, at = { d: 0, deg: 0 };
+    for (let d = 100; d <= R + 1; d += 100) for (let k = 0; k < 16; k++) {
+      const t = (k * Math.PI) / 8, p = toWorld({ x: u.c.x + d * Math.sin(t), y: u.c.y + d * Math.cos(t) });
+      const e = elev(p.x, p.y);
+      if (Number.isFinite(e) && e > top) { top = e; at = { d, deg: k * 22.5 }; }
+    }
+    read++;
+    if (top - e0 <= tol) on++;
+    else below.push(`${u.f.name} ${Math.round(top - e0)} m below the height ${fmtM(at.d)} ${DIRS[Math.round(at.deg / 45) % 8]}`);
+  }
+  if (!read) return [{ name: 'AD sites', st: 'unchecked', reason: 'the heights round the fire units are not loaded yet' }];
+  const ok = on * 2 >= read;
+  return [{ name: 'AD sites', st: ok ? 'pass' : 'warn', reason: `${on} of ${read} fire units on a dominating feature (within ${tol} m of the highest ground within ${fmtM(R)}, E)${below.length ? `; ${below.join('; ')}` : ''}: in the mountains the run-ins to the targets are canalized and the AD covers them fairly well from dominating features (MW p 247)`,
+    ...(ok ? {} : { detail: { head: `${read - on} of ${read} fire units below the heights round them`, items: below, why: 'From low ground in a valley the AD sees the canalized run-in late; from the height over it the weapons cover it fairly well (MW p 247).', fix: ['Move each onto the height named, if a weapon and its crew can be got there', 'Keep the FUs over the defiles on the main axis, the gun areas and the logistic installations (MW p 247)'] } }) }];
 }

@@ -170,6 +170,11 @@ const HEIGHT_DEFAULT = 0.5;
 const MIN_CARD_PX = 480;
 /** Added to every stop, px, so the band's last line (a gauge's caption, a list's last row) is not cut at the bottom. */
 const EXTRA_PX = 40;
+/**
+ * A band shorter than this, px (a short window, the tabs on two or three rows, the Ext View's key bar), and the card
+ * goes tight: less air in the tabs, strip, key bar and band, so a rose or a map still fits the band whole.
+ */
+const TIGHT_BELOW = 240;
 /** Space between the band's columns, and the narrowest and widest a column may be, px. */
 const COL_GAP = 28;
 const COL_MIN = 262;
@@ -354,6 +359,10 @@ const CSS = `
 .ms-ggd-f{flex:none;padding:6px 14px 7px;font-size:12px;color:#c3cbd3;border-top:1px solid rgba(255,255,255,.1);display:flex;gap:6px 16px;flex-wrap:wrap;align-items:center}
 .ms-ggd-f .ms-ggd-k{margin-right:4px}
 .ms-ggd-f>span{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px 0}
+/* The switches and key items are the bar's own flex items, so the page line shares the last row. */
+.ms-ggd-f>.ms-ggd-keys{display:contents}
+.ms-ggd-kp{display:inline-flex;align-items:center;white-space:nowrap}
+.ms-ggd-f .ms-ggd-who{margin-right:0}
 /* Whose options in the key bar: X and a two-way switch, the side shown lit. */
 .ms-ggd-who{display:inline-flex;align-items:center;margin-right:12px}
 .ms-ggd-who>button{font:inherit;font-size:12px;padding:2px 9px;border:1px solid #4a535e;background:#20262e;color:#c3cbd3;cursor:pointer}
@@ -369,6 +378,27 @@ const CSS = `
 .ms-ggd-dots>i{width:7px;height:7px;border-radius:50%;background:#4a535e}
 .ms-ggd-dots>i.ms-on{background:#ffd27a}
 .ms-ggd-band.ms-more::after{content:"";position:absolute;top:12px;right:0;bottom:10px;width:42px;pointer-events:none;background:linear-gradient(90deg,rgba(27,31,37,0),#1b1f25 85%)}
+/* A picture-and-words pair split over two columns: the words left alone take the column's whole width. */
+.ms-ggd .ms-ggbr-two>div:only-child{grid-column:1/-1}
+/* A piece still taller than the band once split and its pictures shrunk (a very short window): it ends in a fade
+   at the band's foot, never a hard cut through a line, and its words are on hover. */
+.ms-ggd .ms-ggd-flow>.ms-ggb-sec.ms-ggd-cut{cursor:help;-webkit-mask-image:linear-gradient(#000 calc(100% - 26px),transparent);mask-image:linear-gradient(#000 calc(100% - 26px),transparent)}
+/* Tight (TIGHT_BELOW): the chrome gives up air. A tab keeps its key, name and answer dot (the word is on its hover,
+   the open tab's answer in the strip); the strip's fact lines take one line; the map switch shows its digits. */
+.ms-ggd.ms-tight .ms-ggd-h{padding:5px 8px 4px}
+.ms-ggd.ms-tight .ms-ggd-tab{padding:3px 8px 3px 5px}
+.ms-ggd.ms-tight .ms-ggd-tt{flex-direction:row;align-items:center;gap:6px}
+.ms-ggd.ms-tight .ms-ggd-ta>span:not(.ms-ggd-fd):not(.ms-ggd-ring){display:none}
+.ms-ggd.ms-tight .ms-ggd-btn{height:26px}
+.ms-ggd.ms-tight .ms-ggd-mode{padding:3px 16px}
+.ms-ggd.ms-tight .ms-ggd-sum{padding:6px 16px 7px}
+.ms-ggd.ms-tight .ms-ggd-ans{padding:5px 12px 6px}
+.ms-ggd.ms-tight .ms-ggd-ans-v{font-size:19px}
+.ms-ggd.ms-tight .ms-ggd-fk,.ms-ggd.ms-tight .ms-ggd-fs{-webkit-line-clamp:1}
+.ms-ggd.ms-tight .ms-ggd-band{padding:8px 16px 6px}
+.ms-ggd.ms-tight .ms-ggd-band.ms-more::after{top:8px;bottom:6px}
+.ms-ggd.ms-tight .ms-ggd-f{padding:4px 14px 5px}
+.ms-ggd.ms-tight .ms-ggd-wl{display:none}
 /* The Legend tab. */
 .ms-ggd .ms-ggl-strip{margin-top:0}
 .ms-ggd .ms-ggl-list{margin-top:0;padding-top:0;border-top:0;max-height:none}
@@ -537,6 +567,8 @@ export class GroundGuideDetail {
   private _inset: { side: 'right' | 'left'; px: number } = { side: 'right', px: 0 };
   private _onWinResize: (() => void) | null = null;
   private _h0 = 0;
+  /** What the tight decision was last taken for (window, card height, inset, tab kind, Ext View): `_fitChrome`. */
+  private _tightKey = '';
   private _band: HTMLElement | null = null;
   private _clip: HTMLElement | null = null;
   private _flow: HTMLElement | null = null;
@@ -698,8 +730,11 @@ export class GroundGuideDetail {
       sw.setAttribute('aria-label', 'On the map (Shift+1-5)');
       sw.title = "What the Ext View draws on the map. Shift + a tab's digit shows or hides its group; ` shows everything for now; Q the labels. 1 and 2 are on by default.";
       sw.append(el('span', 'ms-ggd-k', '⇧'));
+      // The key, then its word (`ms-ggd-wl`: a tight card shows the key alone, the word on hover).
       const btn = (text: string, pressed: boolean, title: string, go: () => void): void => {
-        const b = el('button', undefined, text) as HTMLButtonElement;
+        const sp = text.indexOf(' ');
+        const b = el('button', undefined, sp < 0 ? text : text.slice(0, sp)) as HTMLButtonElement;
+        if (sp >= 0) b.append(el('span', 'ms-ggd-wl', text.slice(sp)));
         b.type = 'button';
         b.title = title;
         b.setAttribute('aria-pressed', String(pressed));
@@ -709,7 +744,7 @@ export class GroundGuideDetail {
         });
         sw.append(b);
       };
-      MAP_GROUPS.forEach((m, i) => btn(`${i + 1} ${MAP_GROUP_LABEL[m]}`, now[m], `Shift+${i + 1}: ${MAP_GROUP_WHAT[m]}`, () => mp.set(m)));
+      MAP_GROUPS.forEach((m, i) => btn(`${i + 1} ${MAP_GROUP_LABEL[m]}`, now[m], `${MAP_GROUP_LABEL[m]} · Shift+${i + 1}: ${MAP_GROUP_WHAT[m]}`, () => mp.set(m)));
       btn('` All', now.all, 'Backquote: every group on the map for now; again for your groups', () => mp.all());
       btn('Q Labels', now.labels, 'Q: the labels on the Ext View map on or off', () => mp.labels());
       keys.append(sw);
@@ -723,9 +758,13 @@ export class GroundGuideDetail {
       ['V', 'Gr Scope'],
       ['K', 'all keys'],
     ];
+    // Each key with its words as one item that never breaks: the key bar wraps between items, and the page line
+    // takes the last row's right end instead of a row of its own.
     for (const [k, t] of rows) {
-      for (const kk of k.split(' ')) keys.append(el('span', 'ms-ggd-k', kk));
-      keys.append(`${t} `);
+      const pair = el('span', 'ms-ggd-kp');
+      for (const kk of k.split(' ')) pair.append(el('span', 'ms-ggd-k', kk));
+      pair.append(t);
+      keys.append(pair);
     }
   }
 
@@ -940,7 +979,7 @@ export class GroundGuideDetail {
     clip.append(flow);
     band.append(clip);
     const foot = el('div', 'ms-ggd-f');
-    const keys = el('span');
+    const keys = el('span', 'ms-ggd-keys');
     this._keysEl = keys;
     this._buildTabs();
     const page = el('span', 'ms-ggd-page');
@@ -1080,13 +1119,19 @@ export class GroundGuideDetail {
       if (!a) {
         line.replaceChildren(' ');
         line.title = '';
+        const b0 = this._tabs.get(t);
+        if (b0) b0.title = `${TAB_LABEL[t]} (${TAB_KEY_OF[t]})`;
         continue;
       }
       const mark = el('span', a.ring ? 'ms-ggd-ring' : 'ms-ggd-fd');
       if (a.tone && !a.ring) mark.dataset.tone = a.tone;
       line.replaceChildren(...(a.tone || a.ring ? [mark] : []), el('span', undefined, a.tab));
       line.title = a.tab;
-      this._tabs.get(t)?.setAttribute('aria-label', `${TAB_LABEL[t]}: ${a.tab}`);
+      const b = this._tabs.get(t);
+      if (b) {
+        b.setAttribute('aria-label', `${TAB_LABEL[t]}: ${a.tab}`);
+        b.title = `${TAB_LABEL[t]}: ${a.tab} (${TAB_KEY_OF[t]})`; // the answer word, hidden on a tight card
+      }
     }
     const mode = this._mode;
     if (!mode) return;
@@ -1185,6 +1230,8 @@ export class GroundGuideDetail {
     flow.style.transition = 'none';
     flow.style.transform = '';
     for (const r of Array.from(flow.querySelectorAll(':scope > .ms-ggd-rule'))) r.remove();
+    this._unsqueeze(flow);
+    this._fitChrome();
     const W = clip.clientWidth;
     const H = clip.clientHeight;
     this._w = W;
@@ -1214,9 +1261,13 @@ export class GroundGuideDetail {
       // check, the event matrix, the weather) was clipped: the card never scrolls, and its lower rows could not be seen.
       const items: Array<{ t: HTMLElement; after: HTMLElement | null }> = [];
       for (const t of tiles) {
-        const first = t.offsetHeight > H ? this._splitList(t, H) : [t];
-        // A piece still taller than the band (one long card in a list) is split once more, inside that card.
-        const parts = first.flatMap((q) => (q.offsetHeight > H ? this._splitList(q, H) : [q]));
+        // A piece still taller than the band is split again, a level deeper each pass (the tile, its list of cards,
+        // the rows of one card: the air tab's LZ cards need three), until it fits or nothing is left to split.
+        let parts = [t];
+        for (let pass = 0; pass < 4 && parts.some((q) => q.offsetHeight > H); pass++) {
+          parts = parts.flatMap((q) => (q.offsetHeight > H ? this._splitList(q, H) : [q]));
+        }
+        for (const p of parts) if (p.offsetHeight > H) this._squeeze(p, H);
         parts.forEach((p, i) => items.push({ t: p, after: i ? parts[i - 1] : null }));
       }
       const fit = this._firstFit(items, per, colW, W, H);
@@ -1390,9 +1441,10 @@ export class GroundGuideDetail {
     const after: Element[] = [];
     for (let n = list.nextElementSibling; n; n = n.nextElementSibling) after.push(n);
     for (const a of after) a.remove();
-    // A list led by a `data-split-head` row (the weather's mission name) carries that row again in each piece, so a
-    // continued row still says what it belongs to; the head never goes alone.
-    const head = list.firstElementChild?.hasAttribute('data-split-head') ? list.firstElementChild : null;
+    // A list led by a head row (`data-split-head`: the weather's mission name; `.ms-gia-h`: an IPB card's id line, LZ 1,
+    // DZ 2, A1) carries that row again in each piece, so a continued row still says what it belongs to; the head never
+    // goes alone.
+    const head = list.firstElementChild?.matches('[data-split-head], .ms-gia-h') ? list.firstElementChild : null;
     const min = head ? 2 : 1;
     const out: HTMLElement[] = [t];
     let cur = t;
@@ -1418,6 +1470,7 @@ export class GroundGuideDetail {
       curList = nl;
     }
     cur.append(...after);
+    this._spillAfter(t, cap, cur, after, h, out);
     return out;
   }
 
@@ -1460,7 +1513,19 @@ export class GroundGuideDetail {
       curTbl = nt;
     }
     cur.append(...after);
+    this._spillAfter(t, cap, cur, after, h, out);
     return out;
+  }
+
+  /** The lines after a list (its note) stay with the last piece, or take a piece of their own when they make it too tall. */
+  private _spillAfter(t: HTMLElement, cap: HTMLElement, cur: HTMLElement, after: Element[], h: number, out: HTMLElement[]): void {
+    if (!after.length || cur.offsetHeight <= h) return;
+    const next = t.cloneNode(false) as HTMLElement;
+    const c2 = cap.cloneNode(true) as HTMLElement;
+    if (!c2.querySelector('.ms-ggd-cont')) c2.append(el('span', 'ms-ggd-cont', ' continued'));
+    next.append(c2, ...after);
+    cur.after(next);
+    out.push(next);
   }
 
   /** `_splitList` for any other tile: its blocks (pictures, lines, notes) after the caption over pieces, in order. */
@@ -1480,6 +1545,80 @@ export class GroundGuideDetail {
       cur = next;
     }
     return out;
+  }
+
+  /**
+   * Tight or not (TIGHT_BELOW), decided again only when what sets the band's height changes (the window, the card's
+   * height or inset, a tab without the strip, the Ext View's tabs and keys): a rebuild as the cursor moves reads
+   * nothing more. The strip's ratchet is let go across the change, since tight it is shorter, and set again after.
+   */
+  private _fitChrome(): void {
+    const root = this._el;
+    const clip = this._clip;
+    if (!root || !clip) return;
+    const sum = this._sum;
+    const sumOn = !!sum && !sum.hidden;
+    const key = `${window.innerWidth}x${window.innerHeight}|${root.style.height}|${root.style.left}|${root.style.right}|${sumOn ? 1 : 0}|${this._ext ? 1 : 0}`;
+    if (key === this._tightKey) return;
+    this._tightKey = key;
+    if (sum) sum.style.minHeight = '';
+    root.classList.remove('ms-tight');
+    if (clip.clientHeight < TIGHT_BELOW) root.classList.add('ms-tight');
+    if (sum && sumOn) sum.style.minHeight = `${sum.offsetHeight}px`;
+    this._rect = null;
+  }
+
+  /**
+   * A piece still taller than the band once split (a rose, a map, a picture beside its words, on a short window): its
+   * pictures shrink to fit, the biggest first and never under 72 px, a shrink that gains nothing undone; words that
+   * still run past the band's foot end in a fade (`ms-ggd-cut`) with the whole text on hover. Never a scroll bar.
+   */
+  private _squeeze(t: HTMLElement, H: number): void {
+    const pics = Array.from(t.querySelectorAll<SVGSVGElement | HTMLCanvasElement | HTMLImageElement>('svg, canvas, img'))
+      .filter((p) => !p.parentElement?.closest('svg'))
+      .map((p) => ({ p, r: p.getBoundingClientRect() }))
+      .filter(({ r }) => r.height >= 72 && r.width > 0)
+      .sort((a, b) => b.r.height - a.r.height);
+    for (const { p, r } of pics) {
+      const before = t.offsetHeight;
+      if (before <= H) break;
+      const to = Math.max(72, r.height - (before - H));
+      if (to >= r.height - 1) continue;
+      const box = p instanceof SVGSVGElement && !p.hasAttribute('viewBox');
+      // An SVG drawn without a viewBox is in px: give it one so it scales instead of being cropped.
+      if (box) p.setAttribute('viewBox', `0 0 ${Math.round(r.width)} ${Math.round(r.height)}`);
+      const k = to / r.height;
+      p.style.width = `${Math.round(r.width * k)}px`;
+      p.style.height = `${Math.round(to)}px`;
+      p.setAttribute('data-ggd-sq', box ? 'vb' : '');
+      if (t.offsetHeight >= before) {
+        // The words beside it are the taller part: the picture keeps its size.
+        p.style.width = p.style.height = '';
+        if (box) p.removeAttribute('viewBox');
+        p.removeAttribute('data-ggd-sq');
+      }
+    }
+    if (t.offsetHeight > H) {
+      t.dataset.ggdTitle = t.title;
+      t.title = (t.innerText || t.textContent || '').replace(/\n{2,}/g, '\n').trim().slice(0, 1200);
+      t.style.maxHeight = `${H}px`;
+      t.classList.add('ms-ggd-cut');
+    }
+  }
+
+  /** Undo `_squeeze` on tiles kept from an earlier layout: the band may be taller now. */
+  private _unsqueeze(flow: HTMLElement): void {
+    for (const p of Array.from(flow.querySelectorAll<HTMLElement | SVGSVGElement>('[data-ggd-sq]'))) {
+      p.style.width = p.style.height = '';
+      if (p.getAttribute('data-ggd-sq') === 'vb') p.removeAttribute('viewBox');
+      p.removeAttribute('data-ggd-sq');
+    }
+    for (const t of Array.from(flow.querySelectorAll<HTMLElement>(':scope > .ms-ggd-cut'))) {
+      t.classList.remove('ms-ggd-cut');
+      t.style.maxHeight = '';
+      t.title = t.dataset.ggdTitle ?? '';
+      delete t.dataset.ggdTitle;
+    }
   }
 
   private _showPage(animate = true): void {

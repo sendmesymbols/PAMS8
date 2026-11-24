@@ -229,6 +229,8 @@ a.toDeck('decision'); a.makeSlides('full');
 a.toJSON({ pictures: false }); a.fromJSON(doc);    // fromJSON: the kind follows the doc; Undo brings the old sheet back
 a.cancelRead(); a.undo(); a.giveBack(id); a.putBack(id);
 a.setH('06:00');                                   // re-times only what carries a time
+a.setLimits({ fwd: true, noPen: 'Y', by: '0600 D Day' });   // the aim's limitations; null clears them
+a.setDDay('2027-02-15'); a.setNow('D-1 1000');    // first / last lt and the moon; the time aval
 ```
 
 Host: `adminArea?: () => engine` (its `result`) feeds Adm and Log; `threat` (the Threat marker) is read for the en's
@@ -245,9 +247,11 @@ Events on `document`: `aprc-read`, `aprc-changed` (detail `{ doc }`).
 | `AprcHtml.ts` | pure | The page and the print document |
 | `AprcDocx.ts` | pure | The Word package |
 | `AprcDeck.ts` | pure | The slides (`DECK_IDS` by kind) and the refresh merge |
+| `AprcMechs.ts` | pure | The two Aprc books' mechanics: `layoutDef` / `coysUp`, `analysisDef`, `courseDef`, `visDef`, `writeTsDef`, `writeAim`, `apchTestsAttk`, `timeCalcAttk`, `nightOf`, `writeSketch`, `styleNotes`, `writeMechs`; `parseDTime`, `dClock` |
+| `AprcBooks.ts` | pure | The doctrine books' figures and heads (Doctrine_Review.md R69-R93): `GUN_DEPL`, `QUICK_ATTK`, `slantFactor` / `mtnAssault`, `MW_LIFT` / `liftDraft`, `LSF_CAS` / `casGroupsOf` / `casEstimate`, `readHeads` |
 | `GroundAppreciation.ts` | engine | Collects the readings, the sheet, exports |
 
-`node tools/aprc-test/run.mjs` runs 244 checks on the pure files (the attack's outline, numbering, copies, drafting, slides, readings kept, changes, typed cells by row among them).
+`node tools/aprc-test/run.mjs` runs 322 checks on the pure files (the attack's outline, numbering, copies, drafting, slides, readings kept, changes, typed cells by row among them).
 
 ## The attack
 
@@ -276,7 +280,7 @@ Pl, Aslt Pnr Pl, Loc of Bn HQ).
 | The ground, from own side | `GroundGuide.aorAround(obj, { from })` with the own start, else `{ away: true }` (read from the side away from the threat); the reading's sides are his, so they are mirrored to the attacker's Lt / Rt | 5, 8, 9, 10 as the defence; 7 Apchs onto the obj with the book's twelve heads in its order (Capacity by the book's 4 km for a Bde, p 2, and the IPB corridor widths below it, IPB book p 7; Depl Areas left to the planner); 6 Imp Tac Grs: the obj with the book's heads (Loc, Cover, Obsn toward own side, Domination from the ground; Effs if Captured a proposal) and his localities astride the apchs on the lines a defender of the MITG would hold; 4 Aim, 11a, 11c and Phases of Attk as proposals |
 | The IPB reading onto the obj | `GroundGuide.ipbApproachesAround(start, { readFor: 'attack', objective, extras: true })` from the own start (else a point 3 / 5 / 10 km back on own side for a Coy / Bn / Bde, said so) | 11b Pri of Apchs / Dir of Attk: turning and flanks before frontal (the user's rule; the book pp 3-4), Lt against Rt weighed head by head (length, going, water lines, NO-GO on the assault; only past each head's smallest real difference, `LT_RT_MIN`), the turning apch onto the choke on his MSR (OoW Vol II s6; IBB S35 p 140); AP-1 from the flank the weighing favours with its FUP (IBB p 201) and the blocking posn at the choke; AP-2; the Best Dir of Attk on the MITG; the Annex A weather in Met |
 | Symbols on the map | `writeSymbols` | 1 En, 2 Own, his disposns under Option 1, the strength counted |
-| The ORBAT | as the defence, with the ratio **own to en** against the 3 : 1 an attacker wants (MW p 80); the en, when none is marked, one level down in def, inf (as Check my plan takes him) | 13b Own Str, 13a Composn and Disposn (with the disposns marked) |
+| The ORBAT | as the defence, with the ratio **own to en** against the usual 3 : 1 an attacker keeps (IBB p 248; in mountains comparatively more, in sequence, MW p 80); the en, when none is marked, one level down in def, inf (as Check my plan takes him) | 13b Own Str, 13a Composn and Disposn (with the disposns marked) |
 | A checked attack | the Intelligent Deployment tab's Check my plan on an attack (`task: 'attack'`): each axis with its obj, FUP, SL and BOF, the phase, the recipe (Lt / Rt flank, frontal) | 16 Course A and 22a Gen Outline, AP-1 phases, FUP and BOF as drawn, Loc of Base of Fire, 22h(2) Loc, the tasks tables by phase (figures blank), 18 Advs / Disadvs from the check rows; its FUP is the own start the readings take |
 
 A defence check is not read into an attack, nor an attack check into a defence. Nothing of the en's options, his caps,
@@ -287,6 +291,115 @@ En Sit and Own Sit (Options Aval to En, Deductions, Own Str, Assessment of Tasks
 skeleton (its row names, nothing drafted or typed) makes no slide.
 
 **Host API.** `read({ at, from })`: `at` the objective, `from` the own start ([lng, lat]).
+
+## The two Aprc books (24 Nov 2026)
+
+The user gave **"Understanding Aprc - I"** (Maj M Zeeshan Asghar Ch; `Material/Literature/1. Books/12. Understanding Aprc.pdf`,
+a Bn-level study guide with a text layer: planning parameters, 2 up or 3 up, the vis of the en op and its linear models, the
+tablets of deduction heads, the sketch lists, def and attk specimens) and **"Mechs of Aprc (Attk)"** again, and chose all four
+refinements below. **Precedence (the user's ruling):** where a pamphlet prints a figure (IBB, OoW Vol I, the IPB book) it
+drives the draft and the guide's figure is shown beside it in the basis; a guide's figure drives only where no pamphlet
+prints one, and the basis says so. A Coy's attack takes Mechs of Aprc (Attk), a Bn's or a Bde's Understanding Aprc. Cites:
+`Understanding Aprc p N` is its Sec I (Mechanics) printed page; `Sec II sheet N` etc. its specimens; `Sec V p N` the tablets
+and linear models. The pure module is `AprcMechs.ts`; `writeMechs` runs at the end of every Read and again (through
+`retime`) when H, D Day, time now or a limitation changes.
+
+**The aim's limitations.** Selecting the Aim shows a **Limitations** box. Defence: as far fwd as tac feasible, no pen beyond
+line W / X / Y / Z, def a place at all costs, cause max attrition, delay the En for N hrs, not more than N Coys, ready by a
+D-time, a salient, the En has pen, others one a line. Attack: captured by a D-time, max destr (blocks the En wdr before the
+attk), at ni, the obj a tough area with bunkers, others. They are kept in the document (`doc.limits`, carried by Read, the
+file and the plan) and draft the aim as the book writes it: "To def the given AOR with fol limitations:-" with the
+limitations tabulated (pp 7-8, 22). With no ready-by given and H set, the def is to be ready by the last lt before the En
+attk (p 8), a proposal. API: `setLimits(patch | null)`, `limits()`.
+
+**The def laid by the aim** (`layoutDef`, pp 3-4): no pen beyond a line: the depth on it, the FDLs on a line 3-5 km ahead
+(the line of no pen, OoW Vol I p 17); as far fwd as tac feasible: the FDLs on the line 5-8 km past the border (a Bn;
+another echelon is told the figures are a Bn's); def X at all costs: the depth on X; a salient and a pen are prompts.
+**Coys up** by the FDL frontage on IBB Annex U App 6 p 481 (two up 4.5 km, three up 6.5 km, wider an extended frontage,
+OoW Vol I pp 5, 82-83), the guide's table beside it (p 4: up to 6.5 km 2 up / 2 up, 7-10 km 3 up / 2 up, beyond 10.5 km 3 up /
+3 up). The depth line at the pamphlet's Bn depth (2.5-4 km), the guide's 3-5 km beside; screens 1-1.5 km ahead of the
+FDLs (pp 2-3; a screen always, OoW Vol I Annex A p 102); protective dets where the parameter puts them, an adv posn on a
+natural obs (OoW Vol I p 14). Drafted into Lines of Def (pri with the reasons for pri 1) and DP 1, with three new DP heads:
+**C Pen Posns** (1,500 m behind the FDLs on the most threatened apch, p 14; IBB p 310 for the time), **Res** (p 6; OoW Vol I
+pp 19-20) and **Use of Armr / ATGM** (pp 5-6; OoW Vol I p 21; IBB S54 pp 281-282).
+
+**Course A and its analysis.** Course A is written as the book's paragraph (p 11): def along the line, FDLs and depth
+(a Coy to each BUA, or the plan check's posns), screens, protective dets, res, C attk objs in pri, C pen posns, the bias of
+def and of A tk def, commencing and completing the prep; what the data cannot give is named in its prompts. Advs and
+disadvs under the guide's heads (Aim, Lines of def, Protective dets, Apchs, Minor; Sec II sheet 10), the limitations turned
+into advs (p 12), the plan check's rows after them.
+
+**Vis of En Op** (a new para in En Sit) tier by tier at the guide's figures (pp 9-11; the linear models Sec V pp 5-8): H is
+when the En crosses the border; the SZ cleared at 1 km/h (KYE 2019 p 216 beside), a delay line held 4 h (6 along an obs or
+BUAs), the screens 1 h, probing the rest of the day lt, the En attk after last lt and not before 2200 hrs, Ph 1 4 h, Ph 2 2 h,
+12 h to recycle before the str pt; best to the En (the earliest times), "En is likely to". The **En Reactions and Own Ctr
+Actions** table is laid in the three phases of the def battle (prep, aslt, C attk; p 13, Anx A pp 27-28) with the IPB
+decision rows in prep and the plan's what-if rows in C attk; the C pen posn occupied not later than 1.5-2 h after the En H
+(IBB p 310).
+
+**Time and Space (def).** The sheet's header takes **D Day** (a date: first / last lt and the moon are worked out for it)
+and **Now** (a D-time, "D-1 1000"); `setDDay`, `setNow`, settings `groundAppreciation.dDay` / `timeNow`. Time Data gains
+Time Now, First Lt and Last Lt and the time aval split into day lt and ni hrs. The Time Req takes the guide's standard list
+(battle procedure, C pen, screens, rehearsals, OHP, cam and clt, F of F, wire, coord, Bde rehearsals: the specimen hours of
+Sec II sheet 7, said so) and, for a Bn or Bde, the prep of the main def at 36 working hours (OoW Vol I p 39); two totals, one
+row after the other (as the specimen adds them) and the critical path. Essential timings back from the ready-by; less or
+more time aval with the pri of work (Sec IV pp 7-8).
+
+**The attack.** Pri of Apchs gets **Apchs on the Planning Parameters** (pp 16-17): per own apch, the FUP in own area (the FUP
+1,000-1,200 m short, IBB p 201; the guide's 1,000-1,500 m beside), a BUA in Ph 1 (confirm its size: 500 x 500 m or more of
+pakka houses rules it out), Ph 1 ending on a distinguishable feature, the MITG in Ph 1, a Pl or more of the En marked on it
+away from the obj (discard), room for the force (IPB book p 7). Capacity of an apch now by the IPB widths (Coy 0.5, Bn 1.5,
+Bde 3, Div 6 km), the guides' 4 km (Mechs p 2) and 2.3 / 3.2 / 6 km (p 18) beside. The analysis of AP-1's apch takes the
+tests. The **Time Calc** is worked out in the book's 18 rows: the plan's march, assault and Phase 2 when Check my plan timed
+them, else the books' minutes (a Coy: Mechs p 14 and p 5; a Bn: pp 21, 24, the assault at 100 m in 3 min from the FUP),
+backward from the captured-by time (H not later than), forward from H otherwise (Mechs p 13). It reproduces both books'
+specimens (a Bn: H 0110, A hr 0348; a Coy: H 0200, A hr 0315). With the night of D Day the mov from the FAA, H and Ph 1 are
+kept in the dark: "adv all timings by N" when a shift does it (Sec III sheet 7), else at least H and Ph 1 with the mov by covered routes and smk, never past the msn time. Time Data, Essential Timings (BOF by
+H-45, blocking posn H-20, feint H-30; pp 19-20) and more / less time (Mechs p 15) follow; Timing of Attk gives the moon's
+quarter, when it is up and the dark spans (moonlight: 5 degrees up and a quarter lit), with dawn and dusk in the prompts
+(OoW Vol II pp 26-27).
+
+**Deduction heads, tables and the sketch.** The def's common deductions carry the tablets' heads (Sec V p 1) as prompts;
+the DP 1 tasks table takes the guide's columns (Inf Pl, Armr Tp, LAT Pl, HAT Pl, Engrs Sec, Remarks; rows for flk
+protection, res and obs laying); typed cells follow a renamed column by its head (`colMap`). A new annex part, **ANX P:
+SKETCH**, numbered afresh, lists the **Details to be Marked** (def Anx P pp 31-32, marked two steps down p 14; attk Anx Q
+pp 34-35) with what of each is on the map (symbols by name and label, the plan check's posns, by hand, by eye).
+
+**The books' writing rules** (`styleNotes`): the aim starts with "To" (pp 8, 22); in the def a course does not (p 11), a
+deduction never opens with "Keeping in view" (p 8), the Vis says "En is likely to" and holds no own response (p 9), an adv
+names the ground (p 12). The notes show in the paragraph panel and as "Writing rules N" under the outline's progress; the
+attack keeps "Keeping in view" (the guide's own attk specimens use it).
+
+## The doctrine books (24 Nov 2026)
+
+The GroundAppreciation rows of `Doctrine_Review.md` (R65-R93), filled from the books the user gave (IBB, OoW Vol I / II, DW,
+MW, MIB, lsf, IDD, SO's Hbk 2019 Sec 12). Every figure carries its book and printed page; where a book prints no figure the
+text says so; where two books differ both are kept. Figures and the heads a Read adds live in `AprcBooks.ts`; the heads to
+consider are prompts in the outlines (`AprcModel.ts`); the drafts ride in `writeTimeReq` and `writeMechs`.
+
+| Row | What the sheet does | Book and page |
+| --- | --- | --- |
+| R69 | Time Req (def): **Depl of the DS fd Bty** (a Bn) / **fd Regt** (a Bde), at the ni figure, not on the critical path; the attack's essential timings: the DS guns to start their depl not later than H-40 min (ni) / H-20 (day), a Bde's Regt H-90 / H-45 | IBB p 122 para 5 (Bty 20 / 40 min, Regt 45 / 90, med 30 min / 1 h and 1 / 2 h, registration 20 min each + 20); p 154 (ni without daylight recce: Bty 2 h, Regt 4-5 h, Div Arty 12-14 h); p 170 para 5 (arty orders may govern H) |
+| R70, R82 | Limitations box (attack), **A quick attk**: the Time Calc's rows before H become contact to H, a Bn by the Annex L drill (recce H-100 to H-60, orders H-50 to H-35, in the FUP H-10: 100 min), a Coy 45 min (inside MIB's 30-60 and IBB's at most 30-45); essential timings say "Contact not later than". In the def the reactions table's Aslt Ph gets the En's quick attk off contact (a Coy gp 30-60 min, a Bn gp 60-100 min) | MIB p 89, pp 96-97, Annex L pp 347-348; IBB p 133 |
+| R72 | The Vis's basis: an En Bn's Ph 1 not complete 1.5-2 h after H, a Bde's 3 h; an En Bde attk in at least two phases to 2,000-3,000 m. A depth under 2 km cites p 312 | IBB S57 para 11 p 310, para 17 p 312 |
+| R74 | Limitations box (def), **Line of denial (given)**: tabulated in the aim ("Integrity of Line Y, the line of denial, to be preserved"); with no line of no pen set it lays the def as one; a line of no pen behind it is flagged; the analysis says whether the def preserves it. A Bde / Div AOR's depth line is tested on its obs. The line is drawn on the trace (a band under it, "Line of Denial" beside its letter: `AorFrame.denial`, `aorMapSvg`), on the slides' traces, and listed in the sketch annex (on the trace or not); changing it draws the trace again | OoW Vol I pp 17-18 (para 24 a, e, f; para 25) |
+| R75 | DP 1 Res prompts: the four factors, the three decisions (point, timing, dir), contingencies | OoW Vol I pp 19-20 |
+| R77 | Attack: **Leading En Option** (under the options), **Emp of Res** (Own Sit common deductions), **Contingency Plans** (Exec, after Coord Instrs), silent / noisy in Use of Arty | OoW Vol II pp 27, 30-32 |
+| R79 | Desert ITG heads (def ITGs, attack Pri of Objs) | DW pp 7, 20, 38 |
+| R80, R88 | Time Req's prep row on the ground read: desert trenches by frames (6 h a wpn crew, 4-6 h for the frames; fwd and rev slope double the stores); mountains (digging slower, no figure; cold-weather maint 5 times) | DW Annex B p 97, p 95; MW pp 147, 262 |
+| R81 | A Read with a mounted own unit (ORBAT APCs) adds **Dismounting Area** to AP-1's Depl Areas | MIB pp 90, 120-123 |
+| R83 | Def prompts: the Gr from the En view, interdiction tgts, spoiling attks; think two down in the DP 1 tasks | MIB pp 161-162 |
+| R84 | DP 1 Str Pt prompts (mountains): a Pl str pt with 30 days a Coy posn, posts 7 days, 1/3 always in it; pri of work | MW pp 151-152, 166, 172, 176 |
+| R78 | Kind **Withdrawal** (`wdr`): REVIEW OF SIT, AIM, FACTORS as the book groups them (Terrain and Weather, Time and Space, Own and En Sit, Int / Security / Deception, Dmls / Air / Adm), COURSES with the main decisions, PLAN as the orders and Annex A's exec para, Anx P sketch (Annex P / Q). A Read takes the AOR round the MITG as the new def posn: Gen Description, Apchs, Obs, Cover, Weather (`writeGround`), Routes Back, the new posn's lines, the lines forward of it as intmed posns (those on an obs first), routes to keep open / block, brs on the En apchs (`writeGroundWdr`). Limitations: new posn, posn denied until, no rearward mov before, all tps clear of a line by, delay fwd of the new posn, by day; they draft the aim, the time data (last lt D Day, first lt D+1, hrs of darkness), the Time Req (new posn 36 working hrs a Bn, 12 h a Coy), the essential timings (prep NLT, finish before first lt, mov to the rear in darkness, short / in time), ni or day with the moon, the sequence (`writeTsWdr`) | OoW Vol III pp 1-16 (main decisions pp 6-7, factors pp 7-16), 19, 24, 31-35, 39-45, 54-56, 68-70, Annex A pp 71-74, Annexes P, Q pp 75-76; OoW Vol I p 39 |
+| R85 | Limitations box (attack), **Climb SL to Obj (m)**: the FUP-to-obj row on the slant (factor table, the row at or next above the angle; none below 30 degrees) plus 1 h for every 350 m of climb. In mountains a Read takes the climb off the 30 m elevation through the Ground Guide (`sectionsAround` at the checked plan's SL, else its FUP, else the leading apch's FUP, against the MITG's), the angle on their map distance; a typed climb overrides it; the Time Calc says which it used | MW Annex F pp 311-313 |
+| R86 | A Read in mountains adds **Mules and Porters** under Adm and Log: the attack's build-up and maint (a Bn 16 vehs, 582 mules / 1,164 porters; a Bde 1,746 / 3,492), F ech pri 1 / pri 2; the def's maint (158 mules a week, 123 a lift of amn; a Bde's not printed) | MW pp 142, 145-146, 322-325, 330-331 |
+| R90 | Def Adm and Log prompts: commodity pts and their hours, 1st line holdings, cas evac 4 h / 12 h | lsf pp 23-27, 47, Annex L pp 81-82 |
+| R91 | A Read with the ORBAT adds **Cas Estimate** under Adm and Log: own strength by rank and arm (the ORBAT's offr / jco / sldr) at the battle cas rates, intense / moderate / low, the sick at 0.10 %, ADS needed at 75 a day | lsf pp 47-51, Annex K p 80 |
+| R92 | Attack, the En on a DCB: its obs plan, strengths and vulnerabilities as prompts | IDD pp 3, 5-8 |
+| R93 | Air sp requests (pre-planned up fd units, Bde HQ, Div HQ, ASOC; emergency) in Coord Instrs (def) and DF Plan (attack) | SO's Hbk 2019 Sec 12 pp 1203-1204 (no timings printed) |
+
+The heads a Read adds (`readHeads`) stay on a later Read where the planner wrote in them, or where the reading behind them
+was not taken that time; otherwise they go with the condition.
 
 ## Not built yet
 
@@ -300,3 +413,8 @@ skeleton (its row names, nothing drafted or typed) makes no slide.
 - Adm and Log from the Admin Area finder needs the host to pass `adminArea` (SymbolEngine does not yet).
 - The move in by road: the straight line is a floor; the Move Planner's road engine is not called.
 - Live-map slides (all slides are screen-only).
+- From the doctrine review: the AOR lines' 1,800 m spacing (`GroundGuideAor`, no book figure: M) is the Ground Guide's;
+  the Gr Scope rail draws a line of denial only when its frame carries one (`AorFrame.denial`), and the guide does not
+  set it yet; the climb read is the height difference of the two ends, not the ascent along the way; the withdrawal
+  does not read Check my plan's built withdrawal, the ORBAT or the move back by road; the sub-conventional outline (R89)
+  is out of scope.

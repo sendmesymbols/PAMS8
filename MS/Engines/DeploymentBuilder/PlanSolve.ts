@@ -31,7 +31,11 @@ export interface CheckDetail {
   whyShort?: string;
 }
 /** `word`: the verdict's own word where the generic one misleads (a move the enemy beats reads "Too late", not "Fail"). */
-export interface Check { name: string; st: CheckState; reason: string; detail?: CheckDetail; word?: string }
+export interface Check {
+  name: string; st: CheckState; reason: string; detail?: CheckDetail; word?: string;
+  /** What was measured and its limit, for a row the ground or the light may judge again (PlanContext.applyContext). */
+  m?: number; limitM?: number; limitSrc?: string;
+}
 
 /** A check as indented text lines under its row (Copy as Text): its items, why and fixes. */
 export function detailLines(c: Check, indent = '      '): string[] {
@@ -300,7 +304,10 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     }
     if (r.perSlot) {
       const d = num(r.ahead, 350);
-      for (const b of fwdBoxes(r.perSlot)) add(s.role, s.sym, label, [boxPt(b.c, 0, b.h / 2 + d, b.turn)]);
+      // a weapon's alternative (rrAlt: planned, named ...Alt) follows the alternates setting as the posns' alternates do
+      const isAlt = !!s.planned && /Alt$/.test(s.role);
+      if (isAlt && opts.alternates === 'none') continue;
+      for (const b of fwdBoxes(r.perSlot)) add(s.role, s.sym, label, [boxPt(b.c, 0, b.h / 2 + d, b.turn)], { planned: s.planned || undefined, hidden: (isAlt && opts.alternates === 'hidden') || undefined });
       continue;
     }
     if (r.coversGap) {
@@ -482,7 +489,7 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     frontageM = e.x1 - e.x0; depthM = e.y1 - e.y0;
     const wd = withdrawalGeometryRows(items, recipe, doc);
     rows.push(...wd.rows);
-    for (const [n, why] of [['Routes hidden', 'the routes back in the En view from the threat marker or the En FUP'], ['Behind an obstacle', 'water between the old posn and the intermediate posn']] as const) rows.push({ name: n, st: 'unchecked', reason: `${NT}: ${why}` });
+    for (const [n, why] of wd.grey ?? [['Routes hidden', 'the routes back in the En view from the threat marker or the En FUP'], ['Behind an obstacle', 'water between the old posn and the intermediate posn']]) rows.push({ name: n, st: 'unchecked', reason: `${NT}: ${why}` });
     conf.push(...wd.confirm);
   } else if (!isAttack) {
     const fpPts = fp.flatMap((b) => [boxPt(b.c, -b.w / 2, -b.h / 2, b.turn), boxPt(b.c, b.w / 2, b.h / 2, b.turn)]);
@@ -538,15 +545,60 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     if (res && fwd.length) {
       const back = num(doctrineAt(doc, recipe.echelon === '16' ? 'cpen.behindFwdM.bn' : recipe.echelon === '18' || recipe.echelon === '21' ? 'cpen.behindFwdM.bde' : 'cpen.behindFwdM.coy'), 400);
       const far = Math.max(...fwd.map((b) => dist(res.c, P(b.c.x, b.c.y - b.h / 2 - back))));
-      const kmh = opts.mountedReserve ? num(doctrineAt(doc, 'moves.tankKmh.go'), 24) : opts.reserveKmh ?? num(doctrineAt(doc, 'cpen.footKmPerH'), 5), settle = num(doctrineAt(doc, 'cpen.settleMin'), 5);
+      const mountedRes = !!opts.mountedReserve || resSlot?.mounted === true;
+      const kmh = mountedRes ? num(doctrineAt(doc, 'moves.tankKmh.go'), 24) : opts.reserveKmh ?? num(doctrineAt(doc, 'cpen.footKmPerH'), 5), settle = num(doctrineAt(doc, 'cpen.settleMin'), 5);
       const min = Math.round((far / 1000) * (60 / kmh) + settle);
-      // the reserve's time: a depth Coy's local counter-attack 30 min at Coy / Bn level, a Bde reserve 2-3 h, a Div's 4-6 h (IBB p 279)
-      const want = recipe.echelon === '18' || recipe.echelon === '21' ? num(doctrineAt(doc, `check.reserveMin.${recipe.echelon}`), 120) : num(doctrineAt(doc, 'cpen.coyMin'), 30);
-      rows.push({ name: 'Reserve reach', st: min <= want ? 'pass' : 'warn', reason: `${resSlot!.label} to the C Pen posns in ${min} min ${opts.mountedReserve ? 'mounted (the unit\'s APCs, ORBAT; IPB p 18 vehicle rate)' : 'on foot'}, straight line (wants ${want} min${recipe.echelon === '18' ? ', IBB p 279: Bde Res 2-3 h' : recipe.echelon === '21' ? ', IBB p 279: Div Res 4-6 h' : ''})` });
+      // the reserve's time: a Coy's local counter-attack within 30 min, a Bn's within an hour (IBB S56 para 24 c p 306), a Bde
+      // and Div reserve as early as possible within 2-6 h, the check at 2 h (DW pp 26-27) (PlanDoctrine check.reserveMin)
+      const want = num(doctrineAt(doc, `check.reserveMin.${recipe.echelon}`), recipe.echelon === '15' ? 30 : recipe.echelon === '16' ? 60 : 120);
+      const wantSrc = recipe.echelon === '15' ? ', IBB p 306: a Coy\'s within 30 min' : recipe.echelon === '16' ? ', IBB p 306: the Bn counter-attack within an hour' : recipe.echelon === '18' || recipe.echelon === '21' ? `, ${recipe.echelon === '18' ? 'Bde' : 'Div'} Res as early as possible within 2-6 h (DW pp 26-27)` : '';
+      // a Bde reserve with no mobile elements takes a C Pen / reinforcing role, not counter-attack (OOW1 s19 p 83)
+      const bdeFoot = recipe.echelon === '18' && !mountedRes ? '; a Bde reserve on foot takes a C Pen or reinforcing role rather than a counter-attack (OOW1 p 83)' : '';
+      rows.push({ name: 'Reserve reach', st: min <= want ? 'pass' : 'warn', reason: `${resSlot!.label} to the C Pen posns in ${min} min ${mountedRes ? (resSlot?.mounted && !opts.mountedReserve ? 'on tracks (IPB p 18 vehicle rate)' : 'mounted (the unit\'s APCs, ORBAT; IPB p 18 vehicle rate)') : 'on foot'}, straight line (wants ${want} min${wantSrc})${bdeFoot}` });
       conf.push(`${resSlot!.label}: walk the routes to the C Pen posns and time them`);
+    }
+    // a formation's reserve share: its reserve slots against its manoeuvre units (measured, judged on the ground by
+    // PlanContext.groundNotes: in the desert one third or more, DW p 26)
+    if (recipe.echelon === '18' || recipe.echelon === '21') {
+      const man = recipe.slots.filter((s) => ['fwd', 'depth', 'res', 'round'].includes(s.kind));
+      const resN = man.filter((s) => s.kind === 'res').length;
+      if (man.length) {
+        const share = resN / man.length;
+        rows.push({ name: 'Reserve share', st: 'pass', m: share, limitM: 1 / 3, limitSrc: 'DW p 26', reason: `${resN} of the ${man.length} ${recipe.echelon === '21' ? 'Bdes' : 'Bns'} in reserve (${Math.round(share * 100)} %)${resN ? ` (${man.filter((s) => s.kind === 'res').map((s) => s.label ?? s.role).join(', ')})` : ''}: the reserve to deal with a penetration, located by non-involvement, availability and the most likely En threat (OoW Vol I pp 19-20)` });
+      }
     }
     const nFwd = recipe.slots.filter((s) => s.kind === 'fwd').length;
     if (opts.alternates !== 'none') rows.push({ name: 'Alternates', st: alts.length >= Math.min(nFwd, (recipe.alternates ?? []).length) ? 'pass' : 'warn', reason: `${alts.length} placed, clear of the other posns${alts.length ? `; moves ${alts.map((a) => `${a.label} ${a.min} min`).join(', ')}` : ''}` });
+    // the Mor Pl as a whole from one posn, split in two sections only if the Bn front cannot be covered from it; on a wide
+    // front the sections go into the Coy localities (IBB S13 para 3 p 54, S14 para 10 p 61)
+    const morIt = items.find((i) => i.role === 'mor' && i.pts.length);
+    if (morIt && fwd.length && (recipe.echelon === '16' || recipe.echelon === '17')) {
+      const ahead = num(doctrineAt(doc, 'df.closeMinFromFdlM.mortar'), 550), rMax = num(doctrineAt(doc, 'attack.morRangeM'), 3749);
+      const m0 = morIt.pts[0];
+      // the DF points `ahead` in front of each forward posn's corners (y toward the enemy: the front edge is c.y + h / 2)
+      const far = Math.max(...fwd.flatMap((b) => [boxPt(b.c, -b.w / 2, b.h / 2 + ahead, b.turn), boxPt(b.c, b.w / 2, b.h / 2 + ahead, b.turn)]).map((q) => dist(m0, q)));
+      rows.push(far <= rMax
+        ? { name: 'Mortars', st: 'pass', reason: `the Mor Pl as a whole: from one posn it reaches ${fmtM(ahead)} in front of every forward posn, ${fmtM(far)} at most of its ${fmtM(rMax)} (ORBAT); employed as a whole, split only if the Bn front cannot be covered from one posn (IBB S13 para 3 p 54)` }
+        : { name: 'Mortars', st: 'warn', reason: `from one posn the Mor Pl reaches ${fmtM(rMax)} (ORBAT), the farthest DF ${fmtM(ahead)} in front of the forward posns is ${fmtM(far)} away: the Bn front cannot be covered from one posn (IBB S13 para 3 p 54)`,
+          detail: { head: `Mortars short of the flanks by ${fmtM(far - rMax)}`, why: 'The Mor Pl is split in two sections only when the whole Bn frontage cannot be covered from one position (IBB p 54).', fix: ['Split it into two sections, deployed in the Coy localities to cover the whole frontage (IBB S14 para 10 p 61)', 'Or site the Pl further forward, nearer the centre of the front'] } });
+    }
+    // the RRs: a section of two in each rifle Coy, eight in the Bn; the defence built round them and the MGs, sited first;
+    // by day as close to the infantry as safety permits, by night inside the localities; at least one alternative for every
+    // rifle, a weapon team's spacing back, with a covered approach between (IBB S8 pp 38-42; IC p 367)
+    const rrs = items.filter((i) => i.role === 'rr' && i.pts.length), rrAlts = items.filter((i) => i.role === 'rrAlt' && i.pts.length);
+    if (rrs.length && (recipe.echelon === '16' || recipe.echelon === '15')) {
+      const inBox = (p: XY, b: Box) => { const t = (b.turn * Math.PI) / 180, dx = p.x - b.c.x, dy = p.y - b.c.y; const u = dx * Math.cos(t) - dy * Math.sin(t), v = dx * Math.sin(t) + dy * Math.cos(t); return Math.abs(u) <= b.w / 2 + 1 && Math.abs(v) <= b.h / 2 + 1; };
+      const held = fp.filter((b) => ['fwd', 'round'].includes(recipe.slots.find((s) => s.role === b.role)?.kind ?? ''));
+      const out = rrs.filter((r) => !held.some((b) => inBox(r.pts[0], b))).length;
+      const sp = range(doctrineAt(doc, 'alt.spacingM.secPl')) ?? [200, 300];
+      const paired = rrs.filter((r) => rrAlts.some((a) => { const d = dist(r.pts[0], a.pts[0]); return d >= sp[0] - 25 && d <= sp[1] + 25; })).length;
+      const perCoy = num(doctrineAt(doc, 'atFramework.rr.perCoy'), 2), perBn = num(doctrineAt(doc, 'atFramework.rr.perBn'), 8), dir = num(doctrineAt(doc, 'atFramework.rr.directM'), 2000);
+      // with no alternates drawn (the setting) the alternatives are left to the plan: said, not judged
+      const altsOn = opts.alternates !== 'none';
+      const ok = !out && (!altsOn || paired === rrs.length);
+      rows.push({ name: 'RR', st: ok ? 'pass' : 'warn', reason: `${rrs.length} RR detachment${rrs.length > 1 ? 's' : ''} in the forward localities (a section of ${perCoy} in each rifle Coy, ${perBn} in the Bn: IBB S8 para 4 p 38, S9 para 1 p 42; ${fmtM(dir)} direct); the defence is built round the RRs and MGs, sited first; by day as close to the infantry as safety permits, by night inside the localities (IBB S8 para 2 e p 41); ${altsOn ? `${paired} of ${rrs.length} with an alternative ${sp[0]}-${sp[1]} m back` : `alternates not drawn (as set): an alternative for every rifle ${sp[0]}-${sp[1]} m away`} covering the same area of fire, a covered approach between (IBB S8 para 2 g p 41; IC p 367)${out ? `; ${out} outside a forward locality` : ''}`,
+        ...(ok ? {} : { detail: { head: `${out ? `${out} RR outside the localities` : ''}${out && paired < rrs.length ? '; ' : ''}${paired < rrs.length ? `${rrs.length - paired} RR without an alternative` : ''}`, why: 'Left outside the localities at night the RR is open to infiltrating parties; without an alternative it is lost once its flash gives it away (IBB p 41).', fix: ['Site each RR inside its Coy locality, toward the tank approach', `An alternative ${sp[0]}-${sp[1]} m away for every rifle, covering the same area, with a covered approach to it`] } }) });
+    }
     for (const [n, why] of [['Approaches covered', 'the enemy approaches come from the ground'], ['Fields of fire', 'fields of fire and dead ground in front'], ['Flanks', 'whether each flank rests on an obstacle'], ['Exposure', 'what overlooks the posns'], ['Killing Gr', 'the killing ground sits on the approach\'s chokepoint']] as const) {
       if (n === 'Killing Gr' && !dropped.some((d) => d.role === 'killingGr')) continue;
       rows.push({ name: n, st: 'unchecked', reason: `${NT}: ${why}` });
@@ -579,13 +631,13 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
       const toBox = (p: XY) => Math.hypot(Math.max(0, oe.x0 - p.x, p.x - oe.x1), Math.max(0, oe.y0 - p.y, p.y - oe.y1));
       const gap = Math.min(...[...fup.pts, P((fe.x0 + fe.x1) / 2, (fe.y0 + fe.y1) / 2)].map(toBox));
       const want = range(doctrineAt(doc, 'attack.fupFromObjM')) ?? [1000, 1200];
-      rows.push({ name: 'FUP from the Obj', st: gap >= want[0] && gap <= want[1] ? 'pass' : 'warn', reason: `${fmtM(gap)} to the near edge; IBB p201 wants ${fmtM(want[0])}-${fmtM(want[1])} (tanks ${fmtM(range(doctrineAt(doc, 'attack.tankFupFromObjM'))?.[0] ?? 2500)}+)` });
+      rows.push({ name: 'FUP from the Obj', st: gap >= want[0] && gap <= want[1] ? 'pass' : 'warn', reason: `${fmtM(gap)} to the near edge; IBB p201 wants ${fmtM(want[0])}-${fmtM(want[1])} (tanks ${fmtM(range(doctrineAt(doc, 'attack.tankFupFromObjM'))?.[0] ?? 2500)}+)`, m: gap, limitM: want[0] });
     }
     if (axis?.base) {
       const w = dist(axis.base.start, axis.base.end);
       const row = frontageRow(doc, recipe.assaultRow ?? String(doctrineAt(doc, 'attack.assaultRow') ?? ''));
       const fr = row ? range(row.frontageM) : null;
-      rows.push({ name: 'Assault frontage', st: fr && w <= fr[1] + 1 ? 'pass' : 'warn', reason: `${fmtM(w)} wide; ${row ? `${row.unit}: ${fmtM(fr![1])} (${row.src})` : 'no row'}` });
+      rows.push({ name: 'Assault frontage', st: fr && w <= fr[1] + 1 ? 'pass' : 'warn', reason: `${fmtM(w)} wide; ${row ? `${row.unit}: ${fmtM(fr![1])} (${row.src})` : 'no row'}`, m: w, limitM: fr ? fr[1] : undefined, limitSrc: row ? `${row.unit}: ${row.src}` : undefined });
     }
     if (bof && obj && axis) {
       const oc = P((ext(obj.pts).x0 + ext(obj.pts).x1) / 2, (ext(obj.pts).y0 + ext(obj.pts).y1) / 2);

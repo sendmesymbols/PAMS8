@@ -59,6 +59,10 @@ export interface AirRules {
   longBeyond: number;
   bottomBelowM: number;
   opWithinM: number;
+  /** Firm desert flats (DW p 66: dhars are ready-made landing strips): classes, the share of the square, the rank bonus. */
+  firmFlat: { cls: number[]; share: number; bonus: number };
+  /** Own counter-measures against the En heliborne landing (IBB pp 126, 343-344), named under his LZs. */
+  heliCounter: string[];
   cost: {
     cellM: number;
     seen: number;
@@ -135,6 +139,8 @@ export function airRulesFrom(doc: any): AirRules {
     longBeyond: num(R.longBeyondFrac, 0.4),
     bottomBelowM: num(R.bottomBelowM, 20),
     opWithinM: num(A.heliborne?.opWithinM?.value, 3000),
+    firmFlat: { cls: Array.isArray(A.clear?.firmFlat?.classes) ? A.clear.firmFlat.classes.map(Number) : [12], share: num(A.clear?.firmFlat?.share, 0.5), bonus: num(A.clear?.firmFlat?.bonus, 1.5) },
+    heliCounter: Array.isArray(A.heliborne?.counter?.value) ? A.heliborne.counter.value.map(String) : [],
     cost: {
       cellM: num(C.cellM, 150),
       seen: num(C.seen, 4),
@@ -733,7 +739,7 @@ export function airIpb(a: AirArgs): AirResult {
     }
     return out;
   };
-  interface Cand { x: number; y: number; slope: number; mountain: boolean; caution: string[]; approaches: number[]; existing: string | null; pre: number; along: number }
+  interface Cand { x: number; y: number; slope: number; mountain: boolean; caution: string[]; approaches: number[]; existing: string | null; pre: number; along: number; firm: boolean }
   const squares = (kind: 'lz' | 'dz', sideM: number, lengthM: number): Cand[] => {
     if (!zw || !zh) return [];
     const nW = Math.max(1, Math.ceil(sideM / res)), nL = Math.max(1, Math.ceil(lengthM / res));
@@ -775,22 +781,26 @@ export function airIpb(a: AirArgs): AirResult {
       if (ex) caution.push(blocked > 0 ? 'existing site: the bundle shows obstacles on it, check it on the ground' : 'existing site: its size and state not recorded, check it');
       if (ex && a.enemyLz) caution.push('an existing site is obvious and likely watched: not favoured for the En LZ');
       // The square's own elevation (the mean of its cells), for the ground rising beside it.
-      let eSum = 0, eN = 0;
+      let eSum = 0, eN = 0, flat = 0, cN = 0;
       for (let v = 0; v < nL; v++)
         for (let u = 0; u < nW; u++) {
           const xx = x + u, yy = y + v;
           if (!inGrid(xx, yy)) continue;
           const e = g.elev[yy * w + xx];
           if (e === e) ((eSum += e), eN++);
+          cN++;
+          if (R.firmFlat.cls.includes(g.cls[yy * w + xx])) flat++;
         }
+      // Firm desert flats (DW p 66: dhars are excellent ready-made landing strips) rank higher.
+      const firm = cN > 0 && flat / cN >= R.firmFlat.share;
       const app = approachesOf(cx, cy, nW / 2, nL / 2, eN ? eSum / eN : NaN);
       if (!app.length && !ex) return null; // no approach clear by 10 : 1
       const opp = app.some((b) => app.includes((b + 180) % 360));
       const d = distObj(cx, cy);
       // A slope over the limit ranks below every LZ within it (safety first: land where no care is needed). An existing
       // site is favoured for own LZs only: the enemy does not land on an obvious, watched site in your rear.
-      const pre = 2 * Math.max(0, (R.slopeCautionDeg - s90) / R.slopeCautionDeg) + 2 * (app.length / 8) + (opp ? 1 : 0) + (d === null ? 0 : 3 * (1 - Math.min(1, d / 8000))) - 2 * (nc / all) - (s90 > okDeg ? 4 : 0) + (ex && !a.enemyLz ? 6 : 0);
-      return { x: cx, y: cy, slope: s90, mountain, caution, approaches: app, existing: ex ? `${ex.label}${ex.name ? ` ${ex.name}` : ''}` : null, pre, along: alongOf(cx, cy) };
+      const pre = 2 * Math.max(0, (R.slopeCautionDeg - s90) / R.slopeCautionDeg) + 2 * (app.length / 8) + (opp ? 1 : 0) + (d === null ? 0 : 3 * (1 - Math.min(1, d / 8000))) - 2 * (nc / all) - (s90 > okDeg ? 4 : 0) + (ex && !a.enemyLz ? 6 : 0) + (firm ? R.firmFlat.bonus : 0);
+      return { x: cx, y: cy, slope: s90, mountain, caution, approaches: app, existing: ex ? `${ex.label}${ex.name ? ` ${ex.name}` : ''}` : null, pre, along: alongOf(cx, cy), firm };
     };
     for (let y = zy0; y + nL <= zy1; y += step)
       for (let x = zx0; x + nW <= zx1; x += step) {
@@ -839,6 +849,7 @@ export function airIpb(a: AirArgs): AirResult {
       const d = distObj(c.x, c.y);
       const bits: string[] = [];
       if (c.existing) bits.push(c.existing);
+      if (c.firm) bits.push('firm desert flat (DW p 66)');
       bits.push(`slope ${c.slope.toFixed(0)}°`);
       bits.push(e.sp === null ? 'concealment not judged' : e.sp >= 0.5 ? 'in view of the other side' : e.sp >= 0.2 ? 'may be seen by the other side' : 'hidden from the other side');
       if (d !== null) bits.push(`${(d / 1000).toFixed(1)} km from the Obj`);
@@ -868,18 +879,21 @@ export function airIpb(a: AirArgs): AirResult {
   let lzPts = pts, lzSide = lzSideM;
   let lzs = finish('lz', squares('lz', lzSide, lzSide), lzSide, lzSide, a.maxLz ?? 5);
   if (!lzs.length && pts > 1) {
-    // No room for all the points: single landing points (in mountains helipads are single, MW p 256).
+    // No room for all the points: single landing points.
     const one = finish('lz', squares('lz', lpD, lpD), lpD, lpD, a.maxLz ?? 5, 1);
     if (one.length) {
       lzs = one;
       lzPts = 1;
       lzSide = lpD;
-      notes.push(`No LZ for ${pts} landing points of ${lpD} m in the zone: single landing points shown (one helicopter each; helipads in mountains are single, MW p 256).`);
+      notes.push(`No LZ for ${pts} landing points of ${lpD} m in the zone: single landing points shown (one helicopter each).`);
     }
   }
   const dzs = a.dz === false ? [] : finish('dz', squares('dz', R.dzW, R.dzL), R.dzW, R.dzL, a.maxDz ?? 3);
   if (!lzs.length) notes.push(`No LZ for ${pts > 1 ? `${pts} landing points or one` : 'one landing point'} of ${lpD} m (size ${a.lzClass}) in the zone: clear ground, slope and approaches all fail.`);
 
+  // Against the En heliborne landing (IBB pp 126, 343-344): not more than a Coy against a forward Bn; own counter-measures.
+  if (a.enemyLz && lzs.length && R.heliCounter.length)
+    notes.push(`Against an En heliborne landing (not more than a Coy against a forward Bn, between the Bde reserve and a forward Bn or on a bridge or communication centre behind the forward Bde: IBB pp 343-344): ${R.heliCounter.join('; ')} (IBB p 126).`);
   // OPs over the enemy's LZs: the highest ground within reach that sees it.
   if (a.enemyLz)
     for (const z of lzs) {

@@ -12,8 +12,9 @@
  *      shape a corridor of this width (under a quarter of the width squared, joined across one sample) are left out:
  *      a corridor is relatively free of obstacles, not empty of them.
  *   2. Free width at a sample: the run of ground free of the obstacles kept, across the axis (the corridor's width).
- *   3. The way a force would go: one least-cost field from the start edge (GO 1, SLOW-GO and not assessed 3, NO-GO never
- *      crossed, ground nearer an obstacle than half a corridor width dearer). The frame's end edge is cut into strips
+ *   3. The way a force would go: one least-cost field from the start edge (GO 1, SLOW-GO and not assessed at the book's
+ *      day rates for the mover: GO km/h over SLOW-GO km/h, IPB p 18, vehicles 24 / 16 = 1.5, foot 4 / 2.4 = 1.67; 3
+ *      without the rates; NO-GO never crossed, ground nearer an obstacle than half a corridor width dearer). The frame's end edge is cut into strips
  *      (two spacings wide) and the cheapest way back from each strip is traced: in open ground they run straight and
  *      apart; where the ground canalises they meet at the same gaps and bridges, and a way that repeats another is one
  *      avenue, not two. A way that cannot reach the end edge stops where it was stopped (an avenue may end abruptly).
@@ -43,7 +44,7 @@
  *      flanks' (its bonus falls with its cost against the cheapest approach); dearer going ranks it with the flanks.
  *   8. Review fixes (23 Nov 2026): with the elevation (`elev`) the slope is judged along each way's own heading, not the
  *      frame axis (a cell the coding classed for slope alone is passable; an edge climbing the book's SLOW-GO figure is
- *      three times dearer, the NO-GO figure impassable; a stretch of a way climbing so is a 'steep' narrows); the free
+ *      dearer as SLOW-GO ground is, the NO-GO figure impassable; a stretch of a way climbing so is a 'steep' narrows); the free
  *      width is measured square to the way, not along the sample row (a gap oblique to the axis read wider than it is);
  *      the strips are as wide as an avenue can be (two corridors and the spacing between), not two spacings, so a Div
  *      frame can show more than three avenues; two ways through the same narrows are one avenue; with the book's rates
@@ -95,7 +96,11 @@ export interface IpbCorridorArgs {
    * heading; without it the coding's slope along the frame axis stands.
    */
   elev?: { data: Float32Array; w: number; h: number; slowPct: number; nogoPct: number } | null;
-  /** The book's day rates for the mover, km/h on GO and on SLOW-GO (IPB p 18): the time along each avenue, in the rank. */
+  /**
+   * The book's day rates for the mover, km/h on GO and on SLOW-GO (IPB p 18): the time along each avenue, in the rank,
+   * and SLOW-GO's weight in the least-cost field (GO km/h over SLOW-GO km/h; user, 24 Nov 2026: follow the book rates).
+   * Without them SLOW-GO weighs 3 (the vehicles' night ratio, 24 / 8).
+   */
   rates?: { goKmh: number; slowKmh: number } | null;
 }
 
@@ -417,8 +422,10 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
       dt[q] = v;
     }
 
-  // 4. Cost and one least-cost field from the start edge.
+  // 4. Cost and one least-cost field from the start edge. SLOW-GO (and not assessed ground, taken as SLOW-GO) weighs what
+  // the book's day rates make it: the time to cross it against GO (vehicles 1.5, foot 1.67); 3 without the rates.
   const halfMc = mcW / 2;
+  const slowW = a.rates && a.rates.slowKmh > 0 && a.rates.goKmh > 0 ? Math.max(1, a.rates.goKmh / a.rates.slowKmh) : 3;
   const cost = new Float32Array(N);
   for (let q = 0; q < N; q++) {
     const k = kind[q];
@@ -426,7 +433,7 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
       cost[q] = Infinity;
       continue;
     }
-    let m = k === K_SLOW || k === K_NA ? 3 : 1;
+    let m = k === K_SLOW || k === K_NA ? slowW : 1;
     const clear = (dt[q] * s) / 3;
     if (clear < halfMc) m *= 1 + 2 * (1 - clear / halfMc);
     cost[q] = m;
@@ -493,12 +500,12 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
         if (done[qq] || cst[qq] === Infinity) continue;
         if (k >= 4 && cst[i * NC + jj] === Infinity && cst[ii * NC + j] === Infinity) continue; // no slipping between two NO-GO corners
         // The slope along this edge (the book's uphill is along the movement): a climb at the NO-GO figure is not
-        // crossed, at the SLOW-GO figure three times dearer, as SLOW-GO ground is.
+        // crossed, at the SLOW-GO figure as dear as SLOW-GO ground is.
         let em = 1;
         if (EL) {
           const cl = climbPct(q, qq);
           if (cl >= nogoPct) continue;
-          if (cl >= slowPct) em = 3;
+          if (cl >= slowPct) em = slowW;
         }
         const g = G[q] + (k < 4 ? 1 : Math.SQRT2) * s * 0.5 * (cq + cst[qq]) * em;
         if (g < G[qq]) {

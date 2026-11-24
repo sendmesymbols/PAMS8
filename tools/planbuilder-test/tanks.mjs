@@ -157,7 +157,7 @@ for (const r of [front, right, left]) for (const mode of ['close', 'fire']) {
   check('...drawn by hand (no roles): the arrow labelled Tks is the tanks\' too', dg && !dg.rows.some((x) => /^SL|^BOF/.test(x.name)) && !drawn.groups.some((g) => g.phase === 2), dg?.rows.map((x) => x.name).join(', '));
 }
 
-// ── tanks grouped to a Bn defence (armour in defence): harbours beside the reserve, the C Pen force at the tank rate ──────
+// ── tanks grouped to a Bn defence (armour in defence): leaguers beside the reserve, the C Pen force at the tank rate ──────
 {
   const W = await import('../../MS/Engines/DeploymentBuilder/PlanWhatIf.ts');
   const O = await import('../../MS/Engines/DeploymentBuilder/PlanOrbat.ts');
@@ -169,8 +169,8 @@ for (const r of [front, right, left]) for (const mode of ['close', 'fire']) {
   const bad = (r) => R.validateRecipe(r, { doc, symbols }).filter((i) => i.level === 'fail').map((i) => i.msg);
   check('1 and 2 Sqns on a Bn Def: the recipes validate, own ids (-tkd1, -tkd2), the one passed in unchanged', !bad(d1).length && !bad(d2).length && d1.id === 'bn-def-two-up-tkd1' && d2.id === 'bn-def-two-up-tkd2' && d1.defTanks === 1 && d2.defTanks === 2 && !two.slots.some((x) => x.role === 'tkSqn') && !two.defTanks, [...bad(d1), ...bad(d2)].join('; '));
   const at = (r, role) => r.slots.find((x) => x.role === role)?.shape?.at;
-  check('harbours beside the reserve (D Coy at 1350 m back): A Sqn 1100 m to the right, B Sqn 1100 m to the left', JSON.stringify(at(d1, 'tkSqn')) === '[1100,1350]' && JSON.stringify(at(d2, 'tkSqn2')) === '[-1100,1350]' && d2.slots.find((x) => x.role === 'tkSqn2').label === 'B Sqn');
-  check('a layout with no reserve (3 Coys three up): the harbour 500 m behind the rear edge of the forward Coys (-550 m: at -50)', !bad(d3).length && at(d3, 'tkSqn')[0] === 900 && at(d3, 'tkSqn')[1] === -50, JSON.stringify(at(d3, 'tkSqn')));
+  check('leaguers beside the reserve (D Coy at 1350 m back): A Sqn 1100 m to the right, B Sqn 1100 m to the left', JSON.stringify(at(d1, 'tkSqn')) === '[1100,1350]' && JSON.stringify(at(d2, 'tkSqn2')) === '[-1100,1350]' && d2.slots.find((x) => x.role === 'tkSqn2').label === 'B Sqn');
+  check('a layout with no reserve (3 Coys three up): the leaguer 500 m behind the rear edge of the forward Coys (-550 m: at -50)', !bad(d3).length && at(d3, 'tkSqn')[0] === 900 && at(d3, 'tkSqn')[1] === -50, JSON.stringify(at(d3, 'tkSqn')));
   const coyDef = rec('coy-def-two-up');
   check('no Sqn and an attack are left as they are; more than 3 is held to 3; a plan that already has them is not given more', T.withDefTanks(two, doc, 0) === two && T.withDefTanks(front, doc, 1) === front && T.withDefTanks(two, doc, 9).defTanks === 3 && T.withDefTanks(d1, doc, 2) === d1);
   const res1 = S.solveRecipe(d1, ctx, {}), base1 = S.solveRecipe(two, ctx, {});
@@ -192,19 +192,19 @@ for (const r of [front, right, left]) for (const mode of ['close', 'fire']) {
   check('the what-if: the A Sqn goes to the C Pen posn on tracks (mounted), timed against the enemy', !!rT && rT.route?.mounted === true && rT.who === 'A Sqn' && rT.min !== null && rT.enemyMin !== null, JSON.stringify({ min: rT?.min, enemy: rT?.enemyMin, who: rT?.who }));
   check('...faster than the reserve Coy on foot to the same posn (tank rate 24 km/h against 5)', !!rR && rT.min < rR.min && rR.route?.mounted !== true, `${rT?.min} against ${rR?.min} min`);
   check('...in the trigger table and the Moves in time row (two more moves than without the Sqn: the C Pen posn and the secondary approach\'s Sup posn)', f1.whatIf.triggers.length === fitD(two, defG()).whatIf.triggers.length + 2 && /moves in time/.test(row(f1.res.rows, 'Moves in time')?.reason ?? ''), `${f1.whatIf.triggers.length}`);
-  const hr = row(f1.res.rows, 'Tank harbour');
-  check('the Tank harbour row on the ground: tracks go, hidden from his start, guns count as AT at 2.5 km (E)', hr?.st === 'pass' && /A Sqn: tracks go, hidden from where the En starts/.test(hr.reason) && /count as AT at 2\.5 km/.test(hr.reason), hr?.reason);
+  const hr = row(f1.res.rows, 'Tank leaguer');
+  check('the Tank leaguer row on the ground: tracks go, hidden from his start, guns count as AT at 2.5 km (E)', hr?.st === 'pass' && /A Sqn: tracks go, hidden from where the En starts/.test(hr.reason) && /count as AT at 2\.5 km/.test(hr.reason), hr?.reason);
   const f2 = fitD(d2, defG());
-  check('two Sqns: both go to the C Pen posn, one row names both harbours', !!trg(f2, 'tk-cpen-tkSqn') && !!trg(f2, 'tk-cpen-tkSqn2') && /A Sqn: .*B Sqn:/.test(row(f2.res.rows, 'Tank harbour')?.reason ?? ''), row(f2.res.rows, 'Tank harbour')?.reason);
-  // NO-GO for tracks at the harbour, and a harbour in his view
+  check('two Sqns: both go to the C Pen posn, one row names both leaguers', !!trg(f2, 'tk-cpen-tkSqn') && !!trg(f2, 'tk-cpen-tkSqn2') && /A Sqn: .*B Sqn:/.test(row(f2.res.rows, 'Tank leaguer')?.reason ?? ''), row(f2.res.rows, 'Tank leaguer')?.reason);
+  // NO-GO for tracks at the leaguer, and a leaguer in his view
   const at1 = F.fitLayout(inpD(d1, defG()));
   const wp = F.toWorld(at1.frame, it(at1.raw, 'tkSqn').pts[0]);
   const trNogo = [...goingOf('tracked').nogo][0];
   const gBad = defG({ cls: (x, y) => (Math.hypot(x - wp.x, y - wp.y) < 120 ? trNogo : 2) });
-  const hb = row(fitD(d1, gBad).res.rows, 'Tank harbour');
-  check('a harbour on NO-GO for tracks fails: move it by hand', hb?.st === 'fail' && /NO-GO for tracks/.test(hb.reason), hb?.reason);
-  const hs = row(fitD(d1, defG({ sight: () => 0.9 })).res.rows, 'Tank harbour');
-  check('a harbour in his view warns: hull down or move it', hs?.st === 'warn' && /likely in the En's view/.test(hs.reason), hs?.reason);
+  const hb = row(fitD(d1, gBad).res.rows, 'Tank leaguer');
+  check('a leaguer on NO-GO for tracks fails: move it by hand', hb?.st === 'fail' && /NO-GO for tracks/.test(hb.reason), hb?.reason);
+  const hs = row(fitD(d1, defG({ sight: () => 0.9 })).res.rows, 'Tank leaguer');
+  check('a leaguer in his view warns: hull down or move it', hs?.st === 'warn' && /likely in the En's view/.test(hs.reason), hs?.reason);
   // a layout with no reserve: the Sqn alone is the C Pen force
   const f3 = fitD(d3, defG());
   check('a 3-Coy three up (no reserve): the Sqn alone is the C Pen force, and there is a C Pen posn for it', !!trg(f3, 'tk-cpen-tkSqn') && !trg(f3, 'cpen-main') && !!f3.whatIf.cpen);
@@ -252,10 +252,10 @@ for (const r of [front, right, left]) for (const mode of ['close', 'fire']) {
   const bad = (r) => R.validateRecipe(r, { doc, symbols }).filter((i) => i.level === 'fail').map((i) => i.msg);
   check('a Coy defence takes tank Tps: 1 and 2 Tps validate, ids -tkd1 / -tkd2, labels A Tp / B Tp, unit Tp, echelon 14', !bad(c1).length && !bad(c2).length && c1.id === 'coy-def-two-up-tkd1' && c1.defTanksUnit === 'Tp' && c2.slots.find((x) => x.role === 'tkSqn2').label === 'B Tp' && c1.slots.find((x) => x.role === 'tkSqn').echelon === '14', [...bad(c1), ...bad(c2)].join('; '));
   const at = (r, role) => r.slots.find((x) => x.role === role)?.shape?.at;
-  check('...the harbours beside the reserve Pl (600 m wide at 230 m back): 650 m off its centre, alternate sides', JSON.stringify(at(c1, 'tkSqn')) === '[650,230]' && JSON.stringify(at(c2, 'tkSqn2')) === '[-650,230]', JSON.stringify([at(c1, 'tkSqn'), at(c2, 'tkSqn2')]));
+  check('...the leaguers beside the reserve Pl (600 m wide at 230 m back): 650 m off its centre, alternate sides', JSON.stringify(at(c1, 'tkSqn')) === '[650,230]' && JSON.stringify(at(c2, 'tkSqn2')) === '[-650,230]', JSON.stringify([at(c1, 'tkSqn'), at(c2, 'tkSqn2')]));
   const fc = fitD(c1, defG(), { unit: O.brief(orbat, 'inf-coy-std-rifle') });
   const tc = trg(fc, 'tk-cpen-tkSqn');
-  check('on the ground a tank Tp goes to the C Pen posn on tracks; the Tank harbour row says "1 tank Tp of 3 tanks"', !!tc && tc.who === 'A Tp' && tc.route?.mounted === true && /1 tank Tp of 3 tanks/.test(row(fc.res.rows, 'Tank harbour')?.reason ?? ''), JSON.stringify({ who: tc?.who, min: tc?.min }));
+  check('on the ground a tank Tp goes to the C Pen posn on tracks; the Tank leaguer row says "1 tank Tp of 3 tanks"', !!tc && tc.who === 'A Tp' && tc.route?.mounted === true && /1 tank Tp of 3 tanks/.test(row(fc.res.rows, 'Tank leaguer')?.reason ?? ''), JSON.stringify({ who: tc?.who, min: tc?.min }));
   const ff = (k) => O.forceFromOrbat(O.brief(orbat, 'inf-coy-std-rifle'), O.brief(orbat, 'en-inf-bn'), sqn, k, true);
   check('the force counts a Tp as a third of a Coy: a Coy with 3 Tps is 2, named "+ 3 Tk Tps of 3 tanks"', ff(0).ownS === 1 && Math.abs(ff(1).ownS - 4 / 3) < 1e-9 && ff(3).ownS === 2 && /\+ 3 Tk Tps of 3 tanks/.test(ff(3).ownName) && /\+ 1 Tk Tp of 3 tanks/.test(ff(1).ownName), ff(3).ownName);
   check('a Bn Def\'s Sqn is still one more unit; a Coy Def\'s Sqn count is not used for it (Sqns only on a Bn)', O.forceFromOrbat(O.brief(orbat, 'inf-bn-std'), null, sqn, 2).ownS === 6);
@@ -282,16 +282,16 @@ for (const r of [front, right, left]) for (const mode of ['close', 'fire']) {
 }
 
 
-// ── the Sqn harbour and its move up; FUP (Tks) against the En ATGMs ──────────────────────────────────────────────────
+// ── the Sqn Assy area and its move up; FUP (Tks) against the En ATGMs ──────────────────────────────────────────────────
 {
   const t = T.withTanks(front, doc, 'close');
-  check('Sqn harbour: a slot behind FUP (Tks) in the tank recipe', t.slots.some((s) => s.role === 'tkHarbour'));
+  check('Sqn Assy area: a slot behind FUP (Tks) in the tank recipe', t.slots.some((s) => s.role === 'tkHarbour'));
   const fl = F.fitLayout(inpOf(t, flatG));
   const h = fl.fit.attack.hSum;
-  const hb = h.steps.find((s) => /leaves its harbour/.test(s.label)), lv = h.steps.find((s) => /Tanks leave FUP/.test(s.label));
-  check('...the move from the harbour to FUP (Tks) in the H-hour sum, before the FUP is left, about 2 km at the tank rate', hb && lv && hb.at < lv.at && hb.distM >= 1800 && hb.distM <= 2400 && hb.min > 0, hb ? `${hb.at} -> ${lv?.at}, ${hb.distM} m ${hb.min} min` : 'no harbour step');
+  const hb = h.steps.find((s) => /leaves its Assy area/.test(s.label)), lv = h.steps.find((s) => /Tanks leave FUP/.test(s.label));
+  check('...the move from the Assy area to FUP (Tks) in the H-hour sum, before the FUP is left, about 2 km at the tank rate', hb && lv && hb.at < lv.at && hb.distM >= 1800 && hb.distM <= 2400 && hb.min > 0, hb ? `${hb.at} -> ${lv?.at}, ${hb.distM} m ${hb.min} min` : 'no harbour step');
   const flf = F.fitLayout(inpOf(T.withTanks(front, doc, 'fire'), flatG));
-  check('...fire sp too: the harbour step before the Sqn moves to its fire posns', flf.fit.attack.hSum.steps.some((s) => /leaves its harbour/.test(s.label)));
+  check('...fire sp too: the Assy area step before the Sqn moves to its fire posns', flf.fit.attack.hSum.steps.some((s) => /leaves its Assy area/.test(s.label)));
   check('...no En ATGM range given: no FUP (Tks) vs En ATGM row (the IBB p 214 band stands in the Tank FUP row)', !row(fl.res.rows, 'FUP (Tks) vs En ATGM') && row(fl.res.rows, 'Tank FUP'));
   const kon = F.fitLayout(inpOf(t, flatG, { enAtgmM: 4000, enAtgmSrc: 'the En Mech Inf Bn\'s Konkurs ATGM, 4.0 km (ORBAT)' }));
   const rK = row(kon.res.rows, 'FUP (Tks) vs En ATGM');

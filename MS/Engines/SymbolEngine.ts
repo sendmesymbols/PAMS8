@@ -77,6 +77,7 @@ import IntervisibilityEngine from './Analysis/Intervisibility/IntervisibilityEng
 import EngineLogger from '../Support/EngineLogger';
 import { setSetting } from '../Support/SettingsBus';
 import Utils from '../Support/utils.ts';
+import { symbolTitle, type SymbolTitle } from '../Support/SymbolTitle.ts';
 import type { DrawingCueOptions } from './DrawingCueEngine.ts';
 import type { MGRSEngineOptions } from './MGRSEngine.ts';
 import type { VisualizationOptions } from './Visualization/VisualizationEngine.ts';
@@ -436,6 +437,7 @@ class SymbolEngine implements Evented {
         pushUndo: (entry) => this._pushUndo(entry),
         getView: () => this.view,
         modifySymbol: (g: Graphic) => this.modifySymbol(g),
+        describeSymbol: (g: Graphic) => this.describeSymbol(g),
       },
     );
     if ((settingsData as any).features?.selectionQuickToolbar !== false) {
@@ -4857,6 +4859,30 @@ class SymbolEngine implements Evented {
   /** Read a symbol's current editable state (kind, sidc, amplifier, options, …) without opening the editor. */
   public getSymbolState(graphic: Graphic): MorphixSymbolSnapshot {
     return this._morphixEngine.getSymbolState(this._liveGraphic(graphic));
+  }
+
+  /**
+   * The name a planner would call a symbol: unique designation + catalog name +
+   * echelon from the SIDC ("16 Inf Div", "22 Armr Regt", "Battle Posn A (Coy)"),
+   * with its side / higher formation in `sub` ("En · of 1 Corps"). Shown in the
+   * selection pop-up; null for a graphic that is not a catalog symbol.
+   */
+  public describeSymbol(graphic: Graphic): SymbolTitle | null {
+    if (!graphic) return null;
+    try {
+      const st = this.getSymbolState(graphic);
+      const desig = st.amplifier?.UNIQUE_DESIG || st.options?.uniqueDesignation || '';
+      if (!st.symbolName && !desig) return null;
+      return symbolTitle({
+        sidc: st.sidc,
+        name: st.symbolName,
+        desig,
+        higher: st.amplifier?.HIGHER_FORM || st.options?.higherFormation || '',
+        echelon: st.drawEssentials?.ECHELON,
+      });
+    } catch {
+      return null;
+    }
   }
 
   /** Open the built-in Morphix symbol editor modal for a graphic. */

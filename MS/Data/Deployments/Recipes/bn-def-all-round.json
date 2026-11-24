@@ -14,7 +14,7 @@
   "name": "Bn Def: all round",
   "frontageRow": null,
   "subRow": "Company, battalion two up",
-  "note": "Isolated or no clear front. East and west Coys are turned 90 degrees to face outward.",
+  "note": "Isolated or no clear front. East and west Coys are turned 90 degrees to face outward. Bn HQ (IBB S3 pp 22-24; p 23: placed centrally within the Bn locality, preferably behind the depth localities; a defended locality of 55 all ranks, concealed from the air, dug in, near the Bde axis with an alternative posn; laid about 500 m behind the rearmost depth / reserve Coy (the distance a decision, E). IBB S54 para 10 pp 290-291, Fig 28: Variation 3, all round and compact, the rearmost Coy the reserve. The RRs, a section of two in each rifle Coy, sited first in the forward localities with an alternative each 200-300 m back (IBB S8 pp 38-42; IC p 367).",
   "slots": [
     {
       "role": "north",
@@ -135,6 +135,19 @@
       "turnDeg": 270
     },
     {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bn HQ",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          0
+        ]
+      }
+    },
+    {
       "role": "fdl",
       "kind": "line",
       "sym": "25140400",
@@ -176,6 +189,39 @@
       "order": 6,
       "rule": {
         "centre": true
+      }
+    },
+    {
+      "role": "rr",
+      "kind": "point",
+      "sym": "15110800",
+      "label": "RR",
+      "order": 6,
+      "rule": {
+        "perSlot": [
+          "north",
+          "east",
+          "south",
+          "west"
+        ],
+        "ahead": -150
+      }
+    },
+    {
+      "role": "rrAlt",
+      "kind": "point",
+      "sym": "15110800",
+      "label": "RR (alt)",
+      "order": 6,
+      "planned": true,
+      "rule": {
+        "perSlot": [
+          "north",
+          "east",
+          "south",
+          "west"
+        ],
+        "ahead": -400
       }
     }
   ],

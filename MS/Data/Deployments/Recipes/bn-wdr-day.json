@@ -1,0 +1,390 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "bn-wdr-day",
+  "family": "bn-wdr",
+  "layout": "by-day",
+  "echelon": "16",
+  "unit": "inf-bn-std",
+  "basis": "D",
+  "task": "withdrawal",
+  "name": "Bn Withdrawal: by day, leap-frog through the depth",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "pivot": "hq",
+  "note": "A Bn two up withdrawing by day, normally avoided unless the weather favours it or the roads demand it (OOW3 s8 para 1 p 40; never lightly under En air superiority, p 15). The click is the Bn HQ of the old posn; the aim is the direction of withdrawal, the second click the new main posn (planned), the intermediate posn between as by night (IBB s74 para 4 e p 373). The sequence is the night's reversed: recce parties and non-essential vehicles first; the forward Coys (A, B) move back through the depth Coys (C, D), which cover them, by passage points to fresh posns to their rear, leap-frogging until contact is broken; tanks last except in very close country (MIB s27 para 16 pp 223-224; OOW3 s8 para 2 p 41); no assembly areas: the units move straight back and form columns (p 41). Passage lanes, contact points and a phase line where the responsibility passes (OOW3 s8 para 7 p 43). No rear parties and no programme from last light. Battle Posns are drawn turned to face the En behind the plan.",
+  "checks": [],
+  "slots": [
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "A Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": -1000,
+        "backM": 1200
+      },
+      "turnDeg": 180,
+      "rule": {}
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "B Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 1000,
+        "backM": 1200
+      },
+      "turnDeg": 180,
+      "rule": {}
+    },
+    {
+      "role": "depth",
+      "kind": "depth",
+      "sym": "25151200",
+      "label": "C Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": -250
+      },
+      "turnDeg": 180,
+      "rule": {}
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "D Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": -1350
+      },
+      "turnDeg": 180,
+      "rule": {}
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bn HQ",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "freshA",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "A Coy (fresh posn)",
+      "echelon": "15",
+      "order": 3,
+      "planned": true,
+      "shape": {
+        "rect": {
+          "acrossM": -1000,
+          "backM": -2500,
+          "wM": {
+            "doctrine": "size.coy.frontageM"
+          },
+          "hM": {
+            "doctrine": "size.coy.depthM"
+          }
+        }
+      }
+    },
+    {
+      "role": "freshB",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "B Coy (fresh posn)",
+      "echelon": "15",
+      "order": 3,
+      "planned": true,
+      "shape": {
+        "rect": {
+          "acrossM": 1000,
+          "backM": -2500,
+          "wM": {
+            "doctrine": "size.coy.frontageM"
+          },
+          "hM": {
+            "doctrine": "size.coy.depthM"
+          }
+        }
+      }
+    },
+    {
+      "role": "ppA",
+      "kind": "point",
+      "sym": "25131200",
+      "label": "PP A",
+      "order": 2,
+      "shape": {
+        "at": [
+          -1000,
+          -250
+        ]
+      }
+    },
+    {
+      "role": "ppB",
+      "kind": "point",
+      "sym": "25131200",
+      "label": "PP B",
+      "order": 2,
+      "shape": {
+        "at": [
+          1000,
+          -250
+        ]
+      }
+    },
+    {
+      "role": "ctL",
+      "kind": "point",
+      "sym": "25130500",
+      "label": "Contact Pt 1",
+      "order": 2,
+      "shape": {
+        "at": [
+          -800,
+          350
+        ]
+      }
+    },
+    {
+      "role": "ctR",
+      "kind": "point",
+      "sym": "25130500",
+      "label": "Contact Pt 2",
+      "order": 2,
+      "shape": {
+        "at": [
+          800,
+          350
+        ]
+      }
+    },
+    {
+      "role": "pl1",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "PL Handover",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -2200,
+            450
+          ],
+          [
+            2200,
+            450
+          ]
+        ]
+      }
+    },
+    {
+      "role": "bl",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "BL",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -2200,
+            -1300
+          ],
+          [
+            2200,
+            -1300
+          ]
+        ]
+      }
+    },
+    {
+      "role": "cp",
+      "kind": "point",
+      "sym": "25130300",
+      "label": "Bn CP",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          -1300
+        ]
+      }
+    },
+    {
+      "role": "rtA",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "pts": [
+          [
+            -1000,
+            850
+          ],
+          [
+            -1000,
+            -250
+          ],
+          [
+            -1000,
+            -2150
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rtB",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "pts": [
+          [
+            1000,
+            850
+          ],
+          [
+            1000,
+            -250
+          ],
+          [
+            1000,
+            -2150
+          ]
+        ]
+      }
+    },
+    {
+      "role": "artyNew",
+      "kind": "area",
+      "sym": "25240501",
+      "label": "Arty (repositioned)",
+      "order": 5,
+      "planned": true,
+      "shape": {
+        "rect": {
+          "acrossM": 1500,
+          "backM": -6850,
+          "wM": 1000,
+          "hM": 1000
+        }
+      }
+    },
+    {
+      "role": "intPosn",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "Int Posn (Coy Gp)",
+      "echelon": "15",
+      "order": 5,
+      "planned": true,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -17200,
+          "wM": {
+            "doctrine": "size.coy.frontageM"
+          },
+          "hM": {
+            "doctrine": "size.coy.depthM"
+          }
+        }
+      }
+    },
+    {
+      "role": "ppI1",
+      "kind": "point",
+      "sym": "25131200",
+      "label": "PP 1 (Int Posn)",
+      "order": 5,
+      "shape": {
+        "at": [
+          -250.0,
+          -16850.0
+        ]
+      }
+    },
+    {
+      "role": "ppI2",
+      "kind": "point",
+      "sym": "25131200",
+      "label": "PP 2 (Int Posn)",
+      "order": 5,
+      "shape": {
+        "at": [
+          250.0,
+          -16850.0
+        ]
+      }
+    },
+    {
+      "role": "ctI",
+      "kind": "point",
+      "sym": "25130500",
+      "label": "Contact Pt (Int Posn)",
+      "order": 5,
+      "shape": {
+        "at": [
+          0,
+          -16850.0
+        ]
+      }
+    },
+    {
+      "role": "newMain",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "New Main Posn (Bn)",
+      "order": 5,
+      "planned": true,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -25000,
+          "wM": {
+            "doctrine": "size.bn.frontageM"
+          },
+          "hM": {
+            "doctrine": "size.bn.depthM"
+          }
+        }
+      }
+    }
+  ]
+}

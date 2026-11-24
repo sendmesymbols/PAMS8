@@ -23,6 +23,7 @@ import Point from '@arcgis/core/geometry/Point';
 import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
 import TextSymbol from '@arcgis/core/symbols/TextSymbol';
+import PictureMarkerSymbol from '@arcgis/core/symbols/PictureMarkerSymbol';
 import type MapView from '@arcgis/core/views/MapView';
 import type SceneView from '@arcgis/core/views/SceneView';
 import Plan from '../ImportExport/Plan.ts';
@@ -37,7 +38,7 @@ import { solveRecipe, toPlanDocument, planText, detailLines, type SolveResult, t
 import { withMoves, triggerLines, enemyStartWords, type WhatIfResult } from './PlanWhatIf';
 import { fitLayout, nextBestSpot, rankFits, scoreRowState, SCORE_ROWS, toLocal, toWorld, type FittedLayout, type FitLayoutInput } from './PlanFit';
 import { PlanGroundProbe } from './PlanGroundProbe';
-import { applyContext, defaultEnemy, echelonLabel, enemyFupM, firstLayout, terrainLabel, ENEMY_TYPES, TERRAIN_KINDS, type EnemySpec, type EnemyType, type TerrainKind, type TerrainSpec } from './PlanContext';
+import { applyContext, groundNotes, defaultEnemy, echelonLabel, enemyFupM, firstLayout, terrainLabel, ENEMY_TYPES, TERRAIN_KINDS, type EnemySpec, type EnemyType, type TerrainKind, type TerrainSpec } from './PlanContext';
 import { checkPlan, checkText, readSymbols, reportWorld, type CheckReport, type PosnKind } from './PlanCheck';
 import { twoPhaseRecipe, threePhaseRecipe } from './PlanPhase';
 import { addTankTimes, defTankRows, withDefTanks, withTanks, type TankMode } from './PlanTanks';
@@ -64,6 +65,8 @@ import movementSpeeds from '../../Data/MovementSpeeds.json';
 import { waterRulesFrom } from '../MovementGuide/MovementGuideWater';
 import { checkCrossing, hRel as hClock, withMinefield, type Light } from './PlanCrossing';
 import { withdrawalGeom, checkWithdrawal } from './PlanWithdrawal';
+import { isFmnWithdrawal } from './PlanWithdrawalFmn';
+import { layoutRows } from './PlanMountain';
 import type { PlanEntry, PlacementHooks, PlacementEnd, DrawnRead } from './DeploymentBuilderEngine';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import { GeoTools } from '../../Support/GeoTools';
@@ -119,7 +122,7 @@ const STEPS = ['Task', 'Enemy', 'Place', 'Check', 'Create'];
 const LAYOUT_LABEL: Record<string, string> = {
   'two-up': 'Two up', 'three-up': 'Three up', 'one-up': 'One up', 'all-round': 'All round', canal: 'Canal', 'rev-slope': 'Reverse slope', night: 'By night', frontal: 'Frontal',
   'left-flank': 'Lt flank', 'right-flank': 'Rt flank',
-  line: 'Line', l: 'L', v: 'V', patrol: 'Out and back', 'two-ops': 'Two OPs', 'three-ops': 'Three OPs', 'four-bn': 'Four Bns', 'armd-lead': 'Armd Bde leading', 'two-bde': 'Two Bdes', area: 'Area', screen: 'Screen',
+  line: 'Line', l: 'L', v: 'V', patrol: 'Out and back', 'two-ops': 'Two OPs', 'three-ops': 'Three OPs', 'four-bn': 'Four Bns', 'armd-lead': 'Armd Bde leading', 'two-bde': 'Two Bdes', area: 'Area', screen: 'Screen', 'three-axes': 'Three axes', delay: 'Delay', 'by-day': 'By day', ridge: 'Ridge',
 };
 const MOVER_LABEL: Record<Mover, string> = { wheeled: 'Wheeled', tracked: 'Tanks', dismounted: 'On foot' };
 const MOVERS: Mover[] = ['wheeled', 'tracked', 'dismounted'];
@@ -215,23 +218,80 @@ const afterPaint = (fn: () => void): void => {
   setTimeout(go, 50);
 };
 /**
- * The worst check on the cursor card, kept short so the card fits beside the cursor: its short lines (at most 3), a
- * one-line why and the first 2 fixes; the rest is in the Check step. Without a detail, one line as before.
+ * The verdict ladder's icons on the cursor card and the map markers (GroundGuideTokens: a tick, a filled triangle, an
+ * octagon with a cross, three dots), so a verdict reads by its shape as well as its colour.
  */
-const cardCheckHtml = (c: Check & { name: string }, word: string): string => {
+const ICON_BODY: Record<CheckState, string> = {
+  pass: '<circle cx="8" cy="8" r="7" fill="#2fa862"/><path d="M4.6 8.3l2.2 2.2 4.6-4.8" fill="none" stroke="#0f1d15" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
+  warn: '<path d="M8 1.6l7 12.5H1z" fill="#ee8a1f" stroke="#ee8a1f" stroke-width="1.2" stroke-linejoin="round"/><path d="M8 6.1v3.5" stroke="#21170a" stroke-width="1.8" stroke-linecap="round"/><circle cx="8" cy="11.9" r="1" fill="#21170a"/>',
+  fail: '<path d="M5.1 1h5.8L15 5.1v5.8L10.9 15H5.1L1 10.9V5.1z" fill="#e5484d"/><path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" stroke="#fff5f5" stroke-width="1.9" stroke-linecap="round"/>',
+  unchecked: '<circle cx="8" cy="8" r="6.6" fill="none" stroke="#7f8893" stroke-width="1.4"/><circle cx="5" cy="8" r="1.15" fill="#c3cbd3"/><circle cx="8" cy="8" r="1.15" fill="#c3cbd3"/><circle cx="11" cy="8" r="1.15" fill="#c3cbd3"/>',
+};
+const cardIcon = (st: CheckState) => `<svg class="pb-ic" viewBox="0 0 16 16" aria-hidden="true">${ICON_BODY[st]}</svg>`;
+/** A key as key caps (Shift J: two caps). */
+const kbd = (k: string) => k.split(/[ +]/).filter(Boolean).map((x) => `<kbd>${esc(x)}</kbd>`).join('');
+/** A reason cut to one line for the ledger: up to its first aside, at most about 140 characters. */
+const oneLine = (s: string) => {
+  const cut = s.search(/ \(|; /);
+  const t = cut > 30 ? s.slice(0, cut) : s;
+  return t.length > 140 ? `${t.slice(0, 137).replace(/\s+\S*$/, '')}…` : t;
+};
+/** A trigger's short line, "B Coy → alt (shelled): 19 vs 12 min" (PlanWhatIf.movesDetail): drawn as a race. */
+const RACE = /^(.+?): (\d+) vs (\d+) min$/;
+
+/**
+ * One check as a row of the cursor card's ledger (the user's pick C, plan-builder-card-options.html): the verdict as icon
+ * and word, the check and where (a posn, or the plan), its head or reason in one line. The first, worst row opens: its
+ * moves as a race (own minutes against the En's, the late part red) or its short lines, a one-line why and the first two
+ * fixes; the rest is in the Check step.
+ */
+const ledgerRow = (c: Check & { name: string }, open: boolean): string => {
   const d = c.detail;
-  if (!d) return `<div class="pb-card-w"><span class="pb-pill pb-${c.st}">${esc(word)}</span> ${esc(c.name)}: ${esc(c.reason)}</div>`;
+  const [where, what] = c.name.includes(': ') ? [c.name.slice(0, c.name.indexOf(': ')), c.name.slice(c.name.indexOf(': ') + 2)] : ['Plan', c.name];
+  const head = `<div class="pb-c-lh"><span class="pb-c-vb pb-${c.st}">${cardIcon(c.st)}${esc(c.word ?? WORD[c.st])}</span><span class="pb-c-n">${esc(what)} <span>· ${esc(where)}</span></span><span class="pb-c-x">${esc(d?.head ?? oneLine(c.reason))}</span></div>`;
+  if (!open || !d) return `<div class="pb-c-lr">${head}</div>`;
   const lines = d.short ?? d.items ?? [];
-  const more = (n: number, k: number) => (n > k ? `<li class="pb-card-dim">${n - k} more in the Check step</li>` : '');
-  return `<div class="pb-card-w"><span class="pb-pill pb-${c.st}">${esc(word)}</span> <b>${esc(c.name)}</b> · ${esc(d.head)}</div>`
-    + (lines.length ? `<ul class="pb-card-items">${lines.slice(0, 3).map((x) => `<li>${esc(x)}</li>`).join('')}${more(lines.length, 3)}</ul>` : '')
-    + (d.whyShort || d.why ? `<div class="pb-card-why"><b>Why</b> ${esc(d.whyShort ?? d.why)}</div>` : '')
-    + (d.fix?.length ? `<div class="pb-card-fix"><b>Fix</b><ul>${d.fix.slice(0, 2).map((x) => `<li>${esc(x)}</li>`).join('')}${more(d.fix.length, 2)}</ul></div>` : '');
+  const race = lines.map((x) => RACE.exec(x));
+  let body = '';
+  if (lines.length && race.every((m) => !!m)) {
+    const rows = (race as RegExpExecArray[]).slice(0, 3);
+    const max = Math.max(...rows.flatMap((m) => [Number(m[2]), Number(m[3])])) * 1.08 || 1;
+    const pc = (v: number) => `${((100 * v) / max).toFixed(1)}%`;
+    body = `<div class="pb-c-race"><span></span><span></span><span class="pb-c-rh">min: Own / En</span>${rows.map((m) => {
+      const own = Number(m[2]), en = Number(m[3]), late = own > en;
+      const bar = late ? `<i class="o" style="width:${pc(en)}"></i><i class="lt" style="left:${pc(en)};width:${pc(own - en)}"></i>` : `<i class="o" style="width:${pc(own)}"></i><i class="sp" style="left:${pc(own)};width:${pc(en - own)}"></i>`;
+      return `<span class="wh">${esc(m[1])}</span><span class="bar">${bar}<i class="en" style="left:calc(${pc(en)} - 1px)"></i></span><span class="mm">${own} / ${en}</span><span class="rs pb-${late ? 'fail' : 'pass'}">${late ? `${own - en} late` : `${en - own} spare`}</span>`;
+    }).join('')}${lines.length > 3 ? `<span class="more">${lines.length - 3} more in the Check step</span>` : ''}</div>`;
+  } else if (lines.length) body = `<ul class="pb-c-items">${lines.slice(0, 3).map((x) => `<li>${esc(x)}</li>`).join('')}${lines.length > 3 ? `<li class="more">${lines.length - 3} more in the Check step</li>` : ''}</ul>`;
+  const why = d.whyShort || d.why ? `<span class="k">Why</span><div class="v">${esc(d.whyShort ?? d.why)}</div>` : '';
+  const fix = d.fix?.length ? `<span class="k">Fix</span><div class="v"><ol>${d.fix.slice(0, 2).map((x, i) => `<li><b>${i + 1}</b><span>${esc(x)}</span></li>`).join('')}</ol>${d.fix.length > 2 ? `<span class="more">${d.fix.length - 2} more in the Check step</span>` : ''}</div>` : '';
+  return `<div class="pb-c-lr">${head}<div class="pb-c-open">${body}${why || fix ? `<div class="pb-c-wf">${why}${fix}</div>` : ''}</div></div>`;
 };
 const fmtM = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`);
 /** A fit move in words: out of NO-GO, or up to higher ground. */
 const slideWord = (s: { label: string; distM: number; why?: string; riseM?: number }) => (s.why === 'high' ? `${esc(s.label)} up ${fmtM(s.distM)} to ground ${s.riseM} m higher` : `${esc(s.label)} slid ${fmtM(s.distM)} out of NO-GO`);
 const MERC = { wkid: 102100 };
+/** A verdict's text colour on the dark marker and tag (GroundGuideTokens TONE text). */
+const TEXT_RGB: Record<CheckState, [number, number, number]> = { pass: [116, 220, 163], warn: [255, 180, 107], fail: [255, 138, 141], unchecked: [195, 203, 211] };
+const markerUrl: Partial<Record<CheckState, string>> = {};
+/**
+ * A verdict on the map (the user's pick M2 of plan-builder-card-options.html): the card's icon on a dark disc ringed in
+ * the verdict's colour at `at`, so the shape says Fail or Warn without the colour; with a `tag`, a short label at `tagAt`
+ * (outside the posn's outline) joined to it by a leader. World points (Web Mercator).
+ */
+function verdictMarks(at: XY, st: CheckState, tag: string | null, tagAt: XY, kind: string): Graphic[] {
+  const url = (markerUrl[st] ??= Utils.svgToDataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#14181d" fill-opacity="0.92" stroke="rgb(${RGB[st].join(',')})" stroke-width="2.5"/><g transform="translate(8 7.6)">${ICON_BODY[st]}</g></svg>`));
+  const p = new Point({ x: at.x, y: at.y, spatialReference: MERC });
+  const out: Graphic[] = [];
+  if (tag) {
+    const line = new Polyline({ paths: [[[at.x, at.y], [tagAt.x, tagAt.y]]], spatialReference: MERC });
+    out.push(new Graphic({ geometry: line, symbol: new SimpleLineSymbol({ color: [11, 13, 16, 0.85], width: 3 }), attributes: { kind } }));
+    out.push(new Graphic({ geometry: line, symbol: new SimpleLineSymbol({ color: [...RGB[st], 0.95] as any, width: 1.2 }), attributes: { kind } }));
+  }
+  out.push(new Graphic({ geometry: p, symbol: new PictureMarkerSymbol({ url, width: 18, height: 18 }), attributes: { kind } }));
+  if (tag) out.push(new Graphic({ geometry: new Point({ x: tagAt.x, y: tagAt.y, spatialReference: MERC }), symbol: new TextSymbol({ text: ` ${tag} `, color: TEXT_RGB[st] as any, haloColor: [20, 24, 29], haloSize: 1, backgroundColor: [20, 24, 29, 0.92], borderLineColor: [...RGB[st], 0.7] as any, borderLineSize: 1, horizontalAlignment: 'left', verticalAlignment: 'middle', xoffset: 2, font: { size: 9, weight: 'bold' } }), attributes: { kind } }));
+  return out;
+}
 /** Copy as Text for a crossing: the timeline from H, the bridge sites, his observers outside the bridgehead. */
 const crossLines = (c: NonNullable<FittedLayout['fit']['crossing']>): string[] => [
   ...c.times.map((t) => `  ${hClock(t.atMin).padEnd(10)} ${t.label}`),
@@ -257,9 +317,9 @@ const nightLines = (s: NonNullable<FittedLayout['fit']['small']>, gma: number | 
 };
 /** Copy as Text for a withdrawal: the programme from last light, the routes back. */
 const wdrLines = (w: NonNullable<FittedLayout['fit']['withdrawal']>): string[] => [
-  '  PROGRAMME FROM LAST LIGHT (L), IBB s75 para 11 pp 379-380',
+  ...(w.times.length ? ['  PROGRAMME FROM LAST LIGHT (L), IBB s75 para 11 pp 379-380'] : []),
   ...w.times.map((t) => `  ${(t.atMin < 0 ? `L-${Math.abs(t.atMin)}` : `L+${t.atMin}`).padEnd(7)} ${t.label}`),
-  ...w.routes.map((r) => `  ${r.label}: ${r.lengthM} m, ${r.min} min by night${r.seenPct !== null ? `, ${r.seenPct} % in the En view` : ''}`),
+  ...w.routes.map((r) => `  ${r.label}: ${r.lengthM} m, ${r.min} min by ${r.by ?? 'night'}${r.seenPct !== null ? `, ${r.seenPct} % in the En view` : ''}`),
 ];
 const smallLines = (s: NonNullable<FittedLayout['fit']['small']>, gma: number | null = null): string[] => {
   if (s.task === 'ambush') return [
@@ -382,7 +442,7 @@ export class PlanBuildTab {
   private _bdeId: string | null = null;
   /** The Div type chosen for a Div plan (Inf Div, Armd Div); null: the Inf Div. */
   private _divId: string | null = null;
-  /** Tank Sqns grouped to a Bn defence (0 to 3 of an Armr Regt's Sqns): their harbours beside the reserve, the C Pen force at the tank rate. */
+  /** Tank Sqns grouped to a Bn defence (0 to 3 of an Armr Regt's Sqns): their leaguers beside the reserve (MIB p 68), the C Pen force at the tank rate. */
   private _defTanks = 0;
   /** The engineers with a defence (the minefield) or a crossing (bridging, the breach): an ORBAT unit; null: the doctrine's (one Fd Coy, Annex Q). */
   private _engrId: string | null = null;
@@ -427,7 +487,7 @@ export class PlanBuildTab {
    */
   private _artyList(r: Recipe): ArtyType[] {
     if (!this._orbat) return [];
-    if (r.task === 'crossing') return r.echelon === '21' ? (this._divArtyCache ??= ownDivArties(this._orbat, this._artyTypes)) : this._artyTypes;
+    if (r.task === 'crossing' || (r.task === 'defence' && r.echelon === '21')) return r.echelon === '21' ? (this._divArtyCache ??= ownDivArties(this._orbat, this._artyTypes)) : this._artyTypes;
     return ['15', '16', '18'].includes(r.echelon) && (r.task === 'defence' || r.task === 'attack') ? this._artyTypes : [];
   }
   /** The Gun Deployment doctrine's figures the gun area is laid by (GunDoctrine.json). */
@@ -720,9 +780,11 @@ export class PlanBuildTab {
     // AD round its vulnerable points, the gun areas among them (PlanAD), last
     const d = g && this._adId ? this._adList(g).find((x) => x.id === this._adId) : null;
     if (!g || !d) return g;
-    const dk = `${g.id}:ad:${d.id}`;
+    // sited for the ground set in the tab (the desert has its own order of VPs, DW p 63); Auto: the plains order until read
+    const adGround = this._ground === 'auto' ? null : this._ground;
+    const dk = `${g.id}:ad:${d.id}:${adGround ?? 'auto'}`;
     let x = this._ph2.get(dk);
-    if (!x) { x = withAd(g, this._doc, adOnPlan(d, this._doc)); this._ph2.set(dk, x); }
+    if (!x) { x = withAd(g, this._doc, adOnPlan(d, this._doc, adGround)); this._ph2.set(dk, x); }
     return x;
   }
 
@@ -935,7 +997,7 @@ export class PlanBuildTab {
     // an advance to contact: laid by its shapes; the echelons' distances against Fig 2 (PlanAdvance)
     if (r.task === 'advance') {
       const res = solveRecipe(r, this._ctx(r), this._opts());
-      res.rows = [...res.rows, ...advanceRows(res.items, this._doc)];
+      res.rows = [...res.rows, ...advanceRows(res.items, this._doc, this._hAt)];
       this._result = res; this._lastFit = null; return;
     }
     // a crossing: laid by its shapes (PlanCrossing re-lays it along the obstacle); no enemy force or ORBAT rows
@@ -999,12 +1061,12 @@ export class PlanBuildTab {
   private _withContext(res: SolveResult): SolveResult {
     const r = res.recipe;
     const t: TerrainSpec = this._ground !== 'auto' ? { kind: this._ground, source: 'user' } : { kind: 'plains', source: 'assumed', why: this._terrain ? 'read where the plan rests, once it is placed' : 'no terrain data' };
-    const rows = applyContext(res.rows, this._doc, r.echelon, r.task, res.frontageM, r.slots.filter((s) => s.kind === 'fwd').length, this._enemyFor(r, t.kind), t, this._force(r, t.kind));
+    const rows = applyContext(res.rows, this._doc, r.echelon, r.task, res.frontageM, r.slots.filter((s) => s.kind === 'fwd').length, this._enemyFor(r, t.kind), t, this._force(r, t.kind), r.task === 'attack' ? this._night : null);
     const h = r.task === 'attack' ? attackTimes(res, null, null, this._doc, t.kind, this._night, null) : null;
     const tk = h && r.tanks ? addTankTimes(h, res, null, null, this._doc, this._night, r.tanks, null) : [];
     const p2 = h ? phase2Row(h, this._doc) : null;
-    const brR = r.task === 'attack' ? attackBreach(r as any, this._doc, this._night, this._orbat?.engrData)?.row ?? null : null;
-    return { ...res, rows: [...rows, ...this._orbatRows(res), ...(r.task === 'attack' ? this._artyGeomRows(res) : []), ...this._liftRows(res),...(brR ? [brR] : []), ...(h ? [hSumRow(h, this._doc)] : []), ...(p2 ? [p2] : []), ...tk] };
+    const brR = r.task === 'attack' ? attackBreach(r as any, this._doc, this._night, this._orbat?.engrData, t.kind)?.row ?? null : null;
+    return { ...res, rows: groundNotes([...rows, ...layoutRows(res.items, r, this._doc), ...this._orbatRows(res), ...(r.task === 'attack' ? this._artyGeomRows(res) : []), ...this._liftRows(res),...(brR ? [brR] : []), ...(h ? [hSumRow(h, this._doc)] : []), ...(p2 ? [p2] : []), ...tk], this._doc, t.kind, r.task, r.echelon, r.task === 'attack' ? this._night : null) };
   }
 
   // ── terrain ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -1516,7 +1578,7 @@ export class PlanBuildTab {
       if (faces) return { step: 'Place the plan', text: `Click where the HQ goes: it faces ${this._threatInfo()?.word ?? 'the threat'}` };
       const first = task === 'crossing' ? 'Click H on the water'
         : task === 'advance' ? 'Click the SP of the advance'
-          : task === 'withdrawal' ? 'Click the Bn HQ of the old posn'
+          : task === 'withdrawal' ? (r?.layout === 'delay' ? 'Click the Bn HQ on the first delaying posn' : `Click the ${r?.echelon === '21' ? 'Div' : r?.echelon === '18' ? 'Bde' : 'Bn'} HQ of the old posn`)
           : task === 'attack' ? 'Click the Obj'
             : task === 'ambush' ? 'Click the KZ on the Rd'
               : task === 'patrol' ? 'Click the SP'
@@ -1526,7 +1588,7 @@ export class PlanBuildTab {
     }
     const second = task === 'crossing' ? 'Aim across to the far bank, then click'
       : task === 'advance' ? 'Aim along the axis of advance, then click'
-        : task === 'withdrawal' ? 'Move the way the Bn withdraws, to the new main posn, then click'
+        : task === 'withdrawal' ? (r?.layout === 'delay' ? 'Move the way the Bn delays back, to the last delaying posn (DP 3), then click' : r && isFmnWithdrawal(r) ? 'Move the way of withdrawal, to the new defensive posn, then click' : 'Move the way the Bn withdraws, to the new main posn, then click')
         : task === 'attack' ? 'Aim toward your own side (where the attack comes from), then click'
           : task === 'ambush' ? 'Aim up the Rd toward where the En comes from, then click'
             : task === 'patrol' ? 'Move to the Obj and click'
@@ -2106,6 +2168,8 @@ export class PlanBuildTab {
       inund: recipe.inund ?? null,
       engr: this._engr && (recipe.task === 'defence' || recipe.task === 'crossing' || recipe.enMfAtk) ? this._engrId : null,
       engrCoys: this._engrCoys || null,
+      // an attack by day or by night (Check my plan judges its assault frontage the same: DW p 47 in the desert)
+      night: recipe.task === 'attack' ? this._night : null,
     };
   }
 
@@ -2221,11 +2285,27 @@ export class PlanBuildTab {
     gs.push(...this._smallGraphics(f));
     gs.push(...this._crossGraphics(f));
     gs.push(...this._wdrGraphics(f));
-    // each posn's ground verdict as a ring at its centre (the rule lines setting says which)
+    // each posn's ground verdict as a marker at its centre (the rule lines setting says which): the card's icon on a dark
+    // disc, and on a fail or warn a tag outside the posn's outline naming the posn and its worst check (the user's pick M2)
     for (const s of f.res.slots) {
       if (!this._ruleOn(s.st)) continue;
-      const w = toWorld(f.frame, s.centre);
-      gs.push(new Graphic({ geometry: new Point({ x: w.x, y: w.y, spatialReference: MERC }), symbol: new SimpleMarkerSymbol({ style: 'circle', size: 13, color: [...RGB[s.st], 0.35] as any, outline: { color: RGB[s.st], width: 2.5 } }), attributes: { kind: 'status' } }));
+      const c = toWorld(f.frame, s.centre);
+      const worst = s.checks.find((x) => x.st === 'fail') ?? s.checks.find((x) => x.st === 'warn');
+      const outline = (f.raw.items.find((i) => i.role === s.role && i.pts.length >= 3)?.pts ?? []).map((p) => toWorld(f.frame, p));
+      const edge = outline.length ? Math.max(...outline.map((p) => p.x)) : c.x;
+      const tag = worst && (s.st === 'fail' || s.st === 'warn') ? `${s.label} · ${worst.name}${worst.word ? ` · ${worst.word}` : ''}` : null;
+      gs.push(...verdictMarks(c, s.st, tag, { x: Math.max(edge, c.x) + 60 * f.frame.k, y: c.y }, 'status'));
+    }
+    // a move the what-if finds late, marked on its route (whether or not the routes are shown); only the latest carries a
+    // tag, the others their marker alone, so the tags do not pile up round the posns (the card lists them all)
+    const lateMoves = (f.whatIf?.triggers ?? []).filter((t) => (t.st === 'fail' || t.st === 'warn') && this._ruleOn(t.st) && t.route && t.route.pts.length >= 2);
+    const by = (t: (typeof lateMoves)[number]) => (t.route!.blocked ? 1e6 : t.min !== null && t.enemyMin !== null ? t.min - t.enemyMin : -1e6);
+    const latest = lateMoves.reduce<(typeof lateMoves)[number] | null>((p, t) => (!p || by(t) > by(p) ? t : p), null);
+    for (const t of lateMoves) {
+      const a = toWorld(f.frame, t.route!.pts[0]), b = toWorld(f.frame, t.route!.pts[t.route!.pts.length - 1]);
+      const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const late = t.route!.blocked ? 'no route' : t.min !== null && t.enemyMin !== null && t.min > t.enemyMin ? `${t.min - t.enemyMin} min late` : 'little to spare';
+      gs.push(...verdictMarks(m, t.st, t === latest ? `${t.who} → ${t.to} · ${late}` : null, { x: m.x + 260 * f.frame.k, y: m.y }, 'status'));
     }
     layer.addMany(gs);
   }
@@ -2381,30 +2461,84 @@ export class PlanBuildTab {
       this._card.className = 'pb-card';
       box.appendChild(this._card);
     }
-    // every key that works for the plan in hand, and what it does now
-    this._card.innerHTML = `${html}<div class="pb-card-foot">${this._keysFor().map(([k, what]) => `${esc(k.replace(' ', '+'))}: ${esc(what)}`).join(' · ')}</div>`;
-    const w = box.clientWidth, h = box.clientHeight;
+    // every key that works for the plan in hand, and what it does now, as key caps
+    this._card.innerHTML = `${html}<div class="pb-c-keys">${this._keysFor().map(([k, what]) => `<span>${kbd(k)}${esc(what)}</span>`).join('')}</div>`;
+    // the full ledger (a fitted plan) is 500 px; a one-line state (moving, fitting) shrinks to its text
+    this._card.classList.toggle('is-full', html.includes('pb-c-h'));
+    const w = box.clientWidth, h = box.clientHeight, cw = this._card.offsetWidth;
     let x = screen.x + 22, y = screen.y + 22;
-    if (x + 290 > w) x = screen.x - 300;
+    // too wide for the right of the cursor: on its left, as far out
+    if (x + cw > w) x = screen.x - cw - 22;
     if (y + this._card.offsetHeight + 8 > h) y = screen.y - this._card.offsetHeight - 22;
     // still too tall for either side: as low as it fits, never off the map's foot
     y = Math.min(y, h - this._card.offsetHeight - 8);
     this._card.style.left = `${Math.max(4, x)}px`;
     this._card.style.top = `${Math.max(4, y)}px`;
+    this._clearOfHostBars(this._card, h);
   }
 
+  /**
+   * The card's top kept out from under the host's bars over the map (the top toolbars, a docked panel): its top corners
+   * are tested with elementsFromPoint and it steps down 8 px at a time until the map shows there, never past the map's
+   * foot. A host without elementsFromPoint (Node) leaves it where it is.
+   */
+  private _clearOfHostBars(el: HTMLElement, mapH: number): void {
+    if (typeof document.elementsFromPoint !== 'function') return;
+    const free = (x: number, y: number): boolean => {
+      const top = document.elementsFromPoint(x, y).find((e) => e !== el && !el.contains(e));
+      return !top || !!top.closest('.esri-view-surface, .esri-view-root');
+    };
+    const maxTop = mapH - el.offsetHeight - 8;
+    let top = parseFloat(el.style.top) || 0;
+    for (let i = 0; i < 80 && top < maxTop; i++) {
+      const r = el.getBoundingClientRect();
+      if (free(r.left + 6, r.top + 2) && free(r.right - 6, r.top + 2)) return;
+      top = Math.min(maxTop, top + 8);
+      el.style.top = `${top}px`;
+    }
+  }
+
+  /**
+   * The cursor card for a fitted plan, laid out as a ledger (the user's pick C of plan-builder-card-options.html,
+   * 24 Nov 2026): the plan, its ground, En and fit score; every fail and warn as a row, worst first, the first open with
+   * its race or lines, why and fixes; the passes and the checks not done counted; the Gr moves the fit made; the layouts
+   * at this spot with why Auto put the first one first; the task's own line. Sizes and colours are GroundGuideTokens'.
+   */
   private _cardHtml(ranked: Fitted[]): string {
     const best = ranked[0];
     // no fit yet (a key pressed before the plan rested): the note alone
     if (!best) return this._jNote ? `<div class="pb-card-dim">${esc(this._jNote)}</div>` : '';
-    const worst = [...best.res.rows, ...best.res.slots.flatMap((s) => s.checks.map((c) => ({ ...c, name: `${s.label}: ${c.name}` })))]
-      .find((c) => c.st === 'fail') ?? [...best.res.rows, ...best.res.slots.flatMap((s) => s.checks.map((c) => ({ ...c, name: `${s.label}: ${c.name}` })))].find((c) => c.st === 'warn');
-    const rows = ranked.slice(0, 4).map((r, i) => `<div class="pb-card-rk${i === 0 ? ' pb-top' : ''}"><span>${esc(LAYOUT_LABEL[r.recipe.layout] ?? r.recipe.layout)}</span><i style="width:${r.fit.score}%"></i><span>${r.fit.score}</span></div>`).join('');
-    const slid = best.fit.slides.length ? `<div class="pb-card-dim">${best.fit.slides.map((s) => slideWord(s)).join(', ')}</div>` : '';
-    return `<b>${esc(best.recipe.name)}${this._auto ? ' (Auto)' : ''}</b>${best.fit.pending ? ' <span class="pb-card-dim">ground loading…</span>' : ''}
-      ${ranked.length > 1 ? rows : `<div class="pb-card-rk pb-top"><span>Score</span><i style="width:${best.fit.score}%"></i><span>${best.fit.score}</span></div>`}
-      ${worst ? cardCheckHtml(worst, worst.word ?? WORD[worst.st]) : ''}${slid}
-      ${this._jNote ? `<div class="pb-card-dim">${esc(this._jNote)}</div>` : best.fit.small ? this._smallCardLine(best) : best.fit.withdrawal ? this._wdrCardLine(best) : best.fit.crossing ? this._crossCardLine(best) : worst && best.recipe.task !== 'advance' ? '<div class="pb-card-dim">J: the worst posn to better Gr nearby</div>' : ''}`;
+    const all: (Check & { name: string })[] = [...best.res.rows, ...best.res.slots.flatMap((s) => s.checks.map((c) => ({ ...c, name: `${s.label}: ${c.name}` })))];
+    // fails first, then warns; a posn's check that repeats a plan row of the same name (the reserve's own Moves in time)
+    // is that row again: shown once
+    const planNames = new Set(best.res.rows.map((c) => c.name));
+    const bad = [...all.filter((c) => c.st === 'fail'), ...all.filter((c) => c.st === 'warn')]
+      .filter((c) => !c.name.includes(': ') || !planNames.has(c.name.slice(c.name.indexOf(': ') + 2)));
+    const worst = bad[0];
+    const nPass = all.filter((c) => c.st === 'pass').length, grey = all.filter((c) => c.st === 'unchecked');
+    // the head: the plan, what it was fitted against, its score
+    const ctx: string[] = [];
+    if (best.terrain) ctx.push(terrainLabel(this._doc, best.terrain.kind));
+    if (best.enemy) ctx.push(`En ${echelonLabel(this._doc, best.enemy.echelon)} ${String((planDoctrine as any).enemy?.types?.[best.enemy.type]?.label ?? best.enemy.type)}`);
+    if (best.fit.from && !best.fit.fromAssumed) ctx.push('faces the threat');
+    if (best.fit.pending) ctx.push('Gr loading…');
+    const score = Math.max(0, Math.min(100, Math.round(best.fit.score)));
+    const head = `<div class="pb-c-h"><div class="pb-c-tt"><div class="pb-c-t">${esc(best.recipe.name)}${this._auto ? '<span class="pb-c-chip">Auto</span>' : ''}</div>${ctx.length ? `<div class="pb-c-ctx">${esc(ctx.join(' · '))}</div>` : ''}</div><div class="pb-c-fit"><div><span>Fit</span><b>${score}</b><small>/100</small></div><i class="pb-c-bar"><b style="width:${score}%"></b></i></div></div>`;
+    // the ledger: the worst open and two more (as the mockup), the rest counted
+    const shown = bad.slice(0, 3);
+    // the row that opens: the worst with something to lay out (its detail), else none
+    const openAt = shown.findIndex((c) => !!c.detail);
+    const ledger = shown.length
+      ? `<div class="pb-c-lg">${shown.map((c, i) => ledgerRow(c, i === openAt)).join('')}${bad.length > shown.length ? `<div class="pb-c-lr pb-c-more">${bad.length - shown.length} more fail${bad.length - shown.length > 1 ? 's and warns' : ' or warn'} in the Check step</div>` : ''}</div>`
+      : `<div class="pb-c-lg"><div class="pb-c-lr"><div class="pb-c-lh"><span class="pb-c-vb pb-pass">${cardIcon('pass')}Pass</span><span class="pb-c-n">Nothing to fix here</span><span class="pb-c-x">${nPass} checks pass on this Gr${grey.length ? `; ${grey.length} not checked: confirm on the Gr` : ''}</span></div></div></div>`;
+    // the rest counted, the Gr moves the fit made
+    const greyNames = [...new Set(grey.map((c) => c.name.replace(/^.*: /, '')))].slice(0, 3);
+    const sum = `<div class="pb-c-sum"><span>${cardIcon('pass')}<b>${nPass}</b> Pass</span>${grey.length ? `<span>${cardIcon('unchecked')}<b>${grey.length}</b> Not checked${greyNames.length ? `: ${esc(greyNames.join(', '))}${grey.length > greyNames.length ? '…' : ''}` : ''}</span>` : ''}${best.fit.slides.length ? `<span class="pb-c-mv">${best.fit.slides.map((s) => slideWord(s)).join(', ')}</span>` : ''}</div>`;
+    // the layouts at this spot, and why the first is first (Auto ranks by fails, then warns, then score)
+    const tag = (r: Fitted) => { const f = r.fit.fails, w = r.fit.warns; return f || w ? ` (${[f ? `${f} fail${f > 1 ? 's' : ''}` : '', w ? `${w} warn${w > 1 ? 's' : ''}` : ''].filter(Boolean).join(', ')})` : ''; };
+    const lays = ranked.length > 1 ? `<div class="pb-c-sum pb-c-lays"><span>Layouts here${this._auto ? ', fewest fails, then warns, then score' : ''}: ${ranked.slice(0, 4).map((r, i) => `${i ? '' : '<b>'}${esc(LAYOUT_LABEL[r.recipe.layout] ?? r.recipe.layout)} ${Math.round(r.fit.score)}${tag(r)}${i ? '' : '</b>'}`).join(' · ')}</span></div>` : '';
+    const line = this._jNote ? `<div class="pb-card-dim">${esc(this._jNote)}</div>` : best.fit.small ? this._smallCardLine(best) : best.fit.withdrawal ? this._wdrCardLine(best) : best.fit.crossing ? this._crossCardLine(best) : worst && best.recipe.task !== 'advance' ? '<div class="pb-card-dim">J moves the worst posn to better Gr nearby</div>' : '';
+    return `${head}${ledger}${sum}${lays}${line ? `<div class="pb-c-line">${line}</div>` : ''}`;
   }
 
   /** The card's last line for a crossing: the obstacle, the bridge, the tanks across, his observers. */
@@ -2545,14 +2679,18 @@ export class PlanBuildTab {
       return;
     }
     const gs: Graphic[] = [];
-    const ring = (x: number, y: number, st: CheckState, text: string) => {
-      const at = new Point({ x, y, spatialReference: MERC });
-      gs.push(new Graphic({ geometry: at, symbol: new SimpleMarkerSymbol({ style: 'circle', size: 15, color: [...RGB[st], 0.3] as any, outline: { color: RGB[st], width: 2.5 } }), attributes: { kind: 'check' } }));
-      if (text) gs.push(new Graphic({ geometry: at, symbol: new TextSymbol({ text, color: RGB[st], haloColor: [20, 24, 29], haloSize: 1.5, yoffset: -16, font: { size: 9, weight: 'bold' } }), attributes: { kind: 'check' } }));
-    };
+    // the same markers as a built plan's (verdictMarks: the card's icon on a dark disc, a tag outside the outline)
+    const k = 1 / Math.cos(2 * Math.atan(Math.exp((r.posns[0]?.poly[0]?.y ?? 0) / 6378137)) - Math.PI / 2);
+    const ring = (x: number, y: number, st: CheckState, text: string, edgeX: number = x) => gs.push(...verdictMarks({ x, y }, st, text || null, { x: Math.max(edgeX, x) + 60 * k, y }, 'check'));
     const mid = (pts: XY[]) => ({ x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length });
     if (r.task === 'defence') {
-      for (const s of r.slots) { if (!this._ruleOn(s.st)) continue; const p = r.posns.find((x) => x.id === s.role); if (p) { const c = mid(p.poly); ring(c.x, c.y, s.st, WORD[s.st]); } }
+      for (const s of r.slots) {
+        if (!this._ruleOn(s.st)) continue;
+        const p = r.posns.find((x) => x.id === s.role);
+        if (!p) continue;
+        const c = mid(p.poly), worst = s.checks.find((x) => x.st === 'fail') ?? s.checks.find((x) => x.st === 'warn');
+        ring(c.x, c.y, s.st, worst && (s.st === 'fail' || s.st === 'warn') ? `${s.label} · ${worst.name}${worst.word ? ` · ${worst.word}` : ''}` : '', Math.max(...p.poly.map((q) => q.x)));
+      }
       for (const a of this._bandsOn ? r.fit?.approaches ?? [] : []) {
         const path = a.path.map((p) => [p.x, p.y]);
         if (path.length < 2) continue;
@@ -2590,7 +2728,7 @@ export class PlanBuildTab {
   private _enemyRows(task: string, ownEch: string | null): string {
     const d = ownEch ? defaultEnemy(this._doc, ownEch, this._ground === 'auto' ? null : this._ground, task) : null;
     const typeLabel = (t: string) => String((planDoctrine as any).enemy?.types?.[t]?.label ?? t);
-    const why = task === 'attack' ? 'One level down: your 3 : 1 on the En (MW p 80)' : ownEch ? 'One level up: the 3 : 1 an attacker plans for (MW p 80)' : 'From the En symbols on the map, else one level up';
+    const why = task === 'attack' ? 'One level down: your 3 : 1 on the En (IBB p 248; more than 3 : 1 in mountains, MW p 80)' : ownEch ? 'One level up: the 3 : 1 an attacker plans for (IBB p 248)' : 'From the En symbols on the map, else one level up';
     const autoE = this._enEch === 'auto', autoT = this._enType === 'auto';
     const ech = seg(EN_ECHELONS.map((e) => ({ on: this._enEch === e, label: echelonLabel(this._doc, e), data: `enEch:${e}`, picked: autoE && d?.echelon === e })),
       { auto: { on: autoE, label: 'Auto', data: 'enEch:auto', title: d ? `${why}: ${echelonLabel(this._doc, d.echelon)}` : why }, label: 'En force' });
@@ -2618,7 +2756,7 @@ export class PlanBuildTab {
     }
     if (ech === '21') {
       const chips = ownDivTypes(this._orbat).map((t) => this._chip(u?.id === t.id, t.name, `divType:${t.id}`, `${t.coys} manoeuvre Coys / Sqns`)).join('');
-      return `${chips ? row('Type', chips) : ''}${this._artyRow(recipe)}${this._adRow(recipe)}${facts}`;
+      return `${chips ? row('Type', chips) : ''}${this._artyRow(recipe)}${this._adRow(recipe)}${recipe.task === 'advance' ? this._advRow() : ''}${facts}`;
     }
     if (ech !== '16' && ech !== '15' && ech !== '14') return facts;
     const need = this._needOf(recipe), sub = ech === '15' ? 'Coy' : 'Pl';
@@ -2641,7 +2779,7 @@ export class PlanBuildTab {
     const rsq = recipe.layout === 'screen' && this._orbat ? recceSqnOf(this._orbat) : null;
     const rcs = rsq ? row('Screen by', seg([{ on: !this._recceScreen, label: 'Rifle Coy', data: 'recceScreen:off', title: 'The rifle Coy of the type below: its Pls the posts' }, { on: this._recceScreen, label: 'Recce Sqn', data: 'recceScreen:on', title: `${rsq.name}: ${rsq.tanks} tanks, ${rsq.afvTps} AFV Tps the posts (they see from the cupola), ${rsq.rifleTps} Rifle Tps in ${rsq.apcs} APCs (${rsq.src})` }])) : '';
     if (recipe.screenBy) return `${rcs}${facts}<div class="pb-hint">${esc(recipe.screenBy.text)}</div>`;
-    return `${rcs}${row(ech === '16' ? 'Type' : `${sub} of`, chips + more)}${this._atRow(recipe)}${this._tankRow(recipe)}${this._artyRow(recipe)}${this._adRow(recipe)}${recipe.task === 'crossing' ? '' : this._engrRow(recipe)}${facts}`;
+    return `${rcs}${row(ech === '16' ? 'Type' : `${sub} of`, chips + more)}${this._atRow(recipe)}${this._tankRow(recipe)}${this._artyRow(recipe)}${this._adRow(recipe)}${recipe.task === 'crossing' ? '' : this._engrRow(recipe)}${ech === '16' && recipe.task === 'advance' ? this._advRow() : ''}${facts}`;
   }
 
   /**
@@ -2674,7 +2812,7 @@ export class PlanBuildTab {
   }
 
   /**
-   * Tanks in a Bn defence: 1 to 3 Sqns of the Armr Regt grouped to it (ORBAT: 14 tanks each). Their harbours stand beside the
+   * Tanks in a Bn defence: 1 to 3 Sqns of the Armr Regt grouped to it (ORBAT: 14 tanks each). Their leaguers (MIB p 68) stand beside the
    * reserve; they are the Bn's counter-penetration force at the tank rate, counted in the force. Their guns are not counted
    * as AT weapons: main gun ranges are not printed for the tank types.
    */
@@ -2683,7 +2821,7 @@ export class PlanBuildTab {
     if (!sq || (recipe.echelon !== '16' && recipe.echelon !== '15') || recipe.task !== 'defence') return '';
     const tp = recipe.echelon === '15', each = tp ? sq.tpTanks : sq.tanks;
     const chips = [0, 1, 2, 3].map((n) => this._chip(this._defTanks === n, n ? `${n} ${tp ? 'Tp' : 'Sqn'}${n > 1 ? 's' : ''}` : 'None', `defTanks:${n}`,
-      n ? `${n * each} tanks: harbours beside the reserve, the C Pen force at the tank rate; their guns count as AT at 2.5 km (E: the range is printed only for the Al-Zarrar). Armour in defence: the reserve and counter-attack nucleus, supplementing the AT layout (OoW I s6 para 1 p 22); it holds no frontage of its own` : `No tanks grouped to the ${tp ? 'Coy' : 'Bn'}`)).join('');
+      n ? `${n * each} tanks: leaguers beside the reserve (MIB p 68), the C Pen force at the tank rate; their guns count as AT at 2.5 km (E: the range is printed only for the Al-Zarrar). Armour in defence: the reserve and counter-attack nucleus, supplementing the AT layout (OoW I s6 para 1 p 22); it holds no frontage of its own` : `No tanks grouped to the ${tp ? 'Coy' : 'Bn'}`)).join('');
     return row('Tanks', chips);
   }
 
@@ -2971,8 +3109,8 @@ export class PlanBuildTab {
     const layout = seg(layouts.map((r) => ({ on: !this._auto && r.id === this._recipeId, label: LAYOUT_LABEL[r.layout] ?? r.layout, data: `layout:${r.id}`, title: r.name, picked: r.id === picked })), { auto, label: 'Layout' });
     const attack = res.recipe.task === 'attack'
       ? row('Time', seg([
-        { on: !this._night, label: 'Day', data: 'night:off', title: 'SL crossed between first and last light (OOW2 s6 para 17)' },
-        { on: this._night, label: 'Night', data: 'night:on', title: 'Night rates (IBB p 18), the Night March chart from the Assy Area to the FUP, the En night and thermal sights' }]))
+        { on: !this._night, label: 'Day', data: 'night:off', title: 'SL crossed after first light and before last light (OOW2 s6 para 18 a p 24)' },
+        { on: this._night, label: 'Night', data: 'night:on', title: 'Night rates (IBB p 18), the Night March chart from the Assy Area to the FUP, the En night and thermal sights; in the desert half the frontage and depth of a day attack (DW p 47)' }]))
         + row('Phases', seg([
           { on: this._phases === 1 || !!res.recipe.forCoys || res.recipe.echelon !== '16', label: '1', data: 'phases:1', title: 'One phase: the assault Coys onto the Obj, a reserve kept' },
           { on: this._phases === 2 && !res.recipe.forCoys && res.recipe.echelon === '16', label: '2', data: 'phases:2', disabled: !!res.recipe.forCoys || res.recipe.echelon !== '16', title: res.recipe.echelon !== '16' ? 'Phases are laid for a Bn attack (its follow-up Coys round Obj 1)' : res.recipe.forCoys ? 'A 3-Coy Bn has no Coy left for a second phase' : 'Obj 1, then the follow-up Coys round it onto Obj 2 behind, from a new direction (IBB p186); Obj 2 on a hostile posn drawn behind Obj 1, else the En high ground' },
@@ -3035,6 +3173,23 @@ export class PlanBuildTab {
         <p class="pb-p">The whole plan is laid along the obstacle: the start line on the home bank, the objectives and phase lines on the far bank, square to the water where it bends.</p>
         <p class="pb-p pb-dim">${this._terrain ? 'When the mouse rests the obstacle is read (its type, width, depth, banks, the crossings on it), the bridge site moved to the narrowest, firmest place near it, the ground on the far side that sees the crossing places found (the BH line reaches out to take it), and the boats, rafts, bridge and tanks timed from IBB Annex Q for the light chosen.' : 'Without terrain data the obstacle is assumed straight and square to the aim; every ground check stays grey.'}</p>`;
     }
+    if (rec.task === 'withdrawal' && rec.layout === 'delay') {
+      return `<div class="pb-sum">Where the Bn delays</div>
+        ${howTo('click the <b>Bn HQ on the first delaying posn</b> (DP 1: all Coys forward on a wide front, a small reserve)', 'Move the cursor <b>the way the Bn falls back</b> to the <b>last delaying posn</b> and click: DP 3 (planned) goes there, DP 2 half way, the echelons behind DP 2')}
+        <p class="pb-p">The Bn delays on successive posns, its normal method on the wide frontages of a delay (MIB p 233): on each all Coys forward, the gaps covered by OPs and patrols, a small reserve to check penetrations and cover the move back (MIB pp 238-239); each posn far enough back that the En must regroup and redeploy his close support weapons (MIB pp 237-238). How long each holds is the higher Comd's to say (OOW3 p 29).</p>
+        <p class="pb-p pb-dim">${this._terrain ? 'When the mouse rests each delaying posn is read for its view to the front and water in front of it (MIB p 237), and the routes back for the En view.' : 'Without terrain data the posns stand by the figures; the ground rows stay grey.'}</p>`;
+    }
+    if (rec.task === 'withdrawal' && rec.layout === 'by-day') {
+      return `<div class="pb-sum">Where the Bn goes, by day</div>
+        ${howTo('click the <b>Bn HQ of the old posn</b>', 'Move the cursor <b>the way the Bn withdraws</b> to the <b>new main posn</b> and click')}
+        <p class="pb-p">Normally avoided unless the weather or the roads demand it (OOW3 p 40). The sequence is the night's reversed: the forward Coys go back through the depth Coys, which cover them, by passage points to fresh posns behind them, leap-frogging until contact is broken (MIB pp 223-224); no assembly areas (OOW3 p 41); passage lanes, contact points and a phase line where the responsibility passes (OOW3 p 43).</p>`;
+    }
+    if (rec.task === 'withdrawal' && isFmnWithdrawal(rec)) {
+      const fm = rec.echelon === '21' ? 'Div' : 'Bde', sub = rec.echelon === '21' ? 'Bde' : 'Bn';
+      return `<div class="pb-sum">Where the ${fm} goes</div>
+        ${howTo(`click the <b>${fm} HQ of the old posn</b>`, 'Move the cursor <b>the way of withdrawal</b> to the <b>new defensive posn</b> and click: the intermediate posns and covering troops go between (OOW3 Annex P p 75)')}
+        <p class="pb-p">Each ${sub} back on its own axis to the clear line (OOW3 p 8); covering troops delaying in front of each intermediate posn; two intermediate posns, each held by a complete ${rec.echelon === '21' ? 'formation' : 'unit'} with less depth, far enough apart that the En must re-deploy his guns (OOW3 pp 33-34); a flank guard if a flank is threatened; the primary demolition belt across the new posn's front (OOW3 p 56).</p>`;
+    }
     if (rec.task === 'withdrawal') {
       return `<div class="pb-sum">Where the Bn goes</div>
         ${howTo('click the <b>Bn HQ of the old posn</b> (the Coys are laid round it, facing the En)', 'Move the cursor <b>the way the Bn withdraws</b> to the <b>new main posn</b> and click: the new main posn (planned) goes there, the intermediate posn between')}
@@ -3068,7 +3223,7 @@ export class PlanBuildTab {
       ${this._enemyRows(rec.task, rec.echelon)}
       ${(() => { const en = this._enUnit(rec, this._ground === 'auto' ? null : this._ground); return en ? unitFacts(en) : ''; })()}
       <p class="pb-p pb-dim">${attack
-        ? 'The En echelon sets the force ratio (MW p 80: more than 3 : 1).'
+        ? 'The En echelon sets the force ratio: the usual 3 : 1 (IBB p 248); in mountains more than 3 : 1 (MW p 80).'
         : 'The En echelon sizes the approaches (the En attacks on the corridors of the level below its own: an en Bde on 1.5 km, IPB p 7) and the force ratio; the En type sets its going (Inf on foot, Mech / Armd tracked), how fast it comes and where it forms up (1-1.2 km for infantry, 2.5-3 km for tanks, IBB pp 201, 214).'}</p>`;
     if (attack) return `${force}
       <div class="pb-sum">Where you attack from</div>

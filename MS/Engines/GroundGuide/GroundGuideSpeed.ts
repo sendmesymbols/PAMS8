@@ -90,6 +90,10 @@ export interface SpeedMover {
   fairAfterRain: number;
   /** A day's march (foot, pack): km in 24 h [low, high] by ground for the day (plain / desert / mountain). */
   dayKm?: Record<string, { combat: [number, number]; none?: [number, number] }>;
+  /** On mountain ground, MW's rule for men on foot (p 81): km/h by day / night plus minutes per 300 m up and 600 m down. */
+  mountain?: { dayKmh: number; nightKmh: number; climbMinPer300: number; descentMinPer600: number };
+  /** Ground keys where rain makes the going no worse (MIB p 261: the desert, rain cements the sand). */
+  afterRainBetter?: string[];
   note?: string;
 }
 
@@ -230,15 +234,27 @@ export function altitudeFactor(m: SpeedMover, elevM: number | null): number {
 export function spotKmh(
   t: SpeedTables,
   m: SpeedMover,
-  p: { ground: string | null; step: GoingStep | null; season: GoingSeason; light: SpeedLight; grade: number; elevM: number | null },
+  p: { ground: string | null; step: GoingStep | null; season: GoingSeason; light: SpeedLight; grade: number; elevM: number | null; mountain?: boolean },
 ): number | null {
   if (p.ground === null || p.step === null) return null;
   if (p.step === 'nogo') return 0;
   const g = m.ground[p.ground] ?? m.ground.open;
   if (!g) return null;
+  const wet = p.season === 'wet' && !(m.afterRainBetter ?? []).includes(p.ground);
+  if (p.mountain && m.mountain) {
+    // MW p 81: the base rate by day / night, and the climb or descent as added time per km of way.
+    const M = m.mountain;
+    const base = p.light === 'night' ? M.nightKmh : M.dayKmh;
+    const h = 1 / base + (p.grade > 0 ? ((p.grade * 1000) / 300) * (M.climbMinPer300 / 60) : ((-p.grade * 1000) / 600) * (M.descentMinPer600 / 60));
+    let v = 1 / h;
+    if (p.step === 'slow') v *= m.slowGo;
+    if (wet) v *= m.afterRain;
+    v *= altitudeFactor(m, p.elevM);
+    return Math.max(0, v);
+  }
   let v = g[LIGHT_I[p.light]];
   if (p.step === 'slow') v *= m.slowGo;
-  if (p.season === 'wet') v *= m.afterRain;
+  if (wet) v *= m.afterRain;
   v *= slopeFactor(t, m, p.grade, p.light);
   v *= altitudeFactor(m, p.elevM);
   return Math.max(0, v);
@@ -468,7 +484,10 @@ export function readSpeed(a: SpeedArgs): GroundGuideSpeed | null {
   // the slower way, from 3 deg (below that the DEM's noise would only shave a tenth off the table).
   const gradeFor = (mm: SpeedMover) => (mm.slope.model === 'tobler' ? (steep ? grade ?? 0 : 0) : grade ?? 0);
   const g0 = gradeFor(m);
-  const spot = (season: GoingSeason, light: SpeedLight, gr: number) => spotKmh(t, m, { ground, step: step(season), season, light, grade: gr, elevM });
+  // Mountain ground (bundle terrain Mountainous / Hilly, else 15 degrees or more): MW's foot rule (p 81).
+  const tc0 = L.terrain ? read(L.terrain, at[0], at[1]) : null;
+  const mtn = dayGround(typeof tc0 === 'number' && tc0 > 0 && tc0 !== 255 ? tc0 : null, ground, slopeDeg) === 'mountain';
+  const spot = (season: GoingSeason, light: SpeedLight, gr: number) => spotKmh(t, m, { ground, step: step(season), season, light, grade: gr, elevM, mountain: mtn });
 
   const kmhNow = round1(spot(a.season, o.light, g0));
   const sloped = tobler && steep;
@@ -491,7 +510,7 @@ export function readSpeed(a: SpeedArgs): GroundGuideSpeed | null {
       mover: k,
       short: mm.short,
       cat: mm.cat,
-      kmh: round1(spotKmh(t, mm, { ground, step: st, season: a.season, light: o.light, grade: gradeFor(mm), elevM })),
+      kmh: round1(spotKmh(t, mm, { ground, step: st, season: a.season, light: o.light, grade: gradeFor(mm), elevM, mountain: mtn })),
       active: k === a.mover.key,
     };
   });
@@ -569,7 +588,7 @@ export function readSpeed(a: SpeedArgs): GroundGuideSpeed | null {
           continue;
         }
         gapFrom = 0;
-        const v = spotKmh(t, m, { ground: groundOf(t, c), step: gs.step, season: a.season, light: o.light, grade: tobler ? gr : Math.abs(gr), elevM: eNow });
+        const v = spotKmh(t, m, { ground: groundOf(t, c), step: gs.step, season: a.season, light: o.light, grade: tobler ? gr : Math.abs(gr), elevM: eNow, mountain: mtn });
         if (v === null) continue;
         if (v <= 0) {
           // Stopped: by NO-GO ground (its reason), or on GO ground by a slope the mover cannot climb (the table's factor 0).

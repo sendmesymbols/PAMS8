@@ -38,7 +38,8 @@ const DEFAULTS: Rules = {
   sights: { nightM: 1200, thermalM: 4000, thermalNearM: 3000 },
   layout: {
     platoon: { frontM: 100, depthM: 60, fupMin: 10, slots: [['1 Sec', 0, 0], ['2 Sec', 1, 0], ['3 Sec', 0.5, 1], ['Pl HQ', 0.5, 0.55]] },
-    company: { frontM: 200, depthM: 120, fupMin: 20, slots: [['1 Pl', 0, 0], ['2 Pl', 1, 0], ['3 Pl', 0.5, 1], ['Coy HQ', 0.5, 0.55]] },
+    // company front: IBB S47 para 17 a p 248 (250 m, a Coy assault at night)
+    company: { frontM: 250, depthM: 120, fupMin: 20, slots: [['1 Pl', 0, 0], ['2 Pl', 1, 0], ['3 Pl', 0.5, 1], ['Coy HQ', 0.5, 0.55]] },
     battalion: { frontM: 450, depthM: 300, fupMin: 30, slots: [['A Coy', 0, 0], ['B Coy', 1, 0], ['C Coy', 0, 1], ['D Coy', 1, 1], ['Tac HQ', 0.5, 0.5]] },
   },
   marking: { routeLightM: 200, axisTapeM: 100, tapeRollM: 100 },

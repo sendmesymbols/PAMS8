@@ -1,0 +1,167 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": false
+  },
+  "id": "bn-def-mtn-pass",
+  "family": "bn-def-mtn",
+  "layout": "pass",
+  "echelon": "16",
+  "unit": "inf-bn-mtn",
+  "basis": "D",
+  "name": "Bn Def (Mtn): a pass, both shoulders held",
+  "frontageRow": "Battalion on extended frontages, two companies and three platoons up",
+  "subRow": null,
+  "alternates": [],
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "flanks",
+    "exposure",
+    "reserveReach",
+    "mutualSupport",
+    "fieldOfFire"
+  ],
+  "note": "A pass through a ridge or range: its defence lies on the heights dominating its two shoulders; passes draw infiltration, a heliborne force and raids (MW s2 para 14 p 158). A and B Coys on the shoulders, C Coy on the pass itself, D Coy the reserve behind it. Strong points with all round defence, at least a Pl strong point in each Coy posn on its most dominating feature with 30 days' staying power; tiers from the foothills or valleys to the ridge, the final battle on the ridge (MW s2 paras 8-9 p 152). Frontage on IBB's extended row (MW prints no figure).",
+  "slots": [
+    {
+      "role": "shL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "A Coy, L shoulder",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": -1300,
+        "backM": -700
+      },
+      "rule": {},
+      "terrainRule": {
+        "prefer": [
+          "highGround",
+          "itg"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "shR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "B Coy, R shoulder",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 1300,
+        "backM": -700
+      },
+      "rule": {},
+      "terrainRule": {
+        "prefer": [
+          "highGround",
+          "itg"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "blk",
+      "kind": "depth",
+      "sym": "25151200",
+      "label": "C Coy, on the pass",
+      "echelon": "15",
+      "order": 2,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": 0
+      },
+      "rule": {},
+      "terrainRule": {
+        "prefer": [
+          "highGround",
+          "itg"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "D Coy (Res)",
+      "echelon": "15",
+      "order": 2,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": 1800
+      },
+      "rule": {
+        "reach": {
+          "slots": [
+            "shL",
+            "shR"
+          ],
+          "withinMin": {
+            "doctrine": "cpen.coyMin"
+          }
+        }
+      },
+      "terrainRule": {
+        "vehicleAccess": false,
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bn HQ",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          2400
+        ]
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111402",
+      "label": "81 mm Mor",
+      "order": 6,
+      "shape": {
+        "at": [
+          0,
+          2100
+        ]
+      }
+    }
+  ]
+}

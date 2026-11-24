@@ -14,7 +14,7 @@
   "name": "Bn Def: three up, none back (3 Coys)",
   "frontageRow": "Battalion, three companies up",
   "subRow": "Company, battalion two up",
-  "note": "A three-Coy Bn (Lt Cdo, p 623) with all three Coys forward, 1500 m wide with 500 m gaps: 5500 m inside the 6500 m row. No Coy is left for a reserve and nothing is in depth, so the Depth row warns: ask Bde for a reserve (E).",
+  "note": "A three-Coy Bn (Lt Cdo, p 623) with all three Coys forward, 1500 m wide with 500 m gaps: 5500 m inside the 6500 m row. No Coy is left for a reserve and nothing is in depth, so the Depth row warns: ask Bde for a reserve (E). Bn HQ (IBB S3 pp 22-24; p 23: placed centrally within the Bn locality, preferably behind the depth localities; a defended locality of 55 all ranks, concealed from the air, dug in, near the Bde axis with an alternative posn; laid about 500 m behind the rearmost depth / reserve Coy (the distance a decision, E). The RRs, a section of two in each rifle Coy, sited first in the forward localities with an alternative each 200-300 m back (IBB S8 pp 38-42; IC p 367).",
   "slots": [
     {
       "role": "fwdL",
@@ -125,6 +125,19 @@
           "noGo",
           "water",
           "bua"
+        ]
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bn HQ",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          400
         ]
       }
     },
@@ -256,6 +269,37 @@
       },
       "terrainRule": {
         "sees": "killingGr"
+      }
+    },
+    {
+      "role": "rr",
+      "kind": "point",
+      "sym": "15110800",
+      "label": "RR",
+      "order": 6,
+      "rule": {
+        "perSlot": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ],
+        "ahead": -150
+      }
+    },
+    {
+      "role": "rrAlt",
+      "kind": "point",
+      "sym": "15110800",
+      "label": "RR (alt)",
+      "order": 6,
+      "planned": true,
+      "rule": {
+        "perSlot": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ],
+        "ahead": -400
       }
     },
     {

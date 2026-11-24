@@ -526,7 +526,7 @@ export function tankCoverRow(res: { items: { role: string }[]; slots: { role: st
     parts.push(`${name}: ${reach >= min ? `under their guns ${reach} m beyond the FDL from ${from}` : reach > 0 ? `only ${reach} m beyond the FDL under their guns from ${from}` : `out of their gun range from ${from}`}`);
     if (reach < min) worst = 'warn';
   }
-  return { name: 'Tank AT cover', st: worst, reason: `${parts.join('; ')} (tank gun ${fmtM(gun)} effective, E: SO's Hbk Sec 1 prints a gun range only for the Al-Zarrar; ${fmtM(min)} beyond the FDL wanted). Tanks in defence counter-attack and counter penetration, and lend weight to the AT layout only where it is absolutely inescapable (IC s105 para 21c p 555; kept concentrated, inside the main defences only by exception: OoW I s6 para 1 p 22): this is their reach once there, not a post for them` };
+  return { name: 'Tank AT cover', st: worst, reason: `${parts.join('; ')} (tank gun ${fmtM(gun)} effective, E: SO's Hbk Sec 1 prints a gun range only for the Al-Zarrar; ${fmtM(min)} beyond the FDL wanted). Tanks in defence counter-attack and counter penetration, and lend weight to the AT layout only where it is absolutely inescapable (IC s105 para 21c p 555; kept concentrated, inside the main defences only by exception: OoW I s6 para 1 a p 21): this is their reach once there, not a post for them` };
 }
 
 /** A failing moves row reads "Too late" (the user's word, 23 Nov 2026) when every failed move is timed and he gets there first; one with no route keeps "Fail". */
@@ -578,6 +578,53 @@ export type FittedWithMoves = FittedLayout & { whatIf: WhatIfResult };
  * A fitted layout with its what-if: the supplementary and C Pen posns added to the plan (planned, with the alternates'
  * hidden / shown / none), the trigger table, and a "Moves in time" row in its checks (counted in Auto's ranking).
  */
+/** The own minefields on a plan (plan metres): the 2525D minefield symbol, or a recipe's minefield roles. */
+const MINEFIELD_KEY = '25270703';
+const isMinefield = (i: { role: string; key?: string }) => i.key === MINEFIELD_KEY || /^(atMines|mf[A-Z]\w*|apMines)$/.test(i.role);
+
+/** Whether a polyline crosses or enters a polygon (plan metres). */
+function crosses(path: XY[], poly: XY[]): boolean {
+  const inside = (p: XY) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a.y > p.y) !== (b.y > p.y) && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) c = !c; } return c; };
+  const segX = (p: XY, q: XY, a: XY, b: XY) => { const d = (q.x - p.x) * (b.y - a.y) - (q.y - p.y) * (b.x - a.x); if (!d) return false; const t = ((a.x - p.x) * (b.y - a.y) - (a.y - p.y) * (b.x - a.x)) / d, u = ((a.x - p.x) * (q.y - p.y) - (a.y - p.y) * (q.x - p.x)) / d; return t >= 0 && t <= 1 && u >= 0 && u <= 1; };
+  if (path.some(inside)) return true;
+  for (let i = 1; i < path.length; i++) for (let k = 0; k < poly.length; k++) if (segX(path[i - 1], path[i], poly[k], poly[(k + 1) % poly.length])) return true;
+  return false;
+}
+
+/**
+ * Mine gaps (OoW Vol I pp 38, 42): each reserve move the what-if lays (to a Sup posn, to the C Pen posn) read against the
+ * plan's own minefields; one that crosses a field needs a gap or lane on it, or a phony field among the live ones. Null
+ * with no reserve move laid.
+ */
+export function mineGapRow(w: WhatIfResult, items: { role: string; key?: string; label?: string; pts: XY[] }[]): Check | null {
+  const moves = w.triggers.filter((t) => kindOfTrigger(t) !== 'shell' && t.route && !t.route.blocked && t.route.pts.length >= 2);
+  if (!moves.length) return null;
+  const rule = 'own minefields must not hamper the employment of own reserves (OoW Vol I p 42); phony minefields within the live ones give the counter-attacking forces their gaps (p 38)';
+  const mines = items.filter((i) => isMinefield(i) && i.pts.length >= 3);
+  if (!mines.length) return { name: 'Mine gaps', st: 'pass', reason: `no own minefield on the plan: when laid, ${rule}` };
+  const hit = moves.filter((t) => mines.some((m) => crosses(t.route!.pts, m.pts)));
+  if (!hit.length) return { name: 'Mine gaps', st: 'pass', reason: `none of the ${moves.length} reserve move${moves.length > 1 ? 's' : ''} (to the Sup and C Pen posns) crosses an own minefield: ${rule}` };
+  return {
+    name: 'Mine gaps', st: 'warn', reason: `${hit.map((t) => `${t.who} to ${t.to}`).join('; ')} cross${hit.length === 1 ? 'es' : ''} an own minefield: ${rule}`,
+    detail: { head: `${hit.length} reserve move${hit.length > 1 ? 's' : ''} through an own minefield`, items: hit.map((t) => `${t.who} to ${t.to} (${t.trigger})`), why: 'A minefield across the reserve\'s way stops the counter-attack it was laid to support (OoW Vol I p 42).', fix: ['A marked gap or lane on the route, closed by a mine party when the reserve is through', 'Or a phony field there among the live ones (OoW Vol I p 38)', 'Or a route round the field'] },
+  };
+}
+
+/**
+ * The En's quick attack (MIB p 89; IBB p 133 beside it): held at the FDL, the En mounts a quick attack from contact to H in
+ * about 30-60 min (a Coy) or 60-100 min (a Bn). Told beside the moves, which stay timed against the En's arrival (safety
+ * first); a Bde's has no printed figure: at least a Bn's. Null with no En time to the FDL.
+ */
+export function quickAttackRow(w: WhatIfResult, en: EnemySpec | null, doc: DoctrineSet): Check | null {
+  if (w.enemyToFdlMin === null) return null;
+  const ech = en?.echelon ?? '16';
+  const key = ech === '15' ? '15' : '16';
+  const r = resolveRange(doc, doctrineAt(doc, `enemy.quickAttackMin.${key}`)) ?? (key === '15' ? [30, 60] : [60, 100]);
+  const t0 = w.enemyToFdlMin;
+  const who = ech === '15' ? 'a Coy attack' : ech === '16' ? 'a Bn attack' : `a ${ech === '18' ? 'Bde' : 'Div'} attack (no figure printed: at least a Bn's)`;
+  return { name: 'En quick attack', st: 'pass', reason: `the En reaches the FDL about ${t0} min from the En start; held there, ${who} takes about ${r[0]}-${r[1]} min from contact to H (MIB p 89; IBB p 133: a Coy at most 30-45 min, a Bn 1-2 h): its H about ${t0 + r[0]}-${t0 + r[1]} min, a deliberate attack later. The moves stay timed against the En's arrival (Moves in time), not this H` };
+}
+
 export function withMoves(fl: FittedLayout, inp: FitLayoutInput): FittedWithMoves {
   const w = whatIf(fl, inp.ground, inp.ctx.doc, inp.threat ?? null);
   if (fl.recipe.task === 'attack') return { ...fl, whatIf: w };
@@ -606,6 +653,11 @@ export function withMoves(fl: FittedLayout, inp: FitLayoutInput): FittedWithMove
   const rows = [...fl.res.rows];
   const mr = movesRow(w);
   if (mr) rows.push(mr);
+  // the En's quick attack from contact (MIB p 89); the reserve's routes against own minefields (OoW Vol I pp 38, 42)
+  const qa = quickAttackRow(w, fl.enemy ?? null, inp.ctx.doc);
+  if (qa) rows.push(qa);
+  const mg = mineGapRow(w, fl.raw.items);
+  if (mg) rows.push(mg);
   // tank units grouped to it: their guns on each approach from the C Pen or Sup posn
   const tc = fl.recipe.defTanks ? tankCoverRow(fl.raw, fl.recipe, w, fl.fit, fl.frame, inp.ctx.doc) : null;
   if (tc) rows.push(tc);

@@ -25,11 +25,13 @@ export interface DecAaIn {
   main: boolean;
   startM: number;
   endM: number;
-  /** The going along it, in order; `riseM` the ascent inside the stretch (metres climbed, descents not counted). */
-  going: Array<{ fromM: number; toM: number; cls: DecCls; riseM?: number }>;
+  /** The going along it, in order; `riseM` the ascent inside the stretch (metres climbed), `fallM` its descent. */
+  going: Array<{ fromM: number; toM: number; cls: DecCls; riseM?: number; fallM?: number }>;
   narrows: Array<{ alongM: number; widthM: number; kind: 'crossing' | 'slow' | 'narrow' | 'steep' }>;
   /** Where own depth localities stand along it (the rearmost own Posn beside it), metres; null when none. */
   depthM: number | null;
+  /** The En FUP on an approach onto the objective, along it (metres); null or absent when none (OoW Vol I p 51: a TAI). */
+  fupM?: number | null;
 }
 export interface DecRates {
   /** km/h [day, night] for GO, SLOW-GO, NO-GO (NO-GO night: the slower figure). */
@@ -41,6 +43,10 @@ export interface DecRates {
    * vehicles. The same figure the Intelligent Deployment tab's moves pay (PlanDoctrine terrain.kinds.mountain).
    */
   climbMinPer300?: [number, number] | null;
+  /** Men on foot pay the descent too (MW p 81: 30-60 min per 600 m): [earliest, latest]; null for vehicles. */
+  descentMinPer600?: [number, number] | null;
+  /** The GO rates are MW's mountain rates (3 km/h by day, 0.5 by night), SLOW-GO / NO-GO capped at them. */
+  mountain?: boolean;
 }
 export interface DecArgs {
   aas: DecAaIn[];
@@ -62,6 +68,18 @@ export interface DecArgs {
    * own MSR, and the avenue his doctrinal template is laid along; left out: no COAs.
    */
   coa?: { fire?: Record<string, number>; turnAa?: string | null; templateAa?: string | null };
+  /** The Indian reserves' reaction (IDD p 5), read when the reading is of the En defence (own attack): hours after H or after the decision. */
+  reserves?: Array<{ level: string; h: [number, number]; from: 'attack' | 'decision'; what?: string }> | null;
+  /** The cues that confirm the En main effort (OoW Vol I p 54), named on the counter-attack DP. */
+  catkCues?: string[] | null;
+}
+export interface DecReserve {
+  level: string;
+  fromH: number;
+  toH: number;
+  from: 'attack' | 'decision';
+  what: string;
+  text: string;
 }
 export interface DecCoa {
   id: 'COA 1' | 'COA 2';
@@ -78,7 +96,7 @@ export interface DecNai {
   n: number;
   aa: string;
   alongM: number;
-  kind: 'entry' | 'crossing' | 'narrows' | 'slow' | 'crossover';
+  kind: 'entry' | 'crossing' | 'narrows' | 'slow' | 'crossover' | 'fup';
   shows: string;
   earliestH: number;
   latestH: number;
@@ -126,11 +144,17 @@ export interface DecResult {
   dps: DecDp[];
   /** COA 1 most likely, COA 2 most dangerous (ATP 2-01.3); null when not asked or one avenue only. */
   coas: DecCoa[] | null;
+  /** The Indian reserves' ladder (own attack only), else empty. */
+  reserves: DecReserve[];
   notes: string[];
 }
 
-/** The book's rates (IpbDoctrine.json `rates`) for a mover: vehicles for armour and mech, foot for dismounted. */
-export function decRatesFrom(doc: any, mover: 'armour' | 'mech' | 'dismounted'): DecRates {
+/**
+ * The book's rates (IpbDoctrine.json `rates`) for a mover: vehicles for armour and mech, foot for dismounted. In mountains
+ * (`opts.mountain`) men on foot move at MW's rates (p 81: 3 km/h by day, 0.5-1 by night; the latest takes 0.5), and no
+ * worse going is faster than the GO rate; they pay the climb and the descent everywhere.
+ */
+export function decRatesFrom(doc: any, mover: 'armour' | 'mech' | 'dismounted', opts: { mountain?: boolean } = {}): DecRates {
   const r = doc?.rates ?? {};
   const t = mover === 'dismounted' ? (r.footKmh ?? { go: [4, 3.2], slow: [2.4, 1.6], nogo: [1, [0.1, 0.5]] }) : (r.vehicleKmh ?? { go: [24, 24], slow: [16, 8], nogo: [1, [0.1, 0.5]] });
   const pair = (v: any, d: [number, number]): [number, number] => {
@@ -139,7 +163,24 @@ export function decRatesFrom(doc: any, mover: 'armour' | 'mech' | 'dismounted'):
     return [Number(v[0]) || d[0], night || d[1]];
   };
   const climb = Array.isArray(r.mountain?.addMinPer300mAscent) ? (r.mountain.addMinPer300mAscent as [number, number]) : [30, 60];
-  return { go: pair(t.go, [24, 24]), slow: pair(t.slow, [16, 8]), nogo: pair(t.nogo, [1, 0.1]), climbMinPer300: mover === 'dismounted' ? [Number(climb[0]) || 30, Number(climb[1]) || 60] : null };
+  const desc = Array.isArray(r.mountain?.addMinPer600mDescent) ? (r.mountain.addMinPer600mDescent as [number, number]) : [30, 60];
+  const foot = mover === 'dismounted';
+  let go = pair(t.go, [24, 24]), slow = pair(t.slow, [16, 8]), nogo = pair(t.nogo, [1, 0.1]);
+  const mtn = foot && !!opts.mountain;
+  if (mtn) {
+    const day = Number(r.mountain?.dayKmh) || 3;
+    const nk = r.mountain?.nightKmh;
+    const night = Array.isArray(nk) ? Math.min(...nk.map(Number)) : Number(nk) || 0.5;
+    go = [day, night];
+    slow = [Math.min(slow[0], day), Math.min(slow[1], night)];
+    nogo = [Math.min(nogo[0], day), Math.min(nogo[1], night)];
+  }
+  return {
+    go, slow, nogo,
+    climbMinPer300: foot ? [Number(climb[0]) || 30, Number(climb[1]) || 60] : null,
+    descentMinPer600: foot ? [Number(desc[0]) || 30, Number(desc[1]) || 60] : null,
+    mountain: mtn,
+  };
 }
 
 const SHOWS: Record<DecNai['kind'], string> = {
@@ -148,6 +189,7 @@ const SHOWS: Record<DecNai['kind'], string> = {
   narrows: 'columns close up to pass the narrows; deploying beyond it',
   slow: 'columns slow and close up in SLOW-GO',
   crossover: 'columns switch to the other avenue',
+  fup: 'assaulting elements close up and shake out in the FUP; supporting fire starts',
 };
 
 export function decide(a: DecArgs): DecResult {
@@ -174,6 +216,7 @@ export function decide(a: DecArgs): DecResult {
         return t - ((aa.startM - alongM) / 1000) / a.rates.go[late ? 1 : 0];
       }
       const climb = a.rates.climbMinPer300;
+      const desc = a.rates.descentMinPer600;
       for (const g of segs) {
         if (g.fromM >= alongM) break;
         const len = Math.min(alongM, g.toM) - g.fromM;
@@ -181,6 +224,8 @@ export function decide(a: DecArgs): DecResult {
         // The climb inside the stretch (its share, when the stretch is only partly covered): 30 min per 300 m at his
         // earliest, 60 at his latest (MW p 81), on foot only.
         if (climb && g.riseM) t += ((g.riseM * (len / Math.max(1e-6, g.toM - g.fromM))) / 300) * (climb[late ? 1 : 0] / 60);
+        // The descent likewise: 30 min per 600 m at his earliest, 60 at his latest (MW p 81).
+        if (desc && g.fallM) t += ((g.fallM * (len / Math.max(1e-6, g.toM - g.fromM))) / 600) * (desc[late ? 1 : 0] / 60);
       }
       return t;
     };
@@ -207,6 +252,12 @@ export function decide(a: DecArgs): DecResult {
       raw.push({ aa: aa.id, alongM: nw.alongM, kind, shows: SHOWS[kind], earliestH: fn(nw.alongM, false), latestH: fn(nw.alongM, true), tai: null, widthM: nw.widthM });
     }
   }
+  // The En FUP on an approach onto the objective: he concentrates there (OoW Vol I p 51: engage him in the FAA and FUP).
+  for (const aa of a.aas) {
+    if (aa.fupM === null || aa.fupM === undefined || !(aa.fupM > aa.startM && aa.fupM <= aa.endM)) continue;
+    const fn = timeAt.get(aa.id)!;
+    raw.push({ aa: aa.id, alongM: aa.fupM, kind: 'fup', shows: SHOWS.fup, earliestH: fn(aa.fupM, false), latestH: fn(aa.fupM, true), tai: null, widthM: null });
+  }
   for (const x of a.crossovers) {
     const fn = timeAt.get(x.a);
     if (!fn) continue;
@@ -226,6 +277,10 @@ export function decide(a: DecArgs): DecResult {
     if (c >= 2) continue;
     perAa.set(n.aa, c + 1);
     tais.push({ id: '', n: 0, nai: n.id, aa: n.aa, alongM: n.alongM, why: n.kind === 'crossing' ? `the crossing (${Math.round(n.widthM ?? 0)} m): denied, the En needs bridging` : `narrows ${Math.round(n.widthM ?? 0)} m, under a corridor's width: blocked, the En cannot pass deployed`, earliestH: n.earliestH, latestH: n.latestH });
+  }
+  // The FUPs: a TAI each beside the two per avenue (OoW Vol I p 51; DF in depth disrupts his preparation, p 41).
+  for (const n of nais.filter((x) => x.kind === 'fup')) {
+    tais.push({ id: '', n: 0, nai: n.id, aa: n.aa, alongM: n.alongM, why: 'the En FUP: engage him while he forms up (OoW Vol I p 51), DF in depth', earliestH: n.earliestH, latestH: n.latestH });
   }
   tais.sort((p, q) => p.earliestH - q.earliestH);
   tais.forEach((t, i) => {
@@ -263,7 +318,7 @@ export function decide(a: DecArgs): DecResult {
       const fn = timeAt.get(aa.id)!;
       const tDepth = fn(aa.depthM, false);
       const at = back(aa, tDepth - a.catkMin / 60);
-      dps.push({ id: '', n: 0, kind: 'catk', aa: aa.id, tai: null, alongM: at.alongM, beyondM: Math.max(0, aa.startM - at.alongM), beforeH: at.beforeH, earliestH: tDepth - a.catkMin / 60, decision: `Launch the counter-attack (${a.catkLabel}, ${a.catkMin} min) while the depth localities on ${aa.id} still hold` });
+      dps.push({ id: '', n: 0, kind: 'catk', aa: aa.id, tai: null, alongM: at.alongM, beyondM: Math.max(0, aa.startM - at.alongM), beforeH: at.beforeH, earliestH: tDepth - a.catkMin / 60, decision: `Launch the counter-attack (${a.catkLabel}, ${a.catkMin} min) while the depth localities on ${aa.id} still hold${a.catkCues?.length ? `; first confirm the En main effort is on ${aa.id}: ${a.catkCues.join(', ')} (OoW Vol I p 54)` : ''}` });
     }
   }
   dps.sort((p, q) => p.earliestH - q.earliestH);
@@ -311,7 +366,14 @@ export function decide(a: DecArgs): DecResult {
       for (const n of nais) n.coas = coas.filter((c) => c.aa === n.aa).map((c) => c.id);
     }
   }
-  return { profiles, nais, tais, dps, coas, notes };
+  // The Indian reserves (IDD p 5), when the reading is of the En defence: when each can be on the objective.
+  const reserves: DecReserve[] = (a.reserves ?? []).map((r) => {
+    const what = r.what ?? '';
+    const span = r.h[0] === r.h[1] ? `${r.h[0]} h` : `${r.h[0]}-${r.h[1]} h`;
+    return { level: r.level, fromH: r.h[0], toH: r.h[1], from: r.from, what, text: `En ${r.level} reserve${what ? ` (${what})` : ''}: reacts ${span} after ${r.from === 'decision' ? 'his decision' : 'the attack starts'}` };
+  });
+  if (reserves.length) notes.push(`Be firm on the Obj before H+${reserves[0].fromH}: the En ${reserves[0].level} reserve can react by then (IDD p 5)`);
+  return { profiles, nais, tais, dps, coas, reserves, notes };
 }
 
 /** "H+1:25" for hours from the enemy's start (negative: "H-0:40"). */
@@ -338,8 +400,11 @@ export interface WxInput {
   vis: { meanViewKm: number | null; lt2kmPct: number | null; fogPct: number | null; stationKm: number | null } | null;
   /** Climate normals (WorldClim): monthly mean daily min / max °C, mean wind m/s, precipitation mm. */
   clim: { tmin: Array<number | null>; tmax: Array<number | null>; wind: Array<number | null>; prec: number[] } | null;
+  /** The month's usual wind (ERA5 normal, GroundGuideWind): its direction is added to the wind rows. */
+  wind?: { dirText: string; all: { fromDeg: number | null } } | null;
 }
 
+const COMPASS8 = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 /** A threshold "> 1.5 km", "< 32 °C": [op, value]. */
 function thr(s: string): [string, number] | null {
   const m = /([<>])\s*(-?[\d,.]+)/.exec(s);
@@ -400,7 +465,9 @@ export function annexA(rows: Array<{ mission: string; element: string; go: strin
     }
     if (e === 'surface wind' || e.startsWith('wind below')) {
       if (windKt === null) return { ...base, status: 'na' as WxStatus, value: 'no climate data here' };
-      return { ...base, status: judge(windKt, r.go, r.marginal), value: `mean ${r1(windKt)} kt (not gusts)` };
+      // Speed from WorldClim (the finer grid); the direction from the wind grid, and for smoke / agents where they drift.
+      const dir = w.wind ? `; ${w.wind.dirText}${/NBC/.test(r.mission) && w.wind.all.fromDeg !== null ? `, drifts to ${COMPASS8[Math.round(((w.wind.all.fromDeg + 180) % 360) / 45) % 8]}` : ''}` : '';
+      return { ...base, status: judge(windKt, r.go, r.marginal), value: `mean ${r1(windKt)} kt (not gusts)${dir}` };
     }
     if (e === 'rainfall') {
       const p = w.clim?.prec[m];

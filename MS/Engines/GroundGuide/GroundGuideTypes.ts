@@ -367,7 +367,7 @@ export interface GroundGuideIpbOptions {
    * through the whole area regardless of objectives (they may pass the Posn), `both` together.
    */
   apchEnd: 'objective' | 'through' | 'both';
-  /** The FUP's distance short of the objective, m (IBB pp 173-174: 1,000-1,200 m by night). */
+  /** The FUP's distance short of the objective, m (IBB p 201 para 5h, p 203 para 12a(1): 1,000-1,200 m by night). */
   fupM: number;
   /**
    * A turning approach as well (user, 2026-11-15): round the objective to a choke on the MSR behind it (a bridge, a
@@ -420,6 +420,9 @@ export interface GroundGuideIpbOptions {
   mapAir: boolean;
   /** Airspace control symbols on the map (ROZ, HIDACZ, ACA, engagement zones) and own gun-target lines read over the air avenues (FM 3-09 App B). Off: not read. */
   airspace: boolean;
+  /** The wind from the bundle's wind grid (ERA5 normal: direction, steadiness, day / night) in Annex A, the LZ run-in and
+   *  departure, the DZ drift and proforma g. Off: the grid is not loaded. */
+  wind: boolean;
   /** Flight band of the air avenues (FM 3-04.203, T): NOE to 25 ft, contour 25-80 ft, low level 80-200 ft above the highest obstacle. */
   airBand: 'noe' | 'contour' | 'low';
   /** Landing point size class 1-6 (FM 3-21.38, T: 25 / 35 / 50 / 80 / 100 / 125 m; 4 = Mi-17 class). */
@@ -443,18 +446,20 @@ export interface GroundGuideIpbOptions {
 
 /** Rates, event template and decision support over the IPB avenues (extended.ipb.decision), Web Mercator. */
 export interface IpbDecisionView {
-  rates: { mover: 'armour' | 'mech' | 'dismounted'; go: [number, number]; slow: [number, number]; nogo: [number, number]; climbMinPer300?: [number, number] | null; climbM?: Record<string, number> };
+  rates: { mover: 'armour' | 'mech' | 'dismounted'; go: [number, number]; slow: [number, number]; nogo: [number, number]; climbMinPer300?: [number, number] | null; climbM?: Record<string, number>; descentMinPer600?: [number, number] | null; fallM?: Record<string, number>; mountain?: boolean };
   /** Times count from the threat marker's place (true) or from the area's edge (false). */
   fromThreat: boolean;
   hHour: string | null;
   profiles: Array<{ aa: string; viable: boolean; main: boolean; pts: Array<[number, number, number]>; startAlongM: number; startH: [number, number]; endH: [number, number] }>;
-  nais: Array<{ id: string; n: number; aa: string; at: MercXY; alongM: number; kind: 'entry' | 'crossing' | 'narrows' | 'slow' | 'crossover'; shows: string; earliestH: number; latestH: number; tai: string | null; widthM: number | null; coas?: string[]; line?: [MercXY, MercXY] }>;
+  nais: Array<{ id: string; n: number; aa: string; at: MercXY; alongM: number; kind: 'entry' | 'crossing' | 'narrows' | 'slow' | 'crossover' | 'fup'; shows: string; earliestH: number; latestH: number; tai: string | null; widthM: number | null; coas?: string[]; line?: [MercXY, MercXY] }>;
   tais: Array<{ id: string; n: number; aa: string; at: MercXY; dirDeg: number; alongM: number; why: string; earliestH: number; latestH: number; nai: string }>;
   /** `alongM` from the avenue's frame (below its start: on the way in from the enemy). */
   dps: Array<{ id: string; n: number; kind: 'interdict' | 'catk'; aa: string; tai: string | null; at: MercXY; alongM: number; inArea: boolean; beyondM: number; beforeH: boolean; earliestH: number; decision: string }>;
   catk: { label: string; min: number } | null;
   /** COA 1 most likely, COA 2 most dangerous (ATP 2-01.3; the en's options only). */
   coas?: Array<{ id: 'COA 1' | 'COA 2'; kind: 'likely' | 'dangerous'; aa: string; why: string[]; indicatorNai: string | null; endH: [number, number] }> | null;
+  /** The Indian reserves' reaction when the reading is of the En defence (own attack; IDD p 5). */
+  reserves?: Array<{ level: string; fromH: number; toH: number; from: 'attack' | 'decision'; what: string; text: string }>;
   /** How far before each TAI a DP falls: the book's lead (2 h, p 30) and the own action's time on top, hours. */
   leadH?: number;
   reactionH?: number;
@@ -497,6 +502,8 @@ export interface IpbAirView {
   hisAd?: Array<{ at: MercXY; rangeM: number; label: string }>;
   /** Airspace control measures and own gun-target lines over the avenues (extended.ipb.airspace; GroundGuideIpbAirspace). */
   airspace?: import('./GroundGuideIpbAirspace').AspResult | null;
+  /** The month's wind over the area (extended.ipb.wind; GroundGuideWind). */
+  wind?: import('./GroundGuideWind').WindReading | null;
   lzs: IpbAirZone[];
   dzs: IpbAirZone[];
   ad: Array<{ id: string; rank: number; at: MercXY; seenM: number; longM: number; flankM: number; bottom: number; kinds: Array<'long' | 'flank' | 'bottom'>; routes: string[]; why: string }>;
@@ -527,6 +534,8 @@ export interface IpbAirZone {
   why: string;
   /** For the enemy's LZ: an OP over it. */
   op: { at: MercXY; distM: number; riseM: number } | null;
+  /** The wind on it: an LZ's run-in and departure, a DZ's drift (extended.ipb.wind). */
+  wind?: { text: string; fit: 'both' | 'in' | 'out' | 'neither' | 'light' | 'variable' | 'drift' } | null;
 }
 
 /** A situation template laid on the area read (extended.ipb.template; GroundGuideIpbTemplate.ts), Web Mercator. */
@@ -573,6 +582,8 @@ export interface IpbWxView {
   month: number;
   rows: Array<{ mission: string; element: string; go: string; marginal: string; status: 'go' | 'marg' | 'unfav' | 'met' | 'na'; value: string }>;
   stationKm: number | null;
+  /** The month's wind over the area (ERA5 normal), when the wind grid is in. */
+  wind?: import('./GroundGuideWind').WindReading | null;
 }
 
 /** Fire on the IPB avenues from the other side's Posns (extended.ipb.fire), Web Mercator. */
@@ -728,6 +739,10 @@ export interface IpbApchView {
     from: MercXY | null;
     /** The MSR choke behind it the turning approach blocks: where, what, the stretch of road, how far behind. */
     turn?: { at: MercXY; kind: 'bridge' | 'defile' | 'junction' | 'road'; label: string; road: MercXY[]; msr: boolean; behindM: number } | null;
+    /** Its frontage by the books for its side, echelon and ground: the row, its book and page, and why (GroundGuideFrontage.ts). */
+    frontage?: import('./GroundGuideFrontage').ObjFrontage | null;
+    /** The attacker's assault frontage onto it by night, and by day in words (GroundGuideFrontage.ts). */
+    assault?: import('./GroundGuideFrontage').AssaultFrontage | null;
   } | null;
 }
 
@@ -1659,7 +1674,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   sections: { ground: true, roads: true, buildings: true, weather: true, obstacles: true, style: 'compact', radiusKm: 3, roadDensity: true, roadDensityKm: 5, roadDensityStyle: 'rows', roadDensityLead: 'afterRain', detail: true, gStyle: 'auto', rStyle: 'auto', oStyle: 'auto', bStyle: 'auto', wStyle: 'auto' },
   speed: { enabled: true, card: 'line', light: 'day', road: 'convoy', load: 'combat', mover: 'auto', legend: true },
   scope: { enabled: true, side: 'right', tab: true, topPx: 54, extScale: 'area' },
-  extended: { keys: true, lasts: 'symbol', threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapApproaches: true, mapBetter: true, layerFire: true, layerKeyGr: true, layerApchs: false, layerAir: false, layerDecision: false, overlay: 'auto', ipb: { readFor: 'defence', apchEnd: 'objective', fupM: 1100, turn: true, mover: 'auto', season: 'coding', avlbSpanM: 18, paint: 'hatch', apchs: true, hq: 'auto', mapCorridors: true, labels: 'auto', createAs: 'attack', fire: true, mapFire: true, proforma: true, pfHead1: '', pfHead2: '', decision: true, mapDecision: true, reactionH: 0, hHour: '', air: true, mapAir: true, airspace: true, airBand: 'contour', lzClass: 4, lzPoints: 4, template: 'auto', mapTemplate: true, lrWeights: {} }, eye: 'auto', surface: true },
+  extended: { keys: true, lasts: 'symbol', threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapApproaches: true, mapBetter: true, layerFire: true, layerKeyGr: true, layerApchs: false, layerAir: false, layerDecision: false, overlay: 'auto', ipb: { readFor: 'defence', apchEnd: 'objective', fupM: 1100, turn: true, mover: 'auto', season: 'coding', avlbSpanM: 18, paint: 'hatch', apchs: true, hq: 'auto', mapCorridors: true, labels: 'auto', createAs: 'attack', fire: true, mapFire: true, proforma: true, pfHead1: '', pfHead2: '', decision: true, mapDecision: true, reactionH: 0, hHour: '', air: true, mapAir: true, airspace: true, wind: true, airBand: 'contour', lzClass: 4, lzPoints: 4, template: 'auto', mapTemplate: true, lrWeights: {} }, eye: 'auto', surface: true },
   aor: { keys: true, scale: 'spot', layout: 'deductions', style: 'trace', orient: 'north', source: 'echelon', box: null, echelon: 'auto', leadKm: 4, corridorM: 0, profile: 'tracked' },
 };
 

@@ -67,6 +67,8 @@ export interface WindReading {
   variable: boolean;
   /** "from NW 6 kt, steady" (+ "; by night from NE" when it turns). */
   text: string;
+  /** The direction alone, for lines whose speed comes from elsewhere (Annex A, WorldClim): "from NW, steady". */
+  dirText: string;
   source: string;
   dataDate: string;
 }
@@ -126,6 +128,11 @@ function combine(hs: Array<{ u: number; v: number; s: number; hourUtc: number; h
   return { hourUtc: hs[0]?.hourUtc ?? 0, hourLocal: hs[0]?.hourLocal ?? 0, fromDeg, meanMs: s, vecMs: vec, steady };
 }
 
+/** The direction and steadiness without the speed. */
+export function windDir(h: WindHour, R: WindRules): string {
+  return h.fromDeg === null ? 'direction variable' : `from ${compass8(h.fromDeg)}, ${h.steady >= R.steadyWord ? 'steady' : 'mostly'}`;
+}
+
 export function windWords(h: WindHour, R: WindRules): string {
   const kt = Math.round(h.meanMs * KT);
   if (h.fromDeg === null) return `variable, mean ${kt} kt`;
@@ -150,8 +157,9 @@ export function windAt(g: WindGrid | null, lon: number, lat: number, month: numb
   const light = all.meanMs * KT < R.lightKt;
   let text = turns ? `by day ${windWords(day, R)}; by night ${windWords(night, R)}` : windWords(all, R);
   if (light) text += ' (light)';
+  const dirText = turns ? `by day ${windDir(day, R)}; by night ${windDir(night, R)}` : windDir(all, R);
   return {
-    month: Number(mm), hours, all, day, night, turns, light, variable: all.fromDeg === null, text,
+    month: Number(mm), hours, all, day, night, turns, light, variable: all.fromDeg === null, text, dirText,
     source: String(g.meta.source ?? 'ERA5'), dataDate: String(g.meta.sourceRef?.dataDate ?? '1990-2019 normal'),
   };
 }
@@ -211,7 +219,7 @@ export function avenueWind(headingDeg: number, w: WindReading | null, R: WindRul
   if (h.fromDeg === null) return 'wind variable';
   const d = angDiff(headingDeg, (h.fromDeg + 180) % 360); // 0: moving with the wind
   const rel = d <= 45 ? 'wind behind it' : d >= 135 ? 'into the wind' : 'wind across it';
-  return `${rel} (from ${compass8(h.fromDeg)})`;
+  return `${rel} (${windWords(h, R)})`;
 }
 
 // ── loader ───────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -220,12 +228,16 @@ export function avenueWind(headingDeg: number, w: WindReading | null, R: WindRul
 export class WindLoader {
   private _grid: WindGrid | null = null;
   private _state: 'idle' | 'loading' | 'ready' | 'failed' = 'idle';
+  // Plain fields, not parameter properties: Node's type stripping runs this file in tools/ipb-test/wind.mjs.
+  private readonly _indexUrl: string;
+  private readonly _dataUrl: string;
+  private readonly _onReady: () => void;
 
-  constructor(
-    private readonly _indexUrl: string,
-    private readonly _dataUrl: string,
-    private readonly _onReady: () => void,
-  ) {}
+  constructor(indexUrl: string, dataUrl: string, onReady: () => void) {
+    this._indexUrl = indexUrl;
+    this._dataUrl = dataUrl;
+    this._onReady = onReady;
+  }
 
   get state(): string {
     return this._state;

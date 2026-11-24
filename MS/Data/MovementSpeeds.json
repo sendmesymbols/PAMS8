@@ -1,7 +1,7 @@
 {
   "version": 1,
   "status": "STARTING PROPOSAL from published rates, to be corrected by the rule owner",
-  "updated": "2026-11-06",
+  "updated": "2026-11-24",
   "grounds": {
     "open": { "label": "Open / Plains", "classes": [0, 11, 18, 25, 26, 33, 47] },
     "hill": { "label": "Hill Ground (Slope 7° or More)", "classes": [9, 10, 19] },
@@ -46,7 +46,9 @@
       },
       "slowGo": 0.7,
       "afterRain": 0.85,
+      "afterRainBetter": ["desert", "sand", "dunes"],
       "slope": { "model": "tobler", "a": [3.5, 5.5], "b": 0.05 },
+      "mountain": { "dayKmh": 3, "nightKmh": 0.75, "climbMinPer300": 45, "descentMinPer600": 45, "basis": "D", "src": "MW pp 48, 81, 309", "note": "On mountain ground (bundle terrain Mountainous / Hilly, else slopes of 15 degrees or more) MW's rule: 3 km/h by day, 0.5-1 by night (0.75 used), plus 30-60 min per 300 m of ascent and per 600 m of descent (45 used, the midpoints); map distance + 1/3 (p 48) is already in the measured way. A 20 % climb gives about 1.2 km/h by day. Elsewhere the Pakistani table and Tobler as before (Doctrine_Review R10, 24 Nov 2026)." },
       "altitude": [{ "fromM": 3050, "factor": 0.9 }, { "fromM": 4000, "factor": 0.8 }, { "fromM": 4600, "factor": 0.7 }, { "fromM": 5500, "factor": 0.6 }],
       "road": { "motorway": [4, 3], "highway": [4, 3], "main": [4, 3], "minor": [4, 3], "track": [4, 3], "path": [3.5, 2.5] },
       "column": "foot",
@@ -70,6 +72,7 @@
       },
       "slowGo": 0.6,
       "afterRain": 0.8,
+      "afterRainBetter": ["desert", "sand", "dunes"],
       "slope": { "model": "tobler", "a": [3.5, 5.5], "b": 0.05 },
       "altitude": [{ "fromM": 3050, "factor": 0.9 }, { "fromM": 4000, "factor": 0.8 }, { "fromM": 4600, "factor": 0.7 }],
       "road": { "motorway": [5, 3.5], "highway": [5, 3.5], "main": [5, 3.5], "minor": [5, 3.5], "track": [5, 3.5], "path": [4, 3] },
@@ -78,9 +81,10 @@
       "dayKm": {
         "plain": { "combat": [26, 32] },
         "desert": { "combat": [20, 26] },
-        "mountain": { "combat": [13, 16], "none": [16, 24] }
+        "mountain": { "combat": [12.9, 12.9], "none": [25.7, 25.7] }
       },
-      "note": "Led mules 5.6-6.4 km/h (FM 25-7, 1944); a mule column settled at 5 km/h and 26 km a marching day (Rand, Yunnan 1944). A day: 32 km in moderate conditions, 13-16 km in severely rugged ground at 91 kg a mule (ATP 3-90.97, 2016); 16-24 km in mountains with a lighter load (FM 25-7). Desert: no source, a proposal. With combat load = full load (about 90 kg); without = light load."
+      "loadKg": { "hilly": 65, "normal": 74, "maxPayloadLb": 160, "basis": "D", "src": "MW pp 320-321" },
+      "note": "MW pp 319-321 (Pakistani): a GS mule carries at most 160 lb; planning load 65 kg in hilly country, 74 kg normal; it covers up to 16 miles (25.7 km) a day, of which not more than 8 (12.9 km) under load, about 4 miles (6.4 km) loaded by night on a rough track: the mountain day is MW's (Doctrine_Review R11, 24 Nov 2026; the US 13-16 / 16-24 km and 90 kg replaced). Speeds: led mules 5.6-6.4 km/h (FM 25-7, 1944); a mule column 5 km/h and 26 km a marching day (Rand, Yunnan 1944). Plains and desert days: no Pakistani figure, the earlier proposal kept. With combat load = the MW load; without = no load."
     },
     "b_light": {
       "label": "B Vehicle, Light (Jeep, Land Cruiser, Hilux, Motorcycle)",
@@ -94,6 +98,7 @@
       },
       "slowGo": 0.5,
       "afterRain": 0.75,
+      "afterRainBetter": ["desert", "sand", "dunes"],
       "slope": { "model": "bands", "factors": [1, 0.75, 0.4, 0.05, 0] },
       "road": { "motorway": [100, 60], "highway": [70, 45], "main": [60, 40], "minor": [40, 25], "track": [25, 12], "path": [8, 4] },
       "column": "wheeled",
@@ -111,6 +116,7 @@
       },
       "slowGo": 0.5,
       "afterRain": 0.7,
+      "afterRainBetter": ["desert", "sand", "dunes"],
       "slope": { "model": "bands", "factors": [1, 0.75, 0.4, 0.05, 0] },
       "road": { "motorway": [80, 50], "highway": [60, 40], "main": [50, 35], "minor": [35, 20], "track": [20, 10], "path": [5, 3] },
       "column": "wheeled",
@@ -128,6 +134,7 @@
       },
       "slowGo": 0.4,
       "afterRain": 0.6,
+      "afterRainBetter": ["desert", "sand", "dunes"],
       "slope": { "model": "bands", "factors": [1, 0.65, 0.25, 0, 0] },
       "road": { "motorway": [80, 50], "highway": [60, 40], "main": [50, 35], "minor": [35, 20], "track": [15, 8], "path": [0, 0] },
       "column": "wheeled",
@@ -145,6 +152,7 @@
       },
       "slowGo": 0.4,
       "afterRain": 0.6,
+      "afterRainBetter": ["desert", "sand", "dunes"],
       "slope": { "model": "bands", "factors": [1, 0.6, 0.2, 0, 0] },
       "road": { "motorway": [70, 45], "highway": [55, 35], "main": [45, 30], "minor": [30, 18], "track": [12, 6], "path": [0, 0] },
       "column": "heavy",
@@ -162,6 +170,7 @@
       },
       "slowGo": 0.45,
       "afterRain": 0.65,
+      "afterRainBetter": ["desert", "sand", "dunes"],
       "slope": { "model": "bands", "factors": [1, 0.65, 0.3, 0, 0] },
       "road": { "motorway": [70, 45], "highway": [55, 35], "main": [45, 30], "minor": [30, 18], "track": [15, 8], "path": [0, 0] },
       "column": "wheeled",
@@ -179,6 +188,7 @@
       },
       "slowGo": 0.5,
       "afterRain": 0.75,
+      "afterRainBetter": ["desert", "sand", "dunes"],
       "slope": { "model": "bands", "factors": [1, 0.8, 0.5, 0.15, 0] },
       "road": { "motorway": [80, 50], "highway": [70, 45], "main": [55, 35], "minor": [40, 25], "track": [30, 15], "path": [10, 5] },
       "column": "wheeled",
@@ -196,7 +206,11 @@
       },
       "slowGo": 0.5,
       "afterRain": 0.85,
-      "slope": { "model": "bands", "factors": [1, 0.85, 0.55, 0.15, 0] },
+      "afterRainBetter": ["desert", "sand", "dunes"],
+      "slope": { "model": "bands", "factors": [1, 0.9, 0.7, 0.35, 0] },
+      "gradabilityPct": 60,
+      "sideSlopePct": 30,
+      "slopeNote": "The band factors were fitted to FM 5-33's 45 % gradability (T-72, M113); MIB Annex C p 323 gives the M113 a steepest grade of 60 % and a side slope of 30 % (wall 0.7 m), so they are refitted to 60 % by the slope's share of the gradability, as FM 5-33 reads it (E for the factors, D for the 60 %). Over 30 degrees (58 %) stays impassable. The side-slope limit is recorded: the speed reading does not know the heading across a slope (Doctrine_Review R7, 24 Nov 2026).",
       "road": { "motorway": [50, 30], "highway": [45, 30], "main": [40, 25], "minor": [30, 20], "track": [25, 12], "path": [12, 6] },
       "column": "tracked",
       "fairAfterRain": 0.7
@@ -213,6 +227,7 @@
       },
       "slowGo": 0.6,
       "afterRain": 0.9,
+      "afterRainBetter": ["desert", "sand", "dunes"],
       "slope": { "model": "bands", "factors": [1, 0.85, 0.6, 0.25, 0] },
       "road": { "motorway": [10, 6], "highway": [10, 6], "main": [10, 6], "minor": [10, 6], "track": [8, 5], "path": [5, 3] },
       "column": "plant",
@@ -231,6 +246,7 @@
       },
       "slowGo": 0.45,
       "afterRain": 0.65,
+      "afterRainBetter": ["desert", "sand", "dunes"],
       "slope": { "model": "bands", "factors": [1, 0.65, 0.25, 0, 0] },
       "road": { "motorway": [50, 30], "highway": [45, 30], "main": [40, 25], "minor": [30, 18], "track": [15, 8], "path": [0, 0] },
       "column": "heavy",
@@ -282,6 +298,8 @@
     {"name": "Dawn: heavy-vehicle speed limits cut to 90 km/h on motorways and 65 km/h on national highways", "released": "2026-03", "used": "ceiling for B truck and B heavy road speeds", "url": "https://www.dawn.com/news/1981314"},
     {"name": "Vehicle data: AVNL / DDP (T-90S, T-72, BMP-2), armyrecognition / Deagel (Al-Khalid 70 road, 45 cross-country), FAS (Type 85, M109), army-guide (Talha, Saad)", "released": "accessed 2026-11-06", "used": "check: cross-country averages about half the road speed (Al-Khalid 35, M113 25)"},
     {"name": "Tobler, W. Three presentations on geographical analysis and modeling (hiking function)", "released": "1993", "used": "foot and pack slope (shape only, fitted to the Pakistani mountain figures)"},
+    {"name": "Mountain Warfare (GSP-1973, 2003), pp 48, 81, 309 (foot in mountains), pp 319-321 (mules)", "used": "foot on mountain ground; mule load and day's march", "dataDate": "2003"},
+    {"name": "The Mechanised Infantry Battalion in Battle, p 261 (desert going after rain), Annex C p 323 (M113: grade 60 %, side slope 30 %)", "used": "after-rain factor on desert ground (MIB p 261: rain cements the sand outside the Rann; afterRainBetter); tracked slope factors", "dataDate": "printed"},
     {"name": "Wehrmacht march-rate guidelines 1940-41 (reference supplied by the user)", "used": "which units and equipment need a speed of their own", "dataDate": "supplied 2026-11-06"}
   ],
   "gaps": "No Pakistani or Indian staff tables for vehicle or road movement are published; replace these figures with the staff duties tables and own trials when available."

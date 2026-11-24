@@ -1,0 +1,34 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "div-advance-two-bde",
+  "family": "div-advance",
+  "layout": "two-bde",
+  "echelon": "21",
+  "basis": "D",
+  "task": "advance",
+  "name": "Armd Div Advance: broad front, two Bdes",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "pivot": "sp",
+  "note": "An Armd Div advancing on a broad front with two Bdes after the break-out (OoW Vol II pp 52-53: 'should preferably advance on a broad front with two brigades. Each brigade can either advance with two regiment groups up or with one regiment group'); in the desert on a very wide front, on multiple axes, by combat groups (DW pp 35, 55). The click is the Div SP line's centre; the aim is the direction of advance. The Lt Bde with two Regt groups up, the Rt Bde with one (both options shown); the axes 5 km apart (E: no figure printed, PlanDoctrine advance.div.axesApartM 3-8 km); covering troops 4-8 km ahead on each axis and the Div's flank guards 15-20 km out (OoW Vol II Fig 2 p 9); Div Tac between the axes; the follow-up Bde about 8 km behind (Fig 2's note, its reading uncertain). With the terrain each axis is routed for tracks and read for its going and water crossings; each Bde's report lines, halting areas and march are built with the Armd Bde advance on its axis.",
+  "slots": [
+    { "role": "sp", "kind": "point", "sym": "25131600", "label": "SP", "order": 1, "shape": { "at": [0, 0] } },
+    { "role": "axisL", "kind": "area", "sym": "25151403", "label": "Axis (Lt Bde)", "order": 3, "shape": { "pts": [[-2500, 9000], [-2500, -9000]], "widthM": 1500 } },
+    { "role": "axisR", "kind": "area", "sym": "25151403", "label": "Axis (Rt Bde)", "order": 3, "shape": { "pts": [[2500, 9000], [2500, -9000]], "widthM": 1500 } },
+    { "role": "ctpsL", "kind": "point", "sym": "10121300", "label": "C Tps", "echelon": "16", "order": 2, "shape": { "at": [-2500, -6000] } },
+    { "role": "ctpsR", "kind": "point", "sym": "10121300", "label": "C Tps", "echelon": "16", "order": 2, "shape": { "at": [2500, -6000] } },
+    { "role": "rgL1", "kind": "point", "sym": "10120500", "label": "Regt Gp", "echelon": "17", "order": 2, "shape": { "at": [-3500, 1750] } },
+    { "role": "rgL2", "kind": "point", "sym": "10120500", "label": "Regt Gp", "echelon": "17", "order": 2, "shape": { "at": [-1500, 1750] } },
+    { "role": "rgR1", "kind": "point", "sym": "10120500", "label": "Regt Gp", "echelon": "17", "order": 2, "shape": { "at": [2500, 1750] } },
+    { "role": "bdeL", "kind": "point", "sym": "10120500", "label": "Lt Bde", "echelon": "18", "order": 2, "shape": { "at": [-2500, 5000] } },
+    { "role": "bdeR", "kind": "point", "sym": "10120500", "label": "Rt Bde", "echelon": "18", "order": 2, "shape": { "at": [2500, 5000] } },
+    { "role": "flankL", "kind": "point", "sym": "10121300", "label": "Flank Gd", "echelon": "16", "order": 2, "shape": { "at": [-20000, 3500] } },
+    { "role": "flankR", "kind": "point", "sym": "10121300", "label": "Flank Gd", "echelon": "16", "order": 2, "shape": { "at": [20000, 3500] } },
+    { "role": "divHq", "kind": "point", "sym": "10120500", "label": "Div Tac", "order": 2, "shape": { "at": [0, 6500] } },
+    { "role": "res", "kind": "point", "sym": "10120500", "label": "Follow-up Bde", "echelon": "18", "order": 2, "shape": { "at": [0, 13000] } }
+  ]
+}

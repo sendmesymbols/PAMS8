@@ -6,6 +6,7 @@ import * as reactiveUtils from "@arcgis/core/core/reactiveUtils";
 
 import SelectionEngine, { SelectMode } from "./SelectionEngine.ts";
 import EditEngine from "./EditEngine.ts";
+import type { SymbolTitle, SymbolSide } from "../Support/SymbolTitle.ts";
 
 /**
  * Callbacks exposing the few SymbolEngine-owned operations the panel needs.
@@ -23,7 +24,21 @@ export interface SelectionActionPanelCallbacks {
      * single-line/area, and any multi-selection (move+rotate+scale via proxy).
      */
     modifySymbol: (graphic: Graphic) => void;
+    /**
+     * The name a planner would call this symbol ("16 Inf Div", "Battle Posn A") —
+     * shown in place of "1 Sym Sel" when one symbol is selected. Null (or no
+     * callback) keeps the count.
+     */
+    describeSymbol?: (graphic: Graphic) => SymbolTitle | null;
 }
+
+/** Side colours for the selection dot, after the 2525D frame colours. */
+const SIDE_COLOUR: Record<SymbolSide, string> = {
+    own: 'var(--ms-side-own, #4aa3ff)',
+    en: 'var(--ms-side-en, #ff5c5c)',
+    neutral: 'var(--ms-side-neutral, #3ccf6e)',
+    unknown: 'var(--ms-side-unknown, #f2d544)',
+};
 
 /**
  * Selection category — derived from the current selection's geometry shape.
@@ -526,19 +541,44 @@ class SelectionActionPanel {
         header.style.cssText = 'display:flex; align-items:center; gap:10px; cursor:grab;';
 
         // ── Selection badge ────────────────────────────────────────────────
+        // One symbol: its name ("16 Inf Div") over its side / higher formation,
+        // the dot in the side's colour. Several: the count, names on hover.
+        const one = selected.length === 1 ? this._describe(selected[0]) : null;
         const badge = document.createElement('span');
-        badge.style.cssText = 'display:flex; align-items:center; gap:6px; padding-right:8px; border-right:1px solid var(--ms-divider, #334455);';
+        badge.style.cssText = 'display:flex; align-items:center; gap:7px; padding-right:10px; border-right:1px solid var(--ms-divider, #334455); min-width:0; flex-shrink:1;';
+        const dotColour = one?.side ? SIDE_COLOUR[one.side]
+            : category === 'E' ? 'var(--ms-warning, #e5a540)' : 'var(--ms-success, #1D9E75)';
         const dot = document.createElement('span');
         dot.style.cssText = `
             width:9px; height:9px; border-radius:50%; flex-shrink:0;
-            background:${category === 'E' ? 'var(--ms-warning, #e5a540)' : 'var(--ms-success, #1D9E75)'};
-            box-shadow: 0 0 6px ${category === 'E' ? 'var(--ms-warning, #e5a540)' : 'var(--ms-success, #1D9E75)'};
+            background:${dotColour};
+            box-shadow: 0 0 6px ${dotColour};
         `;
-        const label = document.createElement('span');
-        label.style.cssText = 'color:var(--ms-text, #c8dff5); font-weight:600;';
-        label.textContent = this._summary(selected);
         badge.appendChild(dot);
-        badge.appendChild(label);
+        if (one) {
+            const text = document.createElement('span');
+            text.style.cssText = 'display:flex; flex-direction:column; min-width:0; line-height:1.15;';
+            const title = document.createElement('span');
+            title.className = 'sap-title';
+            title.style.cssText = 'color:var(--ms-text, #c8dff5); font-weight:700; font-size:12.5px; max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+            title.textContent = one.title;
+            text.appendChild(title);
+            if (one.sub) {
+                const sub = document.createElement('span');
+                sub.className = 'sap-sub';
+                sub.style.cssText = 'color:color-mix(in srgb, var(--ms-text, #c8dff5) 60%, transparent); font-size:10px; max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+                sub.textContent = one.sub;
+                text.appendChild(sub);
+            }
+            badge.appendChild(text);
+            badge.title = one.sub ? `${one.title}\n${one.sub}` : one.title;
+        } else {
+            const label = document.createElement('span');
+            label.style.cssText = 'color:var(--ms-text, #c8dff5); font-weight:600; white-space:nowrap;';
+            label.textContent = this._summary(selected);
+            badge.appendChild(label);
+            badge.title = this._summaryTooltip(selected);
+        }
         header.appendChild(badge);
 
         // ── Tab pills (only if more than one, and not minimized) ───────────
@@ -623,6 +663,26 @@ class SelectionActionPanel {
     private _summary(selected: Graphic[]): string {
         const n = selected.length;
         return `${n} ${n === 1 ? 'Sym' : 'Syms'} Sel`;
+    }
+
+    /** The symbol's name from the host, or null to fall back to the count. */
+    private _describe(graphic: Graphic): SymbolTitle | null {
+        if (!this._cb.describeSymbol) return null;
+        try {
+            const d = this._cb.describeSymbol(graphic);
+            return d && d.title ? d : null;
+        } catch {
+            return null;
+        }
+    }
+
+    /** Hover text for a multi-selection: the first dozen names, one to a line. */
+    private _summaryTooltip(selected: Graphic[]): string {
+        if (!this._cb.describeSymbol || selected.length < 2) return '';
+        const max = 12;
+        const names = selected.slice(0, max).map(g => this._describe(g)?.title ?? 'Symbol');
+        if (selected.length > max) names.push(`and ${selected.length - max} more`);
+        return names.join('\n');
     }
 
     // -----------------------------------------------------------------------

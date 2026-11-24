@@ -100,9 +100,10 @@ import { checkSpacing, echelonCodeOf, footprintDims, frontBlocks, planFootprint,
 import { GroundGuideIndicators } from './GroundGuideIndicators';
 import { buildGridRect, mPerPx, mercToPx, pxToMerc, sightTables, sightTo, visibilityAt, weaponOf, type OcokaGrid } from './GroundGuideOcoka';
 import { IPB, WHY, codeIpb, ipbMoverOf, ipbReasonsAt, ipbRulesFrom, ipbSummaryText, type IpbCoding, type IpbMover, type IpbReason, type IpbStats } from './GroundGuideIpb';
-import { annexA, decide, decRatesFrom, type DecAaIn, type DecCls } from './GroundGuideIpbDecision';
+import { annexA, decide, decRatesFrom, type DecAaIn, type DecArgs, type DecCls } from './GroundGuideIpbDecision';
 import { GroundGuideIpbMap } from './GroundGuideIpbMap';
 import { arrowHeadFrac, arrowTail, attackArrow, findCorridors, simplifyLine, type IpbAa, type IpbFrame } from './GroundGuideIpbCorridors';
+import { assaultFrontage, echelonUp, groundKindAt, groundTestsFrom, objectiveFrontage, type AssaultFrontage, type ObjFrontage } from './GroundGuideFrontage';
 import { ipbAreas } from './GroundGuideIpbShapes';
 import { fireCoverage } from './GroundGuideIpbFire';
 import { compareLeftRight } from './GroundGuideIpbCompare';
@@ -111,6 +112,7 @@ import { pfKey, proforma, type PfGroupIn, type PfMeasures, type PfSign } from '.
 import { GroundGuideIpbApchMap } from './GroundGuideIpbApchMap';
 import { airIpb, airRulesFrom, type AirExisting, type AirLine, type AirLz, type AirObstruction } from './GroundGuideIpbAir';
 import { airspaceRead, airspaceRulesFrom, type AspGunIn, type AspTargetIn, type AspZoneIn } from './GroundGuideIpbAirspace';
+import { avenueWind, dzWind, lzWind, WindLoader, windAt, windRulesFrom, type WindReading } from './GroundGuideWind';
 import { layTemplate, pickTemplate, templatesFrom, tplRulesFrom, type TplAa, type TplMover } from './GroundGuideIpbTemplate';
 import IPB_DOCTRINE from '../../Data/IpbDoctrine.json';
 import IPB_TEMPLATES from '../../Data/IpbTemplates.json';
@@ -460,6 +462,9 @@ export default class GroundGuide {
   private _ipbMade: Record<'coo' | 'corridors' | 'apchs' | 'event' | 'dst' | 'air' | 'template', string[]> = { coo: [], corridors: [], apchs: [], event: [], dst: [], air: [], template: [] };
   private _airRules = airRulesFrom(IPB_DOCTRINE);
   private _aspRules = airspaceRulesFrom(IPB_DOCTRINE);
+  private _windRules = windRulesFrom(IPB_DOCTRINE);
+  /** The bundle's wind grid (grotbc.wind), fetched only when the IPB wind is on and a reading asks for it. */
+  private _wind: WindLoader | null = null;
   /** The air reading ran while feature tiles were still loading: run it again when they arrive. */
   private _airFeaturesPending = false;
   /** The turning approach wanted an MSR whose road tiles were still on their way: read the avenues again when they come. */
@@ -613,6 +618,8 @@ export default class GroundGuide {
   private _aorWorkKey = '';
   /** The MITG set through `setAorAnchor()`, Web Mercator; null lets the rail choose. */
   private _aorAnchor: MercXY | null = null;
+  /** The line of denial the higher comd gave (a line of def's letter), marked on the AOR trace; set by a host (the Aprc). */
+  private _aorDenial: string | null = null;
   /** The last AOR frame drawn on the rail (for the sheets and Copy as Text). */
   private _aorLast: AorFrame | null = null;
   /** A box being dragged for the AOR (armed from the rail or `drawAorBox()`). */
@@ -728,6 +735,7 @@ export default class GroundGuide {
     this._roads?.destroy();
     this._roads = null;
     this._climate = null;
+    this._wind = null;
     this._removePopulationLayer();
     this._population?.destroy();
     this._population = null;
@@ -776,6 +784,15 @@ export default class GroundGuide {
       this._climate = cm ? new ClimateGrid(`${base}/${cm.index}`, `${base}/${cm.data}`, () => this._onTilesChanged(false)) : null;
       const vm = (manifest.grotbc as any)?.visibility;
       this._visibility = typeof vm?.index === 'string' && typeof vm?.data === 'string' ? new OcokaVisibility(`${base}/${vm.index}`, `${base}/${vm.data}`, () => this._onTilesChanged(false)) : null;
+      const wdm = (manifest.grotbc as any)?.wind;
+      // Lazy: nothing is fetched until a reading with extended.ipb.wind on asks for it; then the IPB reading runs again.
+      this._wind = typeof wdm?.index === 'string' && typeof wdm?.data === 'string'
+        ? new WindLoader(`${base}/${wdm.index}`, `${base}/${wdm.data}`, () => {
+            this._fireKey = '';
+            this._ipbFireSoon(100);
+            this._onTilesChanged(false);
+          })
+        : null;
       this._extLive.clear();
       const pm = manifest.grotbc?.population;
       this._population = pm ? new PopulationGrid(base, pm, () => this._onPopulationReady()) : null;
@@ -1128,6 +1145,7 @@ export default class GroundGuide {
         flag('extended.ipb.air', ip.air, (b) => (next.extended.ipb.air = b));
         flag('extended.ipb.mapAir', ip.mapAir, (b) => (next.extended.ipb.mapAir = b));
         flag('extended.ipb.airspace', ip.airspace, (b) => (next.extended.ipb.airspace = b));
+        flag('extended.ipb.wind', ip.wind, (b) => (next.extended.ipb.wind = b));
         pick('extended.ipb.airBand', ip.airBand, ['noe', 'contour', 'low'] as const, (x) => (next.extended.ipb.airBand = x));
         num('extended.ipb.lzClass', ip.lzClass, 1, 6, (n) => (next.extended.ipb.lzClass = Math.round(n)));
         num('extended.ipb.lzPoints', ip.lzPoints, 1, 12, (n) => (next.extended.ipb.lzPoints = Math.round(n)));
@@ -2276,8 +2294,9 @@ export default class GroundGuide {
     _k: number, // kept for the callers: the snap lattice now takes its own factor (snapStep)
     objectiveAt: MercXY | null = null,
     objectiveLabel?: string,
-  ): { at: MercXY; frontageM: number; depthM: number; label: string; source: 'posn' | 'threat' | 'symbol'; assumed: boolean; from: { at: MercXY; halfWidthM: number } | null } | null {
+  ): { at: MercXY; frontageM: number; depthM: number; label: string; source: 'posn' | 'threat' | 'symbol'; assumed: boolean; from: { at: MercXY; halfWidthM: number } | null; whose: 'own' | 'en'; ech: string | null; frontage?: ObjFrontage | null; assault?: AssaultFrontage | null } | null {
     const own = this._echDims(sidc, mcWidthM);
+    const ownEch = echelonCodeOf(sidc);
     const snapTo = (p: MercXY, m: number): MercXY => {
       const sn = snapStep(Math.max(50, m), p[1]);
       return [Math.round(p[0] / sn) * sn, Math.round(p[1] / sn) * sn];
@@ -2296,12 +2315,15 @@ export default class GroundGuide {
         source: 'posn',
         assumed: own.assumed,
         from: tAt && inArea(tAt) ? { at: snapTo(tAt, 100), halfWidthM: mcWidthM } : null,
+        whose: 'own',
+        ech: ownEch,
       };
     }
     const from = { at: snapTo(at, own.frontageM / 4), halfWidthM: Math.max(mcWidthM, own.frontageM) / 2 };
     // An objective a host names (the Aprc engine's attack: its MITG) comes before the Threat marker; its frontage is taken as yours.
-    if (objectiveAt && inArea(objectiveAt)) return { at: snapTo(objectiveAt, 50), frontageM: own.frontageM, depthM: own.depthM, label: objectiveLabel || 'the Obj', source: 'threat', assumed: true, from };
-    if (tAt && inArea(tAt)) return { at: snapTo(tAt, 50), frontageM: own.frontageM, depthM: own.depthM, label: 'the Threat marker', source: 'threat', assumed: true, from };
+    // an Obj with no echelon of its own is taken as his of your echelon (the En row for it, said so)
+    if (objectiveAt && inArea(objectiveAt)) return { at: snapTo(objectiveAt, 50), frontageM: own.frontageM, depthM: own.depthM, label: objectiveLabel || 'the Obj', source: 'threat', assumed: true, from, whose: 'en', ech: ownEch };
+    if (tAt && inArea(tAt)) return { at: snapTo(tAt, 50), frontageM: own.frontageM, depthM: own.depthM, label: 'the Threat marker', source: 'threat', assumed: true, from, whose: 'en', ech: ownEch };
     // The nearest en symbol ahead of the spot in the area read.
     const spotAl = toFrame(at)[0];
     let best: { at: MercXY; sidc: string; label: string; d: number } | null = null;
@@ -2321,7 +2343,32 @@ export default class GroundGuide {
     }
     if (!best) return null;
     const en = this._echDims(best.sidc, own.frontageM);
-    return { at: best.at, frontageM: en.frontageM, depthM: en.depthM, label: `en ${en.assumed ? best.label : en.name}`, source: 'symbol', assumed: en.assumed, from };
+    return { at: best.at, frontageM: en.frontageM, depthM: en.depthM, label: `en ${en.assumed ? best.label : en.name}`, source: 'symbol', assumed: en.assumed, from, whose: 'en', ech: echelonCodeOf(best.sidc) };
+  }
+
+  /**
+   * The objective's frontage x depth by the books for its side, echelon and the ground at it (GroundGuideFrontage.ts;
+   * OcokaDoctrine frontage.rows / frontage.objective; user, 24 Nov 2026): set on the objective in place, with the row,
+   * its book and page, and the attacker's assault frontage by night and by day. Its front faces the mover.
+   */
+  private _objFrontage(fr: ReturnType<GroundGuide['_apchFrame']>, ob: NonNullable<ReturnType<GroundGuide['_apchFrame']>['obj']>, grid: OcokaGrid, z: number, ts: number, sidc: string | null): void {
+    const [px, py] = mercToPx(ob.at[0], ob.at[1], z, ts);
+    const ab = (fr.axisDeg * Math.PI) / 180;
+    // the front faces the mover: against the direction of movement (grid pixels, y down)
+    const front: [number, number] = [-Math.sin(ab), Math.cos(ab)];
+    const size = this._opts.footprint.size;
+    const plainsW = objectiveFrontage(OCOKA_DOCTRINE, ob.whose, ob.ech, 'plains', size)?.frontageM ?? ob.frontageM;
+    const g = groundKindAt(grid, px - grid.px0, py - grid.py0, front, plainsW, groundTestsFrom(OCOKA_DOCTRINE, IPB_TEMPLATES));
+    const of = objectiveFrontage(OCOKA_DOCTRINE, ob.whose, ob.ech, g.kind, size);
+    if (of) {
+      ob.frontageM = of.frontageM;
+      ob.depthM = of.depthM;
+      of.why = `${of.why}; the ground: ${g.why}`;
+    }
+    ob.frontage = of;
+    // the attacker: you onto his Obj in your options; he onto your posn in his, one level up (3 : 1)
+    const att = fr.side === 'own' ? { whose: 'own' as const, ech: echelonCodeOf(sidc) } : { whose: 'en' as const, ech: ob.ech ? echelonUp(ob.ech) : null };
+    ob.assault = assaultFrontage(OCOKA_DOCTRINE, att.whose, att.ech, g.kind);
   }
 
   /**
@@ -2394,6 +2441,7 @@ export default class GroundGuide {
     const [sx, sy] = mercToPx(fr.start[0], fr.start[1], z, ts);
     const cframe: IpbFrame = { sx: sx - grid.px0 - coding.x0, sy: sy - grid.py0 - coding.y0, axisDeg: fr.axisDeg, lengthM: fr.lengthM, widthM: fr.F.w };
     const ob = fr.obj;
+    if (ob) this._objFrontage(fr, ob, grid, z, ts, sidc);
     const choke = ob && ip.turn && ip.apchEnd !== 'through' ? this._msrChoke(fr, ob, grid, coding, z, ts) : null;
     const objective = ob
       ? (() => {
@@ -2535,7 +2583,7 @@ export default class GroundGuide {
       ms: { coding: coding.ms, corridors: r.ms },
       apchEnd: end,
       obstacles: obsView.list,
-      objective: ob && objRing ? { at: ob.at, ring: objRing, frontageM: ob.frontageM, depthM: ob.depthM, label: ob.label, source: ob.source, assumed: ob.assumed, fupM: ip.fupM, from: ob.from?.at ?? null, turn: choke } : null,
+      objective: ob && objRing ? { at: ob.at, ring: objRing, frontageM: ob.frontageM, depthM: ob.depthM, label: ob.label, source: ob.source, assumed: ob.assumed, fupM: ip.fupM, from: ob.from?.at ?? null, turn: choke, frontage: ob.frontage ?? null, assault: ob.assault ?? null } : null,
     };
     // The coding's picture belongs to the area too.
     const cc2 = this._apchCodeCache.get(fr.codeKey);
@@ -3232,6 +3280,10 @@ export default class GroundGuide {
     const kc = Math.cosh(centre[1] / 6378137);
     const radiusM = Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / 2 / kc;
     const cands = this._features ? this._features.candidatesNear(centre, radiusM, 60, 1) : null;
+    const wind = v.wx?.wind ?? (() => {
+      const [lon, lat] = mercatorToLngLat(centre[0], centre[1]);
+      return this._ipbWindAt(lon, lat, resolveMonth(this._opts.going.month));
+    })();
     return v.aas.map((aa) => {
       // Samples every 200 m along the centre line, with the line's direction.
       const pts = aa.line.map(toPx);
@@ -3293,6 +3345,7 @@ export default class GroundGuide {
         sigsPct: legs ? (100 * clear) / legs : null,
         seenPct: f ? f.seenPct : null,
         buaPct: all ? (100 * bua) / all : 0,
+        windText: wind && aa.line.length > 1 ? avenueWind((Math.atan2(aa.line[aa.line.length - 1][0] - aa.line[0][0], aa.line[aa.line.length - 1][1] - aa.line[0][1]) * 180) / Math.PI, wind, this._windRules) : null,
       };
       return { id: aa.id, m: measures };
     });
@@ -3322,7 +3375,7 @@ export default class GroundGuide {
     const defender: 'own' | 'enemy' = v.side === 'enemy' ? 'own' : 'enemy';
     const posns = this._ipbPosns(v, defender);
     const tAt = this._opts.extended.threat === 'point' ? this._threatMerc() : null;
-    const key = `${a.key}|${posns.map((p) => `${Math.round(p.at[0])},${Math.round(p.at[1])},${p.effM}`).join(';')}|${ip.fire}${ip.proforma}${ip.decision}|${ip.reactionH}|${ip.hHour}|${ip.air}${ip.airBand}${ip.lzClass}${ip.lzPoints}${ip.airspace}|${ip.template}|${tAt ? `${Math.round(tAt[0] / 100)},${Math.round(tAt[1] / 100)}` : ''}`;
+    const key = `${a.key}|${posns.map((p) => `${Math.round(p.at[0])},${Math.round(p.at[1])},${p.effM}`).join(';')}|${ip.fire}${ip.proforma}${ip.decision}|${ip.reactionH}|${ip.hHour}|${ip.air}${ip.airBand}${ip.lzClass}${ip.lzPoints}${ip.airspace}${ip.wind}${this._wind?.state ?? ''}|${ip.template}|${tAt ? `${Math.round(tAt[0] / 100)},${Math.round(tAt[1] / 100)}` : ''}`;
     if (key === this._fireKey) return;
     this._fireKey = key;
     if (this._pfArea !== a.key) {
@@ -3337,6 +3390,7 @@ export default class GroundGuide {
     v.wx = this._ipbWxFor(v);
     v.air = ip.air ? this._ipbAirFor(a) : undefined;
     if (v.air && ip.airspace) v.air.airspace = this._ipbAirspaceFor(v);
+    if (v.air) this._ipbAirWind(v.air, v.wx?.wind ?? null);
     v.template = ip.template !== 'off' ? this._ipbTemplateFor(a) : undefined;
     v.compare = this._ipbCompareFor(v, fire);
     v.forms = this._ipbFormsFor(a, v, fire);
@@ -3569,9 +3623,10 @@ export default class GroundGuide {
       const [px, py] = mercToPx(at[0], at[1], z, ts);
       const x = Math.floor(px - g.px0 - c.x0), y = Math.floor(py - g.py0 - c.y0);
       const e = elevAt(x + c.x0, y + c.y0);
-      let rise = 0;
+      let rise = 0, fall = 0;
       if (Number.isFinite(e)) {
         if (Number.isFinite(lastE) && e > lastE) rise = e - lastE;
+        if (Number.isFinite(lastE) && e < lastE) fall = lastE - e;
         lastE = e;
       }
       let code = codeAt(x, y);
@@ -3590,7 +3645,8 @@ export default class GroundGuide {
       if (prev && prev.cls === cls) {
         prev.toM = Math.min(endM, s + 100);
         prev.riseM = (prev.riseM ?? 0) + rise;
-      } else going.push({ fromM: s, toM: Math.min(endM, s + 100), cls, riseM: rise });
+        prev.fallM = (prev.fallM ?? 0) + fall;
+      } else going.push({ fromM: s, toM: Math.min(endM, s + 100), cls, riseM: rise, fallM: fall });
     }
     return { pts, endM, going };
   }
@@ -3614,7 +3670,8 @@ export default class GroundGuide {
     const v = a.view;
     const ip = this._opts.extended.ipb;
     const D: any = IPB_DOCTRINE;
-    const rates = decRatesFrom(D, v.mover);
+    const mountain = this._ipbMountain(a);
+    const rates = decRatesFrom(D, v.mover, { mountain });
     const tAt = this._opts.extended.threat === 'point' ? this._threatMerc() : null;
     const along = new Map<string, ReturnType<GroundGuide['_aaAlong']>>();
     for (const aa of v.aas) along.set(aa.id, this._aaAlong(a, aa));
@@ -3656,7 +3713,7 @@ export default class GroundGuide {
       aas: v.aas.map((aa) => {
         const L = along.get(aa.id)!;
         const onLine = (p: MercXY): number => alongOnLine(L.pts.map((q) => q.at), L.pts.map((q) => q.alongM), p[0], p[1]);
-        return { id: aa.id, viable: aa.viable, main: aa.main, startM: aa.startM, endM: L.endM, going: L.going, narrows: aa.narrows.map((n) => ({ alongM: onLine(n.at), widthM: n.widthM, kind: n.kind })), depthM: depthOf(aa.id) };
+        return { id: aa.id, viable: aa.viable, main: aa.main, startM: aa.startM, endM: L.endM, going: L.going, narrows: aa.narrows.map((n) => ({ alongM: onLine(n.at), widthM: n.widthM, kind: n.kind })), depthM: depthOf(aa.id), fupM: v.side === 'enemy' && aa.fupAt && aa.onto !== 'turn' ? onLine(aa.fupAt) : null };
       }),
       crossovers: v.crossovers.map((x) => {
         const L = along.get(x.a);
@@ -3670,6 +3727,9 @@ export default class GroundGuide {
       mcWidthM: v.mcWidthM,
       catkMin: catk?.min ?? null,
       catkLabel: catk?.label ?? '',
+      catkCues: (D.decisionPoints?.counterAttack?.indicators?.value as string[] | undefined) ?? null,
+      // Reading the En defence (own attack): when the Indian reserves can react (IDD p 5).
+      reserves: v.side !== 'enemy' ? ((D.decisionPoints?.reserves?.indian?.ladder as DecArgs['reserves']) ?? null) : null,
       coa: v.side === 'enemy'
         ? {
             fire: v.fire ? Object.fromEntries(v.fire.lines.map((l) => [l.id, l.coveredPct])) : undefined,
@@ -3696,7 +3756,7 @@ export default class GroundGuide {
     };
     const hh = /^([01]?\d|2[0-3]):([0-5]\d)$/.test(ip.hHour.trim()) ? ip.hHour.trim() : null;
     return {
-      rates: { mover: v.mover, go: rates.go, slow: rates.slow, nogo: rates.nogo, climbMinPer300: rates.climbMinPer300 ?? null, climbM: Object.fromEntries([...along.entries()].map(([id, L]) => [id, L.going.reduce((t2, g2) => t2 + (g2.riseM ?? 0), 0)]).filter(([, m2]) => (m2 as number) >= 30)) },
+      rates: { mover: v.mover, go: rates.go, slow: rates.slow, nogo: rates.nogo, climbMinPer300: rates.climbMinPer300 ?? null, climbM: Object.fromEntries([...along.entries()].map(([id, L]) => [id, L.going.reduce((t2, g2) => t2 + (g2.riseM ?? 0), 0)]).filter(([, m2]) => (m2 as number) >= 30)), descentMinPer600: rates.descentMinPer600 ?? null, fallM: Object.fromEntries([...along.entries()].map(([id, L]) => [id, L.going.reduce((t2, g2) => t2 + (g2.fallM ?? 0), 0)]).filter(([, m2]) => (m2 as number) >= 30)), mountain: !!rates.mountain },
       fromThreat: !!tAt,
       hHour: hh,
       profiles: r.profiles.map((p) => {
@@ -3727,9 +3787,10 @@ export default class GroundGuide {
       dps: enemy ? r.dps.map((d) => ({ ...d, ...dpAt(d.aa, d.alongM) })) : [],
       catk,
       coas: enemy ? r.coas : null,
+      reserves: r.reserves,
       leadH: Number(D.decisionPoints?.interdict?.leadH ?? 2),
       reactionH: ip.reactionH,
-      notes: enemy ? r.notes : ['Decision support reads the enemy\'s avenues: set Read for to Defence. The times over own avenues are shown.'],
+      notes: enemy ? r.notes : ['Decision support reads the enemy\'s avenues: set Read for to Defence. The times over own avenues are shown.', ...r.notes.filter((n) => /IDD p 5/.test(n))],
     };
   }
 
@@ -3756,6 +3817,52 @@ export default class GroundGuide {
     return out;
   }
 
+  /** Desert when half or more of the ground within 5 km is bare desert, sand, dunes or salt pan (IpbTemplates desertTest, E). */
+  private _ipbDesert(a: { view: IpbApchView; coding: IpbCoding | null; grid: OcokaGrid | null }): boolean {
+    const m = this._manifest;
+    const g = a.grid, c = a.coding, v = a.view;
+    if (!m || !g || !c) return false;
+    const T: any = (IPB_TEMPLATES as any).desertTest ?? {};
+    const cls = new Set<number>((T.classes as number[] | undefined) ?? [12, 13, 14, 16]);
+    const [px, py] = mercToPx(v.anchor[0], v.anchor[1], m.zoom.max, m.tileSize);
+    const sx = px - g.px0 - c.x0, sy = py - g.py0 - c.y0;
+    const r = Number(T.withinM ?? 5000) / g.res;
+    const st = Math.max(1, Math.floor(r / 25));
+    let all = 0, des = 0;
+    for (let y = Math.max(0, Math.floor(sy - r)); y < Math.min(c.h, sy + r); y += st)
+      for (let x = Math.max(0, Math.floor(sx - r)); x < Math.min(c.w, sx + r); x += st) {
+        if ((x - sx) ** 2 + (y - sy) ** 2 > r * r) continue;
+        const k = g.cls[(y + c.y0) * g.w + x + c.x0];
+        if (k === 255 || k === 0) continue;
+        all++;
+        if (cls.has(k)) des++;
+      }
+    return all > 0 && des / all >= Number(T.share ?? 0.5);
+  }
+
+  /**
+   * Mountains when the ground within 5 km of the position rises 400 m or more (IpbTemplates.json mountainTest, E): the
+   * template's choice and the Decision tab's foot rates (MW p 81) both read it.
+   */
+  private _ipbMountain(a: { view: IpbApchView; coding: IpbCoding | null; grid: OcokaGrid | null }): boolean {
+    const m = this._manifest;
+    const g = a.grid, c = a.coding, v = a.view;
+    if (!m || !g || !c) return false;
+    const z = m.zoom.max, ts = m.tileSize;
+    const [px, py] = mercToPx(v.anchor[0], v.anchor[1], z, ts);
+    const sx = px - g.px0 - c.x0, sy = py - g.py0 - c.y0;
+    const r = 5000 / g.res;
+    let lo = Infinity, hi = -Infinity;
+    const st = Math.max(1, Math.floor(r / 25));
+    for (let y = Math.max(0, Math.floor(sy - r)); y < Math.min(c.h, sy + r); y += st)
+      for (let x = Math.max(0, Math.floor(sx - r)); x < Math.min(c.w, sx + r); x += st) {
+        if ((x - sx) ** 2 + (y - sy) ** 2 > r * r) continue;
+        const e = g.elev[(y + c.y0) * g.w + x + c.x0];
+        if (e === e) ((lo = Math.min(lo, e)), (hi = Math.max(hi, e)));
+      }
+    return hi - lo >= Number((IPB_TEMPLATES as any).mountainTest?.riseM ?? 400);
+  }
+
   /**
    * The situation template over a reading (IPB_Plan.md §6.7; book pp 22-23): the doctrinal template for the reading laid
    * along its avenues, each element judged on its mover's IPB coding (the other movers' codings worked out once per area),
@@ -3773,22 +3880,8 @@ export default class GroundGuide {
     };
     const toM = (x: number, y: number): MercXY => pxToMerc(x + g.px0 + c.x0, y + g.py0 + c.y0, z, ts);
     const readFor: 'defence' | 'attack' = v.side === 'enemy' ? 'defence' : 'attack';
-    // Mountains when the ground within 5 km of the position rises 400 m or more (IpbTemplates.json mountainTest, E).
-    let mountain = false;
-    {
-      const [sx, sy] = toPx(v.anchor);
-      const r = 5000 / g.res;
-      let lo = Infinity, hi = -Infinity;
-      const st = Math.max(1, Math.floor(r / 25));
-      for (let y = Math.max(0, Math.floor(sy - r)); y < Math.min(c.h, sy + r); y += st)
-        for (let x = Math.max(0, Math.floor(sx - r)); x < Math.min(c.w, sx + r); x += st) {
-          if ((x - sx) ** 2 + (y - sy) ** 2 > r * r) continue;
-          const e = g.elev[(y + c.y0) * g.w + x + c.x0];
-          if (e === e) ((lo = Math.min(lo, e)), (hi = Math.max(hi, e)));
-        }
-      mountain = hi - lo >= Number((IPB_TEMPLATES as any).mountainTest?.riseM ?? 400);
-    }
-    const spec = pickTemplate(IPB_TEMPLATES, { readFor, hq: v.hq, mountain, want: ip.template });
+    const mountain = this._ipbMountain(a);
+    const spec = pickTemplate(IPB_TEMPLATES, { readFor, hq: v.hq, mountain, desert: !mountain && this._ipbDesert(a), want: ip.template });
     if (!spec) return null;
     // Codings: the reading's own, the others once per area.
     const movers = new Set<'armour' | 'mech' | 'dismounted'>();
@@ -4081,12 +4174,39 @@ export default class GroundGuide {
     const vg = this._visibility?.get() ?? null;
     const vr = vg ? visibilityAt(vg, lon, lat, month) : null;
     const cl = this._climate?.normalsAt(lon, lat) ?? null;
+    const wind = this._ipbWindAt(lon, lat, month);
     const rows = annexA((IPB_DOCTRINE as any).weather?.rows ?? [], {
       month,
       vis: vr ? { meanViewKm: vr.meanViewKm, lt2kmPct: vr.lt2kmPct, fogPct: vr.fogPct, stationKm: vr.stationKm } : null,
       clim: cl ? { tmin: cl.tmin, tmax: cl.tmax, wind: cl.wind, prec: cl.prec } : null,
+      wind,
     });
-    return { month, rows, stationKm: vr?.stationKm ?? null };
+    return { month, rows, stationKm: vr?.stationKm ?? null, wind };
+  }
+
+  /** The month's wind (ERA5 normal) at a point; null with extended.ipb.wind off, no wind grid, or while it loads. */
+  private _ipbWindAt(lon: number, lat: number, month: number): WindReading | null {
+    if (!this._opts.extended.ipb.wind || !this._wind) return null;
+    // The grid's hours are UTC; the clock shown is Pakistan time (UTC + 5), as the Aprc's light times.
+    return windAt(this._wind.get(), lon, lat, month, 5, this._windRules);
+  }
+
+  /** The wind on each LZ (run-in from downwind, departure upwind, on its approaches clear by 10 : 1) and DZ (drift). */
+  private _ipbAirWind(av: IpbAirView, w: WindReading | null): void {
+    av.wind = w;
+    for (const z of [...av.lzs, ...av.dzs]) {
+      if (!w) {
+        z.wind = null;
+        continue;
+      }
+      if (z.kind === 'dz') {
+        const t = dzWind(w, this._windRules);
+        z.wind = t ? { text: t, fit: 'drift' } : null;
+      } else {
+        const r = lzWind(z.approaches, w, this._windRules);
+        z.wind = r ? { text: r.text, fit: r.fit } : null;
+      }
+    }
   }
 
   /** The threat's place in Web Mercator, when it is one (`extended.threat: point`). */
@@ -4189,6 +4309,26 @@ export default class GroundGuide {
     const ll = point === null ? null : this._lngLatOf(point);
     this._aorAnchor = ll ? (lngLatToMercator(ll[0], ll[1]) as MercXY) : null;
     this._scopeSoon(0, true);
+  }
+
+  /**
+   * The line of denial given by the higher comd with the msn (OoW Vol I pp 17-18): a line of def's letter (W X Y Z) that
+   * the Gr Scope AOR trace marks under a wide band and names "Line of Denial", as do its D sheet and Copy as Text; null
+   * clears it. Not kept in the settings: it belongs to the plan (the Aprc passes the one its aim's limitations give). A
+   * letter the reading has no line for marks nothing. The rail redraws at once (the reading is not read again).
+   */
+  setAorDenial(id: string | null): void {
+    const t = typeof id === 'string' ? id.trim().toUpperCase() : '';
+    const v = /^[A-Z]$/.test(t) ? t : null;
+    if (v === this._aorDenial) return;
+    this._aorDenial = v;
+    this._scopeSoon(0, true);
+    this._emit('ground-guide-aor-denial', { denial: v });
+  }
+
+  /** The line of denial the AOR trace marks (a letter), or null. */
+  aorDenial(): string | null {
+    return this._aorDenial;
   }
 
   /** The last AOR reading the rail drew (null before one), for hosts. Ground metres east / north of the MITG; see GroundGuideAor.ts. */
@@ -4556,6 +4696,7 @@ export default class GroundGuide {
       month: monthName(month),
       loading: true,
       keys: { detail: o.keys && !this._touchInput },
+      denial: this._aorDenial,
     };
     const mitg = { at: anchor, name: anchorName };
     // The MITG's name and the frontage limit go into the reading too (its title and the frontage test), so a renamed VG
@@ -5593,6 +5734,7 @@ export default class GroundGuide {
     if (this._accessGraphic) (this._getView?.() as any)?.graphics?.remove(this._accessGraphic);
     this._accessGraphic = null;
     this._climate = null;
+    this._wind = null;
     this._population?.destroy();
     this._population = null;
     this._source?.dispose?.();

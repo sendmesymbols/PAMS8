@@ -1,0 +1,319 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "bn-attk-bua",
+  "family": "bn-attk-bua",
+  "layout": "bua",
+  "echelon": "16",
+  "unit": "inf-bn-std",
+  "basis": "D",
+  "task": "attack",
+  "name": "Bn Attk (BUA): foothold from a flank, bounds within",
+  "frontageRow": "Battalion, set-piece attack in plains",
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "An attack on a BUA in three phases: a foothold on the periphery, systematic progress within the area by bounds, reduction of individual centres of resistance (IBB S49 para 3 p 265). The frontal assault is costly: the assault comes from a flank by night, soon after dusk, the lanes in the minefield made secretly the same night or the night before; the heavy weapons sited close to the minefield neutralise the weapons on the periphery first (paras 6-10 pp 266-267). The foothold no wider than 100 m a Pl (para 15 p 268); the streets the boundaries and killing areas (para 16); adequate reserves at all levels (para 2 e p 265). Laid on the left flank attack's geometry.",
+  "slots": [
+    {
+      "role": "obj",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ (foothold)",
+      "order": 1,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -1500,
+          "wM": 500,
+          "hM": 300
+        }
+      }
+    },
+    {
+      "role": "objTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          -1500
+        ]
+      }
+    },
+    {
+      "role": "assy",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": -4270,
+          "backM": 965,
+          "wM": 1000,
+          "hM": 700
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ],
+        "prefer": [
+          "roadAccess"
+        ]
+      }
+    },
+    {
+      "role": "fup",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -1914,
+            -655
+          ],
+          [
+            -1429,
+            -415
+          ]
+        ]
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "sl",
+      "kind": "line",
+      "sym": "25140303",
+      "label": "SL",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -1648,
+            -895
+          ],
+          [
+            -1348,
+            -375
+          ]
+        ]
+      },
+      "terrainRule": {
+        "onGround": "linearFeature"
+      }
+    },
+    {
+      "role": "axis",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -1498,
+            -635
+          ],
+          [
+            -520,
+            -1200
+          ]
+        ],
+        "widthM": 400
+      }
+    },
+    {
+      "role": "asltL",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "A Coy",
+      "echelon": "15",
+      "order": 3,
+      "shape": {
+        "at": [
+          -1731,
+          -639
+        ]
+      }
+    },
+    {
+      "role": "asltR",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "B Coy",
+      "echelon": "15",
+      "order": 3,
+      "shape": {
+        "at": [
+          -1611,
+          -431
+        ]
+      }
+    },
+    {
+      "role": "bof",
+      "kind": "area",
+      "sym": "25152100",
+      "label": "Hy Wpns",
+      "order": 3,
+      "shape": {
+        "base": [
+          [
+            -200,
+            -550
+          ],
+          [
+            200,
+            -550
+          ]
+        ],
+        "ctrl": [
+          0,
+          -850
+        ]
+      },
+      "terrainRule": {
+        "sees": "obj",
+        "prefer": [
+          "highGround"
+        ]
+      }
+    },
+    {
+      "role": "bofCoy",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "D Coy (Hy Wpns, close to the Mf)",
+      "echelon": "15",
+      "order": 4,
+      "shape": {
+        "at": [
+          0,
+          -550
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "C Coy (Res)",
+      "echelon": "15",
+      "order": 4,
+      "shape": {
+        "at": [
+          -2278,
+          -185
+        ]
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bn HQ",
+      "order": 4,
+      "shape": {
+        "at": [
+          -2441,
+          -668
+        ]
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111402",
+      "label": "81 mm Mor",
+      "order": 4,
+      "shape": {
+        "at": [
+          0,
+          300
+        ]
+      }
+    },
+    {
+      "role": "pl1",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "PL 1 (bound)",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            -400,
+            -1850
+          ],
+          [
+            400,
+            -1850
+          ]
+        ]
+      }
+    },
+    {
+      "role": "pl2",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "PL 2 (bound)",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            -400,
+            -2250
+          ],
+          [
+            400,
+            -2250
+          ]
+        ]
+      }
+    },
+    {
+      "role": "loe",
+      "kind": "line",
+      "sym": "25140900",
+      "label": "LOE (the BUA)",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            751,
+            -2800
+          ],
+          [
+            1501,
+            -1500
+          ]
+        ]
+      }
+    }
+  ],
+  "checks": [
+    "fupDistance",
+    "assaultFrontage",
+    "bofFlank",
+    "bofRange",
+    "morReach",
+    "fireLift",
+    "reserveReach",
+    "approaches"
+  ]
+}

@@ -17,6 +17,7 @@ import { fmtDistance } from './GroundGuideEvaluator';
 import type { Fact, LetterAnswer } from './GroundGuideDetailSummary';
 import { FONT } from './GroundGuideTokens';
 import { hPlus } from './GroundGuideIpbDecision';
+import { assaultLine, objectiveLine } from './GroundGuideFrontage';
 import { sunAltitude } from './GroundGuideOcoka';
 import type { GroundGuideOcoka, IpbApchAa, IpbApchView, IpbDecisionView, MercXY } from './GroundGuideTypes';
 
@@ -40,7 +41,7 @@ const CSS = `
 .ms-gia-card.ms-own.ms-main{background:rgba(142,193,234,.09);border-color:rgba(142,193,234,.5)}
 .ms-gia-h{display:flex;align-items:center;gap:8px;font:750 14.5px/1.3 ${FONT};color:#f1f3f6}
 .ms-gia-id{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 7px;border-radius:11px;font:800 13px/1 ${FONT};color:#fff}
-.ms-gia-tag{margin-left:auto;padding:1px 8px;border-radius:9px;font:700 11.5px/1.5 ${FONT};background:rgba(255,255,255,.09);color:#e6eaee;white-space:nowrap}
+.ms-gia-tag{margin-left:auto;padding:1px 8px;border-radius:9px;font:700 12px/1.45 ${FONT};background:rgba(255,255,255,.09);color:#e6eaee;white-space:nowrap}
 .ms-gia-t{font:400 12.5px/1.4 ${FONT};color:#c3cbd3;margin-top:3px}
 .ms-gia-chips{display:flex;flex-wrap:wrap;gap:4px 5px;margin-top:5px}
 .ms-gia-chip{padding:1px 7px;border-radius:9px;font:650 12px/1.5 ${FONT};background:rgba(255,255,255,.08);color:#e6eaee;white-space:nowrap}
@@ -170,7 +171,8 @@ function endLine(v: IpbApchView): string {
   const o = v.objective;
   if (!o || v.apchEnd === 'through') return "Through the area read (the book's avenues, regardless of objectives; Y for onto the Obj)";
   const size = `${fmtDistance(o.frontageM)} frontage${o.depthM >= 1 ? ` x ${fmtDistance(o.depthM)}` : ''}`;
-  return `Onto the Obj, ${o.label}: ${size}${o.assumed ? ' (taken, no echelon)' : ' (by echelon)'}; frontal, Lt and Rt flanking, each from an FUP ${km(o.fupM)} short${o.turn ? `; turning round it to ${o.turn.label}, ${km(o.turn.behindM)} behind` : ''}${o.from ? `, setting out from ${o.source === 'posn' ? 'the Threat marker' : 'your symbol'}` : ''}${v.apchEnd === 'both' ? '; with the avenues through the area' : ''}`;
+  const by = o.frontage ? ` (by echelon, ${o.frontage.kind}${o.frontage.whose === 'en' ? ', his figures' : ''})` : o.assumed ? ' (taken, no echelon)' : ' (by echelon)';
+  return `Onto the Obj, ${o.label}: ${size}${by}; frontal, Lt and Rt flanking, each from an FUP ${km(o.fupM)} short${o.turn ? `; turning round it to ${o.turn.label}, ${km(o.turn.behindM)} behind` : ''}${o.from ? `, setting out from ${o.source === 'posn' ? 'the Threat marker' : 'your symbol'}` : ''}${v.apchEnd === 'both' ? '; with the avenues through the area' : ''}`;
 }
 
 // ── answer, facts ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -375,7 +377,7 @@ export function apchTiles(o: GroundGuideOcoka): HTMLElement[] {
       aaCards(v),
       note(
         ontoOn
-          ? `Each ends on the Obj's frontage (${fmtDistance(v.objective!.frontageM)} by echelon), not its middle, from an FUP ${km(v.objective!.fupM)} short (IBB pp 173-174). Flanks first, then the going and cost (a proposal): a frontal attack is dangerous with a small chance of success (OoW Vol II s6). Y for the avenues through the area.`
+          ? `Each ends on the Obj's frontage (${fmtDistance(v.objective!.frontageM)} by echelon), not its middle, from an FUP ${km(v.objective!.fupM)} short (IBB pp 201, 203). Flanks first, then the going and cost (a proposal): a frontal attack is dangerous with a small chance of success (OoW Vol II s6). Y for the avenues through the area.`
           : 'Ranked on the going until the proforma: how far through the area, GO, room, narrows, cost (a proposal). The commander judges the most likely and most dangerous.',
       ),
     );
@@ -397,6 +399,8 @@ export function apchTiles(o: GroundGuideOcoka): HTMLElement[] {
   const rows: Array<[string, string]> = [
     ['Whose', v.side === 'enemy' ? "The en's options against you (X for yours)" : "Your options against the threat (X for the en's)"],
     ['Apchs end', endLine(v)],
+    ...(v.objective?.frontage ? [['Obj frontage', objectiveLine(v.objective.frontage)] as [string, string]] : []),
+    ...(v.objective?.assault ? [['Assault frontage', assaultLine(v.objective.assault)] as [string, string]] : []),
     ['Obstacles', v.obstacles?.length ? v.obstacles.map((o) => o.text).join('. ') : 'None drawn in the area read (minefields, ditches, wire and lanes on the map join the coding; IPB p 10)'],
     ['Read as', `${v.hqLabel}${v.forEch ? ` for your ${v.forEch}` : ''}: ${v.aaFor} Apchs of ${v.mcFor} corridors (book p 7)`],
     ['Corridor', `${fmtDistance(v.mcWidthM)} wide; corridors of one Apch at most ${km(v.spacingM)} apart (book p 12, ATP T4-2)`],
@@ -823,7 +827,19 @@ export function wxTile(v: IpbApchView | null | undefined, use: 'fire' | 'mnvr' |
     }
     g.append(grp);
   }
-  const src = `Annex A (book pp 19-20) from the month's means: visibility from the nearest stations${w.stationKm != null ? ` (${Math.round(w.stationKm)} km off${w.stationKm > 100 ? ': a guess' : ''})` : ''}, temperature and wind from WorldClim. Daily means, not the hour. Ceiling, cloud, humidity and stability: get from Met.`;
+  if (w.wind) {
+    // The month's usual wind (ERA5 normal): where it comes from, how steady, by day and night when it turns.
+    const grp = el('div', 'ms-gia-wxg');
+    const head = el('div', 'ms-gia-wxh', 'Wind');
+    head.setAttribute('data-split-head', '');
+    const row = el('div', 'ms-gia-wxr');
+    const val = el('span', 'ms-gia-wxv', w.wind.text);
+    val.title = `ERA5 ${w.wind.dataDate}, 0.25°: the usual wind for the month at 05, 11, 17 and 23 h, not a forecast; valley winds narrower than 28 km are not in it.${use === 'mnvr' ? ' Smoke and agents drift with it (IBB p 109; OoW Vol II p 93).' : use === 'air' ? ' Helicopters land and take off into the wind (FM 3-21.38); jumpers drift downwind.' : ''}`;
+    row.append(el('span', 'ms-gia-wxe', w.wind.turns ? 'Day / night' : 'Usual'), val);
+    grp.append(head, row);
+    g.append(grp);
+  }
+  const src = `Annex A (book pp 19-20) from the month's means: visibility from the nearest stations${w.stationKm != null ? ` (${Math.round(w.stationKm)} km off${w.stationKm > 100 ? ': a guess' : ''})` : ''}, temperature and wind speed from WorldClim${w.wind ? ', wind direction from ERA5 (1990-2019 normal)' : ''}. Daily means, not the hour. Ceiling, cloud, humidity and stability: get from Met.`;
   // The source note goes in the list, after the last block, so a split never leaves it alone in a column of its own.
   const n = note(`Month's means, not the hour · Annex A pp 19-20${w.stationKm != null ? ` · stations ${Math.round(w.stationKm)} km off${w.stationKm > 100 ? ' (a guess)' : ''}` : ''}`);
   n.title = src;
@@ -1018,9 +1034,12 @@ export function decisionTiles(o: GroundGuideOcoka): HTMLElement[] {
   }
   const rt = el('div', 'ms-gx-list');
   const rows: Array<[string, string]> = [
-    ['Rates', `${dv.rates.mover === 'dismounted' ? 'Foot' : 'Vehicles'}: GO ${dv.rates.go[0]} / ${dv.rates.go[1]}, SLOW-GO ${dv.rates.slow[0]} / ${dv.rates.slow[1]}, NO-GO ${dv.rates.nogo[0]} / ${dv.rates.nogo[1]} km/h, day / night (book p 18)`],
+    ['Rates', `${dv.rates.mover === 'dismounted' ? 'Foot' : 'Vehicles'}: GO ${dv.rates.go[0]} / ${dv.rates.go[1]}, SLOW-GO ${dv.rates.slow[0]} / ${dv.rates.slow[1]}, NO-GO ${dv.rates.nogo[0]} / ${dv.rates.nogo[1]} km/h, day / night (${dv.rates.mountain ? 'mountains: MW p 81, 3 km/h by day, 0.5 by night' : 'book p 18'})`],
     ...(dv.rates.climbMinPer300
       ? ([['Climb', `${dv.rates.climbMinPer300[0]}-${dv.rates.climbMinPer300[1]} min per 300 m of ascent on foot, earliest / latest (MW p 81)${dv.rates.climbM && Object.keys(dv.rates.climbM).length ? `: ${Object.entries(dv.rates.climbM).map(([id, m]) => `${id} climbs ${Math.round(m)} m`).join(', ')}` : ''}`]] as Array<[string, string]>)
+      : []),
+    ...(dv.rates.descentMinPer600
+      ? ([['Descent', `${dv.rates.descentMinPer600[0]}-${dv.rates.descentMinPer600[1]} min per 600 m of descent on foot, earliest / latest (MW p 81)${dv.rates.fallM && Object.keys(dv.rates.fallM).length ? `: ${Object.entries(dv.rates.fallM).map(([id, m]) => `${id} descends ${Math.round(m)} m`).join(', ')}` : ''}`]] as Array<[string, string]>)
       : []),
     ['From', dv.fromThreat ? 'The Threat marker\'s place: the way in at GO' : "The area's edge (the threat is only a direction): drag the Threat marker to the en's assembly area for times from the En's start"],
     ['DP lead', dpLead(dv)],
@@ -1028,6 +1047,13 @@ export function decisionTiles(o: GroundGuideOcoka): HTMLElement[] {
   for (const n of dv.notes) rows.push(['Note', n]);
   for (const [a, b] of rows) rt.append(el('div', undefined, a), el('div', undefined, b));
   out.push(tile('Rates & Times', rt));
+  if (v.side !== 'enemy' && dv.reserves?.length) {
+    // Reading the En defence: when each level of his reserve can react (IDD p 5), against own time onto the Obj.
+    const list = el('div', 'ms-gx-list');
+    for (const r of dv.reserves) list.append(el('div', undefined, `${r.level} res`), el('div', undefined, `${r.fromH === r.toH ? `H+${r.fromH}` : `H+${r.fromH} to H+${r.toH}`}${r.from === 'decision' ? ' after his decision' : ''}${r.what ? ` · ${r.what}` : ''}`));
+    const best = [...dv.profiles].filter((p) => p.viable).sort((p, q) => p.endH[0] - q.endH[0])[0];
+    out.push(tile('En Reserves · When They Can React', list, note(`Indian Defensive Doctrine p 5: Bn about 1 h, Bde 2-4 h after the attack starts, Div 4-6 h, Corps 12-16 h after the decision.${best ? ` Own fastest Apch ${best.aa} crosses the area ${hPlus(best.endH[0])} at the earliest.` : ''} Be firm on the Obj and sited against them before they can come in.`)));
+  }
   if (v.side === 'enemy' && (dv.nais.length || dv.dps.length)) {
     const acts = el('div', 'ms-gia-acts');
     const btn = (kind: 'event' | 'dst' | 'decision', text: string, title: string): void => {
@@ -1076,6 +1102,7 @@ export function decisionText(o: GroundGuideOcoka): string[] {
     for (const t of dv.tais) L.push(`  ${t.id} on ${t.aa}: ${t.why}; ${hPlus(t.earliestH)} at the earliest.`);
     for (const d of dv.dps) L.push(`  ${d.id} ${clock(dv, d.earliestH)}, ${whereDp(d)}: ${d.decision}.`);
   }
+  for (const r of dv.reserves ?? []) L.push(`  ${r.text} (IDD p 5).`);
   for (const n of dv.notes) L.push(`  ${n}`);
   return L;
 }
@@ -1102,6 +1129,8 @@ export function apchText(o: GroundGuideOcoka): string[] {
   const L: string[] = [];
   L.push(`IPB ${v.side === 'enemy' ? 'enemy' : 'own'} avenues for a ${v.aaFor} (${v.hqLabel}: ${v.mcFor} corridors ${fmtDistance(v.mcWidthM)}, at most ${km(v.spacingM)} apart; book pp 7, 12; ATP T4-2). Area ${v.frameKm[0]} x ${v.frameKm[1]} km, ${v.mover}, moving ${Math.round(v.axisDeg)}°.`);
   L.push(`Apchs end: ${endLine(v)}.`);
+  if (v.objective?.frontage) L.push(`Obj frontage: ${objectiveLine(v.objective.frontage)}.`);
+  if (v.objective?.assault) L.push(`Assault frontage: ${assaultLine(v.objective.assault)}.`);
   if (v.obstacles?.length) L.push(`Obstacles from the map: ${v.obstacles.map((o) => o.text).join('; ')}.`);
   for (const a of v.aas) {
     L.push(`${a.viable ? `Apch ${a.id}` : `Lone corridor ${a.id}1`} (${aaRole(a)}): ${aaLine(v, a)}; median ${km(a.medianWidthM)} wide.`);

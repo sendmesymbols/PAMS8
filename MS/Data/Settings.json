@@ -826,6 +826,7 @@
         "air": true,
         "mapAir": true,
         "airspace": true,
+        "wind": true,
         "airBand": "contour",
         "lzClass": 4,
         "lzPoints": 4,
@@ -968,7 +969,9 @@
     "keep": true,
     "hHour": "",
     "orbatUrl": "/MS/Data/Orbat/PK",
-    "utcOffsetH": 5
+    "utcOffsetH": 5,
+    "dDay": "",
+    "timeNow": ""
   },
   "compare": {
     "bundleUrl": "/terrain-bundle",

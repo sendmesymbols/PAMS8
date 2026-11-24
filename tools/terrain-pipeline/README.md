@@ -209,6 +209,7 @@ cut the block reads several-fold. Delete the copy afterwards.
 | `soil_props.tif` | `terrain.py` | the same, on the SoilGrids grid | GIS check only (texture, USCS group, confidence, Ks, cone index); not in the bundle |
 | `hut.tif` | `terrain.py` | NCGDB `Hut` (3.77 M symbols) | the `hut` layer (huts per km2, ~600 m cells) |
 | `climate.bin/json` | `scripts/climate.py` | WorldClim 2.1 5' tmin, tmax, prec, wind | `climate/` (monthly normals + frost / hot / wet / monsoon summaries) |
+| `wind.bin/json` | `scripts/fetch_era5_wind.py` then `scripts/wind.py` | ERA5 1990-2019 10 m wind climatology, 0.25°, 00 / 06 / 12 / 18 UTC (WeatherBench 2 public bucket, no account; one 3-day chunk round the 15th per month, 72 chunks, 1.35 GB read, nothing kept but the cut) | `wind/` (mean u / v and mean speed per month and hour: direction, steadiness, day / night; 1.9 MB). Added 2026-11-24 to the live bundle without a rebuild: `python scripts/add_wind_to_bundle.py --bundle ../../MS/Data/terrain-bundle --backup work/backup/manifest_20261124.json` |
 | `wp`, `wc` on places | `grotbc.py` features | WorldPop 2026 constrained, 100 m | people nearest each place; people within 12 / 8 / 4 km of a city / district HQ / town |
 
 Added 2026-11-04:

@@ -33,6 +33,8 @@ export interface PfMeasures {
   lengthM: number;
   /** h: share of its length with a metalled road within 300 m, %; share of 3 km legs a 3 m mast sees along, %. */
   roadPct: number;
+  /** g: its heading against the month's usual wind ("wind behind it (from NW)"), null without the wind grid. */
+  windText?: string | null;
   sigsPct: number | null;
   /** j: share of its length the other side may watch, %. */
   seenPct: number | null;
@@ -66,7 +68,7 @@ export const PF_ROWS: readonly RowDef[] = [
   { key: 'd', short: 'd ITG', label: 'd Important tactical Gr', dir: 0, val: (m) => m.itg, fmt: (m) => (m.itg === null ? 'not read' : `${m.itg} ITG within 1 km`), basis: 'ITG candidates on or near it: who holds them is your call' },
   { key: 'e', short: 'e Space', label: 'e Manoeuvre space', dir: 1, val: (m) => m.rooms * 1e6 + m.medianWidthM, fmt: (m) => `${m.rooms >= 3 ? '3+' : m.rooms} corridors, ${km(m.medianWidthM)}`, basis: 'Corridors side by side and the median free width' },
   { key: 'f', short: 'f Going', label: 'f Ease of movement', dir: 1, val: (m) => m.goPct * 1e3 - m.lengthM / 1e3, fmt: (m) => `${r0(m.goPct)}% GO, ${km(m.lengthM)}`, basis: 'GO share (the shorter wins a tie)' },
-  { key: 'g', short: 'g NBC', label: 'g NBC effects', dir: 0, val: () => null, fmt: () => 'you judge', basis: 'Low ground where agents linger, the wind: not in the reading' },
+  { key: 'g', short: 'g NBC', label: 'g NBC effects', dir: 0, val: () => null, fmt: (m) => m.windText ?? 'you judge', basis: 'Its heading against the month\'s usual wind (ERA5 normal): smoke and agents drift with it (IBB p 109, OoW Vol II p 93). Low ground where agents linger and the sign: you judge' },
   { key: 'h1', short: 'h Rds', label: 'h Rds & LOC', dir: 1, val: (m) => m.roadPct, fmt: (m) => `metalled Rd along ${r0(m.roadPct)}%`, basis: 'Share of its length with a metalled road within 300 m' },
   { key: 'h2', short: 'h Sigs', label: 'h Sigs', dir: 1, val: (m) => m.sigsPct, fmt: (m) => (m.sigsPct === null ? 'not read' : `${r0(m.sigsPct)}% of 3 km legs in sight`), basis: 'Radio line of sight along it: 3 m masts 3 km apart' },
   { key: 'j', short: 'j Surv', label: 'j Surveillance', dir: -1, val: (m) => m.seenPct, fmt: (m) => (m.seenPct === null ? 'no Posns read' : `${r0(m.seenPct)}% may be watched`), basis: 'Share the other side may watch from its Posns (observation reach)' },

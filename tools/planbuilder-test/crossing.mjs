@@ -403,5 +403,28 @@ check('No Movement Guide reader: the geometry stands, the ground rows grey', g0.
   check('...with the division\'s 84 m held: no Corps words', !/Corps bridging/.test(row(fl0.res.rows, 'Bridge')?.reason ?? '') && !fl0.fit.crossing.times.some((t) => /Corps set/.test(t.label)));
 }
 
+// ── a second obstacle beyond the far bank: both secured (OoW Vol II p 51) ─────────────────────────────────────────────
+{
+  const withSecond = (atN) => {
+    const c2 = (x, y) => { const l = local(x, y); return Math.abs(l.n - atN) < 20 && Math.abs(l.e) <= 6000 ? 21 : cls(x, y); };
+    const p2 = { ...probe, cls: c2 };
+    return { ...ground, cls: c2, mov: () => p2 };
+  };
+  const plain = F.fitLayout(inpOf(rec('bde-cross-two-up'), H));
+  check('Bde crossing, no second canal: the Second obstacle row passes and names OoW Vol II p 51', row(plain.res.rows, 'Second obstacle')?.st === 'pass' && /OoW Vol II s10 para 5 c p 51/.test(row(plain.res.rows, 'Second obstacle').reason), row(plain.res.rows, 'Second obstacle')?.reason);
+  const g1 = withSecond(1000);
+  const f1 = F.fitLayout(inpOf(rec('bde-cross-two-up'), H, { ground: g1 }));
+  const bh1 = f1.raw.items.find((i) => i.role === 'bh').pts.map((p) => local(world(f1, p).x, world(f1, p).y).n);
+  check('...a distributary 1 km beyond the canal: the BH line laid past it (both secured), pass', row(f1.res.rows, 'Second obstacle')?.st === 'pass' && /BH line laid 300 m beyond it/.test(row(f1.res.rows, 'Second obstacle').reason) && Math.max(...bh1) >= 1250, `${row(f1.res.rows, 'Second obstacle')?.reason} | BH to ${Math.round(Math.max(...bh1))} m`);
+  const g2 = withSecond(2400);
+  const r2 = row(F.fitLayout(inpOf(rec('bde-cross-two-up'), H, { ground: g2 })).res.rows, 'Second obstacle');
+  check('...2.4 km beyond (past the 1.8 km the Bde bridgehead is sized for, within a little distance): laid beyond it, warn that it deepens the bridgehead', r2?.st === 'warn' && /past the 1\.8 km it is sized for/.test(r2.reason) && r2.detail?.fix?.length === 2, r2?.reason);
+  // Check my plan: the BH line as drawn at its old depth, short of the second canal
+  const asDrawn2 = (fl) => { const d = {}; for (const i of fl.raw.items) { if (d[i.role]) continue; const w = (p) => { const q = world(fl, p); return [q.x, q.y]; }; d[i.role] = { pts: i.pts.map(w), ...(i.base ? { base: { start: w(i.base.start), mid: w(i.base.mid), end: w(i.base.end) } } : {}) }; } return d; };
+  const dd = asDrawn2(plain);
+  const cr = row(C.checkCrossing(inpOf(rec('bde-cross-two-up'), H, { ground: withSecond(plain.raw.items.find((i) => i.role === 'bh').pts.reduce((m, p) => Math.max(m, local(world(plain, p).x, world(plain, p).y).n), 0) + 400) }), dd)?.rows ?? [], 'Second obstacle');
+  check('...as drawn, with a canal just beyond the drawn BH line: warn, lay the line beyond it', cr?.st === 'warn' && /just beyond the BH line as drawn/.test(cr.reason), cr?.reason);
+}
+
 console.log(`\n${n - fails} of ${n} checks passed`);
 process.exit(fails ? 1 : 0);

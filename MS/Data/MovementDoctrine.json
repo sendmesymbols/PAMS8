@@ -221,9 +221,17 @@
     "hospitals": ["hospital", "bhu", "dispensary"],
     "hls": ["helipad", "airfield", "air_base", "landing_strip", "landing_ground", "airport"]
   },
+  "bridgeClassTypical": {
+    "basis": "R",
+    "src": "IBB S60 para 3 d (9) p 330",
+    "rule": "Canal bridges where the load class is not recorded: class 9 / 12 on tracks between villages, class 40 / 70 on the main roads, regulators and siphons; foot bridges that take jeeps. A typical figure from the pamphlet, never shown as measured: recce the bridge before a heavy crossing.",
+    "track": [9, 12],
+    "mainRoad": [40, 70]
+  },
   "lane": {
     "basis": "R",
     "rule": "Lanes through gaps in dead ground, off roads; objective within one night's march (15 km in hills, 24 km at most).",
+    "src": "IBB S64 para 4 p 341: an infiltration march of not more than 24 km in a single night (page added 24 Nov 2026, Doctrine_Review R19)",
     "nightKmHills": 15,
     "nightKmMax": 24,
     "hillsReliefM": 300,
@@ -242,7 +250,7 @@
         "dry": "Wet span over 500 ft (152 m), depth varies.",
         "wet": "Wider and deeper than in the dry season.",
         "notes": ["Sandy bed, marshy ground astride.", "Flood bunds give good observation.", "Crossed at the bridges and ferry sites.", "Wild growth, elephant grass common; going poorer than a dammed river."] },
-      "irrigationCanal": { "annex": 3, "label": "Irrigation canal", "widthM": [61, 91], "src": "IBB Annex P p464 s3",
+      "irrigationCanal": { "annex": 3, "label": "Irrigation canal", "widthM": [61, 91], "depthM": [1.8, 3.6], "currentMs": [1.0, 1.5], "bankRaiseM": [1.8, 3], "src": "IBB Annex P p464 s3; S60 pp 329-330 (water 1.8-3.6 m deep, current 2-3 knots, banks 1.8-3 m; bed loamy, tanks can ford in most cases; approaches marshy)",
         "dry": "Runs full: 5,000-10,000 cusecs for the major canals; width and capacity fall toward the tail.",
         "wet": "As in the dry season; seepage marsh spreads.",
         "notes": ["Major canals 200-300 ft (61-91 m) wide at the head.", "At least one bank has a service track and embankment: vehicles on it are seen from far.", "Rail, road and cattle bridges; SWR (steel wire rope) ferries.", "Trees on the banks give cover.", "Seepage makes marshy patches along the canal."] },
@@ -250,7 +258,7 @@
         "dry": "Smaller channel off an irrigation canal.",
         "wet": "As in the dry season.",
         "notes": ["Wade or bridge at a low bank; check the width first."] },
-      "linkCanal": { "annex": 4, "label": "Link canal", "src": "IBB Annex P p464 s4",
+      "linkCanal": { "annex": 4, "label": "Link canal", "widthM": [91, 122], "depthM": [1.8, 3.7], "bedDepthM": [3.0, 4.6], "currentMs": [2.1, 2.6], "bankRaiseM": [1, 1.2], "src": "IBB Annex P p464 s4; S60 pp 329-330 (300-400 ft wide, 10-15 ft deep with 6-12 ft of water, banks 1-1.2 m above the ground, current 4-5 knots; bed loamy, tanks can ford in most cases; approaches marshy)",
         "dry": "10,000-20,000 cusecs.",
         "wet": "Rain water from the land drains into it.",
         "notes": ["Road and rail bridges and a few others linking main towns.", "Wild trees and shrubs only.", "Less seepage than an irrigation canal.", "The pamphlet's sketch: water deep below high spoil banks."] },

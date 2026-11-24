@@ -186,6 +186,7 @@ function withCrossArty(r: Recipe, a: ArtyOnPlan): Recipe {
 export function withArty(r: Recipe, doc: DoctrineSet, a: ArtyOnPlan): Recipe {
   if (r.arty) return r;
   if (r.task === 'crossing') return withCrossArty(r, a);
+  if (r.echelon === '21' && r.task === 'defence') return withDivDefArty(r, doc, a);
   // a Coy, Bn or Bde defence or attack (a Coy's support Bty, the Bn's, a Bde's Regt): the same band behind its FDL / FUP
   if (!['15', '16', '18'].includes(r.echelon) || (r.task !== 'defence' && r.task !== 'attack')) return r;
   const out: Recipe = JSON.parse(JSON.stringify(r));
@@ -216,8 +217,78 @@ export function withArty(r: Recipe, doc: DoctrineSet, a: ArtyOnPlan): Recipe {
   return out;
 }
 
+/**
+ * A Div defence's artillery (OoW Vol I p 83): the Div Arty deployed in groups to cover the major approaches, one group
+ * behind each forward Bde (the approach it holds), its Regts dealt out across the groups in turn; each Regt's gun area in
+ * the middle of its band behind that Bde's front, side by side 300 m apart within the group. A Div Arty or one Regt.
+ */
+function withDivDefArty(r: Recipe, doc: DoctrineSet, a: ArtyOnPlan): Recipe {
+  const fwd = footprints(doc, r).filter((b) => b.kind === 'fwd').sort((p, q) => p.x - q.x);
+  if (!fwd.length) return r;
+  const out: Recipe = JSON.parse(JSON.stringify(r));
+  const regts = a.regts?.length ? a.regts : [a];
+  const groups: ArtyOnPlan[][] = fwd.map(() => []);
+  regts.forEach((g, i) => groups[i % fwd.length].push(g));
+  const placed: string[] = [];
+  let k = 0;
+  groups.forEach((gs, gi) => {
+    const b = fwd[gi], front = b.y - b.h / 2;
+    gs.forEach((g, j) => {
+      const d = g.band[1] >= g.band[0] ? Math.round((g.band[0] + g.band[1]) / 2) : g.band[0];
+      const [w, h] = g.areaM;
+      const across = Math.round(b.x + (j - (gs.length - 1) / 2) * (w + 300));
+      out.slots.push({ role: gunRole(k++), kind: 'area', sym: '25240501', label: g.name, order: 8, shape: { rect: { acrossM: across, backM: Math.round(front + d + h / 2), wM: w, hM: h } } });
+    });
+    if (gs.length) placed.push(`${gs.map((g) => g.name).join(', ')} behind the ${(r.slots.find((s) => s.role === b.role)?.label ?? b.role)}`);
+  });
+  out.id = `${r.id}-gun`;
+  out.name = `${r.name}, ${a.name}`;
+  out.arty = a;
+  out.note = `${r.note ?? ''} ${a.name} in groups to cover the major approaches (OoW Vol I p 83): ${placed.join('; ')}; each gun area in the middle of its band behind the Bde's front (PlanArty.withArty).`.trim();
+  return out;
+}
+
 const centre = (pts: XY[]): XY => ({ x: pts.reduce((s, p) => s + p.x, 0) / pts.length, y: pts.reduce((s, p) => s + p.y, 0) / pts.length });
 const km = (m: number) => `${(m / 1000).toFixed(1)} km`;
+
+/**
+ * A Div defence's artillery rows (OoW Vol I p 83): Arty groups, each forward Bde (each major approach) with a group behind
+ * it whose guns reach out past the En FUP in front of it (`enemyFupM`), the DF plan by sectors; Arty reinforcement, the Med
+ * / Hy Regts in the Div Arty and the reinforcing Regt the extended frontage wants (a warn on the three-axes layout, OoW
+ * Vol I Annex D an extended frontage); on the ground, Gun area for each Regt. Plan metres, y toward the enemy.
+ */
+function divArtyRows(items: { role: string; pts: XY[] }[], recipe: Recipe, a: ArtyOnPlan, enemyFupM: number | null, f: FitFrame | null, g: PlanGround | null): Check[] {
+  const regts = a.regts?.length ? a.regts : [a];
+  const areas = regts.map((r, i) => ({ r, it: items.find((x) => x.role === gunRole(i) && x.pts.length) })).filter((x): x is { r: ArtyOnPlan; it: { role: string; pts: XY[] } } => !!x.it);
+  if (!areas.length) return [];
+  const label = (role: string) => recipe.slots.find((s) => s.role === role)?.label ?? role;
+  const fwd = items.filter((i) => /^fwd/.test(i.role) && i.pts.length >= 3).map((i) => ({ role: i.role, x: centre(i.pts).x, front: Math.max(...i.pts.map((p) => p.y)) }));
+  if (!fwd.length) return [];
+  // each gun area belongs to the group of the forward Bde nearest it across the front
+  const groupOf = (p: XY) => fwd.reduce((best, b) => (Math.abs(b.x - p.x) < Math.abs(best.x - p.x) ? b : best), fwd[0]);
+  const beyond = enemyFupM ?? 0;
+  let short = 0;
+  const parts = fwd.map((b) => {
+    const mine = areas.filter((x) => groupOf(centre(x.it.pts)).role === b.role);
+    const tgt = { x: b.x, y: b.front + beyond };
+    const reach = mine.filter((x) => { const c = centre(x.it.pts); const q = Math.hypot(tgt.x - c.x, tgt.y - c.y); return q <= x.r.weapon.planM; });
+    if (!mine.length || reach.length < mine.length) short++;
+    return `${label(b.role)}: ${mine.length ? `${mine.map((x) => x.r.name).join(', ')}${reach.length < mine.length ? `, ${mine.length - reach.length} short of ${beyond ? `the En FUP ${km(beyond)} out` : 'its front'}` : beyond ? `, past the En FUP ${km(beyond)} out` : ''}` : 'no group behind it'}`;
+  });
+  const rows: Check[] = [{ name: 'Arty groups', st: short ? 'warn' : 'pass', reason: `${a.name} in ${fwd.length} groups, one behind each forward Bde: ${parts.join('; ')}. The Div Arty deployed in groups to cover the major approaches, the DF plan made by sectors (OoW Vol I p 83); in the desert alternative gun areas against the En outflanking moves (OoW Vol I p 70). Band: ${a.bandSrc}`,
+    ...(short ? { detail: { head: `${short} approach${short > 1 ? 'es' : ''} without a group in reach`, why: 'Each major approach needs artillery that reaches the En forming up in front of it (OoW Vol I p 83).', fix: ['Move a group nearer the approach, or a Regt from a quieter sector', 'A longer gun (a Med or Hy Regt) on that approach'] } } : {}) }];
+  const heavy = regts.filter((r) => /\b(Med|Hy|Medium|Heavy)\b/i.test(r.name));
+  const extended = recipe.layout === 'three-axes';
+  rows.push({ name: 'Arty reinforcement', st: extended ? 'warn' : 'pass', reason: `${heavy.length ? `${heavy.map((r) => r.name).join(', ')} in the Div Arty` : 'no Med or Hy Regt in the Div Arty'}; on extended frontages the Div Arty is reinforced by a minimum of one Med / Hy Regt (OoW Vol I p 83)${extended ? ': three Bdes up on three axes is such a frontage (OoW Vol I Annex D p 105): ask Corps for it' : ': confirm with Corps if the frontage is extended'}`,
+    ...(extended ? { detail: { head: 'Reinforcing Med / Hy Regt not in the plan', why: 'On an extended frontage the Div Arty alone cannot cover every approach in strength (OoW Vol I p 83).', fix: ['Ask Corps for a Med / Hy Regt and give it the main approach'] } } : {}) });
+  if (f && g) {
+    const read = areas.map(({ r, it }) => ({ r, s: gunGround(it.pts, f, g) })).filter((x) => x.s !== null) as { r: ArtyOnPlan; s: number }[];
+    const worst = read.length ? Math.min(...read.map((x) => x.s)) : null;
+    const gst: CheckState = worst === null ? 'unchecked' : worst >= a.room[0] ? 'pass' : worst >= a.room[1] ? 'warn' : 'fail';
+    rows.push({ name: 'Gun area', st: gst, reason: `${read.length ? read.map((x) => `${x.r.name} ${Math.round(x.s * 100)} %`).join(', ') + ` of the area is ground a gun position may take (the bundle's Gun Position going); ${Math.round(a.room[0] * 100)} % wanted (GunDoctrine room)` : 'their ground not loaded'}; ${a.areaSrc}` });
+  }
+  return rows;
+}
 const fmtM = (m: number) => (m >= 1000 ? km(m) : `${Math.round(m / 10) * 10} m`);
 
 /**
@@ -229,6 +300,7 @@ const fmtM = (m: number) => (m >= 1000 ? km(m) : `${Math.round(m / 10) * 10} m`)
 export function artyRows(items: { role: string; pts: XY[] }[], recipe: Recipe, enemyFupM: number | null, f: FitFrame | null = null, g: PlanGround | null = null, backOf: ((p: XY) => number) | null = null): Check[] {
   const a = recipe.arty as ArtyOnPlan | undefined;
   if (a && recipe.task === 'crossing') return crossArtyRows(items, a, f, g, backOf);
+  if (a && recipe.echelon === '21' && recipe.task === 'defence') return divArtyRows(items, recipe, a, enemyFupM, f, g);
   const ga = items.find((i) => i.role === 'gunArea' && i.pts.length);
   if (!a || !ga) return [];
   const ys = ga.pts.map((p) => p.y);

@@ -51,7 +51,16 @@ check('figures from PlanDoctrine ad (E): engage 1.5 km out, 2 FUs over the bridg
 const vb = D.vpsOf(rec('bde-cross-two-up'), doc);
 check('Bde crossing VPs: the bridge first, then the Bde HQ, then the Assy areas and the Veh Wait', vb[0].role === 'bridge' && vb[1].role === 'hq' && vb.slice(2).every((v) => /^(assy|vwa)/.test(v.role)) && vb.length === 6, vb.map((v) => v.role).join());
 const vd = D.vpsOf(rec('bn-def-two-up'), doc);
-check('Bn defence VPs: the reserve, from its footprint', vd.length === 1 && vd[0].role === 'res' && vd[0].y > 0, JSON.stringify(vd));
+check('Bn defence VPs: the Bn HQ (IBB p 23; OOW1 p 27 HQs) and the reserve, from its footprint', vd.length === 2 && vd.some((v) => v.role === 'hq') && vd.find((v) => v.role === 'res')?.y > 0, JSON.stringify(vd));
+// the desert: reserves first, then HQs, then gun areas (DW s18 para 5 p 63); crossing sites highest (DW p 64)
+const vdD = D.vpsOf(rec('bn-def-two-up'), doc, 'desert');
+check('desert: a Bn defence\'s reserve is a first-priority VP (DW p 63); off the desert it stays third', vdD[0].role === 'res' && vdD[0].pri === 1 && vd.find((v) => v.role === 'res')?.pri === 3, JSON.stringify([vdD[0], vd]));
+const vbD = D.vpsOf(rec('bde-cross-two-up'), doc, 'desert');
+check('desert: on a crossing the bridge stays first priority (crossing sites highest, DW p 64)', vbD[0].role === 'bridge' && vbD[0].pri === 1, vbD.map((v) => `${v.role} ${v.pri}`).join());
+const defD = D.withAd(rec('bn-def-two-up'), doc, D.adOnPlan(gm, doc, 'desert'));
+const sdD = S.solveRecipe(defD, ctx, {});
+const rD = row(D.adRows(sdD.items, defD), 'AD cover');
+check('desert: the AD cover row judges the reserve as first priority and says why (DW p 63)', !!rD && /reserves first/.test(rD.reason) && defD.ad?.ground === 'desert', rD?.reason);
 check('...a plan with no VP (a Pl ambush) gets none, and is left as it is', !D.vpsOf(rec('pl-ambush-l'), doc).length && D.withAd(rec('pl-ambush-l'), doc, aGm).id === 'pl-ambush-l');
 
 // ── sited ────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -87,6 +96,26 @@ const thin = D.withAd(A.withArty(rec('div-bridgehead-two-bde'), doc, A.artyOnPla
 const rt = D.adRows(S.solveRecipe(thin, ctx, {}).items, thin);
 check('...an RCG Bty (2 Tps, 35 mm 4 km) over the same 8 km front: one FU a bridge, gun areas bare: fail', row(rt, 'AD cover')?.st === 'fail' && /the gun area \(\d Fd Regt\): 0 FUs/.test(row(rt, 'AD cover').reason), row(rt, 'AD cover')?.reason);
 check('no AD on the recipe: no row', !D.adRows(S.solveRecipe(rec('bde-cross-two-up'), ctx, {}).items, rec('bde-cross-two-up')).length);
+
+// ── the mountains: AD on the defiles, gun areas and log installations, sited on dominating features (MW p 247) ─────────
+{
+  const mt = D.withAd(rec('bn-def-two-up'), doc, D.adOnPlan(gm, doc, 'mountain'));
+  const sm = S.solveRecipe(mt, ctx, {});
+  check('mountains: the AD cover row names MW p 247 (defiles on the main axis, gun areas, log installations)', /MW p 247/.test(row(D.adRows(sm.items, mt, 'mountain'), 'AD cover')?.reason ?? ''));
+  const id = (p) => p;
+  const fu = (r) => sm.items.find((i) => i.role === r).pts[0];
+  const fu1 = fu('ad1'), oth = [fu('ad2'), fu('ad3')];
+  // a small hill 300 m from the Gun Tp, on its side away from the other two (they stand on level ground)
+  const mx = (oth[0].x + oth[1].x) / 2, my = (oth[0].y + oth[1].y) / 2, L = Math.hypot(fu1.x - mx, fu1.y - my) || 1;
+  const P = { x: fu1.x + ((fu1.x - mx) / L) * 300, y: fu1.y + ((fu1.y - my) / L) * 300 };
+  const hill = (x, y) => 200 + Math.max(0, 60 - Math.hypot(x - P.x, y - P.y) / 2.5);
+  const r1 = row(D.adMountainRows(sm.items, mt, id, hill, doc), 'AD sites');
+  check('...a hill 300 m from the Gun Tp: it is named, the other two on level ground count as on top: pass (2 of 3)', r1?.st === 'pass' && /2 of 3 fire units/.test(r1.reason) && /Gun Tp \d+ m below the height 300 m/.test(r1.reason) && oth.every((o) => Math.hypot(o.x - P.x, o.y - P.y) > 650), r1?.reason);
+  // the ground rising toward the front everywhere: every site has higher ground 500 m ahead of it
+  const r2 = row(D.adMountainRows(sm.items, mt, id, (x, y) => 200 + 0.1 * y, doc), 'AD sites');
+  check('...the ground rising ahead of all three: warn, each named (50 m below the height 500 m ahead), with a fix', r2?.st === 'warn' && r2.detail?.items?.length === 3 && /50 m below the height 500 m ahead/.test(r2.detail.items[0]) && r2.detail.fix.length === 2, r2?.reason);
+  check('...the heights not loaded: grey', row(D.adMountainRows(sm.items, mt, id, () => NaN, doc), 'AD sites')?.st === 'unchecked');
+}
 
 console.log(`\n${n} checks, ${fails} failed`);
 process.exit(fails ? 1 : 0);

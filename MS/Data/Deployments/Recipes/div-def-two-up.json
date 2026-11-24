@@ -14,7 +14,7 @@
   "name": "Div Def: two Bdes up, one in depth",
   "frontageRow": "Infantry division, two to three axes",
   "subRow": null,
-  "note": "An Inf Div with two Bdes forward on two axes and the third Bde in depth as the Div reserve (OoW Vol I Annex C p 104: a Bde of 10-12 km on each independent axis, about 16 km between, 4-8 km deep; Annex D p 105: three axes on an extended frontage); each Bde 10-12 x 4-6 km (Annexes B-D); the Div reserve 4-6 h to its counter penetration posns (IBB p 279). Armour concentrated as the main element of the reserve (OoW I s6 para 1 p 21). The Bdes' own layouts are built as Bde plans.",
+  "note": "An Inf Div with two Bdes forward on two axes and the third Bde in depth as the Div reserve (OoW Vol I Annex C p 104: a Bde of 10-12 km on each independent axis, 4-8 km deep; the gap between the axes is not labelled, so the Bde seeds 8 km either side of the centre are a decision (E); Annex D p 105: three axes on an extended frontage); each Bde 10-12 x 4-6 km (Annexes B-D); the Div reserve as early as possible within 2-6 h (DW pp 26-27). Armour concentrated as the main element of the reserve (OoW I s6 para 1 p 21). The Bdes' own layouts are built as Bde plans. AT Res (OOW1 s13 p 45: all formations facing a major tank threat create a well-balanced and mobile AT reserve; s6 p 26: a substantial portion of the AT weapons earmarked for the En tanks that bypass the main defences and hit the depth): laid beside the reserve, on the side away from the HQ (the place a decision, E).",
   "slots": [
     {
       "role": "fwdL",
@@ -107,6 +107,19 @@
         "at": [
           -3000,
           7500
+        ]
+      }
+    },
+    {
+      "role": "atRes",
+      "kind": "point",
+      "sym": "15111200",
+      "label": "AT Res",
+      "order": 6,
+      "shape": {
+        "at": [
+          3000,
+          2500
         ]
       }
     },

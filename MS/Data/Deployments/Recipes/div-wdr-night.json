@@ -1,0 +1,372 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "div-wdr-night",
+  "family": "div-wdr",
+  "layout": "night",
+  "echelon": "21",
+  "unit": "inf-div",
+  "basis": "D",
+  "task": "withdrawal",
+  "name": "Div Withdrawal: by night, two Int Posns (Annex P)",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "pivot": "hq",
+  "note": "A Div two Bdes up with a reserve Bde withdrawing by night (OOW3 2006 s2-s12). The Div covering troops an Armd Regt or its subunits with artillery, engineers, LAT and mot infantry, held forward to the time Corps sets (s6 para 12 p 32). The click is the Div HQ of the old posn; the aim is the way of withdrawal, the second click the new defensive posn (planned). Laid on OOW3 Annex P (p 75): rear parties left by each forward Bde (s9 para 5 p 45); the Bdes back on their own axes to the clear line, several axes to avoid congestion and the En air, the routes converging from the outer flanks protected (s2 para 5 a p 8); covering troops delaying in front of each intermediate posn (s6 paras 9-13 pp 31-32); a flank guard on the threatened flank if required (para 24 p 34); two intermediate posns, each held by a complete formation under one Comd with more fire in front and less depth (paras 16-22 pp 33-34), each far enough beyond the one before that the En must re-deploy his field artillery (p 33; IBB p 373: the En 105 mm IFG 17.2 km, ORBAT); the reserve Bde the reserve (s7 para 5 p 40); the primary demolition belt continuous across the new posn's front (s12 para 5 a p 56); the BL close to own troops and moved back often (p 67). Timings in the Annex A pattern (pp 72-73). Posns are drawn turned to face the En behind the plan.",
+  "checks": [],
+  "slots": [
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Left Bde",
+      "echelon": "18",
+      "order": 1,
+      "size": {
+        "wM": 10000,
+        "hM": 5000
+      },
+      "seed": {
+        "acrossM": -6000,
+        "backM": 4000
+      },
+      "turnDeg": 180,
+      "rule": {}
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Right Bde",
+      "echelon": "18",
+      "order": 1,
+      "size": {
+        "wM": 10000,
+        "hM": 5000
+      },
+      "seed": {
+        "acrossM": 6000,
+        "backM": 4000
+      },
+      "turnDeg": 180,
+      "rule": {}
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "Depth Bde (Res)",
+      "echelon": "18",
+      "order": 1,
+      "size": {
+        "wM": 10000,
+        "hM": 5000
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": -3000
+      },
+      "turnDeg": 180,
+      "rule": {}
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Div HQ",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rpA",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Rear Party (Left Bde)",
+      "order": 2,
+      "shape": {
+        "at": [
+          -6000,
+          4000
+        ]
+      },
+      "echelon": "16"
+    },
+    {
+      "role": "rpB",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Rear Party (Right Bde)",
+      "order": 2,
+      "shape": {
+        "at": [
+          6000,
+          4000
+        ]
+      },
+      "echelon": "16"
+    },
+    {
+      "role": "bl",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "BL",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -11000.0,
+            7500.0
+          ],
+          [
+            11000.0,
+            7500.0
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rtA",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -6000,
+            1500.0
+          ],
+          [
+            -6000,
+            -9000
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rtB",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            6000,
+            1500.0
+          ],
+          [
+            6000,
+            -9000
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rtC",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            0,
+            -5500.0
+          ],
+          [
+            0,
+            -9000
+          ]
+        ]
+      }
+    },
+    {
+      "role": "clrLine",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "PL Clear",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -11000.0,
+            -9000
+          ],
+          [
+            11000.0,
+            -9000
+          ]
+        ]
+      }
+    },
+    {
+      "role": "cov1",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "Div Covering Tps (Armd Regt Gp)",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -8600.0,
+          "wM": 12000,
+          "hM": 1500
+        }
+      },
+      "echelon": "18",
+      "planned": true
+    },
+    {
+      "role": "flankG",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "Flank Gd (if required)",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": -12000.0,
+          "backM": -8600.0,
+          "wM": 2000,
+          "hM": 3000
+        }
+      },
+      "echelon": "16",
+      "planned": true
+    },
+    {
+      "role": "intPosn",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "Int Posn 1 (Bde)",
+      "order": 5,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -17200,
+          "wM": 10000,
+          "hM": 3000
+        }
+      },
+      "echelon": "18",
+      "planned": true
+    },
+    {
+      "role": "ppI1",
+      "kind": "point",
+      "sym": "25131200",
+      "label": "PP 1 (Int Posn)",
+      "order": 5,
+      "shape": {
+        "at": [
+          -1666.6666666666667,
+          -15700.0
+        ]
+      }
+    },
+    {
+      "role": "ppI2",
+      "kind": "point",
+      "sym": "25131200",
+      "label": "PP 2 (Int Posn)",
+      "order": 5,
+      "shape": {
+        "at": [
+          1666.6666666666667,
+          -15700.0
+        ]
+      }
+    },
+    {
+      "role": "ctI",
+      "kind": "point",
+      "sym": "25130500",
+      "label": "Contact Pt (Int Posn)",
+      "order": 5,
+      "shape": {
+        "at": [
+          0,
+          -15700.0
+        ]
+      }
+    },
+    {
+      "role": "cov2",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "Div Covering Tps (Armd Regt Gp)",
+      "order": 5,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -27300.0,
+          "wM": 12000,
+          "hM": 1500
+        }
+      },
+      "echelon": "18",
+      "planned": true
+    },
+    {
+      "role": "intPosn2",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "Int Posn 2 (Bde)",
+      "order": 5,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -37400.0,
+          "wM": 10000,
+          "hM": 3000
+        }
+      },
+      "echelon": "18",
+      "planned": true
+    },
+    {
+      "role": "newMain",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "New Main Posn (Div)",
+      "order": 6,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -61100.0,
+          "wM": 20000,
+          "hM": 10000
+        }
+      },
+      "planned": true
+    },
+    {
+      "role": "dmlBelt",
+      "kind": "line",
+      "sym": "25290100",
+      "label": "Pri Dml Belt",
+      "order": 6,
+      "planned": true,
+      "shape": {
+        "pts": [
+          [
+            -10000.0,
+            -55900.0
+          ],
+          [
+            10000.0,
+            -55900.0
+          ]
+        ]
+      }
+    }
+  ]
+}

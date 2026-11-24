@@ -5302,31 +5302,89 @@ body.ms-popup-dark .esri-popup__pointer-direction {
   padding: 0 0 4px;
 }
 
-/* Build tab: the card that follows the cursor while a built plan is placed (PlanBuildTab.ts). It sits in the map's
-   container, outside the Deployment Mgr panel, and never takes the mouse. */
+/* Intelligent Deployment: the card beside the cursor while a built plan rests (PlanBuildTab._showCard / _cardHtml). The
+   user's pick C "Ledger" of plan-builder-card-options.html (24 Nov 2026): 500 px for a fitted plan, a one-line state
+   shrinks to its text. Sizes and colours are GroundGuideTokens' (12 / 13.5 / 15.5 / 22 px; the verdict ladder), so a Warn
+   here is the SLOW-GO orange of the Ground Guide. It sits in the map's container and never takes the mouse. */
 .pb-card {
-  position: absolute; z-index: 30; pointer-events: none; min-width: 210px; max-width: 290px;
-  padding: 7px 9px; border-radius: 8px; background: rgba(18, 22, 27, 0.94); border: 1px solid rgba(90, 140, 220, 0.3);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4); color: #dce8f5; font: 11.5px/1.4 'Inter', 'Segoe UI', system-ui, sans-serif;
+  position: absolute; z-index: 30; pointer-events: none; width: max-content; min-width: 280px; max-width: 500px;
+  border-radius: 10px; background: #1b1f25; border: 1px solid rgba(255, 255, 255, 0.16); overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(11, 13, 16, 0.85), 0 18px 38px -10px rgba(0, 0, 0, 0.6);
+  color: #f1f3f6; font: 13.5px/1.42 system-ui, 'Segoe UI', Arial, sans-serif; font-variant-numeric: tabular-nums;
 }
+.pb-card.is-full { width: 500px; }
 .pb-card b { font-weight: 650; }
-.pb-card .pb-card-dim { color: rgba(155, 180, 215, 0.8); font-size: 11px; }
-.pb-card .pb-card-rk { display: grid; grid-template-columns: 64px 1fr 24px; gap: 6px; align-items: center; margin: 2px 0; }
-.pb-card .pb-card-rk i { display: block; height: 5px; border-radius: 3px; background: #64b4ff; }
-.pb-card .pb-card-rk.pb-top { color: #fff; font-weight: 650; }
-.pb-card .pb-card-rk.pb-top i { background: #6fd7ad; }
-.pb-card .pb-card-w { margin-top: 4px; }
-/* a laid-out check on the card (Check.detail): the moves, why, and the fixes */
-.pb-card .pb-card-items, .pb-card .pb-card-fix ul { margin: 3px 0 0; padding-left: 15px; }
-.pb-card .pb-card-items li, .pb-card .pb-card-fix li { margin: 1px 0; }
-.pb-card .pb-card-why, .pb-card .pb-card-fix { margin-top: 4px; color: rgba(205, 220, 238, 0.92); }
-.pb-card .pb-card-why b, .pb-card .pb-card-fix b { color: #f2c178; font-weight: 650; margin-right: 3px; }
-.pb-card .pb-card-foot { margin-top: 5px; color: rgba(155, 180, 215, 0.7); font-size: 10.5px; }
-.pb-card .pb-pill { display: inline-block; padding: 0 6px; border-radius: 8px; font-size: 10px; font-weight: 700; }
-.pb-card .pb-pass { background: rgba(29, 158, 117, 0.25); color: #6fd7ad; }
-.pb-card .pb-warn { background: rgba(229, 165, 64, 0.25); color: #f2c178; }
-.pb-card .pb-fail { background: rgba(220, 60, 48, 0.28); color: #ff8f86; }
-.pb-card .pb-unchecked { background: rgba(127, 136, 147, 0.3); color: #c3cbd3; }
+.pb-card .pb-card-dim { color: #c3cbd3; font-size: 12px; }
+.pb-card > .pb-card-dim { padding: 10px 14px; }
+.pb-card .pb-ic { width: 16px; height: 16px; flex: none; display: inline-block; vertical-align: -3px; }
+.pb-card kbd {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 19px; padding: 0 5px; margin-right: 3px;
+  border-radius: 4px; background: #2c343e; border: 1px solid rgba(255, 255, 255, 0.2); border-bottom-width: 2px;
+  font: 700 12px/1 system-ui, 'Segoe UI', Arial, sans-serif; color: #f7f8fa; vertical-align: 1px;
+}
+/* the head: the plan, what it was fitted against, the fit score (a score, not a verdict: the accent blue) */
+.pb-card .pb-c-h { display: flex; gap: 14px; align-items: flex-start; padding: 10px 14px; background: #262d36; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.pb-card .pb-c-tt { min-width: 0; }
+.pb-card .pb-c-t { font-size: 15.5px; font-weight: 600; color: #f7f8fa; line-height: 1.3; }
+.pb-card .pb-c-chip { display: inline-flex; align-items: center; height: 19px; padding: 0 6px; margin-left: 7px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.14); font-size: 12px; font-weight: 600; color: #c3cbd3; vertical-align: 2px; }
+.pb-card .pb-c-ctx { font-size: 12px; color: #c3cbd3; margin-top: 2px; }
+.pb-card .pb-c-fit { margin-left: auto; display: grid; justify-items: end; gap: 6px; flex: none; padding-top: 1px; }
+.pb-card .pb-c-fit span { font-size: 12px; color: #c3cbd3; margin-right: 5px; }
+.pb-card .pb-c-fit b { font-size: 22px; font-weight: 750; line-height: 1; color: #f7f8fa; }
+.pb-card .pb-c-fit small { font-size: 12px; font-weight: 600; color: #c3cbd3; margin-left: 1px; }
+.pb-card .pb-c-bar { display: block; width: 100px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.pb-card .pb-c-bar > b { display: block; height: 100%; background: #8ec1ea; }
+/* the ledger: every fail and warn as a row, worst first; the first open */
+.pb-card .pb-c-lg { padding: 2px 0 4px; }
+.pb-card .pb-c-lr { padding: 10px 14px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.pb-card .pb-c-lr:first-child { border-top: 0; }
+.pb-card .pb-c-lr.pb-c-more { padding: 7px 14px; font-size: 12px; color: #c3cbd3; }
+.pb-card .pb-c-lh { display: grid; grid-template-columns: 92px 1fr; gap: 4px 10px; align-items: center; }
+.pb-card .pb-c-vb { justify-self: start; display: inline-flex; align-items: center; gap: 5px; height: 23px; padding: 0 8px 0 5px; border-radius: 5px; font-size: 12px; font-weight: 750; white-space: nowrap; }
+.pb-card .pb-c-vb.pb-fail { background: rgba(229, 72, 77, 0.15); color: #ff8a8d; box-shadow: inset 0 0 0 1px rgba(229, 72, 77, 0.55); }
+.pb-card .pb-c-vb.pb-warn { background: rgba(238, 138, 31, 0.14); color: #ffb46b; box-shadow: inset 0 0 0 1px rgba(238, 138, 31, 0.5); }
+.pb-card .pb-c-vb.pb-pass { background: rgba(47, 168, 98, 0.14); color: #74dca3; box-shadow: inset 0 0 0 1px rgba(47, 168, 98, 0.5); }
+.pb-card .pb-c-vb.pb-unchecked { background: rgba(127, 136, 147, 0.16); color: #c3cbd3; box-shadow: inset 0 0 0 1px rgba(127, 136, 147, 0.5); }
+.pb-card .pb-c-n { font-weight: 600; color: #f7f8fa; }
+.pb-card .pb-c-n span { color: #c3cbd3; font-weight: 400; }
+.pb-card .pb-c-x { grid-column: 2; color: #b8c1ca; }
+.pb-card .pb-c-open { margin-left: 102px; }
+/* the race: own move against the En, minutes; grey own, red how late, the tick the En */
+.pb-card .pb-c-race { display: grid; grid-template-columns: max-content minmax(56px, 1fr) max-content max-content; gap: 6px 10px; align-items: center; margin-top: 8px; }
+.pb-card .pb-c-rh { grid-column: 3 / 5; font-size: 12px; color: #c3cbd3; text-align: right; }
+.pb-card .pb-c-race .wh { white-space: nowrap; }
+.pb-card .pb-c-race .bar { position: relative; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.08); }
+.pb-card .pb-c-race .bar i { position: absolute; top: 0; bottom: 0; }
+.pb-card .pb-c-race .bar .o { left: 0; background: #9aa3ad; border-radius: 3px 0 0 3px; }
+.pb-card .pb-c-race .bar .lt { background: #e5484d; border-radius: 0 3px 3px 0; }
+.pb-card .pb-c-race .bar .sp { background: rgba(47, 168, 98, 0.45); border-radius: 0 3px 3px 0; }
+.pb-card .pb-c-race .bar .en { width: 2px; top: -4px; bottom: -4px; background: #f1f3f6; border-radius: 1px; }
+.pb-card .pb-c-race .mm { font-size: 12px; color: #c3cbd3; white-space: nowrap; text-align: right; }
+.pb-card .pb-c-race .rs { font-weight: 650; white-space: nowrap; text-align: right; }
+.pb-card .pb-c-race .rs.pb-fail { color: #ff8a8d; }
+.pb-card .pb-c-race .rs.pb-pass { color: #74dca3; }
+.pb-card .pb-c-race .more, .pb-card .more { grid-column: 1 / -1; font-size: 12px; color: #c3cbd3; }
+.pb-card .pb-c-items { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+.pb-card .pb-c-items li { position: relative; padding-left: 12px; }
+.pb-card .pb-c-items li::before { content: ""; position: absolute; left: 0; top: 8px; width: 4px; height: 4px; border-radius: 50%; background: #7f8893; }
+.pb-card .pb-c-items li.more::before { display: none; }
+/* why and fix */
+.pb-card .pb-c-wf { display: grid; grid-template-columns: 30px 1fr; gap: 7px 8px; margin-top: 10px; }
+.pb-card .pb-c-wf .k { font-size: 12px; font-weight: 700; color: #ffd27a; line-height: 19px; }
+.pb-card .pb-c-wf .v { color: #b8c1ca; min-width: 0; }
+.pb-card .pb-c-wf ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.pb-card .pb-c-wf ol li { display: grid; grid-template-columns: 14px 1fr; gap: 4px; }
+.pb-card .pb-c-wf ol li > b { font-size: 12px; color: #c3cbd3; font-weight: 700; line-height: 19px; }
+.pb-card .pb-c-wf .more { display: block; margin-top: 1px; }
+/* the rest counted, the Gr moves, the layouts here, the task's own line, the keys */
+.pb-card .pb-c-sum { padding: 9px 14px; border-top: 1px solid rgba(255, 255, 255, 0.1); display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: #c3cbd3; }
+.pb-card .pb-c-sum > span { display: inline-flex; gap: 5px; align-items: center; }
+.pb-card .pb-c-sum b { color: #f7f8fa; }
+.pb-card .pb-c-sum .pb-c-mv { color: #b8c1ca; }
+.pb-card .pb-c-lays > span { display: inline; }
+.pb-card .pb-c-line { padding: 0 14px 9px; }
+.pb-card .pb-c-keys { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 8px 14px 9px; background: #14181d; border-top: 1px solid rgba(255, 255, 255, 0.1); font-size: 12px; color: #c3cbd3; }
+.pb-card .pb-c-keys > span { white-space: nowrap; }
 
 /* Intelligent Deployment: the key notice at the foot of the screen while a built plan is placed (PlanBuildTab._showNote):
    the mode now (or why a key did nothing) and the keys that work, 5 s. Never takes the mouse. */

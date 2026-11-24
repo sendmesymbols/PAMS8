@@ -253,7 +253,7 @@ function crestProfile(g: GroundReading): SVGElement | null {
   // MC sits over its tick, kept inside the picture; it moves aside from the "Top" label when the crest is near it.
   const mcY = Math.max(11, my - 14);
   const mcX = mcY < 20 && mx < 92 ? Math.max(mx, 92) : mx;
-  svg.append(sv('line', { x1: mx, y1: my - 12, x2: mx, y2: my + 2, stroke: TEXT.warn, 'stroke-width': 1.4, 'stroke-dasharray': '2 2' }), svText(mcX, mcY, 'MC', { fill: TEXT.warn, 'font-weight': FW.bold, 'text-anchor': 'middle' }));
+  svg.append(sv('line', { x1: mx, y1: my - 12, x2: mx, y2: my + 2, stroke: TEXT.warn, 'stroke-width': 1.4, 'stroke-dasharray': '2 2' }), svText(mcX, mcY, 'Mil Crest', { fill: TEXT.warn, 'font-weight': FW.bold, 'text-anchor': 'middle' }));
   const px = X(c.iP);
   const py = Y(p[c.iP]);
   svg.append(sv('circle', { cx: px, cy: py, r: 4.5, fill: TEXT.strong, stroke: SURFACE.card, 'stroke-width': 1.5 }));

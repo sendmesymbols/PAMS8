@@ -153,5 +153,33 @@ const frameFor = (res) => ({ anchor: { x: 0, y: 0 }, bearing: 0, k: 1, pivot: it
   check('...only a 4 m distributary between: still warns', row(disty.rows, 'Behind an obstacle')?.st === 'warn', row(disty.rows, 'Behind an obstacle')?.reason);
 }
 
+// ── the withdrawal-family checks of 24 Nov 2026 (Doctrine_Review R204, R207-R210, R213; OOW3 2006) ─────────────────
+{
+  const res = S.solveRecipe(wdr, ctx);
+  check('control rows: Coy check pts between each Coy and its RV, the BL, two passage lanes and a contact point at the int posn (OOW3 Annex Q p 76, p 67, s10 p 48)', ['Check points', 'Bomb line', 'Passage'].every((x) => row(res.rows, x)?.st === 'pass'), ['Check points', 'Bomb line', 'Passage'].map((x) => `${x} ${row(res.rows, x)?.st}`).join(', '));
+  const without = (roles) => Wd.withdrawalGeometryRows(res.items.filter((i) => !roles.includes(i.role)), wdr, doc).rows;
+  check('...no Coy check pts: grey (IBB p 381 b: only if the route is long); no BL: warns; one passage lane: warns', row(without(['cpA', 'cpB']), 'Check points')?.st === 'unchecked' && row(without(['bl']), 'Bomb line')?.st === 'warn' && row(without(['ppI2']), 'Passage')?.st === 'warn');
+  const g12 = Wd.withdrawalGeom(wdr, doc, 12000);
+  const ipF = Math.min(...g12.intPosn.pts.map((p) => p.y));
+  check('the passage points and contact point follow the int posn to its aimed place, on its front edge', [g12.ppI1, g12.ppI2, g12.ctI].every((x) => x && Math.abs(x.pts[0].y - ipF) < 1) && g12.ppI1.pts[0].x < g12.ppI2.pts[0].x);
+  const f = frameFor(res);
+  const ip = item(res, 'intPosn');
+  const x0 = Math.min(...ip.pts.map((p) => p.x)), x1 = Math.max(...ip.pts.map((p) => p.x)), y0 = Math.min(...ip.pts.map((p) => p.y)) - f.pivot.y, y1 = Math.max(...ip.pts.map((p) => p.y)) - f.pivot.y;
+  const lakeL = [x0 - f.pivot.x - 600, y0, x0 - f.pivot.x - 100, y1], lakeR = [x1 - f.pivot.x + 100, y0, x1 - f.pivot.x + 600, y1];
+  const g1 = ground({ lake: lakeL });
+  const oneSide = Wd.findWithdrawal(res, f, g1, doc, {});
+  check('R204: a lake beside the int posn\'s left flank only: Int posn flanks warns, the right flank open (OOW3 p 33 b, p 34)', row(oneSide.rows, 'Int posn flanks')?.st === 'warn' && /left flank on water/.test(row(oneSide.rows, 'Int posn flanks')?.reason) && /right flank open/.test(row(oneSide.rows, 'Int posn flanks')?.reason), row(oneSide.rows, 'Int posn flanks')?.reason);
+  const both = ground({ lake: lakeL });
+  const cls2 = (x, y) => (x >= lakeR[0] && x <= lakeR[2] && y >= lakeR[1] && y <= lakeR[3] ? 4 : both.cls(x, y));
+  const twoSides = Wd.findWithdrawal(res, f, { ...both, cls: cls2 }, doc, {});
+  check('...lakes on both flanks: passes; the view to its front read (open ground: seen)', row(twoSides.rows, 'Int posn flanks')?.st === 'pass' && row(twoSides.rows, 'Int posn view')?.st === 'pass', `${row(twoSides.rows, 'Int posn flanks')?.reason} | ${row(twoSides.rows, 'Int posn view')?.reason}`);
+  const fd = Wd.findWithdrawal(res, f, ground(), doc, {});
+  check('R207: the approach between the forward Coys reaches the front within the rear parties\' MG reach (457 m): passes (OOW3 p 27)', row(fd.rows, 'Rear parties per apch')?.st === 'pass', row(fd.rows, 'Rear parties per apch')?.reason);
+  const far = { ...res, items: res.items.map((i) => (/^rp[AB]$/.test(i.role) ? { ...i, pts: [{ x: i.pts[0].x * 5, y: i.pts[0].y }] } : i)) };
+  const fdFar = Wd.findWithdrawal(far, f, ground(), doc, {});
+  check('...the rear parties moved out to the Coys\' outer flanks: the approach is past their reach, warns with a fix', row(fdFar.rows, 'Rear parties per apch')?.st === 'warn' && row(fdFar.rows, 'Rear parties per apch')?.detail?.fix?.length > 0, row(fdFar.rows, 'Rear parties per apch')?.reason);
+  check('R209 / R213: "all troops clear of the BL" in the programme; converging routes from the outer flanks to confirm (OOW3 pp 8, 19)', fd.times.some((t) => /clear of the BL/.test(t.label)) && fd.confirm.some((c) => /converging/.test(c)));
+}
+
 console.log(`\n${n - fails} of ${n} checks passed`);
 process.exit(fails ? 1 : 0);

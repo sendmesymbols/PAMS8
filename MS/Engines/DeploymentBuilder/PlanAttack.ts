@@ -1,10 +1,10 @@
 /**
  * PlanAttack.ts — PURE. The attack in depth (PlanBuilder_Plan.md Phase 6, §9.2):
  *
- * - finders on the ground: the FUP swung round the objective into dead ground (IBB p173: not observed, 1000-1200 m,
- *   p201), the start line on a linear feature square to the axis with nothing between it and the objective (never
+ * - finders on the ground: the FUP swung round the objective into dead ground (IBB p 180: out of observed fire; by night 1000-1200 m,
+ *   pp 201, 203), the start line on a linear feature square to the axis with nothing between it and the objective (never
  *   behind an obstacle), the BOF sited off the axis where it sees the objective best and stands higher (§9.2), the
- *   Assy Area 1-5 miles back, unobserved, with a road for entry and exit (IBB p173); the route on foot from the Assy
+ *   Assy Area 1-5 miles back, unobserved, with a road for entry and exit (IBB pp 173, 180); the route on foot from the Assy
  *   Area to the FUP round NO-GO;
  * - the H-hour sum: the approach march (day / night rates, IBB p 18, + a spare), forming up, the FUP to the SL, the
  *   assault at its pace, the fire lifting as it closes (IC s66 p305: 450 / 360 / 275 / 180 m), the objective and the
@@ -163,7 +163,7 @@ export function findAttackSpots(res: SolveResult, f: FitFrame, g: PlanGround, do
   }
   const Sfin = S ?? P(F1.x + u.x * 200, F1.y + u.y * 200);
   if (sl) move(['sl'], P(Sfin.x - S0.x, Sfin.y - S0.y));
-  out.rows.push(S ? { name: 'SL finder', st: 'pass', reason: `on a linear feature ${fmtM(dist(Sfin, F1))} ahead of the FUP centre, ${fmtM(toEdge(Sfin))} from the Obj (${Math.round(cover * 100)} % of it across the axis), nothing NO-GO between it and the Obj (IBB p173: never behind an obstacle), beyond the last fire lift (${Math.round(liftMax)} m)` }
+  out.rows.push(S ? { name: 'SL finder', st: 'pass', reason: `on a linear feature ${fmtM(dist(Sfin, F1))} ahead of the FUP centre, ${fmtM(toEdge(Sfin))} from the Obj (${Math.round(cover * 100)} % of it across the axis), nothing NO-GO between it and the Obj (IBB p 174: never behind an obstacle), beyond the last fire lift (${Math.round(liftMax)} m)` }
     : !anyKnown ? { name: 'SL finder', st: 'unchecked', reason: 'the ground between the FUP and the Obj is not loaded' }
     : { name: 'SL finder', st: 'warn', reason: 'no linear feature square to the axis with a clear run to the Obj: the SL 200 m ahead of the FUP, mark it with tape' });
   out.axis = [Sfin, P(O.x - u.x * (near - 100), O.y - u.y * (near - 100))];
@@ -235,7 +235,7 @@ export function findAttackSpots(res: SolveResult, f: FitFrame, g: PlanGround, do
     else {
       move(['assy'], P(ba.A.x - A0.x, ba.A.y - A0.y));
       const st: CheckState = ba.seen < 0.5 && ba.road ? 'pass' : 'warn';
-      out.rows.push({ name: 'Assy finder', st, reason: `${fmtM(ba.dd)} from the Obj (IBB p173: 1-5 miles), ${ba.seen < 0.5 ? 'likely hidden from it' : `${Math.round(ba.seen * 100)} % likely seen from it: disperse and camouflage`}, ${ba.road ? `a road within ${access} m for entry and exit` : 'no road within reach: plan the vehicles\' entry and exit'}` });
+      out.rows.push({ name: 'Assy finder', st, reason: `${fmtM(ba.dd)} from the Obj (IBB p 180: 1-5 miles), ${ba.seen < 0.5 ? 'likely hidden from it' : `${Math.round(ba.seen * 100)} % likely seen from it: disperse and camouflage`}, ${ba.road ? `a road within ${access} m for entry and exit` : 'no road within reach: plan the vehicles\' entry and exit'}` });
     }
     // the route on foot from the Assy Area to the FUP, round NO-GO
     const Afin = P(A0.x + (out.nudges.assy?.x ?? 0), A0.y + (out.nudges.assy?.y ?? 0));
@@ -457,8 +457,8 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
       loeAt = atD(D + depth + loeDist);
     }
   }
-  const br = res.recipe.enMfAtk ? attackBreach(res.recipe, doc, night) : null;
-  if (br) steps.unshift({ label: br.feasible ? `Engineers begin the lanes through the En minefield (${br.by})` : `Lanes through the En minefield: no engineer Pls grouped that breach (a Pl's time shown; group more engineers)`, distM: 0, min: Math.round(br.h * 60), at: -Math.round(br.h * 60) });
+  const br = res.recipe.enMfAtk ? attackBreach(res.recipe, doc, night, undefined, kind) : null;
+  if (br && br.h > 0) steps.unshift({ label: br.feasible ? `Engineers begin the lanes through the En minefield (${br.by})` : `Lanes through the En minefield: no engineer Pls grouped that breach (a Pl's time shown; group more engineers)`, distM: 0, min: Math.round(br.h * 60), at: -Math.round(br.h * 60) });
   steps.sort((a, b) => a.at - b.at);
   return {
     steps, lifts: rings.map(([label, r]) => ({ label, rM: r, at: atD(D - r) })),
@@ -518,9 +518,12 @@ function handBreachTable(engrData: any[] | undefined, depthM: number): { yds: nu
  * dark night; SO's Hbk p 450 by depth) with the engineers grouped (their Pls: lanes at once, or one after the other),
  * or by TAM (p 451). The quickest way the plan has, its hours and a row; without engineers grouped, the Pls it needs.
  */
-export function attackBreach(r: Recipe & { engr?: EngrType & { engrData?: any[] } }, doc: DoctrineSet, night: boolean, engrData?: any[]): { h: number; by: string; row: Check; feasible: boolean } | null {
+export function attackBreach(r: Recipe & { engr?: EngrType & { engrData?: any[] } }, doc: DoctrineSet, night: boolean, engrData?: any[], kind: TerrainKind | null = null): { h: number; by: string; row: Check; feasible: boolean } | null {
   const mf = r.enMfAtk;
   if (!mf) return null;
+  // mountains: the En minefield is at most 100-150 m deep and crossed in single file by boulders and nullah beds, without
+  // breaching, mine shoes or lanes; 2 wire lanes a Pl by Bangalore torpedo (MW pp 86, 106, 113)
+  if (kind === 'mountain') return { h: 0, by: 'no breach (mountains)', feasible: true, row: { name: 'Breach', st: 'pass', reason: 'mountains: the En minefield is at most 100-150 m deep (MW p 106) and is crossed in single file by boulders and nullah beds, without breaching or minefield lanes (MW pp 86, 113); 2 wire lanes a Pl by Bangalore torpedo (MW p 113): no lane time in the H-hour sum' } };
   const li = night ? 2 : 0;
   const laneM = num(doc, 'crossing.breach.laneM', 108);
   const hrs = (doctrineAt(doc, 'crossing.breach.hours') as any)?.none ?? [4, 5, 6];

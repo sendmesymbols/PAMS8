@@ -15,10 +15,11 @@
  *   - the marking at head and foot of every page, like the address block, is a ruled line to fill or stamp by hand:
  *     the model holds no marking text;
  *   - the outline is chosen by kind: `def` from the specimen AprDf; `attk` from "Mechs of Aprc (Attk)" (22 Nov 2026), its
- *     prompts citing the book's sheet (`MA`). A kind is added with `registerOutline`.
+ *     prompts citing the book's sheet (`MA`); `wdr` from OoW Vol III (24 Nov 2026, R78), its prompts citing the printed
+ *     page (`O3`). A kind is added with `registerOutline`.
  */
 
-export type AprcKind = 'def' | 'attk';
+export type AprcKind = 'def' | 'attk' | 'wdr';
 /** Where a paragraph's draft came from: the ground reading, symbols / a plan on the map, a proposal to judge, or nothing (the planner's). */
 export type AprcState = 'gr' | 'map' | 'judge' | 'yours';
 export type AprcCopy = 'fair' | 'draft';
@@ -27,7 +28,64 @@ export type AprcCopy = 'fair' | 'draft';
  * the last Check my plan (`plan`), the en options of the IPB reading (`en`), the ORBAT (`orbat`), timings worked out
  * from H and the Time Req (`time`), or a new H on the sheet (`h`, a cause only).
  */
-export type AprcSrc = 'gr' | 'map' | 'plan' | 'en' | 'orbat' | 'time' | 'h';
+export type AprcSrc = 'gr' | 'map' | 'plan' | 'en' | 'orbat' | 'time' | 'h' | 'aim';
+
+/**
+ * The aim's limitations, as the planner sets them in the Aim's panel (given by the higher comd; Understanding Aprc
+ * pp 3-4, 7-8, 22; Mechs of Aprc (Attk) p 1). They draft the aim and drive the defence's layout, its analysis and the
+ * attack's Time Calc. Times are D-times ("0600 D+1").
+ */
+export interface AprcLimits {
+  /** Def: as far fwd as tac feasible. */
+  fwd?: boolean;
+  /** Def: the line of no pen (a line of def's letter, W X Y Z). */
+  noPen?: string | null;
+  /** Def: a place to be def at all costs. */
+  allCosts?: string | null;
+  /** Def: cause max attrition / delay onto the En. */
+  attrition?: boolean;
+  /** Def: delay the En for this many hours. Wdr: delay the En fwd of the new def posn for this many hours (OoW Vol III p 10 para 6c). */
+  delayH?: number | null;
+  /** Def: the def of a salient (def at its base). */
+  salient?: boolean;
+  /** Def: the En has pen the defs (the line of max pen taken as the border). */
+  penetrated?: boolean;
+  /** Def: not more than this many Coys. */
+  maxCoys?: number | null;
+  /** Def: to be ready by; Attk: area to be captured by (a D-time). */
+  by?: string | null;
+  /** Attk: ensure max destr of the En (block his wdr and rft before the attk). */
+  destr?: boolean;
+  /** Attk: to be conducted at ni. */
+  night?: boolean;
+  /** Attk: the obj is a tough area with bunkers (longer fighting on the obj). */
+  bunkers?: boolean;
+  /**
+   * Def: the line of denial (a line of def's letter), spelt out by the higher comd with the msn; the line of no pen is
+   * kept in view of it, and the two can be one (OoW Vol I pp 17-18).
+   */
+  denial?: string | null;
+  /** Attk: a quick attk from contact (the Time Calc takes contact to H: MIB pp 89, 96-97, Annex L; IBB p 133). Not a limitation: the planner's. */
+  quick?: boolean;
+  /**
+   * Attk: the climb from the SL to the obj, m (MW Annex F p 312). Not a limitation: the planner's. In mountains a Read
+   * takes it off the 30 m elevation through the Ground Guide; a climb typed here overrides the one read.
+   */
+  climbM?: number | null;
+  /** Wdr: the posn to be denied to the En until (a D-time; OoW Vol III p 19 para 17a). */
+  deny?: string | null;
+  /** Wdr: no rearward mov except recce parties before (a D-time; OoW Vol III p 19 para 17b). */
+  noMovBefore?: string | null;
+  /** Wdr: the line all tps are to be clear of (its name) and by when (a D-time; OoW Vol III p 19 para 17c). */
+  clearLine?: string | null;
+  clearBy?: string | null;
+  /** Wdr: the new def posn, as given by the higher comd (OoW Vol III p 39 para 1). */
+  newPosn?: string | null;
+  /** Wdr: by day (a daylight wdr, normally avoided: OoW Vol III p 40 para 1). */
+  byDay?: boolean;
+  /** Further limitations, in the words given. */
+  other?: string[];
+}
 
 export interface AprcBasis {
   /** data: a layer and its date; rule: a book rule; input: what the user set or marked; calc: how a figure was worked out. */
@@ -140,6 +198,8 @@ export interface AprcDoc {
   sources: string[];
   /** When each reading was last taken ("2027-02-15 11:00", the place's clock): a reading not taken again is kept. */
   readAt?: Partial<Record<AprcSrc, string>>;
+  /** The aim's limitations, as the planner set them (the planner's, kept on every Read). */
+  limits?: AprcLimits;
 }
 
 export interface AprcPatch {
@@ -190,9 +250,67 @@ export function uniqueId(used: Set<string>, base: string): string {
 /** The sub-heads of one Def Possibility. Those the ground reading can propose are filled by the writer; the rest stay the planner's. */
 export const DP_HEADS: Array<[string, string]> = [
   ['fdls', 'FDLs'], ['depth', 'Depth'], ['strpt', 'Str Pt Def'], ['screens', 'Screens'], ['adv', 'Adv Posn'], ['bias', 'Bias of Def'], ['atk', 'Bias of A tk Def'],
-  ['obs', 'Obs Plan'], ['surv', 'Surv and Obsn Plan'], ['df', 'DF Plan'], ['killing', 'Killing Areas'], ['catk', 'C Attk Objs'], ['mor', 'Loc of Mor Pl'],
-  ['hq', 'Bn HQ'], ['tac', 'Bn Tac HQ'], ['misc', 'Misc Measures'],
+  ['obs', 'Obs Plan'], ['surv', 'Surv and Obsn Plan'], ['df', 'DF Plan'], ['killing', 'Killing Areas'], ['catk', 'C Attk Objs'], ['cpen', 'C Pen Posns'], ['res', 'Res'],
+  ['armr', 'Use of Armr / ATGM'], ['mor', 'Loc of Mor Pl'], ['hq', 'Bn HQ'], ['tac', 'Bn Tac HQ'], ['misc', 'Misc Measures'],
 ];
+
+/**
+ * The books' heads to consider under some DP heads (doctrine review, 24 Nov 2026): the res by OoW Vol I pp 19-20 (R75),
+ * the str pt in mountains by MW pp 151-152, 166, 176 (R84). Prompts only: the planner judges.
+ */
+export const DP_PROMPTS: Record<string, string[]> = {
+  res: [
+    'Loc of the res by four factors: non-involvement (secure from fire, cover and concealment), availability (well fwd, in good time), dispersion (able to conc within the reaction time envisaged), the most likely En cap the plan rests on (OoW Vol I p 19)',
+    'The three decisions: the point of employment, the timing of the counter manoeuvre, the dir (OoW Vol I p 20)',
+    'Contingencies for its relocation should the En op unfold differently; its comd nominated at the outset (OoW Vol I pp 19-20)',
+  ],
+  strpt: [
+    'In mountains: each Coy def posn at least a Pl str pt with 30 days staying power, on the most dominating feature difficult to reduce (MW p 152)',
+    'In mountains: a post isolated holds 7 days at least (MW p 151); all posts stocked to fight 7 days when isolated (MW p 166)',
+    'In mountains: one third of the force always holds the str pt (MW p 176)',
+  ],
+};
+
+/** "Understanding Aprc - I" (Maj M Zeeshan Asghar Ch): `UA(3)` is its Sec I (Mechanics) printed p 3; `UA(1, 'V')` Sec V p 1; sheets of the specimens with `UA(7, 'II', true)`. */
+export const UA = (p: number | string, sec = 'I', sheet = false): string => `Understanding Aprc${sec === 'I' ? '' : ` Sec ${sec}`} ${sheet ? 'sheet' : 'p'} ${p}`;
+
+// ── the doctrine review's heads to consider (Doctrine_Review.md R79-R93, 24 Nov 2026) ───────────────────────────────
+// Prompts only, each with its book and printed page; "In desert" / "In mountains" where the book is a terrain's.
+
+/** Desert ITG (R79): DW p 7 (Gr of tac importance), p 20 (vital Gr to deny). */
+const DESERT_ITG = [
+  'In desert, Gr of tac importance: comm centres; terrain for the mnvr of mech forces; terrain to def the tac imp Gr; adm and maint areas; water sources (DW p 7)',
+  'In desert, deny the vital Gr: comm centres, areas of adm sustenance, pivots of mnvr for the C attk, the lines of denial and no pen (DW p 20)',
+];
+/** The def's Gr from the En view, interdiction and spoiling attks (R83): MIB pp 161-162. */
+const DEF_GR_MIB = [
+  'The Gr weighed from the En point of view and his known caps; the apchs analysed for his probable use (MIB p 161)',
+  'Interdiction tgts: defiles on the En expected routes, assy areas and other sensitive locs essential to an attacker (MIB p 162)',
+  'Spoiling attks: mnvr forces fwd of the def posn to disrupt the En op and his rear areas (MIB p 162)',
+];
+/** Pri of work and prep time in mountains (R84, R88): MW pp 147, 172, 262. */
+const DEF_TS_MTN = [
+  'In mountains, pri of work: fighting and amn bunkers with the comn trenches; protective M fds and wire; adm bunkers with ration and water storage; living bunkers (MW p 172)',
+  'In mountains: the difficulty of digging means more time for the prep of posns (MW p 147; no figure printed); maint in cold weather about five times the normal (MW p 262)',
+];
+/** Air sp requests (R93): SO's Hbk 2019 Sec 12. */
+const AIR_SP = "Air sp: pre-planned requests up the chain fd units, Bde HQ, Div HQ, ASOC (SO's Hbk 2019 Sec 12 p 1203); emergency requests (p 1204); no timings printed";
+/** Adm and Log in the def (R90): Logistics Support in the Field. */
+const DEF_ADM = [
+  'Commodity pts set up by the Div S&T Bn within or ahead of the DAA (lsf p 24): AP open 24 h, reached by the B ech vehs (p 25); PP open 2-4 h, 24 h for armd fmns (p 26); Sup P 2 h daily on a timed programme (p 27)',
+  "1st line holdings: ammo as the unit estb; rations 3 days in reserve, the next day's and an emergency pack a man; POL tanks full with 80 km for A and B vehs, 100 l a C veh, gen sets 3 days at 16 h a day (lsf p 23)",
+  'Cas evac: CAP, RAP, ADS, FTC, base hospital (lsf Annex L pp 81-82); never more than 4 h without expert treatment, surgery within 12 h (lsf p 47)',
+];
+/** The attack's Time Calc (R69, R70 / R82, R85): guns, the quick attk, the uphill assault. */
+const ATTK_TS_BOOKS = [
+  'Guns: depl excluding travel, a fd Bty 20 min by day and 40 by ni, a fd Regt 45 / 90 min; registration 20 min each plus 20 min (IBB p 122 para 5); the arty orders may govern H (IBB p 170 para 5)',
+  'A quick attk, contact to H: a Coy 30-60 min, a Bn 60-100 min (MIB p 89); in an encounter a Coy at most 30-45 min, a Bn 1-2 h (IBB p 133): tick Quick attk in the Limitations box',
+  'In mountains: the SL to the obj on the slant (30 degrees 1.16 to 70 degrees 2.93 times the map distance) and 1 h more for every 350 m of climb (MW Annex F pp 311-313): Read takes the climb off the 30 m elevation from the SL, else the FUP, to the obj; a climb typed in the Limitations box overrides it',
+];
+/** The En on a DCB (R92): Indian Defensive Doctrine. */
+const IDD_OBS = 'En on a DCB: wire ahead of the water obs, the def M fd beyond it 600-800 m deep (IDD p 3; 600 m on p 5), mines and wire in the obs and below the water line, steep banks (IDD p 5)';
+const IDD_ADV = "En on a DCB, its strengths (IDD pp 7-8): no assailable flk, a frontal aslt with heavy attrition; great delay, more with a twin ditch; inf separated from armr in the break-in; water regulated by headworks and regulators; obsn to the front and flks; bunkers that take air burst on own loc; no room for bridging on a twin ditch's middle bund";
+const IDD_DIS = 'En on a DCB, its vulnerabilities (IDD pp 5-7): linear, once the crust is broken the whole def is jeopardised; a set, conspicuous pattern; limited all-round def, the bends reduce mutual sp; brs kept as reserve demolitions for the SZ tps, taken intact by a rapid adv; vertical envelopment; gaps and brs, also where nullahs cross; lack of depth except on the main apchs; rolled up sideways once ruptured';
 
 function outlineDef(): AprcPart[] {
   const blankTable = (head: string[], first: string[]): AprcTable => ({ head, rows: first.map((f) => [f, ...head.slice(1).map(() => '')]) });
@@ -200,19 +318,19 @@ function outlineDef(): AprcPart[] {
     {
       id: 'rev', title: 'REVIEW OF SIT',
       groups: [{ id: 'rev', title: null, paras: [
-        yours('rev.en', 'En Forces', ['En forces opposite, their likely aim, when']),
-        yours('rev.own', 'Own Forces', ['The higher formation, its layout, units left and right, the reserve']),
-        yours('rev.air', 'Air Sit'),
+        yours('rev.en', 'En Forces', ['En forces opposite, their likely aim, when', 'What the En is (two steps up), where, the intent, in what time frame (a date if given, else D Day)', UA(7)]),
+        yours('rev.own', 'Own Forces', ['The higher formation, its layout, units left and right, the reserve', 'What you are (two lvls up), where, the task, in what time frame, the neighbouring units', UA(7)]),
+        yours('rev.air', 'Air Sit', ['As given; NBC conditions only when given', UA(7)]),
       ] }],
     },
-    { id: 'aim', title: 'AIM', groups: [{ id: 'aim', title: null, paras: [yours('aim', null, ['The aim, with its limitations'])] }] },
+    { id: 'aim', title: 'AIM', groups: [{ id: 'aim', title: null, paras: [yours('aim', null, ['The aim, with its limitations: set them in the Limitations box', 'Starts with "To", the limitations tabulated; a limitation leaves no practical variant (a msn essential does)', UA('7-8')])] }] },
     {
       id: 'fac', title: 'FACTORS',
       groups: [
         { id: 'gr', title: 'Gr and Weather', paras: [
           yours('gr.gen', 'Gen Description'),
           headOnly('gr.apchs', 'Apchs', []),
-          headOnly('gr.itg', 'ITGs', []),
+          para('gr.itg', 'ITGs', { draft: '', prompts: [...DESERT_ITG] }),
           yours('gr.obs', 'Obs'),
           yours('gr.cover', 'Cover'),
           yours('gr.met', 'Met Conditions'),
@@ -223,10 +341,10 @@ function outlineDef(): AprcPart[] {
               yours('gr.ded.lines', 'Lines of Def'),
             ]),
             headOnly('gr.ded.dp', 'Def Possibilities (DPs)', [
-              headOnly('gr.ded.dp1', 'DP 1', DP_HEADS.map(([k, h]) => yours(`gr.ded.dp1.${k}`, h))),
+              headOnly('gr.ded.dp1', 'DP 1', DP_HEADS.map(([k, h]) => yours(`gr.ded.dp1.${k}`, h, DP_PROMPTS[k] ?? []))),
               yours('gr.ded.dp2', 'DP 2'),
             ]),
-            yours('gr.ded.common', 'Common Deductions', ['Bias of A tk def', 'Incl of BUAs into the def', 'Obs plan', 'Surv plan', 'Loc of adv posn']),
+            yours('gr.ded.common', 'Common Deductions', ['Bias of A tk def', 'Incl of BUAs into the def', 'Obs plan', 'Surv plan', 'Loc of adv posn', 'Pri of C attk objs', 'Anti-infil measures', 'A tk measures: addl A tk M fd in area __', 'Use of moon lt hrs for the prep of def', 'Emp of the Fd Pl Engrs', 'Emp of LAT / HAT elms', 'Emp of tks', 'Never start a deduction with "Keeping in view"', UA(8), UA(1, 'V'), ...DEF_GR_MIB]),
           ]),
         ] },
         { id: 'en', title: 'En Sit', paras: [
@@ -238,9 +356,10 @@ function outlineDef(): AprcPart[] {
             yours('en.danger', 'Most Dangerous Option'),
             yours('en.probable', 'Most Probable Option'),
           ]),
+          yours('en.vis', 'Vis of En Op', ['The logical unfolding of the En op, stage by stage with timings: "En is likely to", never "En will"', 'A logical success to the En at every stage; no own response in it; the decisive actions only', 'Worst to yourself, best to the En', UA('9-11')]),
           headOnly('en.ded', 'Deductions', [
-            yours('en.ded.dp', 'DP', ['Each DP confirmed, modified or refined']),
-            yours('en.ded.common', 'Common Deductions', ['Use of fire sp', 'Clearance of SZ and BOPs', 'Use of air', 'En likely FAA / Assy A', 'Heliborne / infiltration force', 'En deception and surprise']),
+            yours('en.ded.dp', 'DP', ['Each DP confirmed, modified or refined', 'Cfm of the basic deductions (pri of apchs, ITGs, lines of def, DPs): "stands cfm", or the change', UA(9)]),
+            yours('en.ded.common', 'Common Deductions', ['Use of fire sp', 'Clearance of SZ and BOPs', 'Use of air', 'En likely FAA / Assy A', 'Heliborne / infiltration force', 'En deception and surprise', 'En air superiority: passive and active AA measures', 'A tk plan; separating armr from inf', 'Delay', 'Anti-infil measures', 'Pri of C attk objs', 'Denial of the MSR', 'Const of a str pt (if applicable)', UA(1, 'V'), UA('4-5', 'II', true)]),
           ]),
         ] },
         { id: 'own', title: 'Own Sit', paras: [
@@ -248,28 +367,28 @@ function outlineDef(): AprcPart[] {
           yours('own.disp', 'Own Disposns'),
           para('own.str', 'Own Str as Related to that of the En', { draft: '', table: blankTable(['Ser', 'Arms', 'En', 'Own', 'Ratio'], ['a.', 'b.', 'c.', 'd.', 'e.']) }),
           headOnly('own.tasks', 'Assessment of Tasks', [
-            para('own.tasks.dp1', 'DP 1', { draft: '', table: blankTable(['Ser', 'Locs', 'Inf', 'A tk', 'Engrs'], ['(1)', '(2)', '(3)', '(4)', '(5)']) }),
+            para('own.tasks.dp1', 'DP 1', { draft: '', table: blankTable(['Ser', 'Locs', 'Inf', 'A tk', 'Engrs'], ['(1)', '(2)', '(3)', '(4)', '(5)']), prompts: ['Think two down: a Bn comd allots tasks and areas down to Pl posns, so his ideas are practicable (MIB p 162)'] }),
             yours('own.tasks.dp2', 'DP 2'),
           ]),
           headOnly('own.ded', 'Deductions', [
             yours('own.ded.basic', 'Basic Deductions', ['Almt of tps to tasks: how the tps needed are brought within those held']),
-            yours('own.ded.common', 'Common Deductions'),
+            yours('own.ded.common', 'Common Deductions', ['Reuse of tps', 'Demand for addl resources', 'Emp of addl A tk resources', 'Use of def stores', 'Use of armr', 'Tk hunting parties', 'Anti heliborne force', 'Emp of the Bn Cdo Pl', 'Method of covering large gaps', 'Emp of obsrs: arty with the protective dets, mor with the FDLs', 'Emp of CAF: less sensitive tasks, depth, the least threatened apch', UA(1, 'V'), UA(6, 'II', true)]),
           ]),
         ] },
         { id: 'ts', title: 'Time and Space', paras: [
-          headOnly('ts.data', 'Time Data', ['I Day', 'M Day', 'D Day', 'Time by which def to be occupied', 'Time by which def to be ready', 'Total time aval'].map((h) => yours(`ts.data.${slug(h)}`, h))),
+          headOnly('ts.data', 'Time Data', ['Time Now', 'I Day', 'M Day', 'D Day', 'Time by which def to be occupied', 'Time by which def to be ready', 'First Lt', 'Last Lt', 'Total time aval'].map((h) => yours(`ts.data.${slug(h)}`, h))),
           para('ts.req', 'Time Req', { draft: '', table: blankTable(['S/No', 'Activity', 'Time (hrs)'], ['a.', 'b.', 'c.', 'd.', 'e.', 'f.', 'g.', '']) }),
-          headOnly('ts.ded', 'Deductions', [yours('ts.ded.dp', 'DP', ['Essential timings']), yours('ts.ded.common', 'Common Deductions', ['Pri of work when time aval is less than time req'])]),
+          headOnly('ts.ded', 'Deductions', [yours('ts.ded.dp', 'DP', ['Essential timings: mov from the conc A to the FDLs, prep of the main posn, of the screens, obs / mine laying, def ready', UA(7, 'II', true)]), yours('ts.ded.common', 'Common Deductions', ['Pri of work when time aval is less than time req', 'Less time aval: simultaneous activities; prep of depth and C pen posns, mining round them, by day; ask the Bde Comd for addl resources', 'More time aval: more to cam and clt, clearance of F of F, rehearsals of C attk / C pen', 'Utilising day lt hrs; simultaneous recce', UA(1, 'V'), UA('7-8', 'IV'), ...DEF_TS_MTN])]),
         ] },
       ],
     },
     {
       id: 'crs', title: 'COURSES',
       groups: [{ id: 'crs', title: null, paras: [
-        yours('crs.a', 'Course A'),
-        para('crs.react', 'En Reactions and Own Ctr Actions', { draft: '', table: blankTable(['Ser', 'En Reactions', 'Own Ctr Actions'], ['a.', 'b.', 'c.', 'd.']) }),
-        headOnly('crs.an', 'Analysis', [yours('crs.an.adv', 'Advs'), yours('crs.an.dis', 'Disadvs')]),
-        yours('crs.b', 'Course B'),
+        yours('crs.a', 'Course A', ['In paragraph form, not starting "To": def along line __, FDLs, depth, screens, covering tps, flk protection, res, C attk objs in pri, C pen posns, bias of def and of A tk def, commencing and completing the prep', 'Give all disposns, reactions and timings; no need for the Bn mors, BHQ, arty OP, DFs', UA(11)]),
+        para('crs.react', 'En Reactions and Own Ctr Actions', { draft: '', table: blankTable(['Ser', 'En Reactions', 'Own Ctr Actions'], ['a.', 'b.', 'c.', 'd.']), prompts: ['In the three phases of the def battle: prep, aslt, C attk', UA(13), UA('27-28')] }),
+        headOnly('crs.an', 'Analysis', [yours('crs.an.adv', 'Advs', ['Only those on the gr; the limitations turned into advs; fundamentals of def (EFTMADRAS)', 'Not "def on higher gr", "locs mutually sp", "good depth": name the gr', UA(12)]), yours('crs.an.dis', 'Disadvs', [UA('12-13')])]),
+        yours('crs.b', 'Course B', ['On the same lines as Course A, shorter', UA(11, 'II', true)]),
         yours('crs.adopted', 'Course Adopted', ['With reasons']),
       ] }],
     },
@@ -277,10 +396,14 @@ function outlineDef(): AprcPart[] {
       id: 'plan', title: 'PLAN',
       groups: [{ id: 'plan', title: null, paras: [
         yours('plan.msn', 'Msn'),
-        headOnly('plan.exec', 'Exec', [yours('plan.exec.outline', 'Gen Outline'), yours('plan.exec.tasks', 'Grouping and Tasks'), yours('plan.exec.coord', 'Coord Instrs', ['Timings', 'Bdrys'])]),
-        yours('plan.adm', 'Adm and Log'),
+        headOnly('plan.exec', 'Exec', [yours('plan.exec.outline', 'Gen Outline'), yours('plan.exec.tasks', 'Grouping and Tasks'), yours('plan.exec.coord', 'Coord Instrs', ['Timings: occ to start, def ready, screens and standing ptls in posn, C pen ready, mine laying done', 'Bdrys', 'Pri of work, almt of def stores, killing areas, screens, SP / LP', UA('29-30'), AIR_SP])]),
+        yours('plan.adm', 'Adm and Log', DEF_ADM),
         yours('plan.comd', 'Comd and Sig'),
       ] }],
+    },
+    {
+      id: 'anx', title: 'ANX P: SKETCH',
+      groups: [{ id: 'anx', title: null, paras: [para('anx.sketch', 'Details to be Marked', { prompts: ['Marked two steps down (a Bn to its Pls); SD aspects, map intersections', UA('14'), UA('31-32')] })] }],
     },
   ];
 }
@@ -380,7 +503,7 @@ function outlineAttk(): AprcPart[] {
           yoursA('gr.cover', 'Cover', 3, ['From gr and air']),
           yoursA('gr.met', 'Met', 3, ['First and last light, ph of moon and its effs on the op']),
           headOnly('gr.ded', 'Deductions', [
-            yoursA('gr.ded.obj', 'Pri of Objs / ITG', '3-4', ['Irrespective of the dir of attk: the highest and most dominating feature, obsn and F of F all round, near the main Rd / Tr junc, access to the Rd, capture of the area', 'All the apchs terminate on it', 'Most dominating feature of tac significance', 'Dominates the main Rd / Tr; physical clearance needed before capturing it', 'Facilitates further op towards __', 'Mutually sp by all other imp tac gr']),
+            yoursA('gr.ded.obj', 'Pri of Objs / ITG', '3-4', ['Irrespective of the dir of attk: the highest and most dominating feature, obsn and F of F all round, near the main Rd / Tr junc, access to the Rd, capture of the area', 'All the apchs terminate on it', 'Most dominating feature of tac significance', 'Dominates the main Rd / Tr; physical clearance needed before capturing it', 'Facilitates further op towards __', 'Mutually sp by all other imp tac gr', 'In desert, objs: comm routes and centres, sources of water supply and adm installations; the En sited on the Gr dominating the apchs to them (DW p 38)', DESERT_ITG[0]]),
             yoursA('gr.ded.apch', 'Pri of Apchs / Dir of Attk', 4, ['Sufficient space for armr in CS / fire sp', 'Fewer dominating features', 'Flanking in nature: capture of the MITG in the initial phase', 'Shorter; leads dir to the depth of the obj', 'Unexpected', 'Easy dir keeping', 'Suitable depl areas', 'Only obs that can be passed, negotiated or crossed with little engr effort']),
             yoursA('gr.ded.comb', 'Pri of Comb of Apchs', 4, ['Mutual sp, cover, lesser terrain friction; taking more imp tac grs in one phase']),
             headOnly('gr.ded.aps', 'Attk Possibilities (APs)', [
@@ -405,7 +528,7 @@ function outlineAttk(): AprcPart[] {
               yoursA('gr.ded.c.surprise', 'Surprise', 5, ['Area devoid of cover, mov by day observed: attk in the hrs of darkness', 'Proper cam and clt', 'All mov at ni']),
               yoursA('gr.ded.c.armr', 'Use of Armr', 5, ['Side open, going easy, no maj A tk obs: tks in CS']),
               yoursA('gr.ded.c.pnr', 'Tasks / Use of Aslt Pnr / Engr', 5, ['Accompany the aslt tps in xing obs', 'Recce, dev and improvement of xing sites', 'Neutralize dmls along br __', 'Improvement of Rd / Tr __ for carriage of F ech', 'Creating gaps in mine fd / wire obs']),
-              yoursA('gr.ded.c.timing', 'Timing of Attk', 6, ['The moon is in __ qtr and up till __ hrs: attk during the early / later part of the ni (weather too: cloudy / rainy)']),
+              yoursA('gr.ded.c.timing', 'Timing of Attk', 6, ['The moon is in __ qtr and up till __ hrs: attk during the early / later part of the ni (weather too: cloudy / rainy)', 'Day, ni, dawn (cross the SL at first lt) or dusk, with their trade-offs (OoW Vol II pp 26-27)']),
               yoursA('gr.ded.c.smk', 'Use of Smk', 6, ['To protect the mov from the FAA / FUP onwards where cover is less, from __ to __']),
               yoursA('gr.ded.c.phases', 'Phases of Attk', 6, ['The dist between the objs, their depth and wide frontage: phases for each dir of attk (Lt / Rt / centre apch), Phase 1, Phase 2']),
               yoursA('gr.ded.c.flank', 'Flank Protection', 6, ['Both flanks open, no obs: task Pl __ to provide flank protection from area __ to __']),
@@ -420,15 +543,16 @@ function outlineAttk(): AprcPart[] {
                 yoursA('en.opt1.bias', 'Bias of Def / A Tk Def', 6, ['Lt / Rt and centre']),
                 yoursA('en.opt1.killing', 'Killing Areas', 6, ['Primary killing area from incl __ to incl __', 'Secondary killing area from incl __ to incl __']),
                 yoursA('en.opt1.catk', 'C Attk Obj in Order of Pri', 7),
-                yoursA('en.opt1.obs', 'Obs Plan', 7, ['Protective mine fd and wire obs in front and on flanks from incl __ to incl __']),
+                yoursA('en.opt1.obs', 'Obs Plan', 7, ['Protective mine fd and wire obs in front and on flanks from incl __ to incl __', IDD_OBS]),
                 yoursA('en.opt1.surv', 'Surv / Obsn Plan', 7, ['SP in area __', 'LP in area __', 'Arty obsr __', 'Mor obsr __']),
                 yoursA('en.opt1.df', 'DF Plan', 7, ['Mk __, __ and __ as DFs and __ as DF (SOS)']),
                 headOnly('en.opt1.an', 'Analysis', [
-                  yoursA('en.opt1.adv', 'Advantages', 7, ['Eff covers all the apchs', 'Def is compact and caters for all-round def', 'All loc held in str', 'Forces the attacker to phase its attk', 'Good F of F and obsn', 'Rd / Tr __ eff dominated', 'Readjustment possible once the dir of attk is known', 'Def based on natural obs', 'Easy route of wdr / rft', 'Flanks protected']),
-                  yoursA('en.opt1.dis', 'Disadvantages', 7, ['Objs well defined and engaged easily', 'Capture of __ (MITG) unhinges the entire posn', 'Depth is weak', 'Most expected layout of def', 'Route of wdr / rft can be cut']),
+                  yoursA('en.opt1.adv', 'Advantages', 7, ['Eff covers all the apchs', 'Def is compact and caters for all-round def', 'All loc held in str', 'Forces the attacker to phase its attk', 'Good F of F and obsn', 'Rd / Tr __ eff dominated', 'Readjustment possible once the dir of attk is known', 'Def based on natural obs', 'Easy route of wdr / rft', 'Flanks protected', IDD_ADV]),
+                  yoursA('en.opt1.dis', 'Disadvantages', 7, ['Objs well defined and engaged easily', 'Capture of __ (MITG) unhinges the entire posn', 'Depth is weak', 'Most expected layout of def', 'Route of wdr / rft can be cut', IDD_DIS]),
                 ]),
               ]),
               yoursA('en.opt2', 'Option 2', 7),
+              para('en.lead', 'Leading En Option', { prompts: ['The most likely / leading En course or cap: Option __; all viable APs are analysed against it (OoW Vol II p 30)', 'Contingency plans for the others: see Exec, Contingency Plans (OoW Vol II p 30)'] }),
             ]),
             yoursA('en.caps', 'En Caps', 7, ['Local adjustment', 'Local C attk', 'Reinforcement', 'Spoiling attk', 'Use of NVDs', 'Use of arty', 'Use of air', 'Obs laying cap', 'Conduct of BHL', 'Emp of screens and surv elms']),
             headOnly('en.ded', 'Deductions', [
@@ -452,7 +576,7 @@ function outlineAttk(): AprcPart[] {
                 yoursA('en.ded.c.pnr', 'Use of Aslt Pnr / Engr', 10, ['The En mine fd and wire obs all round: safe lanes for the F ech and the subsequent op']),
                 yoursA('en.ded.c.catk', 'Local C Attk', 10, ['Quick reorg / consolidation', 'Launching Phase 2 ASP', 'Early depl of surv elms / tk hunting parties ahead of the obj', 'F ech ASP: disposal / evac of cas, replenishment of ammo', 'DF and DF (SOS) to beat back the En C attk / assy']),
                 yoursA('en.ded.c.phases', 'Phases of Attk', 10, ['Size of obj, the En disposn and pattern of depl: phases cfm']),
-                yoursA('en.ded.c.arty', 'Use of Arty', 10, ['Soften up well prep defs with prep bombardment', 'Engage the En ptls / LPs before the mov into the FUP']),
+                yoursA('en.ded.c.arty', 'Use of Arty', 10, ['Soften up well prep defs with prep bombardment', 'Engage the En ptls / LPs before the mov into the FUP', 'Silent or noisy: silent, no prep bombardment before H, the whole fire plan prep and on call, when the tac circumstances favour surprise; noisy, prep bombardment before H, only when own relative str is so favourable that the loss of surprise is acceptable (OoW Vol II p 27)']),
                 yoursA('en.ded.c.engrs', 'Emp of Engrs', 10, ['Well prep defs, concrete bunkers, wire and mines: almt of engr elms to the aslt Pls', 'Lanes in the En mine fd for the F ech up to the tgt']),
               ]),
             ]),
@@ -471,11 +595,12 @@ function outlineAttk(): AprcPart[] {
               headOnly('own.ded.common', 'Common Deductions', [
                 yoursA('own.ded.c.hold', 'Asst / Coord with Holding Tps', 13, ['Activity all over the front and feint attk (if nec) from the opposite dir', 'Asst in estb of BOF', 'Info about the En def, obs, lanes and gaps through the mine fd', 'Passage through lanes', 'Guidance arrangement', 'Protection of flanks']),
                 yoursA('own.ded.c.bs', 'Emp of BS / RRs', 13, ['Initially as part of BOF at area __', 'Subsequently for str of my reorg in area __']),
-                yoursA('own.ded.c.df', 'DF Plan', 13, ['A fd Bty aval in DS: exec my DF plan during reorg as deduced from Gr and Weather']),
+                yoursA('own.ded.c.df', 'DF Plan', 13, ['A fd Bty aval in DS: exec my DF plan during reorg as deduced from Gr and Weather', AIR_SP]),
                 yoursA('own.ded.c.fwdwpn', 'Arrangements to Carry Fwd Wpns for BOF', 13),
                 yoursA('own.ded.c.ammo', 'Task for Fol Up Pls to Carry Ammo for Initial Reorg of Phase 1', 13),
                 yoursA('own.ded.c.nvd', 'Use of NVDs / GSRs', 13),
                 yoursA('own.ded.c.engr', 'Use of Engrs / Aslt Pnrs', 13),
+                para('own.ded.c.res', 'Emp of Res', { prompts: ['The three decisions: the point of application, the timing, the dir (OoW Vol II pp 31-32)', 'The greater the uncertainty in the attk, the greater the res; neither committed prematurely nor too late; located to exploit an unexpected success and to react to an unexpected En threat (OoW Vol II p 32)', 'Recreated when used; contingency plans for it with the fire sp integrated; be prep tasks (OoW Vol II p 32)'] }),
               ]),
             ]),
           ]),
@@ -491,7 +616,7 @@ function outlineAttk(): AprcPart[] {
             para('ts.calc', 'Time Calc', {
               draft: '',
               table: { head: ['Ser', 'Events', 'Time Req', 'Running Time'], rows: BACKWARD_EVENTS.map((e, i) => [String(i + 1), e, '', '']), widths: [0.08, 0.5, 0.2, 0.22] },
-              prompts: ['Task to be completed ASP: fwd calc of timings', 'Specified completion time: backward calc of timings', 'ASP and not later than a specified time: both', MA('13-14')],
+              prompts: ['Task to be completed ASP: fwd calc of timings', 'Specified completion time: backward calc of timings', 'ASP and not later than a specified time: both', MA('13-14'), ...ATTK_TS_BOOKS],
             }),
             headOnly('ts.ded', 'Deductions', [
               headOnly('ts.ded.basic', 'Basic Deductions', [
@@ -558,8 +683,9 @@ function outlineAttk(): AprcPart[] {
             yoursA('plan.exec.coord.timings', 'Timings', 20, ['Mov from Assy A / FAA __', 'H hr __', 'A hr __', 'BOF to be estb by __', 'Blocking posn to be estb by __']),
             yoursA('plan.exec.coord.loc', 'Loc', 20, ['FAA __', 'BOF __', 'FUP __', 'Blocking posn __']),
           ]),
+          para('plan.exec.cont', 'Contingency Plans', { prompts: ['For the En caps other than the leading one, should they materialise (OoW Vol II p 30)', 'Be prep tasks; the res committed and recreated, its contingencies with the fire sp integrated (OoW Vol II p 32)'] }),
         ]),
-        headOnly('plan.adm', 'Adm and Log', [yoursA('plan.adm.food', 'Food', 20), yoursA('plan.adm.ammo', 'Ammo', 20), yoursA('plan.adm.water', 'Water', 20), yoursA('plan.adm.cap', 'CAP', 21)]),
+        headOnly('plan.adm', 'Adm and Log', [yoursA('plan.adm.food', 'Food', 20), yoursA('plan.adm.ammo', 'Ammo', 20), yoursA('plan.adm.water', 'Water', 20), yoursA('plan.adm.cap', 'CAP', 21, ['Cas never more than 4 h without expert treatment, surgery within 12 h; the chain CAP, RAP, ADS, FTC (lsf p 47; Annex L pp 81-82)'])]),
         headOnly('plan.comd', 'Comd and Sig', [
           yoursA('plan.comd.hq', 'Loc of Coy HQ', 21),
           yoursA('plan.comd.tac', 'Loc of Coy Tac HQ', 21),
@@ -567,6 +693,146 @@ function outlineAttk(): AprcPart[] {
           yoursA('plan.comd.code', 'List of Code Words / Nick Names', 21, ['Being issued separately']),
         ]),
       ] }],
+    },
+    {
+      id: 'anx', title: 'ANX P: SKETCH',
+      groups: [{ id: 'anx', title: null, paras: [para('anx.sketch', 'Details to be Marked', { prompts: ['SD aspects, map intersections; conc A and FAA, route to the FUP, FUP, SL with H, attk arrows, ph lines, reorg, BOF, F ech, blocking posn, feint', UA('34-35'), MA(21)] })] }],
+    },
+  ];
+}
+
+// ── the withdrawal ───────────────────────────────────────────────────────────────────────────────────────────────
+// From OoW Vol III, Withdrawal (GSP 6-100-0; Doctrine_Review.md R78, 24 Nov 2026), laid out as the defence's written
+// appreciation (REVIEW OF SIT, AIM, FACTORS, COURSES, PLAN, the sketch annex). The FACTORS are the book's (pp 7-16):
+// terrain and weather, time and space, own and en, intelligence, security, secrecy / surprise / deception, demolitions
+// and obstacles, air, administration; the COURSES carry the commander's main decisions (pp 6-7); the PLAN follows what
+// the orders must hold (p 21 para 19d) and the execution para of Annex A (pp 71-74). The book prints its page numbers:
+// `O3(8)` is its printed p 8. A Read takes the AOR round the MITG as the new def posn: its ground forward, toward the En,
+// is the ground the wdr crosses, its lines across the apchs the candidate intmed posns.
+
+/** OoW Vol III, its printed page. */
+export const O3 = (p: number | string, para = ''): string => `OoW Vol III ${/[-,]/.test(String(p)) ? 'pp' : 'p'} ${p}${para ? ` para ${para}` : ''}`;
+
+function outlineWdr(): AprcPart[] {
+  const blankTable = (head: string[], first: string[]): AprcTable => ({ head, rows: first.map((f) => [f, ...head.slice(1).map(() => '')]) });
+  return [
+    {
+      id: 'rev', title: 'REVIEW OF SIT',
+      groups: [{ id: 'rev', title: null, paras: [
+        yours('rev.en', 'En Forces', ['En forces opposite, their likely aim, when; in contact, or light or no contact (' + O3(2, '5') + ')', 'The En aim in following up a wdr: to over-run, pen or outflank the posns of the fwd elms and engage the posns in the rear before they are ready; failing that, to destroy the tps left behind (' + O3(24, '2') + ')']),
+        yours('rev.own', 'Own Forces', ['Why the wdr: to disengage from an unsuccessful battle or after an operational reverse, or to avoid battle under unfavourable conditions and gain time (' + O3(1, '1') + ')', 'A tac wdr is never carried out except on the orders of the higher comd (' + O3(2, '4') + ')', 'Moving behind another fmn already depl, or prep a new def posn in the rear and fight there at once: the latter more complex and the more usual (' + O3(5, '1') + ')']),
+        yours('rev.air', 'Air Sit', ['A force compelled to wdr by day without adequate air sp is severely handicapped; no daylight wdr, as far as possible, if the En has air superiority (' + O3(15, '12') + ')']),
+      ] }],
+    },
+    {
+      id: 'aim', title: 'AIM',
+      groups: [{ id: 'aim', title: null, paras: [yours('aim', null, [
+        'The overall aim: reduce the En superiority by trading space for time, for a sit favourable to resume the offensive (' + O3(2, '6') + ')',
+        'The immediate aim: occupy the new def posn with the min of interference from the En and the min of cas; the ultimate: stabilise the sit and renew the offensive (' + O3(3, '7') + ')',
+        'The limitations given, set in the Limitations box: the time up to which the posn is denied, no rearward mov before, all tps clear of a line by (' + O3(19, '17') + '); the delay fwd of the new posn (' + O3(10, '6c') + ')',
+        'Starts with "To", the limitations tabulated (' + UA('7-8') + ')',
+      ])] }],
+    },
+    {
+      id: 'fac', title: 'FACTORS',
+      groups: [
+        { id: 'gr', title: 'Terrain and Weather', paras: [
+          yours('gr.gen', 'Gen Description', ['MITG: the new def posn; the Gr read forward of it, toward the En, is the Gr the wdr crosses']),
+          para('gr.apchs', 'Apchs', { draft: '', prompts: ['The En apchs onto the new posn: the ways the follow-up takes (' + O3(24, '2') + ')', 'Cross-country going allows dispersion against air, but eases the En armr wide outflanking movs (' + O3(8, '5a') + ')'] }),
+          yours('gr.obs', 'Obs', ['Max use of natural and artificial obs; their significance a maj consideration in the loc of the new def and intmed posns and the grouping and tasks (' + O3(8, '5a') + ')', 'Time may not allow other maj artificial obs: make the existing natural obs more formidable (' + O3(14, '11c') + ')']),
+          para('gr.routes', 'Routes Back', { prompts: ['Routes, especially laterals: for redeployment, regrouping, committing the res and the wdr of units (' + O3(8, '5a') + ')', 'Parallel routes: wdr on several axes against congestion, delays and air tgts; routes converging on the axes from the outer flks protected (' + O3(8, '5a') + ')', 'Which routes to block and which to keep open for the wdr (' + O3(8, '5a') + ')'] }),
+          yours('gr.cover', 'Cover'),
+          yours('gr.met', 'Weather', ['Adverse weather is likely to favour the wdr: it impedes the En mobility and air; heavy rain, mist, fog, dust storms and thick haze may let it be done by day too (' + O3(9, '5b') + ')', 'Difficult terrain (bog, thick woods, hills) impedes mov but may make a daylight wdr the only practical means (' + O3('8-9', '5a') + ')']),
+          headOnly('gr.ded', 'Deductions', [
+            para('gr.ded.newposn', 'Loc of the New Def Posn', { prompts: ['Normally laid down by the higher comd: future plans, the sit on the flks, the suitability of the Gr, its dist from the present posn (' + O3(39, '1') + ')', 'The line of no pen taken into consideration (' + O3(39, '3') + '); its selection, org and layout as in OoW Vol I (' + O3(39, '1') + ')'] }),
+            para('gr.ded.intmed', 'Intmed Posns', { prompts: ['Naturally strong, held with the min of tps, heavy damage to the En; so far apart that the En must redeploy before attacking the next: parallel ridges across the En adv; rivers, canals, unfordable streams, marshes and other obs, mines in front and on the flks; high Gr with good obsn and long F of F; concealed routes of wdr; a Rd network with good going, which helps the En too (' + O3(33, '16') + ')', 'Their number: the delay to impose, the dist to the new posn, the natural str of the Gr, the En and the tps aval; tps to prep and hold them are the maj limitation (' + O3(33, '17') + ')'] }),
+            para('gr.ded.routes', 'Routes to Block and Keep Open', { prompts: ['Terrain and routes analysed for which routes are to be blocked and which kept open for the wdr (' + O3(8, '5a') + ')', 'Security dets to secure the defiles the wdr uses, with AD for them (' + O3(12, '9a') + ')'] }),
+            para('gr.ded.time', 'Wdr by Ni or Day', { prompts: ['A ni wdr is usually preferred: secrecy, surprise, fewer cas; it starts so as to finish before daylight (' + O3('43-44', '1') + ')', 'A daylight wdr is normally avoided unless the weather or the Rds favour or need it (' + O3(40, '1') + ')'] }),
+          ]),
+        ] },
+        { id: 'ts', title: 'Time and Space', paras: [
+          headOnly('ts.data', 'Time Data', [
+            yours('ts.data.time-now', 'Time Now'),
+            yours('ts.data.deny', 'Posn to be Denied Until', [O3(19, '17a')]),
+            yours('ts.data.no-mov', 'No Rearward Mov Before', [O3(19, '17b')]),
+            yours('ts.data.clear', 'All Tps Clear of the Line By', [O3(19, '17c')]),
+            yours('ts.data.last-lt', 'Last Lt'),
+            yours('ts.data.first-lt', 'First Lt'),
+            yours('ts.data.dark', 'Hrs of Darkness'),
+          ]),
+          para('ts.req', 'Time Req', { draft: '', table: blankTable(['S/No', 'Activity', 'Time (hrs)', 'Remarks'], ['a.', 'b.', 'c.', 'd.']), prompts: ['The dist between the orig and the new posn and the time to prep the latter calculated carefully (' + O3(10, '6b') + ')', 'A Bn needs at least 36 working hrs to prep its posns (OoW Vol I p 39)'] }),
+          headOnly('ts.ded', 'Deductions', [
+            yours('ts.ded.timings', 'Essential Timings', ['Laid down by the highest comd: the time the posn is denied till; no rearward mov except recce parties before; all tps clear of a line by (' + O3(19, '17') + ')', 'By the subordinate comds: the time the posn is finally abandoned, the time thinning out may begin (' + O3(19, '18') + ')', 'Timings not tight, allowing each phase to complete (' + O3('18-19', '16') + ')']),
+            yours('ts.ded.common', 'Common Deductions', ['The time for delay related to the depth of the area: from the Gr, hrs or days to the dist; then the phases, intmed posns, the delaying actions of the covering tps and the time the En is held at each phase line (' + O3(10, '6c') + ')', 'A longer delay: the new posn at a sufficient dist, a series of intmed posns between (' + O3(9, '6a') + ')', 'Time short after an unsuccessful action: a hasty wdr, not a deliberate one (' + O3(10, '6b') + ')']),
+          ]),
+        ] },
+        { id: 'en', title: 'Own and En Sit', paras: [
+          yours('en.comp', 'En Composn and Superiority', ['The En superiority in tps, armament and materiel, the En tactics and morale weighed objectively against own; the qualities of the En comds and the course they are likely to adopt (' + O3(10, '7a') + ')']),
+          yours('en.caps', 'En Caps Against the Wdr', ['Airborne attk, air attk, turning mov and infiltration to interfere with the wdr; efforts to impede it (' + O3(11, '8b') + ')', 'Airborne or heliborne tps to seize defiles or brs and disrupt comns once the wdr is known (' + O3(46, '6') + ')']),
+          para('own.str', 'Own Str as Related to that of the En', { draft: '', table: blankTable(['Ser', 'Arms', 'En', 'Own', 'Ratio'], ['a.', 'b.', 'c.', 'd.']) }),
+          yours('own.mob', 'Mobility', ['The En local superiority offset by own superior mobility or by the denial of mobility to the En (' + O3(10, '7a') + ')', 'In plain country, the En likely to lead with armr: fully mobile covering tps of armr, recce elms and motorised inf; tps left behind with armr if the En has it, and tpt to move speedily after the final extrication (' + O3(11, '7a') + ')', 'Max denial of mobility by interdiction and a coord obs and denial plan (' + O3(11, '7a') + ')']),
+          headOnly('own.ded', 'Deductions', [yours('own.ded.common', 'Common Deductions', ['Tps on the orig posn to deny it up to the time ordered; the time to wdr them (' + O3(19, '17d') + ')', 'The critical stage: the orig posn thinned out to release men for the posn in the rear, the rest on an extended frontage; all arty and air effort in their sp, the res placed to intervene at short notice (' + O3(24, '3') + ')', 'Balance: each gp formed for its role and able to op independently; no element over-burdened (' + O3(4, '10-11') + ')'])]),
+        ] },
+        { id: 'sec', title: 'Int, Security and Deception', paras: [
+          yours('sec.int', 'Int', ['Early warning of En activities meant to disrupt the wdr: the higher HQ provides the int on the En intentions and moves (' + O3(11, '8a') + ')', 'EEIs: the str and composn of the main attacking force, the loc of the En armr (' + O3(11, '8b') + ')', 'All agencies: air recce, stay behind parties in En held territory, aggressive ptls (' + O3(12, '8c') + ')']),
+          yours('sec.sec', 'Security', ['Covering tps, rearguards and, if nec, flk gds; their protection by the terrain and the En str and eqpt (' + O3(12, '9a') + ')', 'Terrain restricting MT favours En infiltration: security elms mainly inf; open country favours mobile forces (' + O3(12, '9a') + ')', 'Def of the rear areas; security dets to secure the defiles the wdr uses, with AD (' + O3(12, '9a') + ')']),
+          yours('sec.decep', 'Secrecy, Surprise and Deception', ['Conceal the actual day and time of the wdr; by ni, leave the En guessing at first lt whether the posn has been abandoned (' + O3('12-13', '10a') + ')', 'A cover plan early; all mov to the rear except routine tfc in the hrs of darkness; no abnormal action by fwd tps until the rear parties go; normal ptl to the last moment; need to know; dmls controlled and timed with care; armr and APCs thinned out with care (' + O3(13, '10c') + ')', 'Strict use of wrls; active measures: more ptls, arty fire to cover noises, simulating a build-up for attk (' + O3(14, '10c') + '); active and passive measures (' + O3(54, '8') + ')']),
+        ] },
+        { id: 'sp', title: 'Dmls, Air and Adm', paras: [
+          para('sp.dml', 'Dmls and Obs', { prompts: ['Dmls of comns, and the destruction of local resources and stores that cannot be evacuated (' + O3(14, '11a') + ')', 'Considerable time to org and prep them, coord on the whole front, planning to start at the earliest; Engr resources centralised (' + O3('14-15', '11b-d') + ')', 'Preliminary dmls fired once prep; reserve dmls specifically con, with gds and firing parties, the sites kept open to tfc (' + O3(55, '2-3') + ')', 'Primary dml belts continuous across the front as part of the new def posn; subsidiary belts in front of or behind an intmed posn for a clean break (' + O3(56, '5') + '); selected with Engr advice, the min essential (' + O3(56, '4') + ')'] }),
+          yours('sp.air', 'Air', ['A force compelled to wdr by day without adequate air sp is severely handicapped (' + O3(15, '12') + ')', 'AD at pts likely to be attacked (' + O3(44, '2b') + '); at VPs, defiles and bottlenecks (' + O3(28, '8') + '); the air apchs identified, the routes of wdr and bottlenecks protected at ni (' + O3(38, '31') + ')']),
+          yours('sp.adm', 'Adm', ['Adm units and installations not needed for maint during the wdr evacuated early; fwd stocks reduced to the min; workshops evacuate what cannot be repaired in a short time; fewer fwd medical installations, more ambulances or air evac; recovery of veh cas, esp tks; a reserve of tpt; denial plans for stores of value (' + O3('15-16', '13b') + ')', 'A correct balance of commodities at judiciously spaced intervals along the routes of wdr; cross-country routes developed to ease the main Rds (' + O3(68, '2b-d') + ')', 'Destruction of what cannot be evacuated authorised, its responsibility fixed; services units to the rear early, under darkness (' + O3(69, '3-4') + ')']),
+          yours('sp.civ', 'Civil Population', ['Refugees may block the Rds; panic and the En fifth column (' + O3(69, '1') + ')', 'Close liaison with the civil authorities; if they are evacuated, Rds allotted to them; if they stay, food reserves left with them (' + O3(70, '3-4') + ')', 'A wdr from captured territory: plans against a hostile population (' + O3(70, '5') + ')']),
+        ] },
+      ],
+    },
+    {
+      id: 'crs', title: 'COURSES',
+      groups: [{ id: 'crs', title: null, paras: [
+        yours('crs.a', 'Course A', [
+          'In paragraph form, not starting "To": the loc and layout of the new def posn and the str to prep and occupy it initially; the delay to impose fwd of it by covering tps, rear parties, flk gds / rearguards, C attks and spoiling attks, intmed posns and Engrs (' + O3(6, '3a-b') + ')',
+          'How to impose the delay without a running fight or unnecessary losses (' + O3(7, '3c') + ')',
+          'The force left on the present posn and the time it is denied; the number and loc of intmed posns, their tps and the delay at each; the covering tps; the outline obs and denial plan (' + O3(7, '3d') + ')',
+          'Surprise and deception, fire sp, the move back of non-essentials first, repair, recovery and cas evac, log sp, the civil population and refugees (' + O3(7, '3e-l') + ')',
+        ]),
+        para('crs.react', 'En Reactions and Own Ctr Actions', { draft: '', table: blankTable(['Ser', 'En Reactions', 'Own Ctr Actions'], ['a.', 'b.', 'c.', 'd.']), prompts: [
+          'The critical stage, the orig posn thinned out: a breakthrough jeopardises the whole op; all arty and air effort in sp of the tps left behind, the res to intervene at short notice (' + O3(24, '3') + ')',
+          'Airborne or heliborne attk on defiles, brs and comns: the imp defiles and VPs protected with AD, mobile res close to the danger pts, all tps alerted (' + O3(46, '6-7') + ')',
+          'A unit decisively involved: a C attk or spoiling attk with uncommitted units (' + O3(41, '3') + ')',
+          'Air attk on the columns: mov by ni, AD at the pts likely to be attacked (' + O3(15, '12') + '; ' + O3(44, '2b') + ')',
+        ] }),
+        headOnly('crs.an', 'Analysis', [
+          yours('crs.an.adv', 'Advs', ['Weighed on the basic considerations: gain time, max cas on the En, the terrain and weather exploited, freedom of action kept, centralised con with decentralised exec (' + O3(6, '2') + ')', 'And the fundamentals: con, clean break, gaining time, balance, int, secrecy, morale (' + O3('3-5', '8-15') + ')']),
+          yours('crs.an.dis', 'Disadvs'),
+        ]),
+        yours('crs.b', 'Course B', ['On the same lines as Course A, shorter']),
+        yours('crs.adopted', 'Course Adopted', ['With reasons']),
+      ] }],
+    },
+    {
+      id: 'plan', title: 'PLAN',
+      groups: [{ id: 'plan', title: null, paras: [
+        yours('plan.msn', 'Msn'),
+        headOnly('plan.exec', 'Exec', [
+          yours('plan.exec.outline', 'Gen Outline', ['Wdr over __ ni(s) starting ni __ (date), or in __ phases; intmed posn(s) in area __; covering tps / rearguards in area __; grouping as an anx (' + O3('71-72') + ', Annex A)']),
+          yours('plan.exec.newposn', 'New Def Posn', ['The prep of the rear main posn and its occupation (' + O3(72) + ', Annex A)', 'Fresh tps to prep it when possible, else a portion of own sent back: men for digging and mine laying more than fire power (' + O3(39, '2') + ')', 'Early recce of the next posn in the rear by daylight, both staff branches and every unit to occupy it represented (' + O3(20, '19c') + '); few offrs to recce and coord it (' + O3(17, '14d') + ')']),
+          yours('plan.exec.intmed', 'Intmed Posns', ['A complete fmn or unit for each, a comd nominated for the whole posn, regrouping kept to the min (' + O3(34, '18') + ')', 'Inf predominant, some armr and ATGM; max fire sp; the tps made mobile to move speedily after disengaging (' + O3(34, '20') + ')', 'Greater fire power in front to make the En depl, less depth, adequate frontage against a quick outflanking mov, some res for C pen and limited C attks (' + O3(34, '22') + ')']),
+          yours('plan.exec.cover', 'Covering Tps, Flk Gds and Rearguards', ['Covering tps delay the En fwd of the new posn for a specified period: deceive the En on the true loc of the new FDLs and make the En depl early, disorganise and inflict cas, give early warning (' + O3(31, '9b') + ')', 'Composn by the msn, terrain, En str and resources; sufficiently strong (' + O3(31, '10') + '); a Div\'s: an armd Regt or its sub-units with arty, Engrs, LAT and motorised inf (' + O3(32, '12') + ')', 'A flk gd from the threatened flk, on a parallel route or on Gr dominating the apchs from it (' + O3(34, '24') + '); a rearguard holds a series of def posns, based on inf, armr if aval (' + O3(35, '22') + ')']),
+          yours('plan.exec.rear', 'Rear Parties', ['Designated by the units in contact to remain in contact and protect the wdr; they deny the En the knowledge of it, delay and deceive (' + O3(45, '5') + ')', 'Sufficient mobile elms to disengage quickly at the final abandonment (' + O3(4, '11') + ')', 'Cover the different apchs to the def posns (' + O3(27, '6') + '); Engrs with them to destroy bunkers, fix dmls and crater (' + O3(27, '3h') + ')']),
+          yours('plan.exec.catk', 'C Attks and Spoiling Attks', ['C attks with limited objs: gr needed for the security of the force, to extricate elms, to destroy a vulnerable part of the En (' + O3('35-36', '23') + ')', 'Spoiling attks by mobile res, usually armr, the advantage weighed against the effort (' + O3(36, '24-25') + '); stay behind parties (' + O3(36, '27') + ')', 'Res: hard-hitting, highly mobile; the min level a Bde; else the least committed tps prep for the pre-planned tasks (' + O3(40, '4-5') + ')']),
+          yours('plan.exec.fire', 'Fire Sp', ['Planned separately throughout the delay; it helps extricate the rear parties; early recce of successive posns; the dml sites covered (' + O3(37, '29') + ')', 'Own air for local air superiority or direct sp at least at the critical stages (' + O3(42, '4') + ')']),
+          yours('plan.exec.engrs', 'Engrs', ['Almt, dmls, route maint pri (' + O3(72) + ', Annex A)', 'Obs, cratering, M fds and dmls their pri task in delay, prioritised by the task of the force (' + O3('37-38', '30') + ')']),
+          yours('plan.exec.seq', 'Sequence', ['By ni: recce parties back; AD depl; non-essentials back; tps not in contact; all but the rear parties; the posn finally abandoned (' + O3(44, '2') + ')', 'By day: almost the reverse; tps in contact go back through own depth posns, leap-frogging till a clean break; no assy areas (' + O3(41, '2') + ')', 'Committed fmns wdr simultaneously on a broad front where possible (' + O3(45, '4') + ')']),
+          yours('plan.exec.coord', 'Coord Instrs', ['Timings: posn denied until __; no rearward mov except recce parties before __; thinning out may begin at __; posn finally abandoned by __; rear parties to cross line __ by __; all tps clear of line __ by __ (' + O3('72-73') + ', Annex A)', 'Recces, RV and check pts, mov and TC (a mov table), routes, tpt, def stores, working parties, destruction of eqpt, dmls (types, gds, firing parties, orders for firing), rear parties (policy on con), deception, air (' + O3(73) + ', Annex A)', 'Bdys; phases, report lines, bounds and harbour areas; routes of wdr, check pts, RVs or assy areas, embussing and debussing pts, SP and RP (' + O3(17, '14e') + ')', AIR_SP]),
+          yours('plan.exec.civ', 'Control of Refugees', ['Rds allotted to the civil authorities for civilians, subsistence on the way (' + O3(70, '4') + '); the controlled mov of civilians (' + O3(17, '14k') + '); Rds kept clear for the tps (' + O3(68, '2d') + ')']),
+        ]),
+        yours('plan.adm', 'Adm and Log', ['Supplies pre-positioned along the routes of wdr; a reserve of tpt under the higher comd (' + O3('68-69', '2b, 3') + ')', 'Cas evac: CAP, RAP, ADS, FTC; never more than 4 h without expert treatment, surgery within 12 h (lsf p 47)']),
+        yours('plan.comd', 'Comd and Sig', ['Wire as far as possible; wrls redundant and curtailed; DRs, fd sigs and pyrotechnics (' + O3(38, '32') + ')', 'The senior sigs offr given early warning of the outline plan (' + O3(17, '14j') + ')']),
+      ] }],
+    },
+    {
+      id: 'anx', title: 'ANX P: SKETCH',
+      groups: [{ id: 'anx', title: null, paras: [para('anx.sketch', 'Details to be Marked', { prompts: ['The conduct of the wdr as Annex P lays it out: the orig def posn, the covering tps (initial posn), flk gd, intmed posns, the new def posn (' + O3(75) + ')', 'The unit layout of Annex Q: Bn RV and embussing pt, Bn check pt, Coy RVs and check pts, the bomb line (' + O3(76) + ')'] })] }],
     },
   ];
 }
@@ -590,12 +856,14 @@ export function registerOutline(kind: AprcKind, label: string, build: () => Aprc
   OUTLINES[kind] = { label, build };
 }
 registerOutline('attk', 'Attack', outlineAttk);
+registerOutline('wdr', 'Withdrawal', outlineWdr);
 
 /** The kinds with an outline, and those that have a place but no outline yet. */
 export function aprcKinds(): Array<{ kind: AprcKind; label: string; ready: boolean }> {
   return [
     { kind: 'def', label: OUTLINES.def?.label ?? 'Defence', ready: !!OUTLINES.def },
     { kind: 'attk', label: OUTLINES.attk?.label ?? 'Attack', ready: !!OUTLINES.attk },
+    { kind: 'wdr', label: OUTLINES.wdr?.label ?? 'Withdrawal', ready: !!OUTLINES.wdr },
   ];
 }
 
@@ -824,15 +1092,37 @@ export function migrateCells(p: AprcPara): void {
   p.cells = out;
 }
 
+/**
+ * Old column index to new, by the column's head ("Inf" → "Inf (Pl)", "Locs" → "Task / Loc"), when a reading changed a
+ * table's columns; a column with no match goes to "Remarks" when the new table has one, else keeps its index.
+ */
+export function colMap(oldHead: string[] | undefined, newHead: string[] | undefined): (c: number) => number {
+  if (!oldHead || !newHead || oldHead.join('|') === newHead.join('|')) return (c) => c;
+  const norm = (s: string): string => s.toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z]+/g, ' ').trim();
+  const words = newHead.map((h) => norm(h).split(' ').filter(Boolean));
+  const remarks = newHead.findIndex((h) => norm(h) === 'remarks');
+  return (c) => {
+    const o = norm(oldHead[c] ?? '');
+    if (!o) return c;
+    let i = newHead.findIndex((h) => norm(h) === o);
+    const stem = o.split(' ')[0].replace(/s$/, '');
+    if (i < 0) i = words.findIndex((ws) => ws.some((w) => w.replace(/s$/, '') === stem));
+    return i >= 0 ? i : remarks >= 0 ? remarks : c;
+  };
+}
+
 /** Bring the planner's typed cells onto a newly read table; rows of his that are gone become added rows (`moved`). */
 function carryCells(k: AprcPara, p: AprcPara, at: string): void {
   let added = k.addRows ?? 0;
   const cells: Record<string, string> = {};
   const newKeys = p.table ? new Set(rowKeys(p.table)) : null;
   const orphan = new Map<string, Array<[number, string]>>();
-  for (const [key, text] of Object.entries(k.cells ?? {})) {
-    const m = /^(.*)::(\d+)$/.exec(key);
-    if (!m) continue;
+  const col = colMap(k.table?.head, p.table?.head);
+  for (const [key0, text] of Object.entries(k.cells ?? {})) {
+    const m0 = /^(.*)::(\d+)$/.exec(key0);
+    if (!m0) continue;
+    const key = `${m0[1]}::${col(Number(m0[2]))}`;
+    const m = /^(.*)::(\d+)$/.exec(key)!;
     if (m[1].startsWith('+') || !newKeys || newKeys.has(m[1])) cells[key] = text;
     else {
       const l = orphan.get(m[1]) ?? [];
@@ -1037,6 +1327,7 @@ export const STALE_MARK: Record<AprcSrc | 'rows', string> = {
   orbat: 'ORBAT changed since',
   time: 'Timings changed since',
   h: 'H changed since',
+  aim: 'Aim changed since',
   rows: 'Table rows changed since',
 };
 
@@ -1111,7 +1402,7 @@ export function normalizeDoc(raw: unknown): AprcDoc | null {
   return {
     ...d,
     version: 1,
-    kind: d.kind === 'attk' ? 'attk' : 'def',
+    kind: d.kind === 'attk' || d.kind === 'wdr' ? d.kind : 'def',
     title: typeof d.title === 'string' && d.title ? d.title : 'APRC OF THE SIT',
     frame: d.frame && typeof d.frame === 'object' ? d.frame : null,
     parts,
@@ -1119,7 +1410,25 @@ export function normalizeDoc(raw: unknown): AprcDoc | null {
     confirm: Array.isArray(d.confirm) ? d.confirm.filter((c: any) => c && typeof c.text === 'string').map((c: any) => ({ ...c, paras: Array.isArray(c.paras) ? c.paras.map(String) : [] })) : [],
     sources: Array.isArray(d.sources) ? d.sources.map(String) : [],
     readAt: d.readAt && typeof d.readAt === 'object' ? d.readAt : undefined,
+    limits: normLimits(d.limits),
   };
+}
+
+/** The aim's limitations from a file, made safe; undefined when none are set. */
+export function normLimits(x: any): AprcLimits | undefined {
+  if (!x || typeof x !== 'object') return undefined;
+  const s = (v: any): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null);
+  const n = (v: any): number | null => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : null);
+  const l: AprcLimits = {
+    fwd: !!x.fwd || undefined, noPen: s(x.noPen), allCosts: s(x.allCosts), attrition: !!x.attrition || undefined, delayH: n(x.delayH),
+    salient: !!x.salient || undefined, penetrated: !!x.penetrated || undefined, maxCoys: n(x.maxCoys), by: s(x.by),
+    destr: !!x.destr || undefined, night: !!x.night || undefined, bunkers: !!x.bunkers || undefined,
+    denial: s(x.denial), quick: !!x.quick || undefined, climbM: n(x.climbM),
+    deny: s(x.deny), noMovBefore: s(x.noMovBefore), clearLine: s(x.clearLine), clearBy: s(x.clearBy), newPosn: s(x.newPosn), byDay: !!x.byDay || undefined,
+    other: Array.isArray(x.other) ? x.other.map(String).map((t: string) => t.trim()).filter(Boolean) : undefined,
+  };
+  for (const k of Object.keys(l) as Array<keyof AprcLimits>) if (l[k] === undefined || l[k] === null || (Array.isArray(l[k]) && !(l[k] as string[]).length)) delete l[k];
+  return Object.keys(l).length ? l : undefined;
 }
 
 // ── reading it out ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -1175,6 +1484,8 @@ export function lines(doc: AprcDoc): AprcLine[] {
     p.children.forEach((c, j) => go(c, depth + 1, j, part, group));
   };
   for (const part of doc.parts) {
+    // an annex numbers its paragraphs afresh
+    if (part.id.startsWith('anx')) n = 0;
     out.push({ type: 'part', title: part.title, id: part.id });
     for (const g of part.groups) {
       if (g.title) out.push({ type: 'group', title: g.title, id: g.id });

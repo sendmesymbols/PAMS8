@@ -1325,11 +1325,17 @@ export function visibilityAt(v: VisibilityGrid, lon: number, lat: number, month:
   return { fogPct: get(`fog_${mm}`, 1), hazePct: get(`haze_${mm}`, 1), lt2kmPct: get(`lt2km_${mm}`, 1), meanViewKm: get(`vis_mean_${mm}`, 10), stationKm: get('dist', 1) };
 }
 
-/** A night sight's reach on an ordinary day of the month, a haze day and a fog day (OcokaDoctrine.json `visibilityRules`). */
+/**
+ * A night sight's reach on an ordinary day of the month, a haze day and a fog day (OcokaDoctrine.json `visibilityRules`).
+ * Image intensifiers and infra-red cannot penetrate haze and mist (IBB p 13 para 23g): nil on a haze or fog day. Thermal
+ * is virtually unaffected by haze, dust and smoke (p 11 para 20b, g); on a fog day it keeps the E cap (half the view).
+ */
 export function nvdReach(deviceM: number, thermal: boolean, doctrine: any, meanViewKm: number | null): { deviceM: number; ordinaryM: number; hazeDayM: number; fogDayM: number } {
   const a = doctrine?.visibilityRules?.assumedView ?? { fogDayKm: 0.5, hazeDayKm: 2 };
-  const cap = (viewKm: number, fog: boolean) => (thermal ? (fog ? Math.min(deviceM, 500 * viewKm) : deviceM) : Math.min(deviceM, 500 * viewKm));
-  return { deviceM, ordinaryM: cap(meanViewKm ?? 5, false), hazeDayM: cap(a.hazeDayKm, false), fogDayM: cap(a.fogDayKm, true) };
+  const cap = (viewKm: number) => Math.min(deviceM, 500 * viewKm);
+  return thermal
+    ? { deviceM, ordinaryM: cap(meanViewKm ?? 5), hazeDayM: deviceM, fogDayM: cap(a.fogDayKm) }
+    : { deviceM, ordinaryM: cap(meanViewKm ?? 5), hazeDayM: 0, fogDayM: 0 };
 }
 
 // ── light (sun and moon from date, time and place) ───────────────────────────────────────────────────────────────────

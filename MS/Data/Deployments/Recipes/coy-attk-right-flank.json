@@ -9,7 +9,7 @@
   "basis": "D",
   "task": "attack",
   "name": "Coy Attk: right flank (BOF fixes the front)",
-  "frontageRow": "Company, night attack in plains (half a battalion two up)",
+  "frontageRow": "Company, night attack",
   "subRow": null,
   "needs": {
     "terrain": false
@@ -282,5 +282,5 @@
     "reserveReach",
     "approaches"
   ],
-  "assaultRow": "Company, night attack in plains (half a battalion two up)"
+  "assaultRow": "Company, night attack"
 }

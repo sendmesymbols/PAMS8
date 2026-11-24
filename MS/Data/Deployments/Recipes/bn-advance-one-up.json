@@ -1,0 +1,37 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "bn-advance-one-up",
+  "family": "bn-advance",
+  "layout": "one-up",
+  "echelon": "16",
+  "unit": "inf-bn-std",
+  "basis": "D",
+  "task": "advance",
+  "name": "Bn Advance: Adv Gd, one Coy vanguard",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "pivot": "sp",
+  "note": "A Bn group as the Advance Guard of a Bde's advance, in single column (MIB p 83 para 23 a: the vanguard normally a Coy group; IBB S33 para 3 p 138). The click is the SP the vanguard's head crosses; the aim is the direction of advance. The vanguard a rifle Coy with a Sec of the Bn mortars, an assault pioneer Sec, the ATGM Pl, tanks if allotted and the FOO (IBB p 138; MIB p 82 e: tanks always in the vanguard, by day and night); Bn HQ one bound behind the rear troops of the vanguard (MIB p 81 b); the Mor Pl and the ATGM well forward (MIB p 82 g, h); the main guard behind. Laid on IBB Fig 12 p 150 (the night formation, the only one printed): the vanguard 500-600 m deep, link groups 800-900 m (40-65 min) to the main guard, which by night moves at least 300-400 m behind the vanguard (p 149); by day the gaps are reckoned in time, not space (p 138 para 4). The axis band 1.6 km wide: by day the Bn clears at least 800 m either side of the axis in open country (IBB p 133). With the terrain the axis is routed for tracks, its water crossings read, report lines laid on the water ahead and halting areas sited on the ground (IBB p 160); who leads, tanks or infantry, read from the country (MIB p 82 f).",
+  "slots": [
+    { "role": "sp", "kind": "point", "sym": "25131600", "label": "SP", "order": 1, "shape": { "at": [0, 0] } },
+    { "role": "axis", "kind": "area", "sym": "25151403", "label": "Axis", "order": 3, "shape": { "pts": [[0, 3000], [0, -6000]], "widthM": 1600 } },
+    { "role": "vanGd", "kind": "point", "sym": "10121100", "label": "Van Gd", "echelon": "15", "order": 2, "shape": { "at": [0, 275] } },
+    { "role": "vanTk", "kind": "point", "sym": "10120500", "label": "Tks (Van Gd)", "echelon": "14", "order": 2, "shape": { "at": [250, 150] } },
+    { "role": "atgm", "kind": "point", "sym": "15111200", "label": "ATGM", "order": 2, "shape": { "at": [-250, 450] } },
+    { "role": "bnHq", "kind": "point", "sym": "10121100", "label": "Bn HQ", "order": 2, "shape": { "at": [0, 1450] } },
+    { "role": "mor", "kind": "point", "sym": "15111402", "label": "81 mm Mor", "order": 2, "shape": { "at": [-250, 1700] } },
+    { "role": "mainGd", "kind": "point", "sym": "10121100", "label": "Main Gd", "order": 2, "shape": { "at": [0, 2300] } },
+    { "role": "rl1", "kind": "line", "sym": "25140300", "label": "RL 1", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
+    { "role": "rl2", "kind": "line", "sym": "25140300", "label": "RL 2", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
+    { "role": "rl3", "kind": "line", "sym": "25140300", "label": "RL 3", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
+    { "role": "rl4", "kind": "line", "sym": "25140300", "label": "RL 4", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
+    { "role": "ha1", "kind": "area", "sym": "25150200", "label": "HA 1", "order": 3, "drawType": 2, "terrainOnly": true, "terrainRule": { "on": "axis.shortOfReportLine" } },
+    { "role": "ha2", "kind": "area", "sym": "25150200", "label": "HA 2", "order": 3, "drawType": 2, "terrainOnly": true, "terrainRule": { "on": "axis.shortOfReportLine" } },
+    { "role": "ha3", "kind": "area", "sym": "25150200", "label": "HA 3", "order": 3, "drawType": 2, "terrainOnly": true, "terrainRule": { "on": "axis.shortOfReportLine" } },
+    { "role": "ha4", "kind": "area", "sym": "25150200", "label": "HA 4", "order": 3, "drawType": 2, "terrainOnly": true, "terrainRule": { "on": "axis.shortOfReportLine" } }
+  ]
+}

@@ -21,7 +21,7 @@ import { attackBreach, attackFactors, attackTimes, atOnObj, counterAttack, findA
 import { findPhase2, goingRow, type Phase2Find, findPhaseN } from './PlanPhase';
 import { addTankTimes, defTankRows, findTankSpots, type TankFind, type TankMode, tankFupVsEnAtgm } from './PlanTanks';
 import { artyRows } from './PlanArty';
-import { adRows } from './PlanAD';
+import { adMountainRows, adRows } from './PlanAD';
 import type { ForceSides } from './PlanContext';
 import { fitSmallOp, type Mover, type SmallProbe, type SmallReading } from './PlanSmallOps';
 import { canalPrep, fitCrossing, type CrossingReading, type Light } from './PlanCrossing';
@@ -29,7 +29,8 @@ import { fitAdvance } from './PlanAdvance';
 import { fitWithdrawal, type WithdrawalFind } from './PlanWithdrawal';
 import { findReverseSlope, type RevSlopeFind } from './PlanRevSlope';
 import type { PlFootSpeeds } from '../PlatoonGuide/PlatoonGuideRead';
-import { footKmh, approachCarries, applyContext, echelonLabel, enemyCorridorM, enemyFupM, enemyProfile, levelOf, type EnemySpec, type TerrainKind, type TerrainSpec } from './PlanContext';
+import { layoutRows } from './PlanMountain';
+import { footKmh, approachCarries, applyContext, groundNotes, echelonLabel, enemyCorridorM, enemyFupM, enemyProfile, levelOf, type EnemySpec, type TerrainKind, type TerrainSpec } from './PlanContext';
 
 export interface GroundAvenue {
   /** World points from the enemy toward the plan. */
@@ -436,7 +437,7 @@ export function fitPlan(inp: FitInput): FitResult {
       const near = a.path.filter((p) => { const l = toLocal(f, p); return l.y >= frontY - 200 && l.y <= frontY + 1500; });
       // reach from the nearest edge of the posn: its weapons are spread across its frontage, not stacked at its centre
       const coveredBy = fwdBoxes.filter((b) => near.some((p) => boxDist(b, toLocal(f, p)) <= reach)).map((b) => b.role);
-      // capacity (OOW1 s7: guard each approach in strength by its capacity): its narrowest choke against his corridors
+      // capacity (OOW1 s5 para 22 a p 16: guard each approach in strength by its capacity): its narrowest choke against his corridors
       const narrowest = narrowOf(a);
       const carries = !en ? null : narrowest === null ? en.echelon : approachCarries(doc, narrowest);
       const full = !en || (carries !== null && (levelOf(carries) ?? 0) >= (levelOf(en.echelon) ?? 0));
@@ -1018,15 +1019,17 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   if (fit.atExtras.length) raw = solveRecipe(recipe, ctx, { ...solveOpts, extraPoints: fit.atExtras });
   fit.pending = fit.pending || ground.pending();
   const merged = mergeChecks(raw, fit);
-  merged.rows = applyContext(merged.rows, ctx.doc, recipe.echelon, recipe.task, raw.frontageM, recipe.slots.filter((s) => s.kind === 'fwd').length, enemy, terrain, inp.force);
+  merged.rows = applyContext(merged.rows, ctx.doc, recipe.echelon, recipe.task, raw.frontageM, recipe.slots.filter((s) => s.kind === 'fwd').length, enemy, terrain, inp.force, recipe.task === 'attack' ? !!inp.night : null);
   const at = recipe.task === 'attack' ? null : atCoverRow(raw, recipe, unit, fit.approaches, frame, ctx.doc, enemy);
   if (at) merged.rows.push(at);
-  // tank Sqns grouped to a defence: their harbours on the ground
+  // tank Sqns grouped to a defence: their leaguers on the ground
   if (recipe.defTanks) merged.rows.push(...defTankRows(raw.items, recipe, frame, ground, ctx.doc, fit.from ?? null));
   // the artillery's gun area: its reach (his FUP for his type in defence) and its ground
   if (recipe.arty) merged.rows.push(...artyRows(raw.items, recipe, recipe.task === 'attack' ? null : enemyFupM(ctx.doc, enemy?.type ?? 'mech')[0], frame, ground));
   // AD over its vulnerable points (PlanAD)
-  if (recipe.ad) merged.rows.push(...adRows(raw.items, recipe));
+  if (recipe.ad) merged.rows.push(...adRows(raw.items, recipe, terrain.kind));
+  // in the mountains: each fire unit on a dominating feature over the canalized run-ins (MW p 247)
+  if (recipe.ad && terrain.kind === 'mountain') merged.rows.push(...adMountainRows(raw.items, recipe, (p) => toWorld(frame, p), (x, y) => ground.elev(x, y), ctx.doc));
   if (canal) { merged.rows.push(...canal.rows); fit.crossing = canal.reading ?? undefined; fit.pending = fit.pending || canal.pending; }
   // the reverse slope's rows replace the solver's grey ones of the same name; its confirm list joins
   if (rs) { const fresh = new Set(rs.rows.map((r) => r.name)); merged.rows = merged.rows.filter((r) => !fresh.has(r.name)); merged.rows.push(...rs.rows); raw.confirm = [...raw.confirm, ...rs.confirm.filter((c) => !raw.confirm.includes(c))]; }
@@ -1047,7 +1050,7 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
     if (ph3 && ax3) merged.rows.push(goingRow('Ph 3 going', ax3.pts, frame, ground));
     if (h) merged.rows.push(hSumRow(h, ctx.doc));
     // his minefield in front of the Obj: the breach before H
-    const brR = recipe.enMfAtk ? attackBreach(recipe as any, ctx.doc, !!inp.night)?.row : null;
+    const brR = recipe.enMfAtk ? attackBreach(recipe as any, ctx.doc, !!inp.night, undefined, terrain.kind)?.row : null;
     if (brR) merged.rows.push(brR);
     const p2r = h ? phase2Row(h, ctx.doc) : null;
     if (p2r) merged.rows.push(p2r);
@@ -1069,6 +1072,10 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
     fit.attack = { hSum: h, choke, factors: af.factors, night: nb, route, finder: find.rows, phase2: ph2 ? { route: ph2.route, side: ph2.side, offDeg: ph2.offDeg, obj2From: ph2.obj2From } : undefined, phase3: ph3 ? { route: ph3.route, side: ph3.side, offDeg: ph3.offDeg } : undefined, counter: ca ? { apchs: ca.apchs, mover: ca.mover } : undefined, tanks: recipe.tanks ? { mode: recipe.tanks, route: tk?.route ?? null, fieldM: tk?.fieldM ?? null } : undefined };
     fit.score = af.score;
   }
+  // a mountain layout's own rows (MW, PlanMountain), on the fitted posns
+  for (const r of layoutRows(raw.items, recipe, ctx.doc)) { const i = merged.rows.findIndex((m) => m.name === r.name); if (i >= 0) merged.rows[i] = r; else merged.rows.push(r); }
+  // what the ground's books add to the rows (mountains, desert, night: PlanContext.groundNotes)
+  merged.rows = groundNotes(merged.rows, ctx.doc, terrain.kind, recipe.task, recipe.echelon, recipe.task === 'attack' ? !!inp.night : null);
   // Auto ranks on every check the plan shows, the geometry ones (frontage, depth, gaps) as well as the ground's
   const all = [...merged.rows, ...merged.slots.flatMap((s) => s.checks)];
   fit.fails = all.filter((c) => c.st === 'fail').length;
@@ -1088,7 +1095,9 @@ const atgmRangeOf = (doc: DoctrineSet, unit: UnitBrief | null) => unit?.atgm.fin
 
 /**
  * ATGM pairs beyond the recipe's, from the unit's launchers (ORBAT: a Std Inf Bn's 4 BS = 2 pairs): each to a tank
- * approach where it closes on the FDL, 150 m behind it, the two launchers 450 m apart across it (IBB 400-500 m);
+ * approach where it closes on the FDL, 500-600 m behind the forward edge in the depth localities (IBB S54 para 20 a
+ * p 295: behind the 106/75 RRs, giving depth to the short-range AT; atFramework.atgmBehindRrM), the two launchers 450 m
+ * apart across it (IBB 400-500 m);
  * an approach the posted ATGMs do not reach first, then the main one (OOW1 pp 25, 44: AT density on the main tank
  * approaches). Without approaches, on the flanks of the FDL. Plan metres.
  */
@@ -1100,6 +1109,7 @@ export function atgmExtras(res: SolveResult, recipe: Recipe, unit: UnitBrief | n
   const range = atgmRangeOf(doc, unit);
   const spacing = resolveRange(doc, doctrineAt(doc, 'atFramework.atgmDetSpacingM'));
   const half = spacing ? (spacing[0] + spacing[1]) / 4 : 225;
+  const br = resolveRange(doc, doctrineAt(doc, 'atFramework.atgmBehindRrM')), behindRr = br ? (br[0] + br[1]) / 2 : 550;
   const posted = res.items.filter((i) => isAtgmItem(i.role)).map((i) => i.pts[0]);
   const sites: { x: number; why: string }[] = [];
   if (approaches && approaches.length && f) {
@@ -1118,7 +1128,7 @@ export function atgmExtras(res: SolveResult, recipe: Recipe, unit: UnitBrief | n
   // pairs that land on the same place (an AT Coy's six on one approach) fan out along the front, 3 pairs' width apart (E)
   const step = half * 3, seen: number[] = [];
   sites.slice(0, extra).forEach((s, k) => {
-    const y = fr.y - 150;
+    const y = fr.y - behindRr;
     const n = seen.filter((x) => Math.abs(x - s.x) < 1).length;
     seen.push(s.x);
     const x = n === 0 ? s.x : s.x + (n % 2 ? 1 : -1) * Math.ceil(n / 2) * step;
@@ -1154,7 +1164,10 @@ export function atCoverRow(res: SolveResult, recipe: Recipe, unit: UnitBrief | n
     else if (byRr.length) { parts.push(`${a.id}${a.main ? ' (main)' : ''}: RR of ${byRr.join(', ')} only (${rr} m)`); if (worst === 'pass') worst = 'warn'; }
     else { parts.push(`${a.id}${a.main ? ' (main)' : ''}: no AT weapon in reach`); worst = a.main || a.full ? 'fail' : worst === 'pass' ? 'warn' : worst; }
   }
-  return { name: 'AT cover', st: worst, reason: `${parts.join('; ')} (ATGM ${(atgm / 1000).toFixed(1)} km${rr ? `, RR ${rr} m` : ""})${held}` };
+  // the books' AT rules beside the reach: more AT weapons than the expected tanks, densest at the vital area, few in the
+  // FDLs in the plains (some in the desert), tank-hunting parties at the hull-down sites (IBB S17 p 73, S54 pp 294-295)
+  const rules = '. The AT weapons should be more than the expected number of En tanks, without denuding the main defences (IBB p 294 para 18): count them against the threat; densest at the most vital area, never spread evenly (IBB p 73 para 12); in the Punjab plains few in the FDLs, in the desert some (p 73 para 13); ATGM 500-600 m behind the RR in the depth localities (p 295); tank-hunting parties at the hull-down sites (p 294 para 19)';
+  return { name: 'AT cover', st: worst, reason: `${parts.join('; ')} (ATGM ${(atgm / 1000).toFixed(1)} km${rr ? `, RR ${rr} m` : ""})${held}${rules}` };
 }
 
 /**

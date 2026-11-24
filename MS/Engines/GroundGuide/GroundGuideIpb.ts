@@ -92,6 +92,8 @@ export interface IpbRules {
   rann: { months: number[]; cls: Uint8Array; box: [number, number, number, number] };
   snow: { aboveM: number; months: number[] };
   snowSlopeDeg: number;
+  /** Wet snow slides on slopes of only this much in rain or thaw (MW p 282): a note, never a code. */
+  wetSlideDeg: number;
   movers: Record<string, IpbMover>;
   defaultAvlbM: number;
 }
@@ -202,6 +204,7 @@ export function ipbRulesFrom(doc: any): IpbRules {
     },
     snow: { aboveM: num(se.snowClosure?.aboveM, 2500), months: (val(se.snowClosure?.months) as number[]) ?? [11, 12, 1, 2, 3, 4] },
     snowSlopeDeg: num(se.snowSlopes?.dangerDeg, 35),
+    wetSlideDeg: Array.isArray(se.snowSlopes?.wetSlideDeg?.value) ? Number(se.snowSlopes.wetSlideDeg.value[0]) || 15 : 15,
     movers,
     defaultAvlbM: num(val(h.avlbSpanM), 18),
   };
@@ -617,7 +620,10 @@ export function codeIpb(a: IpbArgs): IpbCoding {
       if (e === e && snowSeason && e > R.snow.aboveM) seasonal = true;
       if (e === e && (c === 8 || (e > 2000 && snowSeason))) {
         const st = steepPct(gx, gy);
-        if (st === st && Math.atan(st / 100) / D2R > R.snowSlopeDeg) seasonal = true;
+        const deg = st === st ? Math.atan(st / 100) / D2R : NaN;
+        if (deg > R.snowSlopeDeg) seasonal = true;
+        // Wet snow slides on 15-20 degrees in rain or warm weather, mostly in the afternoon (MW p 282): named, not coded.
+        else if (deg > R.wetSlideDeg) flags |= WHY.NOTE_SEASON;
       }
       if (seasonal) {
         if (seasonCodes) hit(2, WHY.SEASON);
@@ -709,7 +715,7 @@ export function ipbReasonsAt(c: IpbCoding, rules: IpbRules, bx: number, by: numb
   }
   if (y & WHY.MANMADE) out.push({ crit: 'manMade', cls: 'nogo', text: 'Man-made obstacle on the map: NO-GO (IPB p 10)' });
   if (y & WHY.SEASON) out.push({ crit: 'season', cls: 'nogo', text: 'Season rule (Rann June-November / above 2500 m in winter / snow slope over 35°): NO-GO' });
-  if (y & WHY.NOTE_SEASON) out.push({ crit: 'season', cls: 'na', text: 'Season rule applies here (shown as a note, not in the coding)' });
+  if (y & WHY.NOTE_SEASON) out.push({ crit: 'season', cls: 'na', text: 'Season rule applies here (shown as a note, not in the coding): the Rann in the rains, snow closure, snow slides over 35° (25° after a fall), wet slides on 15-20° in rain or thaw, lee slopes and cornices suspect (DW p 4; MW pp 281-282)' });
   out.push({ crit: 'waterTable', cls: 'na', text: 'Water table: not in the bundle, not assessed' });
   return out;
 }

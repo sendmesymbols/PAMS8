@@ -1,0 +1,173 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": false
+  },
+  "id": "bn-def-mtn-lateral",
+  "family": "bn-def-mtn",
+  "layout": "lateral",
+  "echelon": "16",
+  "unit": "inf-bn-mtn",
+  "basis": "D",
+  "name": "Bn Def (Mtn): lateral ridge, the top held",
+  "frontageRow": "Battalion on extended frontages, two companies and three platoons up",
+  "subRow": null,
+  "alternates": [],
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "flanks",
+    "exposure",
+    "reserveReach",
+    "mutualSupport",
+    "fieldOfFire"
+  ],
+  "note": "A ridge line parallel to the LOC: its top is the key, held at all cost, all round with a bias to the front; the forward spurs occupied for strength and depth, the infiltration routes between the side spurs covered (MW s2 para 13 p 157). A and B Coys on the top, D Coy the reserve on the top behind them; C Coy on the forward spurs. Strong points with all round defence, at least a Pl strong point in each Coy posn on its most dominating feature with 30 days' staying power; tiers from the foothills or valleys to the ridge, the final battle on the ridge (MW s2 paras 8-9 p 152). Frontage on IBB's extended row (MW prints no figure).",
+  "slots": [
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "A Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": -1500,
+        "backM": -1000
+      },
+      "rule": {},
+      "terrainRule": {
+        "prefer": [
+          "highGround",
+          "itg"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "B Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 1500,
+        "backM": -1000
+      },
+      "rule": {},
+      "terrainRule": {
+        "prefer": [
+          "highGround",
+          "itg"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "D Coy (Res)",
+      "echelon": "15",
+      "order": 2,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": -400
+      },
+      "rule": {
+        "reach": {
+          "slots": [
+            "fwdL",
+            "fwdR"
+          ],
+          "withinMin": {
+            "doctrine": "cpen.coyMin"
+          }
+        }
+      },
+      "terrainRule": {
+        "vehicleAccess": false,
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "spurL",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "C Coy less 9 Pl, L fwd spur",
+      "echelon": "15",
+      "order": 3,
+      "shape": {
+        "rect": {
+          "acrossM": -1500,
+          "backM": -2100,
+          "wM": 900,
+          "hM": 500
+        }
+      }
+    },
+    {
+      "role": "spurR",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "9 Pl (C Coy), R fwd spur",
+      "echelon": "14",
+      "order": 3,
+      "shape": {
+        "rect": {
+          "acrossM": 1500,
+          "backM": -2100,
+          "wM": 300,
+          "hM": 250
+        }
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bn HQ",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          300
+        ]
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111402",
+      "label": "81 mm Mor",
+      "order": 6,
+      "shape": {
+        "at": [
+          0,
+          200
+        ]
+      }
+    }
+  ]
+}

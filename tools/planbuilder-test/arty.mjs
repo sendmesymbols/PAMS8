@@ -166,6 +166,18 @@ check('the ground reads the Gun Position going (rules.json profiles.gun), not th
   check('Div bridgehead, Inf Div Arty: Arty reach reads all four Regts; the 6 km BH beyond the Fd Regts: warn or pass with the Med Regts on it', /1 Fd Regt.*2 Fd Regt.*1 Med Regt.*2 Med Regt/.test(row(rd, 'Arty reach')?.reason ?? '') && row(rd, 'Arty reach').st !== 'fail', row(rd, 'Arty reach')?.st + ': ' + row(rd, 'Arty reach')?.reason);
   const hy = A.withArty(rec('div-bridgehead-two-bde'), doc, A.artyOnPlan(T_('arty-regt-mtn'), 'crossing', ad));
   check('a crossing without arty has no Arty reach row', !A.artyRows(sv(rec('bde-cross-two-up')).items, rec('bde-cross-two-up'), null).length && !!hy.arty);
+
+  // a Div defence: the Div Arty in groups to cover the major approaches (OoW Vol I p 83)
+  const dd = A.artyOnPlan(inf, 'defence', ad);
+  const d2 = A.withArty(rec('div-def-two-up'), doc, dd), d3 = A.withArty(rec('div-def-three-axes'), doc, dd);
+  const gl = (r) => r.slots.filter((s) => /^gunArea/.test(s.role));
+  check('Div defence, Inf Div Arty: four gun areas, two behind each forward Bde (two up); valid recipes', !bad(d2).length && gl(d2).length === 4 && gl(d2).filter((s) => s.shape.rect.acrossM < 0).length === 2, gl(d2).map((s) => `${s.label} ${s.shape.rect.acrossM},${s.shape.rect.backM}`).join(' | '));
+  check('...three axes: the four Regts dealt out across the three forward Bdes', !bad(d3).length && gl(d3).length === 4 && new Set(gl(d3).map((s) => Math.sign(Math.round(s.shape.rect.acrossM / 1000)))).size === 3, gl(d3).map((s) => `${s.label} ${s.shape.rect.acrossM}`).join(' | '));
+  const r2 = A.artyRows(sv(d2).items, d2, 2500);
+  check('...Arty groups: each forward Bde with a group in reach past the En FUP; the DF plan by sectors (OoW Vol I p 83)', row(r2, 'Arty groups')?.st === 'pass' && /OoW Vol I p 83/.test(row(r2, 'Arty groups').reason) && /past the En FUP 2\.5 km out/.test(row(r2, 'Arty groups').reason), row(r2, 'Arty groups')?.reason);
+  check('...two up: the reinforcing Med / Hy Regt to confirm (pass); three axes, an extended frontage (Annex D): warn, ask Corps', row(r2, 'Arty reinforcement')?.st === 'pass' && /2 Med Regt/.test(row(r2, 'Arty reinforcement').reason) && row(A.artyRows(sv(d3).items, d3, 2500), 'Arty reinforcement')?.st === 'warn');
+  const far = A.artyRows(sv(d2).items, d2, 15000);
+  check('...the En FUP 15 km out: past the Fd Regts\' reach, Arty groups warns with a fix', row(far, 'Arty groups')?.st === 'warn' && row(far, 'Arty groups').detail?.fix?.length === 2, row(far, 'Arty groups')?.reason);
 }
 
 console.log(`\n${n} checks, ${fails} failed`);

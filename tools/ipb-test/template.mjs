@@ -79,7 +79,7 @@ const el = (r, id) => r.elements.find((e) => e.id === id);
   check('no second avenue: the supporting attack is placed beside the first, said so', Math.abs(sp.x - 300) > 40 && r.notes.some((n) => /No Apch 2/.test(n)), `${sp.x.toFixed(0)} · ${r.notes[0]}`);
 }
 {
-  // A canal crossing on Apch A 8 km in: the crossing site sits on it; the strike bridgehead box is 6 x 8 km beyond it.
+  // A canal crossing on Apch A 8 km in: the crossing site sits on it; the strike bridgehead box is 8 km wide, 6 km deep beyond it.
   const nar = [{ x: 300, y: 272, alongM: 267 * RES, kind: 'crossing' }];
   const r = run(grid(), { aas: [aa('A', 1, 300, nar), aa('B', 2, 420, [{ x: 420, y: 300, alongM: 295 * RES, kind: 'crossing' }])] });
   check('the crossing site is at the first water crossing on Apch A', el(r, 'xing').status === 'fixed' && el(r, 'xing').y === 272);
@@ -87,23 +87,29 @@ const el = (r, id) => r.elements.find((e) => e.id === id);
   const b = run(g, { template: T('strike-bh'), aas: [aa('A', 1, 300, nar), aa('B', 2, 420, [{ x: 420, y: 300, alongM: 295 * RES, kind: 'crossing' }])] });
   const bh = el(b, 'bh1');
   const bw = Math.hypot(bh.box[1][0] - bh.box[0][0], bh.box[1][1] - bh.box[0][1]) * RES, bdp = Math.hypot(bh.box[3][0] - bh.box[0][0], bh.box[3][1] - bh.box[0][1]) * RES;
-  check('a strike bridgehead is 6 km wide and 8 km deep beyond the crossing (OoW II s14)', Math.abs(bw - 6000) < 5 && Math.abs(bdp - 8000) < 5 && bh.box[3][1] > bh.box[0][1], `${bw.toFixed(0)} x ${bdp.toFixed(0)} m`);
+  check('a strike bridgehead is 8 km wide and 6 km deep beyond the crossing (OoW II p 50 size, as PlanDoctrine)', Math.abs(bw - 8000) < 5 && Math.abs(bdp - 6000) < 5 && bh.box[3][1] > bh.box[0][1], `${bw.toFixed(0)} x ${bdp.toFixed(0)} m`);
+  check('the strike template breaks out from both bridgeheads (DW p 12)', !!b.elements.find((e) => e.id === 'brk2'));
   check('... with its NO-GO share for mech said', bh.nogoPct > 15 && /NO-GO/.test(bh.why), bh.why);
   check('the break-out Armd Div waits 20 km short of the crossing (outside the area: placed, not judged)', el(b, 'armd').status === 'outside', el(b, 'armd').why);
 }
 {
-  // A defence template: the forward Coys on the FDL, the main Bn 4 km beyond it along the own avenue.
+  // The Indian Bde defence (IDD pp 2-5): BOPs ahead of the obstacle, two Bns on it 5 km apart, a depth Bn 1.5 km behind.
   const own = [{ id: 'A', rank: 1, viable: true, pts: [[300, 595], [300, 5]], alongM: [0, 590 * RES], narrows: [] }];
   const r = run(grid(), { template: T('def-bde'), aas: own, objective: { x: 300, y: 300 }, fdl: { x: 300, y: 350 } });
-  const main = el(r, 'main');
-  check('defence template: the forward localities on the FDL', Math.abs(el(r, 'fwd1').y - 350) < 1);
-  check('... the main defences 4 km beyond the FDL, deeper in the enemy\'s ground', Math.abs((350 - main.y) * RES - 4000) < 40, `${((350 - main.y) * RES).toFixed(0)} m`);
+  const bn1 = el(r, 'bn1'), bn2 = el(r, 'bn2'), dep = el(r, 'depth'), bop = el(r, 'bop1');
+  check('defence template (IDD): two Bns on the obstacle', Math.abs(bn1.doc[1] - 350) < 1 && Math.abs(bn2.doc[1] - 350) < 1);
+  check('... 5 km apart (Bn 3-5 km, gap 1000 m: IDD p 3)', Math.abs(Math.abs(bn1.doc[0] - bn2.doc[0]) * RES - 5000) < 40, `${(Math.abs(bn1.doc[0] - bn2.doc[0]) * RES).toFixed(0)} m`);
+  check('... the depth Bn 1.5 km beyond the obstacle (Bde depth, IDD p 3)', Math.abs((350 - dep.doc[1]) * RES - 1500) < 40, `${((350 - dep.doc[1]) * RES).toFixed(0)} m`);
+  check('... BOPs ahead of the obstacle, in the security zone (IDD pp 1-2, 4)', bop.doc[1] > 350 && Math.abs((bop.doc[1] - 350) * RES - 1500) < 40, `${((bop.doc[1] - 350) * RES).toFixed(0)} m`);
 }
 {
   check('auto pick: defence + Bde HQ -> IDP op by a Bde CC', pickTemplate(doc, { readFor: 'defence', hq: 'bde' })?.id === 'idp-bde');
   check('auto pick: defence + Div HQ -> DSF op by a Div-size BG', pickTemplate(doc, { readFor: 'defence', hq: 'div' })?.id === 'dsf-div');
   check('auto pick: mountains -> Mtn Div attack', pickTemplate(doc, { readFor: 'defence', hq: 'bde', mountain: true })?.id === 'mtn-attk');
   check('auto pick: own attack + Bde -> the enemy Inf Bde defence', pickTemplate(doc, { readFor: 'attack', hq: 'bde' })?.id === 'def-bde');
+  check('auto pick: own attack + Bde in mountains -> the Indian mountain defence (MW p 84)', pickTemplate(doc, { readFor: 'attack', hq: 'bde', mountain: true })?.id === 'def-mtn');
+  check('auto pick: own attack + Div in the desert -> nodal points (DW pp 14-18)', pickTemplate(doc, { readFor: 'attack', hq: 'div', desert: true })?.id === 'def-desert');
+  check('auto pick: own attack + Div off the desert -> the Inf Div defence', pickTemplate(doc, { readFor: 'attack', hq: 'div' })?.id === 'def-div');
   check('a named template is used as asked', pickTemplate(doc, { readFor: 'defence', hq: 'bde', want: 'strike-bh' })?.id === 'strike-bh');
   check('the Fig 6 and Fig 7 readings are marked unconfirmed', doc.confirmations?.fig6?.confirmed === false && doc.confirmations?.fig7?.confirmed === false);
   const all = templatesFrom(doc);

@@ -21,6 +21,40 @@
       ]
     },
     {
+      "id": "bn-def-mtn",
+      "name": "Bn Def (Mtn)",
+      "task": "defence",
+      "echelon": "16",
+      "unit": "inf-bn-mtn",
+      "recipes": [
+        "bn-def-mtn-ridge",
+        "bn-def-mtn-penetrant",
+        "bn-def-mtn-lateral",
+        "bn-def-mtn-pass",
+        "bn-def-mtn-valley"
+      ]
+    },
+    {
+      "id": "bn-def-bua",
+      "name": "Bn Def (BUA)",
+      "task": "defence",
+      "echelon": "16",
+      "unit": "inf-bn-std",
+      "recipes": [
+        "bn-def-bua"
+      ]
+    },
+    {
+      "id": "mib-def-mob",
+      "name": "MIB Gp Mobile Def",
+      "task": "defence",
+      "echelon": "16",
+      "unit": "inf-bn-mib",
+      "recipes": [
+        "mib-def-fixing"
+      ]
+    },
+    {
       "id": "coy-def",
       "name": "Coy Def",
       "task": "defence",
@@ -47,6 +81,26 @@
         "bn3-attk-right-flank",
         "bn3-attk-left-flank",
         "bn3-attk-frontal"
+      ]
+    },
+    {
+      "id": "bn-attk-mtn",
+      "name": "Bn Attk (Mtn)",
+      "task": "attack",
+      "echelon": "16",
+      "unit": "inf-bn-mtn",
+      "recipes": [
+        "bn-attk-mtn"
+      ]
+    },
+    {
+      "id": "bn-attk-bua",
+      "name": "Bn Attk (BUA)",
+      "task": "attack",
+      "echelon": "16",
+      "unit": "inf-bn-std",
+      "recipes": [
+        "bn-attk-bua"
       ]
     },
     {
@@ -119,6 +173,16 @@
       ]
     },
     {
+      "id": "bn-advance",
+      "name": "Bn Advance",
+      "task": "advance",
+      "echelon": "16",
+      "unit": "inf-bn-std",
+      "recipes": [
+        "bn-advance-one-up"
+      ]
+    },
+    {
       "id": "bde-advance",
       "name": "Armd Bde Advance",
       "task": "advance",
@@ -126,6 +190,15 @@
       "unit": "armr-iabg",
       "recipes": [
         "bde-advance-armd"
+      ]
+    },
+    {
+      "id": "div-advance",
+      "name": "Armd Div Advance",
+      "task": "advance",
+      "echelon": "21",
+      "recipes": [
+        "div-advance-two-bde"
       ]
     },
     {
@@ -139,12 +212,34 @@
     },
     {
       "id": "bn-wdr",
-      "name": "Bn Withdrawal",
+      "name": "Bn Withdrawal / Delay",
       "task": "withdrawal",
       "echelon": "16",
       "unit": "inf-bn-std",
       "recipes": [
-        "bn-wdr-night"
+        "bn-wdr-night",
+        "bn-wdr-day",
+        "bn-delay"
+      ]
+    },
+    {
+      "id": "bde-wdr",
+      "name": "Bde Withdrawal",
+      "task": "withdrawal",
+      "echelon": "18",
+      "unit": "inf-bde",
+      "recipes": [
+        "bde-wdr-night"
+      ]
+    },
+    {
+      "id": "div-wdr",
+      "name": "Div Withdrawal",
+      "task": "withdrawal",
+      "echelon": "21",
+      "unit": "inf-div",
+      "recipes": [
+        "div-wdr-night"
       ]
     },
     {
@@ -176,7 +271,8 @@
       "echelon": "21",
       "unit": "inf-div",
       "recipes": [
-        "div-def-two-up"
+        "div-def-two-up",
+        "div-def-three-axes"
       ]
     },
     {

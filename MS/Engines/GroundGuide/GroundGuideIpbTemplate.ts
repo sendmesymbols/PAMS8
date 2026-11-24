@@ -62,12 +62,15 @@ export function templatesFrom(doc: any): TplSpec[] {
   return Array.isArray(doc?.templates) ? (doc.templates as TplSpec[]) : [];
 }
 /** The template that fits the reading: by Read for and the HQ row, a mountain one in mountains; `want` names one. */
-export function pickTemplate(doc: any, o: { readFor: 'defence' | 'attack'; hq: 'bde' | 'div'; mountain?: boolean; want?: string }): TplSpec | null {
+export function pickTemplate(doc: any, o: { readFor: 'defence' | 'attack'; hq: 'bde' | 'div'; mountain?: boolean; desert?: boolean; want?: string }): TplSpec | null {
   const all = templatesFrom(doc);
   if (o.want && o.want !== 'auto') return all.find((t) => t.id === o.want) ?? null;
   const fit = all.filter((t) => t.fits?.readFor === o.readFor && t.fits?.hq === o.hq && t.id !== 'strike-bh');
   const mtn = fit.find((t) => t.fits?.terrain === 'mountain');
   if (o.mountain && mtn) return mtn;
+  // The desert template (IpbTemplates desertTest: half the ground round the position desert, sand, dunes or salt pan).
+  const des = fit.find((t) => t.fits?.terrain === 'desert');
+  if (o.desert && des) return des;
   return fit.find((t) => !t.fits?.terrain) ?? fit[0] ?? all.find((t) => t.fits?.readFor === o.readFor) ?? null;
 }
 

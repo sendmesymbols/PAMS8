@@ -26,7 +26,7 @@ import { detailLines } from './PlanSolve';
 import { atCoverRow, detectTerrain, fitPlan, toLocal, toWorld, type FitFrame, type FitResult, type GroundAvenue, type PlanGround } from './PlanFit';
 import { movesRow, reserveMovesCheck, tankCoverRow, triggerLines, whatIf, type WhatIfResult } from './PlanWhatIf';
 import {
-  defaultEnemy, echelonLabel, enemyFupM, enemyProfile, footKmh, forceRow, frontageAllowance, levelOf, strengthOf, terrainLabel, terrainRow,
+  assaultFrontageCheck, bnFrontageCheck, defaultEnemy, groundNotes, echelonLabel, enemyFupM, enemyProfile, footKmh, forceRow, frontageAllowance, frontageRowCheck, gapsAccepted, levelOf, strengthOf, terrainLabel, terrainRow,
   type EnemySpec, type EnemyType, type TerrainKind, type TerrainSpec,
 } from './PlanContext';
 import { brief, enUnitFor, forceFromOrbat, minefieldRow, tankSqnOf, withAtGroup, type OrbatSet } from './PlanOrbat';
@@ -34,6 +34,8 @@ import { counterAttack } from './PlanAttack';
 import { defTankRows, tankGoingRow } from './PlanTanks';
 import { artyRows } from './PlanArty';
 import { adRows } from './PlanAD';
+import { layoutRows } from './PlanMountain';
+import type { Recipe } from './PlanRecipes';
 import { airLiftOf, airLiftRow } from './PlanAvn';
 
 /** The roles AD cover reads back: the FUs and the vulnerable points. */
@@ -562,6 +564,22 @@ function terrainFor(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions, res: a
   return { kind: 'plains', source: 'assumed', why: opts.ground ? 'the ground round it is not loaded yet' : 'no terrain data' };
 }
 
+/**
+ * A plan built from a mountain recipe (PlanMountain: ridge, penetrant / lateral ridge, pass, valley, the mountain attack):
+ * its layout rows on the drawn symbols, as the build gives them. Plan metres from the drawn symbols' roles (pbRole);
+ * `layoutRows` reads the En side from where the forward posns lie, so any frame serves. None for another recipe.
+ */
+function mountainRowsOf(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions, frame: FitFrame | null): Check[] {
+  const id = mp.built?.recipe;
+  const recipe = id ? (opts.recipes?.[id] as unknown as Recipe | undefined) : undefined;
+  if (!recipe?.layout) return [];
+  const own = mp.syms.filter((s) => s.side === 'own' && s.pbRole && s.pts.length);
+  if (!own.length) return [];
+  // no frame (an attack read as drawn): a local one at the first symbol, metres on the ground (Mercator scaled by 1 / cos lat)
+  const f: FitFrame = frame ?? (() => { const a = own[0].pts[0]; return { anchor: { x: a.x, y: a.y }, bearing: 0, k: 1 / Math.cos(2 * Math.atan(Math.exp(a.y / 6378137)) - Math.PI / 2), pivot: { x: 0, y: 0 } }; })();
+  return layoutRows(own.map((s) => ({ role: s.pbRole!, label: s.label, pts: s.pts.map((v) => toLocal(f, v)) })), recipe, doc);
+}
+
 function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): CheckReport {
   const frame = mp.frame;
   const posns = mp.posns;
@@ -600,7 +618,7 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
     const [enS, names] = enemyFromOrbat(mp, doc, opts, enemy, kind);
     const defTp = mp.built?.meta?.defTanksUnit === 'Tp';
     const ownF = unitB ? forceFromOrbat(unitB, null, tkSqn, defTk, defTp) : null;
-    rows.push(forceRow(doc, 'defence', planEch, enemy, (unitB?.coys ? unitB.coys + (tkSqn ? (defTp ? defTk / 3 : defTk) : 0) : 0) || strengthOfSide(mp.syms.filter((s) => s.side === 'own'), doc) || undefined, enS, { ...names, ownName: ownF?.ownName }));
+    rows.push(forceRow(doc, 'defence', planEch, enemy, (unitB?.coys ? unitB.coys + (tkSqn ? (defTp ? defTk / 3 : defTk) : 0) : 0) || strengthOfSide(mp.syms.filter((s) => s.side === 'own'), doc) || undefined, enS, { ...names, ownName: ownF?.ownName }, kind));
   }
   rows.push(terrainRow(doc, terrain));
 
@@ -611,9 +629,11 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
     const x0 = Math.min(...fwd.map((p) => p.c!.x - p.w! / 2)), x1 = Math.max(...fwd.map((p) => p.c!.x + p.w! / 2));
     const frontageM = x1 - x0;
     const al = frontageAllowance(doc, planEch, kind, fwd.length);
-    rows.push(al
-      ? { name: 'Frontage', st: frontageM <= al.range[1] + 1 ? 'pass' : 'fail', reason: `${fmtM(frontageM)} held by ${fwd.length} forward posn${fwd.length > 1 ? 's' : ''}; ${al.src} allows ${fmtM(al.range[1])}` }
-      : { name: 'Frontage', st: 'warn', reason: `${fmtM(frontageM)}; no printed frontage for a ${echelonLabel(doc, planEch)} (E)` });
+    // a Bn: normal in the plains, extended in the desert and the mountains (IBB S53 p 277, S59 p 325; DW p 24; MW p 148)
+    const bnF = planEch === '16' && kind !== 'obstacle' ? bnFrontageCheck(doc, kind, fwd.length, frontageM) : null;
+    rows.push(bnF ?? (al
+      ? frontageRowCheck(doc, planEch, kind, fwd.length, frontageM)!
+      : { name: 'Frontage', st: 'warn', reason: `${fmtM(frontageM)}; no printed frontage for a ${echelonLabel(doc, planEch)} (E)` }));
     // depth: the FDL to the rear of the last posn held now (planned posns are a D line to be occupied later)
     const frontY = Math.max(...fwd.map((p) => p.c!.y + p.h! / 2));
     const rear = Math.min(...[...fwd, ...depth.filter((p) => !p.planned)].map((p) => p.c!.y - p.h! / 2));
@@ -622,7 +642,7 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
     const behindOf = plannedD.map((p) => frontY - p.c!.y);
     const dLine = plannedD.length ? `; planned ${plannedD.map((p) => p.label).join(', ')} centred ${fmtM(Math.max(0, Math.min(...behindOf)))}-${fmtM(Math.max(0, Math.max(...behindOf)))} behind the FDL (a D line, occupied later)` : '';
     const nFwd = fwd.length;
-    const unit = planEch === '16' ? (doctrineAt(doc, `terrain.kinds.${kind}.bnFrontageRow`) as string) ?? (nFwd >= 3 ? 'Battalion, three companies up' : nFwd === 2 ? 'Battalion, two companies up' : 'Battalion, normal terrain') : null;
+    const unit = planEch === '16' ? (doctrineAt(doc, `terrain.kinds.${kind}.bnFrontageRow`) as string) ?? (nFwd >= 3 ? 'Battalion, three companies up' : nFwd === 2 ? 'Battalion, two companies up' : 'Battalion, normal frontage in the plains') : null;
     const row = unit ? (doc.ocoka?.frontage?.rows ?? []).find((r: any) => r.unit === unit) : null;
     const dr = row?.depthM != null ? resolveRange(doc, row.depthM) : range(`check.planDepthM.${planEch}`);
     rows.push(dr
@@ -634,7 +654,7 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
     const gmax = gaps.length ? Math.max(...gaps.map((x) => x.g)) : 0;
     const big = (levelOf(planEch) ?? 2) >= 3;
     if (!gaps.length) rows.push({ name: 'Gaps', st: 'pass', reason: 'one posn forward' });
-    else if (big || kind === 'desert') {
+    else if (big || gapsAccepted(doc, kind)) {
       // between Bns and Bdes gaps are accepted (OOW1 p82; desert s22 p68), each closed by an obstacle and fire
       const obst = mp.syms.filter((s) => s.side === 'own' && (isMinefield(s.key) || /^2529/.test(s.key)));
       const open = gaps.filter((x) => x.g > 50 && !obst.some((s) => { const l = s.pts.map((v) => toLocal(frame, v)); const bb = bbox(l); return bb.x1 >= x.a.c!.x + x.a.w! / 2 && bb.x0 <= x.b.c!.x - x.b.w! / 2 && bb.y1 >= frontY - 1500; }));
@@ -692,7 +712,7 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
     const note = p.echSize && p.ech && p.echSize !== p.ech && w > max * slack ? ` (its size is a ${echelonLabel(doc, p.echSize)}'s)` : '';
     s.checks.push(w <= max + 1
       ? { name: 'Size', st: 'pass', reason: `${fmtM(w)} across; a ${echelonLabel(doc, p.ech)} holds up to ${fmtM(max)}` }
-      : { name: 'Size', st: w <= max * slack ? 'warn' : 'fail', reason: `${fmtM(w)} across; a ${echelonLabel(doc, p.ech)} holds ${fmtM(max)}${p.ech === '15' || p.ech === '14' ? ', and its frontage is not extended (IC s84.6b)' : ''}${note}` });
+      : { name: 'Size', st: w <= max * slack ? 'warn' : 'fail', reason: `${fmtM(w)} across; a ${echelonLabel(doc, p.ech)} holds ${fmtM(max)}${p.ech === '15' || p.ech === '14' ? ', and its frontage is not extended (IBB S59 para 6 b p 326; IC s84.6b)' : ''}${note}` });
   }
 
   // on the ground: PlanFit, reading only (never sliding)
@@ -735,14 +755,14 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
       const name = drawnOb[0].name || 'DCB';
       fit.rows = fit.rows.filter((r) => r.name !== 'Obstacle tie-in');
       fit.rows.push(far.length
-        ? { name: 'Obstacle tie-in', st: 'warn', reason: `the ${name} drawn is ${far.join(', ')} in front: beyond the MGs (${fmtM(band[1])}, E). Held so far forward it is the covering troops' obstacle (OOW1 s5: an advance position on an obstacle); else move the FDL up to it${at.length ? `; ${at.join(', ')} on it` : ''}` }
+        ? { name: 'Obstacle tie-in', st: 'warn', reason: `the ${name} drawn is ${far.join(', ')} in front: beyond the MGs (${fmtM(band[1])}, E). Held so far forward it is the advance posn's obstacle (OOW1 s5 p 14: the advance position is usually based on a natural obstacle); else move the FDL up to it${at.length ? `; ${at.join(', ')} on it` : ''}` }
         : { name: 'Obstacle tie-in', st: 'pass', reason: `the ${name} under the forward posns' fire: ${at.join(', ')}` });
     }
     rows.push(...fit.rows);
     // as the build does: AT cover from the drawn ATGMs, the what-if and its trigger table (alternates paired by letter:
     // Alt A -> A Coy), so a built plan checked again gives the build's verdicts
     const items: any[] = mp.syms.filter((s) => s.side === 'own' && s.key === '15111200' && s.pts.length).map((s) => ({ role: 'atgm', key: s.key, pts: [toLocal(frame, s.pts[0])] }));
-    // tank Sqns grouped to it when it was built: read from their symbols, for the harbour and the C Pen moves
+    // tank Sqns grouped to it when it was built: read from their symbols, for the leaguer and the C Pen moves
     for (const s of mp.syms.filter((x) => x.side === 'own' && x.pbRole && /^tkSqn\d*$/.test(x.pbRole) && x.pts.length)) items.push({ role: s.pbRole, key: s.key, label: s.label || s.pbRole, pts: [toLocal(frame, s.pts[0])] });
     const atRow = atCoverRow({ ...res, items } as any, recipe, unitB, fit.approaches, frame, doc, enemy);
     if (atRow) rows.push(atRow);
@@ -755,7 +775,7 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
     }
     // the AD it was built with (pbMeta.ad): its FUs and the VPs read from their symbols, judged as the build did
     const adMeta = mp.built?.meta?.ad;
-    if (adMeta) rows.push(...adRows(mp.syms.filter((x) => x.side === 'own' && x.pbRole && AD_ROLES.test(x.pbRole) && x.pts.length).map((x) => ({ role: x.pbRole!, label: x.label, pts: x.pts.map((v) => toLocal(frame, v)) })), { ad: adMeta }));
+    if (adMeta) rows.push(...adRows(mp.syms.filter((x) => x.side === 'own' && x.pbRole && AD_ROLES.test(x.pbRole) && x.pts.length).map((x) => ({ role: x.pbRole!, label: x.label, pts: x.pts.map((v) => toLocal(frame, v)) })), { ad: adMeta }, kind));
     const alternates = active.filter((p) => p.kind === 'alt' && p.c).map((a) => {
       const letter = a.label.replace(/^alt\s*/i, '').trim().split(/\s+/)[0];
       const of = fwd.find((x) => x.label.split(/\s+/)[0] === letter);
@@ -811,7 +831,7 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
   ];
   const unclear = [...mp.unclear];
   if (terrain.source === 'assumed') unclear.push(`Ground taken as plains (${terrain.why}): set it if the plan stands on an obstacle, desert or mountains, which allow wider frontages`);
-  return { task: 'defence', title, planEch, read, unclear, posns, slots, rows, groups: [], enemy, terrain, threat: mp.threat, frame, fit, whatIf: whatIfRes, confirm, assumptions, mapped: mp };
+  return { task: 'defence', title, planEch, read, unclear, posns, slots, rows: groundNotes([...rows, ...mountainRowsOf(mp, doc, opts, frame)], doc, terrain.kind, 'defence', planEch ?? '16', null), groups: [], enemy, terrain, threat: mp.threat, frame, fit, whatIf: whatIfRes, confirm, assumptions, mapped: mp };
 }
 
 function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): CheckReport {
@@ -845,7 +865,7 @@ function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Chec
     }
     return { kind: 'plains', source: 'assumed', why: opts.ground ? 'the ground round the Obj is not loaded yet' : 'set the Ground if the attack goes over an obstacle, desert or mountains' } as TerrainSpec;
   })();
-  rows.push(forceRow(doc, 'attack', ownEch, enemy, strengthOfSide(own, doc) || undefined, ...enemyFromOrbat(mp, doc, opts, enemy, terrain.kind)));
+  { const [enS, names] = enemyFromOrbat(mp, doc, opts, enemy, terrain.kind); rows.push(forceRow(doc, 'attack', ownEch, enemy, strengthOfSide(own, doc) || undefined, enS, names, terrain.kind)); }
   rows.push(terrainRow(doc, terrain));
   // the artillery it was built with (pbMeta.arty): its gun area, the FUP, the Obj and the LOE read from their symbols, in
   // metres from the FUP toward the Obj, judged as the build did (Arty reach)
@@ -863,14 +883,18 @@ function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Chec
   }
   // the AD it was built with (pbMeta.ad): its FUs and the VPs (the gun area, the HQ, the Assy, the reserve) as drawn
   const adMeta = mp.built?.meta?.ad;
-  if (adMeta) rows.push(...adRows(own.filter((s) => s.pbRole && AD_ROLES.test(s.pbRole) && s.pts.length).map((s) => ({ role: s.pbRole!, label: s.label, pts: s.pts.map((p) => P(p.x / k, p.y / k)) })), { ad: adMeta }));
+  if (adMeta) rows.push(...adRows(own.filter((s) => s.pbRole && AD_ROLES.test(s.pbRole) && s.pts.length).map((s) => ({ role: s.pbRole!, label: s.label, pts: s.pts.map((p) => P(p.x / k, p.y / k)) })), { ad: adMeta }, terrain.kind));
   // built for the Air Aslt Bn: its lift by the Air Aslt Sqn (PlanAvn)
   const lift = opts.orbat ? airLiftOf(opts.orbat, mp.built?.meta?.unit, doc) : null;
   if (lift) rows.push(airLiftRow(lift));
   const fupBand = range('attack.fupFromObjM') ?? [1000, 1200], tankBand = range('attack.tankFupFromObjM') ?? [2500, 3000];
   const slBand = range('check.slAxisDeg') ?? [60, 120];
   const bofMin = range('attack.bofFlankMinDeg')?.[0] ?? 30, bofMax = range('attack.bofRangeMaxM')?.[0] ?? 1189;
-  const aslt = (doc.ocoka?.frontage?.rows ?? []).find((r: any) => r.unit === String(doctrineAt(doc, 'attack.assaultRow') ?? ''));
+  // the assault row by the echelon attacking (PlanDoctrine attack.assaultRowByEch: a Coy 250 m, a Bn two up 450-650 m,
+  // IBB S47 para 17 a p 248; a Bde GSP p 86); a built plan's echelon is its recipe's
+  const byEch = doctrineAt(doc, 'attack.assaultRowByEch') as Record<string, string> | undefined;
+  const asltName = String((mp.planEch && byEch?.[mp.planEch]) ?? doctrineAt(doc, 'attack.assaultRow') ?? '');
+  const aslt = (doc.ocoka?.frontage?.rows ?? []).find((r: any) => r.unit === asltName);
   const asltMax = aslt ? resolveRange(doc, aslt.frontageM)?.[1] ?? 400 : 400;
 
   const groups: AttackGroup[] = [];
@@ -983,7 +1007,10 @@ function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Chec
     } else gr.push({ name: 'BOF on a flank', st: 'warn', reason: 'no BOF drawn within 2.5 km of the Obj' });
     if (a.base) {
       const w = m(dist(a.base.start, a.base.end));
-      gr.push({ name: 'Assault frontage', st: w <= asltMax * 1.1 ? 'pass' : 'warn', reason: `${fmtM(w)} wide; ${aslt ? `${aslt.unit} ${fmtM(asltMax)} (${aslt.src})` : `${fmtM(asltMax)}`}` });
+      // in the desert by day or by night (DW p 47); a drawn plan's light is the one it was built for, else not known
+      const nightOf = typeof mp.built?.meta?.night === 'boolean' ? mp.built.meta.night as boolean : null;
+      gr.push(assaultFrontageCheck(doc, terrain.kind, nightOf, w, asltMax, aslt ? `${aslt.unit}: ${aslt.src}` : 'the assault row')
+        ?? { name: 'Assault frontage', st: w <= asltMax * 1.1 ? 'pass' : 'warn', reason: `${fmtM(w)} wide; ${aslt ? `${aslt.unit} ${fmtM(asltMax)} (${aslt.src})` : `${fmtM(asltMax)}`}` });
     }
     // the ground: the attack fit in a frame of its own (north up, the Obj at its centre)
     if (opts.ground && objOk) {
@@ -1033,7 +1060,7 @@ function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Chec
     `Axes: ${groups.map((g) => `${g.label} → ${g.obj?.label ?? '?'}`).join(', ') || 'none'}; ${fups.length} FUP, ${sls.length} SL, ${bofs.length} BOF`,
     `Enemy: ${echelonLabel(doc, enemy.echelon)} ${String(doctrineAt(doc, `enemy.types.${enemy.type}.label`) ?? enemy.type)} (${enemy.source === 'symbols' ? enemy.note : enemy.source === 'user' ? 'as set' : 'assumed one level down'})`,
   ];
-  return { task: 'attack', title, planEch: ownEch, read, unclear: mp.unclear, posns: [], slots, rows, groups, enemy, terrain, threat: mp.threat, frame: null, fit: null, confirm, assumptions: ['Read as drawn: nothing was moved.', 'Each axis is matched to the Obj at its head, the FUP at its tail, the SL across it and the BOF nearest the Obj.'], mapped: mp };
+  return { task: 'attack', title, planEch: ownEch, read, unclear: mp.unclear, posns: [], slots, rows: groundNotes([...rows, ...mountainRowsOf(mp, doc, opts, null)], doc, terrain.kind, 'attack', ownEch ?? '16', typeof mp.built?.meta?.night === 'boolean' ? mp.built.meta.night as boolean : null), groups, enemy, terrain, threat: mp.threat, frame: null, fit: null, confirm, assumptions: ['Read as drawn: nothing was moved.', 'Each axis is matched to the Obj at its head, the FUP at its tail, the SL across it and the BOF nearest the Obj.'], mapped: mp };
 }
 
 /** Copy as Text. */

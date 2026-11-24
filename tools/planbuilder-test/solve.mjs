@@ -49,7 +49,8 @@ for (const r of recipes) {
     check(`${tag}: Plan document holds every item`, Plan.isPlanDocument(out.doc) && syms.length === res.items.length);
     check(`${tag}: pivot and roles carried`, out.pivotId === res.pivotId && Object.keys(out.roles).length === res.items.length);
     const des = syms.map((s) => JSON.parse(s.drawEss));
-    check(`${tag}: points in degrees near 0,0`, des.every((d) => [d.GEOM, ...(d.CTRL_PTS ?? [])].filter(Boolean).every((p) => Math.abs(p.x) < 0.5 && Math.abs(p.y) < 0.5)));
+    // a Bde / Div withdrawal reaches 60 km back (two intermediate posns, OOW3 Annex P): within a degree of the anchor
+    check(`${tag}: points in degrees near 0,0`, des.every((d) => [d.GEOM, ...(d.CTRL_PTS ?? [])].filter(Boolean).every((p) => Math.abs(p.x) < 1 && Math.abs(p.y) < 1)));
     check(`${tag}: text has checks and confirm`, /CHECKS/.test(S.planText(res)) && /CONFIRM ON THE GROUND/.test(S.planText(res)));
   }
 }
@@ -61,7 +62,7 @@ check('Bn two up: frontage passes the two-up row', row(two, 'Frontage')?.st === 
 check('Bn two up: depth inside 3-4 km', row(two, 'Depth')?.st === 'pass', row(two, 'Depth')?.reason);
 check('Bn two up: gap 500 m passes', row(two, 'Gaps')?.st === 'pass', row(two, 'Gaps')?.reason);
 // at the book's 4 km/h (IBB p 18) a reserve 3.3 km deep (inside IBB's 3-4 km) needs 36 min, past the 30 min (IBB p 279): it warns
-check('Bn two up: reserve warns at 36 min on foot (IBB 4 km/h against 30 min)', row(two, 'Reserve reach')?.st === 'warn' && /36 min/.test(row(two, 'Reserve reach')?.reason ?? ''), row(two, 'Reserve reach')?.reason);
+check('Bn two up: reserve 36 min on foot passes a Bn counter-attack within an hour (IBB p 306; 4 km/h)', row(two, 'Reserve reach')?.st === 'pass' && /36 min.*wants 60 min/.test(row(two, 'Reserve reach')?.reason ?? ''), row(two, 'Reserve reach')?.reason);
 const feba = two.items.find((i) => i.role === 'fdl');
 const fwdTops = two.slots.filter((s) => s.kind === 'fwd').map((s) => s.centre.y + s.hM / 2);
 check('Bn two up: FEBA (25140400) along the forward edges', feba?.key === '25140400' && feba.pts.every((p) => fwdTops.some((t) => Math.abs(p.y - t) < 1)));
@@ -73,13 +74,14 @@ check('Bn two up: no DF target nearer the FDL than 550 m (IC s111.4)', closeT.ev
 check('Bn two up: LPs 300-400 m out', two.items.filter((i) => i.role === 'lp').every((l) => fwdTops.some((y) => l.pts[0].y - y >= 300 && l.pts[0].y - y <= 400)));
 check('Bn two up: AT minefield about 200 m in front', (() => { const m = two.items.find((i) => i.role === 'atMines'); const y0 = Math.min(...m.pts.map((p) => p.y)); return Math.abs(y0 - Math.max(...fwdTops) - 200) < 1; })());
 const alts = two.items.filter((i) => i.planned);
-check('Bn two up: two alternates, planned (dashed)', alts.length === 2 && alts.every((a) => S.sidcFor(a)[6] === '1'));
+// the two Coy alternates and the two RRs' alternatives (IBB p 41), all planned
+check('Bn two up: two alternates and two RR alternatives, planned (dashed)', alts.filter((a) => a.role === 'alt').length === 2 && alts.filter((a) => a.role === 'rrAlt').length === 2 && alts.length === 4 && alts.every((a) => S.sidcFor(a)[6] === '1'));
 check('Bn two up: alternates clear of every posn', (() => {
   const boxes = two.slots.map((s) => ({ x: s.centre.x, y: s.centre.y, w: s.wM, h: s.hM }));
   return two.alternates.every((a) => boxes.every((b) => Math.abs(a.centre.x - b.x) >= (b.w + b.w * 0.7) / 2 || Math.abs(a.centre.y - b.y) >= (b.h + b.h * 0.7) / 2));
 })());
 const hid = S.solveRecipe(get('bn-def-two-up'), ctx, { alternates: 'hidden' });
-check('alternates hidden: created, marked hidden', hid.items.filter((i) => i.planned).every((i) => i.hidden) && S.toPlanDocument(hid, Plan.createSymbol, Plan.createOverlay, 1).hidden.length === 2);
+check('alternates hidden: created, marked hidden (the RRs\' alternatives with them)', hid.items.filter((i) => i.planned).every((i) => i.hidden) && S.toPlanDocument(hid, Plan.createSymbol, Plan.createOverlay, 1).hidden.length === 4);
 const none = S.solveRecipe(get('bn-def-two-up'), ctx, { alternates: 'none' });
 check('alternates none: not created', !none.items.some((i) => i.planned));
 const pl = S.solveRecipe(get('bn-def-two-up'), ctx, { detail: 'pl', alternates: 'none' });

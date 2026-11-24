@@ -229,6 +229,13 @@ function zoneCards(av: IpbAirView, list: IpbAirZone[]): HTMLElement {
     for (const w of z.caution) chips.append(el('span', 'ms-gia-chip ms-no', w));
     if (z.mountain) chips.append(el('span', 'ms-gia-chip', 'mountain rule (4°)'));
     c.append(chips);
+    if (z.wind) {
+      // The month's usual wind (ERA5 normal): an LZ's run-in and departure, a DZ's drift. Red when no clear way into it.
+      const wl = el('div', 'ms-gia-t', z.wind.text);
+      if (z.wind.fit === 'neither' || z.wind.fit === 'out') wl.style.color = '#ff8a8d';
+      wl.title = 'Month\'s usual wind (ERA5 1990-2019 normal), not a forecast: get the wind on the day from Met. Helicopters land and take off into the wind (FM 3-21.38).';
+      c.append(wl);
+    }
     if (av.side === 'enemy' && z.kind === 'lz') c.append(el('div', 'ms-gia-t', z.op ? `OP over it: ${km(z.op.distM)} off, ${z.op.riseM >= 0 ? `${z.op.riseM} m higher` : `${-z.op.riseM} m lower`} (OoW Vol I p 63)` : 'No higher ground within 3 km sees it: watch it from closer, or patrol it'));
     box.append(c);
   }
@@ -403,7 +410,8 @@ export function airText(o: GroundGuideOcoka): string[] {
   if (!av) return [];
   const L = [`Air (book pp 5-6): ${av.side === 'enemy' ? 'enemy air avenues into own depth' : 'own air avenues to the objective'}, ${av.bandLabel} ${av.bandM[0]}-${av.bandM[1]} m above obstacles (FM 3-04.203, T).`];
   for (const r of av.routes) L.push(`  Air ${r.id} to ${r.to}: ${r.why}.`);
-  for (const z of [...av.lzs, ...av.dzs]) L.push(`  ${z.id}: ${z.why}${z.caution.length ? `; ${z.caution.join('; ')}` : ''}${z.op ? `; OP ${km(z.op.distM)} off, ${z.op.riseM >= 0 ? `${z.op.riseM} m higher` : `${-z.op.riseM} m lower`}` : ''}.`);
+  for (const z of [...av.lzs, ...av.dzs]) L.push(`  ${z.id}: ${z.why}${z.caution.length ? `; ${z.caution.join('; ')}` : ''}${z.op ? `; OP ${km(z.op.distM)} off, ${z.op.riseM >= 0 ? `${z.op.riseM} m higher` : `${-z.op.riseM} m lower`}` : ''}${z.wind ? `; ${z.wind.text.charAt(0).toLowerCase()}${z.wind.text.slice(1)}` : ''}.`);
+  if (av.wind) L.push(`  Wind (ERA5 ${av.wind.dataDate}): ${av.wind.text}. A normal, not a forecast: the wind on the day from Met.`);
   for (const a of av.ad) L.push(`  ${a.id}: ${a.why}.`);
   L.push(...airspaceText(av));
   for (const n of av.notes) L.push(`  ${n}`);

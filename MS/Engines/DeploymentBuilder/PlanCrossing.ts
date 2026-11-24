@@ -35,6 +35,8 @@ import { readReach, readWater, worst, SRC_WORD, type Fig, type WaterProbe, type 
 export type Light = 'day' | 'moon' | 'dark';
 const LIGHT_I: Record<Light, number> = { day: 0, moon: 1, dark: 2 };
 const LIGHT_WORD: Record<Light, string> = { day: 'by day', moon: 'by moonlight', dark: 'on a dark night' };
+/** A second obstacle beyond the far bank (rules.json classes): permanent water, canal, distributary, perennial stream (not drains). */
+const SECOND_WATER = new Set([4, 20, 21, 46]);
 
 /** The reader the crossing reads: the Movement Guide's (PlanGroundProbe.mov()), with the movers' going. */
 export type CrossProbe = WaterProbe & { going(profile: string): { nogo: ReadonlySet<number>; caution: ReadonlySet<number> }; classLabel(c: number): string };
@@ -359,6 +361,30 @@ function readCrossing(c: Ctx): Read {
   const bhItem = items.find((i) => i.role === 'bh');
   const four = recipe.layout === 'four-bn';
   const maxDepth = recipe.echelon === '21' ? one(doc, 'crossing.bridgehead.divDepthM', 6000) : four ? one(doc, 'crossing.bridgehead.bdeFourBnDepthM', 2500) : fig(doc, 'crossing.bridgehead.bdePh2DepthM', [1500, 1800])[1];
+  // a second obstacle beyond the far bank across the bridgehead: two parallel obstacles a little apart are both secured
+  // (OoW Vol II p 51); read every 250 m across the bridgehead, the first canal / river / stream from 150 m past the far crest
+  const lookPast = one(doc, 'crossing.secondObstacle.lookPastM', 1000), pastM = one(doc, 'crossing.secondObstacle.beyondM', 300);
+  let second: { d: number; label: string; share: number } | null = null, secondRead = 0, secondCols = 0;
+  if (bhItem) {
+    const bx = bhItem.pts.map((p) => p.x);
+    let lab: number | null = null;
+    const hits: number[] = [];
+    for (let x = Math.min(...bx); x <= Math.max(...bx) + 0.1; x += 250) {
+      secondCols++;
+      let seen = false;
+      for (let d = 150; d <= maxDepth + lookPast; d += 30) {
+        const w = O.world(x, farEdge + d), k = mov.cls(w[0], w[1]);
+        if (k === null) continue;
+        seen = true;
+        if (SECOND_WATER.has(k)) { hits.push(d); lab = lab ?? k; break; }
+      }
+      if (seen) secondRead++;
+    }
+    hits.sort((a, b) => a - b);
+    const med = hits.length ? hits[Math.floor(hits.length / 2)] : 0;
+    const near = hits.filter((h) => Math.abs(h - med) <= 300);
+    if (secondCols && near.length >= secondCols / 2 && lab !== null) second = { d: med, label: mov.classLabel(lab), share: near.length / secondCols };
+  }
   let bhWorld: MercXY[] | null = null;
   let depthAt: (x: number) => number = () => 0;
   let bhDepths: number[] = [];
@@ -375,6 +401,8 @@ function readCrossing(c: Ctx): Read {
         return d;
       });
     if (!dr) dep = dep.map((d, i) => Math.max(d, ((dep[i - 1] ?? d) + (dep[i + 1] ?? d)) / 2));
+    // the second obstacle a little beyond: the line laid past it, so both are secured (OoW Vol II p 51)
+    if (!dr && second && second.d <= maxDepth + lookPast) dep = dep.map((d) => Math.max(d, second!.d + pastM));
     bhDepths = dep;
     depthAt = (x: number) => (x < x0 || x > x1 ? 0 : dep[Math.max(0, Math.min(dep.length - 1, Math.round((x - x0) / 125)))]);
     const ring: XY[] = [{ x: x0, y: 12 }, ...cols.map((x, i) => ({ x, y: dep[i] })), { x: x1, y: 12 }];
@@ -402,6 +430,13 @@ function readCrossing(c: Ctx): Read {
   const highM = one(doc, 'crossing.highFarBankM', 1.5);
   if (farH !== null && farH >= highM) rows.push({ name: 'Far bank', st: 'warn', reason: `${farH} m above the water: a high far bank`, detail: { head: `High far bank, ${farH} m`, why: 'Steep and slippery: the assault climbs it under fire from the bunkers on it.', whyShort: 'steep bank under fire', fix: ['Bamboo pole ladders and grapnels with each assault section; dead ground picked on the far bank (IC s70 para 4f p358)', 'Bunkers cleared from the rear; RL and the home bank\'s fire on the loopholes (IC s70 para 4g p359; IBB S47)'] } });
   if (r.season.wet) rows.push({ name: 'Season', st: 'warn', reason: r.season.text, detail: { head: 'Wet season', why: r.season.text, fix: ['Recce the width and current again before the night', 'Rafts and boats for a wider gap'] } });
+  // a twin ditch or twin canal: the middle bund leaves no room for conventional bridging (IDD p 8)
+  if (r.type === 'doubleDitch' || r.type === 'twinCanal') rows.push({ name: 'Twin obstacle', st: 'warn', reason: 'a twin ditch / canal: the middle bund, vertical with no ledge or of limited width, does not give room for conventional bridging (IDD p 8)', detail: { head: 'Twin obstacle', why: 'A bridge set cannot be launched from or landed on the middle bund (IDD p 8).', fix: ['Span both in one set where the width allows, or cut / blow the middle bund for a crossing place', 'Boats and rafts in two lifts, with a party on the middle bund'] } });
+  // the En regulates canal and dammed water: wet bridges denied, the assault drowned (IDD p 8)
+  if (['linkCanal', 'irrigationCanal', 'feederCanal', 'twinCanal', 'distributary', 'dammedRiver', 'doubleDitch'].includes(r.type)) rows.push({ name: 'Water level', st: 'pass', reason: 'the En can regulate the water through the headworks and regulators, denying the use of wet bridges and causing casualties to the assaulting infantry (IDD p 8): secure or watch the regulators, and recce the level on the night' });
+  // APCs swim where the current allows (MIB pp 278-280)
+  const curHi = worst(r.current, 'hi');
+  if (curHi !== null) rows.push({ name: 'APC swim', st: curHi <= 1.83 ? 'pass' : 'warn', reason: `with APCs (a Mech Inf Bn): they swim a current of 6.6 km/h (1.83 m/s) or less, entering at about 3 km/h on gentle banks, the far bank's exits rarely improvable (MIB pp 278-280; p 15 prints 9.66 km/h for boats and rafts): here ${curHi} m/s${curHi <= 1.83 ? '' : ': rafts or a bridge for the APCs'}` });
 
   // ── rows: crossing means and times (IBB Annex Q) ──
   const times: CrossingReading['times'] = [];
@@ -465,7 +500,7 @@ function readCrossing(c: Ctx): Read {
     const rf = engrRafts(eg, wHi, li, eg.kinds, one(doc, 'crossing.sqnTanks', 14));
     if (rf) { rows.push(rf.row); if (rf.firstMin !== null) times.push({ label: `First tank across (ribbon raft, ${eg.name})`, atMin: rf.firstMin }); }
   }
-  // the night: bridgehead and induction in one night, break-out at first light (OoW II s14); night assault (IBB S46 para 18)
+  // the night: bridgehead and induction in one night, break-out before first light (OoW II s14 p 52); night assault (IBB S46 para 18)
   // the vehicle lanes through his minefield, begun at H (breachRow: Annex Q para 4), go on the timeline the night is held to
   const mfSlot = recipe.slots.find((s) => s.role === 'enMf');
   if (mfSlot?.shape?.rect && recipe.slots.some((s) => s.sym === '25340200')) {
@@ -479,8 +514,8 @@ function readCrossing(c: Ctx): Read {
   }
   const nightH = one(doc, 'crossing.nightH', 10);
   const lastMin = Math.max(0, ...times.map((t) => t.atMin));
-  if (times.length) rows.push({ name: 'Night', st: light === 'day' ? 'warn' : lastMin <= (nightH - 1) * 60 ? 'pass' : 'warn', reason: `the last of these ${hRel(lastMin)} of a ${nightH} h night (E): ${light === 'day' ? 'a crossing by day: the far bank sees every boat (IBB S46 para 18 p237: night assault preferable)' : lastMin <= (nightH - 1) * 60 ? 'room to induct and form up before first light (OoW II s14)' : 'too late to be ready by first light'}`,
-    detail: light !== 'day' && lastMin <= (nightH - 1) * 60 ? undefined : { head: light === 'day' ? 'A crossing by day' : `Not done by first light (${hRel(lastMin)})`, why: light === 'day' ? 'Night assault allows the base of fire, artillery and engineers to close up without observed fire (IBB S46 para 18 p237).' : 'The bridgehead and the induction ideally in one night, the break-out at first light (OoW II s14).', fix: light === 'day' ? ['Set the light to Moonlight or Dark'] : ['H earlier (soon after last light)', 'Cross where it is narrower (a shorter bridge)', 'More bridging or rafts'] } });
+  if (times.length) rows.push({ name: 'Night', st: light === 'day' ? 'warn' : lastMin <= (nightH - 1) * 60 ? 'pass' : 'warn', reason: `the last of these ${hRel(lastMin)} of a ${nightH} h night (E): ${light === 'day' ? 'a crossing by day: the far bank sees every boat (IBB S46 para 18 p237: night assault preferable)' : lastMin <= (nightH - 1) * 60 ? 'room to induct and form up before first light (OoW II s14)' : 'too late to be ready by first light'}; the bridgehead op itself runs past one night, so some daylight is used at the start or the end (IBB S47 paras 14-15 p 247); one rifle Coy of each assaulting Bn carries the ammunition and heavy weapons across, the assault travelling light (IBB S47 para 26 p 261)`,
+    detail: light !== 'day' && lastMin <= (nightH - 1) * 60 ? undefined : { head: light === 'day' ? 'A crossing by day' : `Not done by first light (${hRel(lastMin)})`, why: light === 'day' ? 'Night assault allows the base of fire, artillery and engineers to close up without observed fire (IBB S46 para 18 p237).' : 'The bridgehead and the induction ideally in one night, the break-out before first light (OoW II s14 p 52).', fix: light === 'day' ? ['Set the light to Moonlight or Dark'] : ['H earlier (soon after last light)', 'Cross where it is narrower (a shorter bridge)', 'More bridging or rafts'] } });
   // drift: enter upstream twice the width (IC s70 para 4e p358) where the water flows
   const entries: CrossingReading['entries'] = [];
   const still = ['lake', 'atDitch', 'defenceDrain', 'doubleDitch'].includes(r.type);
@@ -514,6 +549,25 @@ function readCrossing(c: Ctx): Read {
   if (bhRow && bhItem && bhDepths.length) {
     const d0 = Math.max(...bhItem.pts.map((p) => p.y)), dMax = Math.max(...bhDepths);
     if (dMax > d0 + 1) bhRow.reason += `; reaches out to ${fmtM(dMax)} where the En observers stand (up to ${fmtM(maxDepth)})`;
+  }
+  // the second obstacle beyond the far bank (OoW Vol II p 51)
+  if (bhItem) {
+    const rule = 'secondary obstacles near the bridgehead are secured; two parallel obstacles a little apart, both secured (OoW Vol II s10 para 5 c p 51)';
+    const lineD = bhDepths.length ? bhDepths.slice().sort((a, b) => a - b)[Math.floor(bhDepths.length / 2)] : 0;
+    if (secondRead < secondCols / 2) rows.push({ name: 'Second obstacle', st: 'unchecked', reason: 'the ground beyond the far bank is still loading' });
+    else if (!second || second.d > maxDepth + lookPast) rows.push({ name: 'Second obstacle', st: 'pass', reason: `no canal, river or stream runs across the bridgehead within ${fmtM(maxDepth + lookPast)} of the far bank (${rule})` });
+    else {
+      const where = `${second.label} ${fmtM(second.d)} beyond the far bank across ${Math.round(second.share * 100)} % of the bridgehead's width`;
+      if (dr) {
+        const held = lineD >= second.d + 1;
+        rows.push(held ? { name: 'Second obstacle', st: 'pass', reason: `${where}: inside the BH line as drawn, so both are secured (${rule})` }
+          : { name: 'Second obstacle', st: 'warn', reason: `${where}: just beyond the BH line as drawn (${fmtM(lineD)})`, detail: { head: `A second obstacle ${fmtM(second.d - lineD)} beyond the BH line`, why: 'Left to the En, it is a ready line against the expansion and the break-out, a little beyond the first (OoW Vol II p 51).', fix: [`Lay the BH line ${pastM} m beyond it`, 'A party to seize its bridges before the En blows them'] } });
+      } else {
+        const deep = second.d + pastM > maxDepth;
+        rows.push(deep ? { name: 'Second obstacle', st: 'warn', reason: `${where}: the BH line laid ${pastM} m beyond it, so both are secured (${rule}); that takes the bridgehead ${fmtM(second.d + pastM)} deep, past the ${fmtM(maxDepth)} it is sized for`, detail: { head: `Bridgehead ${fmtM(second.d + pastM)} deep for the second obstacle`, why: 'Securing both obstacles deepens the bridgehead beyond what its troops are sized for (IBB S46 paras 20-23).', fix: ['Another phase or another Bn for the second obstacle', 'Cross where the two run further apart, or where the second is bridged'] } }
+          : { name: 'Second obstacle', st: 'pass', reason: `${where}: the BH line laid ${pastM} m beyond it, so both are secured (${rule})` });
+      }
+    }
   }
   if (placeRows.length) rows.push({ name: 'Crossing places', st: 'pass', reason: placeRows.map((r, i) => `${i + 1}: ${r}`).join('; ') });
   if (bridgeRows.length) rows.push({ name: 'Bridge site', st: 'pass', reason: bridgeRows.join('; ') });

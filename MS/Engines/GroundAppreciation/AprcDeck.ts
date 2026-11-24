@@ -71,7 +71,15 @@ export const DECK_IDS: Record<string, { decision: string[]; sand: string[] }> = 
     decision: ['aim', 'gr.apchs', 'gr.ded', 'en.opts', 'en.ded', 'own.str', 'own.tasks', 'ts.calc', 'crs.a', 'crs.react', 'crs.an', 'crs.adopted', 'plan.exec'],
     sand: ['gr.gen', 'gr.itg', 'gr.apchs', 'gr.obs', 'gr.cover', 'gr.ded'],
   },
+  // the withdrawal (OoW Vol III): the main decisions sit in the course and the plan, the timings in Time and Space
+  wdr: {
+    decision: ['aim', 'gr.apchs', 'gr.ded', 'ts.req', 'ts.ded', 'en.caps', 'own.ded', 'sp.dml', 'crs.a', 'crs.react', 'crs.an', 'crs.adopted', 'plan.exec'],
+    sand: ['gr.gen', 'gr.apchs', 'gr.obs', 'gr.routes', 'gr.cover', 'gr.ded', 'sp.dml'],
+  },
 };
+
+/** The kind on the slides' foot and cover. */
+export const DECK_KIND_WORD: Record<string, string> = { def: 'Def', attk: 'Attk', wdr: 'Wdr' };
 
 let seq = 0;
 const uid = (p: string): string => `${p}-${Date.now().toString(36)}-${(seq++).toString(36)}`;
@@ -277,7 +285,8 @@ export function buildDeck(doc: AprcDoc, o: DeckOptions): Slide[] {
   const traceFig = doc.figures.find((f) => f.id === 'trace' && f.png) ?? null;
   const mapAll: DeckMap | null = o.maps?.all ?? (traceFig ? { png: traceFig.png!, w: traceFig.w, h: traceFig.h } : null);
   const mapOf = (side: string): DeckMap | null => o.maps?.apch?.[side] ?? mapAll;
-  const deckWord = `Aprc · ${doc.kind === 'attk' ? 'Attk' : 'Def'}${fr ? ` · ${fr.echelon} · ${fr.place}` : ''}`;
+  const kindWord = DECK_KIND_WORD[doc.kind] ?? 'Def';
+  const deckWord = `Aprc · ${kindWord}${fr ? ` · ${fr.echelon} · ${fr.place}` : ''}`;
   const sectionOf = (part: AprcPart, group: AprcGroup): string => (group.title ? `${cap(part.title)}: ${group.title}` : cap(part.title));
   const notesOf = (p: AprcPara): string => rowsOf(doc, p, copy).map((r) => `${'  '.repeat(r.depth)}${r.text}`).join('\n');
   const numberOfP = (p: AprcPara): string => numberOf(doc, p.id);
@@ -353,7 +362,7 @@ export function buildDeck(doc: AprcDoc, o: DeckOptions): Slide[] {
   // ── cover ──
   {
     const ov: SlideOverlay[] = [
-      text(`${fr ? `${fr.echelon} ` : ''}${doc.kind === 'attk' ? 'Attk' : 'Def'}`, { x: 0.07, y: 0.24, w: 0.5, h: 0.045 }, { fontSize: 0.03, bold: true, textColor: T.acc }),
+      text(`${fr ? `${fr.echelon} ` : ''}${kindWord}`, { x: 0.07, y: 0.24, w: 0.5, h: 0.045 }, { fontSize: 0.03, bold: true, textColor: T.acc }),
       text(doc.title, { x: 0.07, y: 0.29, w: 0.55, h: 0.16 }, { fontSize: 0.095, bold: true }),
       text(fr ? `${fr.place} · ${fr.mover} · ${fr.month}, ${fr.season === 'wet' ? 'after rain' : 'dry'}` : 'Not read yet', { x: 0.07, y: 0.46, w: 0.55, h: 0.06 }, { fontSize: 0.038, textColor: T.dim }),
     ];

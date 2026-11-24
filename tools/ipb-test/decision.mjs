@@ -117,5 +117,26 @@ check('hPlus: H+1:25, H-0:40', hPlus(1 + 25 / 60) === 'H+1:25' && hPlus(-40 / 60
   const none = decide(args([A, B]));
   check('without the coa argument: no COAs', none.coas === null);
 }
+{
+  // Doctrine_Review (24 Nov 2026): mountain foot rates, descent, the En FUP TAI, the Indian reserves, the counter-attack cues.
+  const mtn = decRatesFrom(doc, 'dismounted', { mountain: true });
+  check('mountains on foot: MW 3 km/h by day, 0.5 by night; SLOW-GO and NO-GO no faster (MW p 81)', mtn.go[0] === 3 && mtn.go[1] === 0.5 && mtn.slow[0] <= 3 && mtn.slow[1] <= 0.5 && mtn.nogo[1] <= 0.5 && mtn.mountain === true, JSON.stringify(mtn));
+  check('vehicles in mountains keep the book rates', decRatesFrom(doc, 'armour', { mountain: true }).go[0] === 24);
+  check('men on foot pay the descent: 30 / 60 min per 600 m (MW p 81); vehicles do not', foot.descentMinPer600[0] === 30 && foot.descentMinPer600[1] === 60 && veh.descentMinPer600 === null);
+  // 6 km of GO on foot, 600 m down: 1.5 h + 0.5 h at the earliest, 6 / 3.2 + 1 h at the latest.
+  const r = decide(args([{ id: 'A', viable: true, main: true, startM: 0, endM: 6000, going: [{ fromM: 0, toM: 6000, cls: 'go', fallM: 600 }], narrows: [], depthM: null }], { rates: foot }));
+  check('a 600 m descent adds 30 min at the En earliest, 60 at his latest', near(prof(r, 'A').endH[0], 2) && near(prof(r, 'A').endH[1], 6 / 3.2 + 1), `${hPlus(prof(r, 'A').endH[0])} / ${hPlus(prof(r, 'A').endH[1])}`);
+  // The En FUP 1.1 km short of the objective at 24 km: an NAI and a TAI.
+  const f = decide(args([aa('A', [[0, 24000, 'go']], [], { fupM: 22900 })]));
+  const fn = f.nais.find((n) => n.kind === 'fup'), ft = f.tais.find((t) => /FUP/.test(t.why));
+  check('the En FUP is an NAI and a TAI (OoW Vol I p 51)', !!fn && !!ft && ft.nai === fn.id && near(fn.earliestH, 22900 / 24000), ft?.why);
+  // Reading the En defence (own attack): the Indian reserves.
+  const res = decide(args([aa('A', [[0, 24000, 'go']])], { reserves: doc.decisionPoints.reserves.indian.ladder }));
+  check('the Indian reserves: Bn 1 h, Bde 2-4 h, Div 4-6 h, Corps 12-16 h after the decision (IDD p 5)', res.reserves.length === 4 && res.reserves[1].fromH === 2 && res.reserves[1].toH === 4 && res.reserves[3].from === 'decision' && res.notes.some((n) => /IDD p 5/.test(n)), res.reserves.map((x) => x.text).join('; '));
+  check('no reserves ladder when not asked', decide(args([aa('A', [[0, 24000, 'go']])])).reserves.length === 0);
+  // The counter-attack DP names what confirms the En main effort.
+  const c = decide(args([aa('A', [[0, 24000, 'go']], [], { depthM: 20000 })], { catkMin: 60, catkCues: doc.decisionPoints.counterAttack.indicators.value }));
+  check('the counter-attack DP names the main-effort cues (OoW Vol I p 54)', c.dps.some((d) => d.kind === 'catk' && /frontage and momentum/.test(d.decision)));
+}
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

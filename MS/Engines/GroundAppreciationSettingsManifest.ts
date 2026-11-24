@@ -24,8 +24,9 @@ export const groundAppreciationSettingsManifest: SettingDescriptor[] = [
     options: [
       { value: 'def', label: 'Defence' },
       { value: 'attk', label: 'Attack' },
+      { value: 'wdr', label: 'Withdrawal' },
     ],
-    help: 'The outline the document follows: the defence from the specimen AprDf, the attack from "Mechs of Aprc (Attk)". Changing it with words written asks first in the sheet; the sheet starts again (Undo brings it back) and is read again if it was read.',
+    help: 'The outline the document follows: the defence from the specimen AprDf, the attack from "Mechs of Aprc (Attk)", the withdrawal from OoW Vol III (its main decisions and factors). Changing it with words written asks first in the sheet; the sheet starts again (Undo brings it back) and is read again if it was read.',
   },
   {
     path: ['groundAppreciation', 'copy'],
@@ -90,6 +91,8 @@ export const groundAppreciationSettingsManifest: SettingDescriptor[] = [
     help: 'The going is read for this mover.',
   },
   { path: ['groundAppreciation', 'hHour'], label: 'H on D Day (HH:MM)', group: 'Reading', type: 'string', help: "H as a clock time: the en's times in his options and the reactions table get clock times beside H+ (0740 hrs D Day). Empty takes the Ground Guide's IPB H, else H+ only." },
+  { path: ['groundAppreciation', 'dDay'], label: 'D Day (date)', group: 'Reading', type: 'string', help: 'D Day as YYYY-MM-DD: first and last light and the moon (for an attack, Timing of Attk and the dark hours) are worked out for it. Empty takes today.' },
+  { path: ['groundAppreciation', 'timeNow'], label: 'Time now (D-time)', group: 'Reading', type: 'string', help: 'Time now as a D-time (D-1 1000): the time available, the essential timings and more / less time run from it. Empty leaves them out.' },
   { path: ['groundAppreciation', 'utcOffsetH'], label: 'Time zone (hours from UTC)', group: 'Reading', type: 'number', min: -12, max: 14, step: 0.5, help: "First and last light and the read time are given in this zone: the place's, never the computer's. 5 is Pakistan Standard Time (PKT)." },
   { path: ['groundAppreciation', 'orbatUrl'], label: 'ORBAT url', group: 'Data', type: 'string', advanced: true, help: "Where the ORBAT is served: relative strength, the Pls held against the tasks, the engineers' mine laying. Missing: the strength is counted from the symbols." },
   { path: ['groundAppreciation', 'keep'], label: 'Keep in the browser', group: 'Document', type: 'boolean', advanced: true, help: 'Keep the document between sessions so your written paragraphs are not lost on a reload. Pictures are made again on Read.' },

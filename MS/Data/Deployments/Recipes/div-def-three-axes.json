@@ -1,0 +1,244 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": false
+  },
+  "id": "div-def-three-axes",
+  "family": "div-def",
+  "layout": "three-axes",
+  "echelon": "21",
+  "unit": "inf-div",
+  "basis": "D",
+  "name": "Div Def: three Bdes up on three axes (extended frontage)",
+  "frontageRow": "Infantry division, two to three axes",
+  "subRow": null,
+  "note": "An Inf Div on an extended frontage, every Bde committed on an independent axis (OoW Vol I Annex D p 105: a Bde of 10-12 km on each axis, 4-6 km deep; \"all integral brigades may have to be committed to look after an independent axis each\"). The Div reserve then is most of the armour retained in hand, the absolute minimum of infantry committed on each axis, the depth troops of each Bde earmarked as part of the Div reserve (lifted only if the axis permits), and the engineers and other Div troops (Annex D para 1 a-d); in extreme cases Corps / Army may help (para 2). Larger gaps between the Bdes are accepted where the Div reserve can close them (IBB S59 para 6 d p 327); the Div Arty reinforced by at least one Med / Hy Regt deploys in groups covering the major approaches (OOW1 p 83). Plan metres from the Div centre, y toward the enemy. The Bde seeds 12 km apart (three axes of 10-12 km: 30-36 km, the OoW Vol I row) and the armour 4 km back are decisions (E): the books give no spacing. AT Res (OOW1 s13 p 45: all formations facing a major tank threat create a well-balanced and mobile AT reserve; s6 p 26: a substantial portion of the AT weapons earmarked for the En tanks that bypass the main defences and hit the depth): laid beside the reserve, on the side away from the HQ (the place a decision, E).",
+  "slots": [
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Left Bde",
+      "echelon": "18",
+      "order": 1,
+      "size": {
+        "doctrine": "size.bde"
+      },
+      "seed": {
+        "acrossM": -12000,
+        "backM": -3000
+      },
+      "rule": {
+        "side": "L"
+      },
+      "terrainRule": {
+        "across": "approach.main",
+        "prefer": [
+          "itg",
+          "highGround"
+        ]
+      }
+    },
+    {
+      "role": "fwdC",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Centre Bde",
+      "echelon": "18",
+      "order": 1,
+      "size": {
+        "doctrine": "size.bde"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": -3000
+      },
+      "rule": {
+        "side": "C"
+      },
+      "terrainRule": {
+        "across": "approach.secondary",
+        "prefer": [
+          "itg",
+          "highGround"
+        ]
+      }
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Right Bde",
+      "echelon": "18",
+      "order": 1,
+      "size": {
+        "doctrine": "size.bde"
+      },
+      "seed": {
+        "acrossM": 12000,
+        "backM": -3000
+      },
+      "rule": {
+        "side": "R"
+      },
+      "terrainRule": {
+        "across": "approach.secondary",
+        "prefer": [
+          "itg",
+          "highGround"
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "Armr (Div Res)",
+      "echelon": "16",
+      "order": 2,
+      "size": {
+        "doctrine": "size.bn"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": 4000
+      },
+      "rule": {
+        "behind": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ],
+        "coversGap": [
+          "fwdL",
+          "fwdR"
+        ],
+        "reach": {
+          "slots": [
+            "fwdL",
+            "fwdC",
+            "fwdR"
+          ]
+        }
+      },
+      "mounted": true
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Div HQ",
+      "order": 3,
+      "shape": {
+        "at": [
+          -3000,
+          7500
+        ]
+      }
+    },
+    {
+      "role": "atRes",
+      "kind": "point",
+      "sym": "15111200",
+      "label": "AT Res",
+      "order": 6,
+      "shape": {
+        "at": [
+          3000,
+          4000
+        ]
+      }
+    },
+    {
+      "role": "killingGr",
+      "kind": "area",
+      "sym": "25242300",
+      "label": "K1",
+      "order": 3,
+      "terrainOnly": true,
+      "rule": {
+        "inRangeOf": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main.chokepoint"
+      }
+    },
+    {
+      "role": "atMines",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "inFrontOf": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ],
+        "distM": {
+          "doctrine": "standoff.obstacleInFrontM"
+        },
+        "depthM": {
+          "doctrine": "standoff.protectiveMinefieldDepthM"
+        }
+      }
+    },
+    {
+      "role": "fdl",
+      "kind": "line",
+      "sym": "25140400",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "joins": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ],
+        "edge": "front"
+      }
+    },
+    {
+      "role": "dfTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "DF Tgt",
+      "count": {
+        "doctrine": "df.perBn"
+      },
+      "order": 7,
+      "rule": {
+        "ahead": {
+          "doctrine": "df.closeMinFromFdlM.medium"
+        },
+        "of": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main"
+      }
+    }
+  ],
+  "alternates": [],
+  "supplementary": "perSecondaryApproach",
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "gaps",
+    "depth",
+    "flanks",
+    "exposure",
+    "killingGr",
+    "reserveReach",
+    "dfMinRange"
+  ]
+}

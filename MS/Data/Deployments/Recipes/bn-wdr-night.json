@@ -15,7 +15,7 @@
     "terrain": false
   },
   "pivot": "hq",
-  "note": "A Bn two up withdrawing by night (IC s91-93 pp 481-491; IBB s72-76 pp 366-386). The click is the Bn HQ of the old posn; the aim is the direction of withdrawal, the second click the new main posn (planned). Rear parties (a Pl of each forward Coy with part of the weapon section, IC p 488) hold to the time of abandonment; Coy RVs where the Pls gather, the Bn checkpoint and Bn RV on the routes back (IC s92 paras 7-8 pp 486-487); Coy embussing points 1500-2000 m behind the old posn on the Coy routes (IBB s75 para 19 p 383), the Bn EP behind the Bn RV with a covering Pl of the depth Coys (IBB p 379); the intermediate posn, a Coy group (IBB p 379), far enough back that the En must move its field artillery first (IBB s74 para 4 e p 373: the En 105 mm IFG 17.2 km, ORBAT) and behind an obstacle if there is one (IC p 482); part of the artillery repositioned 5000-6000 m back from the old gun area, taken at the Bn rear (IBB s76 para 5 p 385). The programme from last light follows IBB s75 para 11 pp 379-380. Battle Posns are drawn turned to face the enemy behind the plan.",
+  "note": "A Bn two up withdrawing by night (IC s91-93 pp 481-491; IBB s72-76 pp 366-386). The click is the Bn HQ of the old posn; the aim is the direction of withdrawal, the second click the new main posn (planned). Rear parties (a Pl of each forward Coy with part of the weapon section, IC p 488) hold to the time of abandonment; Coy RVs where the Pls gather, the Bn checkpoint and Bn RV on the routes back (IC s92 paras 7-8 pp 486-487); Coy embussing points 1500-2000 m behind the old posn on the Coy routes (IBB s75 para 20 p 383), the Bn EP behind the Bn RV with a covering Pl of the depth Coys (IBB p 379); the intermediate posn, a Coy group (IBB p 379), far enough back that the En must move its field artillery first (IBB s74 para 4 e p 373: the En 105 mm IFG 17.2 km, ORBAT) and behind an obstacle if there is one (IC p 482); part of the artillery repositioned 5000-6000 m back from the old gun area, taken at the Bn rear (IBB s76 para 5 p 385). The programme from last light follows IBB s75 para 11 pp 379-380. Battle Posns are drawn turned to face the enemy behind the plan. Coy check pts behind the forward Coys and the BL across the front at the Bn check pt (OOW3 Annex Q p 76; p 67); two passage lanes and a contact point through the intermediate posn (OOW3 s10 p 48); the rear parties on the inner flanks of the forward Coys, over the approach between them (OOW3 p 27).",
   "checks": [],
   "slots": [
     {
@@ -107,7 +107,7 @@
       "order": 2,
       "shape": {
         "at": [
-          -1000,
+          -250,
           1200
         ]
       },
@@ -121,7 +121,7 @@
       "order": 2,
       "shape": {
         "at": [
-          1000,
+          250,
           1200
         ]
       },
@@ -162,7 +162,7 @@
       "shape": {
         "at": [
           0,
-          -700
+          -850
         ]
       }
     },
@@ -175,7 +175,33 @@
       "shape": {
         "at": [
           0,
-          -1800
+          -1950
+        ]
+      }
+    },
+    {
+      "role": "cpA",
+      "kind": "point",
+      "sym": "25130300",
+      "label": "A Coy Check Pt",
+      "order": 2,
+      "shape": {
+        "at": [
+          -1000,
+          760
+        ]
+      }
+    },
+    {
+      "role": "cpB",
+      "kind": "point",
+      "sym": "25130300",
+      "label": "B Coy Check Pt",
+      "order": 2,
+      "shape": {
+        "at": [
+          1000,
+          760
         ]
       }
     },
@@ -189,6 +215,25 @@
         "at": [
           0,
           -1300
+        ]
+      }
+    },
+    {
+      "role": "bl",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "BL",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -2200,
+            -1300
+          ],
+          [
+            2200,
+            -1300
+          ]
         ]
       }
     },
@@ -318,7 +363,7 @@
           ],
           [
             0,
-            -700
+            -850
           ],
           [
             0,
@@ -345,7 +390,7 @@
           ],
           [
             0,
-            -1800
+            -1950
           ],
           [
             0,
@@ -389,6 +434,45 @@
             "doctrine": "size.coy.depthM"
           }
         }
+      }
+    },
+    {
+      "role": "ppI1",
+      "kind": "point",
+      "sym": "25131200",
+      "label": "PP 1 (Int Posn)",
+      "order": 5,
+      "shape": {
+        "at": [
+          -250.0,
+          -16850.0
+        ]
+      }
+    },
+    {
+      "role": "ppI2",
+      "kind": "point",
+      "sym": "25131200",
+      "label": "PP 2 (Int Posn)",
+      "order": 5,
+      "shape": {
+        "at": [
+          250.0,
+          -16850.0
+        ]
+      }
+    },
+    {
+      "role": "ctI",
+      "kind": "point",
+      "sym": "25130500",
+      "label": "Contact Pt (Int Posn)",
+      "order": 5,
+      "shape": {
+        "at": [
+          0,
+          -16850.0
+        ]
       }
     },
     {

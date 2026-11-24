@@ -2906,7 +2906,7 @@
         "Grp": ["Land","Air Defense" ]
     },
     "10130102": {
-        "Rng": {"ad": [50, 2800, 5900], "b": "D", "s": "IBB p82 (Stinger: head-on 2800, tail-on 4200 m; max altitude 2300 m); p81 (Anza Mk-I over 4 km, up to 5.9 km)"},
+        "Rng": {"ad": [50, 2800, 4200], "b": "D", "s": "IBB p 82 (Anza Mk-1: altitude 50-2300 m, firing slant 2800 m head-on, lethal slant 4200 m tail-on; one weapon per triple). Stinger, p 81: range over 4 km, may reach 5.9 km, effective altitude 3000 m (not used here). The names were swapped until 24 Nov 2026."},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD - Msl",
@@ -3007,7 +3007,7 @@
         "Grp": ["Land","Air Defense" ]
     },
     "10130115": {
-        "Rng": {"ad": [50, 2800, 5900], "b": "D", "s": "IBB p82 (Stinger: head-on 2800, tail-on 4200 m; max altitude 2300 m); p81 (Anza Mk-I over 4 km, up to 5.9 km)"},
+        "Rng": {"ad": [50, 2800, 4200], "b": "D", "s": "IBB p 82 (Anza Mk-1: altitude 50-2300 m, firing slant 2800 m head-on, lethal slant 4200 m tail-on; one weapon per triple). Stinger, p 81: range over 4 km, may reach 5.9 km, effective altitude 3000 m (not used here). The names were swapped until 24 Nov 2026."},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "ESHORAD",
@@ -3414,7 +3414,7 @@
         "Grp": ["Land","Artillery" ]
     },
     "10130800": {
-        "Rng": {"ind": [100, 4550, 4550], "b": "D", "s": "IBB pp56-57 (81 mm, M57D: bands 100-4550 m; min 550 m on the lowest charge of the bomb)"},
+        "Rng": {"ind": [550, 4550, 4550], "b": "D", "s": "IBB p 57 (81 mm, M57D: minimum range 550 m, maximum 4550 m, as stated; p 56 prints charge 0 as 100-550 m, so the book contradicts itself: the stated minimum is used, re-read 24 Nov 2026)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mor",
@@ -5198,7 +5198,7 @@
         "Grp": ["Land Eqpt","Artillery Gun" ]
     },
     "15111100": {
-        "Rng": {"ad": [50, 2800, 5900], "b": "D", "s": "IBB p82 (Stinger: head-on 2800, tail-on 4200 m; max altitude 2300 m); p81 (Anza Mk-I over 4 km, up to 5.9 km)"},
+        "Rng": {"ad": [50, 2800, 4200], "b": "D", "s": "IBB p 82 (Anza Mk-1: altitude 50-2300 m, firing slant 2800 m head-on, lethal slant 4200 m tail-on; one weapon per triple). Stinger, p 81: range over 4 km, may reach 5.9 km, effective altitude 3000 m (not used here). The names were swapped until 24 Nov 2026."},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher",
@@ -5224,7 +5224,7 @@
         "Grp": ["Land Eqpt","Air Defense Missile Launcher" ]
     },
     "15111101": {
-        "Rng": {"ad": [50, 2800, 5900], "b": "D", "s": "IBB p82 (Stinger: head-on 2800, tail-on 4200 m; max altitude 2300 m); p81 (Anza Mk-I over 4 km, up to 5.9 km)"},
+        "Rng": {"ad": [50, 2800, 4200], "b": "D", "s": "IBB p 82 (Anza Mk-1: altitude 50-2300 m, firing slant 2800 m head-on, lethal slant 4200 m tail-on; one weapon per triple). Stinger, p 81: range over 4 km, may reach 5.9 km, effective altitude 3000 m (not used here). The names were swapped until 24 Nov 2026."},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Short Range",
@@ -5517,7 +5517,7 @@
         "Grp": ["Land Eqpt","Air Defense Missile Launcher" ]
     },
     "15111110": {
-        "Rng": {"ad": [50, 2800, 5900], "b": "D", "s": "IBB p82 (Stinger: head-on 2800, tail-on 4200 m; max altitude 2300 m); p81 (Anza Mk-I over 4 km, up to 5.9 km)"},
+        "Rng": {"ad": [50, 2800, 4200], "b": "D", "s": "IBB p 82 (Anza Mk-1: altitude 50-2300 m, firing slant 2800 m head-on, lethal slant 4200 m tail-on; one weapon per triple). Stinger, p 81: range over 4 km, may reach 5.9 km, effective altitude 3000 m (not used here). The names were swapped until 24 Nov 2026."},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Surface to Air Missile",
@@ -5681,7 +5681,7 @@
         "Grp": ["Land Eqpt","Anti Tank Missile Launcher" ]
     },
     "15111400": {
-        "Rng": {"ind": [100, 4550, 4550], "b": "D", "s": "IBB pp56-57 (81 mm, M57D: bands 100-4550 m; min 550 m on the lowest charge of the bomb)"},
+        "Rng": {"ind": [550, 4550, 4550], "b": "D", "s": "IBB p 57 (81 mm, M57D: minimum range 550 m, maximum 4550 m, as stated; p 56 prints charge 0 as 100-550 m, so the book contradicts itself: the stated minimum is used, re-read 24 Nov 2026)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mor - Land Eqpt",
@@ -5733,7 +5733,7 @@
         "Grp": ["Land Eqpt","Mortar" ]
     },
     "15111402": {
-        "Rng": {"ind": [100, 4550, 4550], "b": "D", "s": "IBB pp56-57 (81 mm, M57D: bands 100-4550 m; min 550 m on the lowest charge of the bomb)"},
+        "Rng": {"ind": [550, 4550, 4550], "b": "D", "s": "IBB p 57 (81 mm, M57D: minimum range 550 m, maximum 4550 m, as stated; p 56 prints charge 0 as 100-550 m, so the book contradicts itself: the stated minimum is used, re-read 24 Nov 2026)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mor Med - Land Eqpt",

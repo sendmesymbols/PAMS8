@@ -14,7 +14,7 @@
   "name": "Bn Def: two up, one back (3 Coys)",
   "frontageRow": "Battalion, two companies up",
   "subRow": "Company, battalion two up",
-  "note": "A three-Coy Bn (Lt Cdo, p 623): A and B Coys forward as in the four-Coy layout (1500 m wide, 500 m gap, IBB Annex U App 6 p481), C Coy the reserve 1350 m back, behind the gap. No Coy is left to hold the gap in depth. The book prints the two-up row for four Coys; the three-Coy layout is mine (E).",
+  "note": "A three-Coy Bn (Lt Cdo, p 623): A and B Coys forward as in the four-Coy layout (1500 m wide, 500 m gap, IBB Annex U App 6 p481), C Coy the reserve 1350 m back, behind the gap. No Coy is left to hold the gap in depth. The book prints the two-up row for four Coys; the three-Coy layout is mine (E). Bn HQ (IBB S3 pp 22-24; p 23: placed centrally within the Bn locality, preferably behind the depth localities; a defended locality of 55 all ranks, concealed from the air, dug in, near the Bde axis with an alternative posn; laid about 500 m behind the rearmost depth / reserve Coy (the distance a decision, E). The RRs, a section of two in each rifle Coy, sited first in the forward localities with an alternative each 200-300 m back (IBB S8 pp 38-42; IC p 367).",
   "slots": [
     {
       "role": "fwdL",
@@ -124,6 +124,19 @@
         "notIn": [
           "noGo",
           "water"
+        ]
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bn HQ",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          1850
         ]
       }
     },
@@ -248,6 +261,35 @@
       },
       "terrainRule": {
         "sees": "killingGr"
+      }
+    },
+    {
+      "role": "rr",
+      "kind": "point",
+      "sym": "15110800",
+      "label": "RR",
+      "order": 6,
+      "rule": {
+        "perSlot": [
+          "fwdL",
+          "fwdR"
+        ],
+        "ahead": -150
+      }
+    },
+    {
+      "role": "rrAlt",
+      "kind": "point",
+      "sym": "15110800",
+      "label": "RR (alt)",
+      "order": 6,
+      "planned": true,
+      "rule": {
+        "perSlot": [
+          "fwdL",
+          "fwdR"
+        ],
+        "ahead": -400
       }
     },
     {

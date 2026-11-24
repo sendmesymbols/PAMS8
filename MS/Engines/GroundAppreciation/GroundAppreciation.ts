@@ -25,11 +25,13 @@ import type { AorReading, AorSide, AorXY } from '../GroundGuide/GroundGuideAor';
 import { dockBelowBar } from '../SiteScan/SitePanel';
 import { shortDate, sourceName } from '../SiteScan/SiteScan';
 import {
-  STALE_MARK, accept, acceptAll, addRow, applyPatches, aprcKinds, attkHeads, carryOver, cellTyped, counts, dropMoved, find, isStale, keepMoved, keepUnread, lines, markChanges, newDoc, normalizeDoc, numberOf, restoreDiscarded, retime, setCell, setMine, shown, staleWhy, tableOf, toText, walk,
-  type AprcConfirm, type AprcCopy, type AprcDoc, type AprcFigure, type AprcKind, type AprcPara, type AprcSrc,
+  STALE_MARK, accept, acceptAll, addRow, applyPatches, aprcKinds, attkHeads, carryOver, cellTyped, counts, dropMoved, find, isStale, keepMoved, keepUnread, lines, markChanges, newDoc, normLimits, normalizeDoc, numberOf, restoreDiscarded, retime, setCell, setMine, shown, staleWhy, tableOf, toText, walk,
+  type AprcConfirm, type AprcCopy, type AprcDoc, type AprcFigure, type AprcKind, type AprcLimits, type AprcPara, type AprcPatch, type AprcSrc,
 } from './AprcModel';
+import { nightOf, parseDTime, styleNotes, writeMechs, type AprcClimb, type AprcMechsIn, type AprcNight } from './AprcMechs';
+import { casEstimate, casGroupsOf, gunUnitFor, liftDraft, readHeads, type AprcCasGroup } from './AprcBooks';
 import {
-  hSumFromText, lightTimes, parseHHour, writeAdm, writeAir, writeAttkDir, writeAttkPlan, writeCoyTasks, writeEnemy, writeFire, writeGround, writePlan, writeStrength, writeSymbols, writeTasks, writeTimeCalcAttk, writeTimeData, writeTimeReq, zoneWord,
+  attkFirst, hSumFromText, lightTimes, parseHHour, writeAdm, writeAir, writeAttkDir, writeAttkPlan, writeCoyTasks, writeEnemy, writeFire, writeGround, writeGroundWdr, writePlan, writeStrength, writeSymbols, writeTasks, writeTimeCalcAttk, writeTimeData, writeTimeReq, zoneWord,
   type AprcAdmIn, type AprcAirIn, type AprcAttkIn, type AprcAttkPlanIn, type AprcAvenueIn, type AprcCheckIn, type AprcCoyIn, type AprcEnemyIn, type AprcFireIn, type AprcForceUnit, type AprcGroundIn, type AprcHSumIn, type AprcObsn, type AprcStrengthIn, type AprcSymbolIn, type AprcTimeDataIn, type AprcTimeIn,
 } from './AprcWrite';
 import { APRC_DOC_CSS, aprcFileBase, bodyHtml, esc, printHtml } from './AprcHtml';
@@ -67,6 +69,10 @@ export interface GroundAppreciationOptions {
   orbatUrl: string;
   /** Hours east of UTC for first / last light and the read time: the place's zone, never the computer's (5: Pakistan Standard Time). */
   utcOffsetH: number;
+  /** D Day's date ("YYYY-MM-DD"): first / last lt and the moon are worked out for it; empty takes today. */
+  dDay: string;
+  /** Time now as a D-time ("D-1 1000"): the time aval and the essential timings run from it; empty leaves them out. */
+  timeNow: string;
 }
 
 export const DEFAULT_GROUND_APPRECIATION_OPTIONS: GroundAppreciationOptions = {
@@ -81,6 +87,8 @@ export const DEFAULT_GROUND_APPRECIATION_OPTIONS: GroundAppreciationOptions = {
   hHour: '',
   orbatUrl: '/MS/Data/Orbat/PK',
   utcOffsetH: 5,
+  dDay: '',
+  timeNow: '',
 };
 
 export interface GroundAppreciationHost {
@@ -97,6 +105,12 @@ export interface GroundAppreciationHost {
   /** The Admin Area finder (its `result`), when the host passes it: Adm and Log from its best sites. */
   adminArea?: () => any | null;
 }
+
+/** The readings whose paragraphs the mechanics may re-time when a sheet input (H, D Day, time now, a limitation) changes. */
+const MECHS_FROM: AprcSrc[] = ['gr', 'en', 'plan', 'time', 'aim', 'map'];
+
+/** The mechanics' inputs a Read gathers; the sheet's own (kind, limits, H, time now, the night, the zone) are added when applied. */
+type MechsCtx = Omit<AprcMechsIn, 'kind' | 'limits' | 'hHour' | 'timeNow' | 'night' | 'zone'>;
 
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 const compass = (dx: number, dy: number): string => COMPASS[Math.round((((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360) / 45) % 8];
@@ -232,7 +246,7 @@ ${P} .st-gr{color:var(--ap-gr)}${P} .st-map{color:var(--ap-map)}${P} .st-open,${
 ${P} .st-yours{color:var(--ap-yours)}${P} .st-written{color:var(--ap-written)}${P} .st-stale{color:var(--ap-stale)}
 
 ${P} .ap-mid{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--ap-desk);container:ap-page/inline-size}
-${P} .ap-ptool{flex:none;display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--ap-hair-soft);background:var(--ap-bg)}
+${P} .ap-ptool{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:10px;row-gap:6px;padding:8px 14px;border-bottom:1px solid var(--ap-hair-soft);background:var(--ap-bg)}
 ${P} .ap-seg{flex:none;display:inline-flex;padding:2px;border-radius:8px;background:var(--ap-field);border:1px solid rgba(255,255,255,.1)}
 ${P} .ap-seg button{height:26px;padding:0 12px;border:0;border-radius:6px;background:none;color:var(--ap-label);font-size:13px;font-weight:600;cursor:pointer;transition:background-color .15s ease-out,color .15s ease-out}
 ${P} .ap-seg button:hover{color:var(--ap-strong)}
@@ -245,6 +259,19 @@ ${P} .ap-ptool .sp{min-width:0}
 ${P} .ap-hfield{flex:none;display:inline-flex;align-items:center;gap:8px;color:var(--ap-label);font-size:13px;white-space:nowrap}
 ${P} .ap-hfield input{width:70px;height:28px;padding:0 8px;border-radius:7px;border:1px solid var(--ap-edge);background:var(--ap-field);color:var(--ap-tx);font-size:13px;font-variant-numeric:tabular-nums}
 ${P} .ap-hfield input:focus{border-color:var(--ap-accent)}
+${P} .ap-hfield input[type=date]{width:132px;color-scheme:dark}
+${P} .ap-hfield input.wide{width:96px}
+${P} .ap-lims{display:grid;grid-template-columns:1fr;gap:7px;margin:0 0 14px;padding:11px 12px;border-radius:8px;border:1px solid var(--ap-hair);background:rgba(255,255,255,.03);font-size:13px}
+${P} .ap-lims h5{margin:0 0 2px;font-size:13px;font-weight:700;color:var(--ap-strong)}
+${P} .ap-lims label{display:flex;align-items:center;gap:8px;color:var(--ap-tx);line-height:1.35}
+${P} .ap-lims input[type=checkbox]{width:15px;height:15px;margin:0;accent-color:var(--ap-accent)}
+${P} .ap-lims input[type=text],${P} .ap-lims input[type=number],${P} .ap-lims select{height:26px;padding:0 7px;border-radius:6px;border:1px solid var(--ap-edge);background:var(--ap-field);color:var(--ap-tx);font-size:12.5px}
+${P} .ap-lims input[type=text]{flex:1;min-width:0}
+${P} .ap-lims input[type=number]{width:62px}
+${P} .ap-lims textarea{width:100%;min-height:44px;padding:5px 7px;border-radius:6px;border:1px solid var(--ap-edge);background:var(--ap-field);color:var(--ap-tx);font:inherit;font-size:12.5px;resize:vertical}
+${P} .ap-lims .ap-mut{margin:2px 0 0;color:var(--ap-soft);font-size:12px;line-height:1.4}
+${P} .ap-call.style{border-color:rgba(142,193,234,.45);background:rgba(142,193,234,.06)}
+${P} .ap-call.style ul{margin:4px 0 0;padding-left:18px;color:var(--ap-label)}
 ${P} .ap-page{flex:1;min-height:0;overflow:auto;padding:20px 18px 48px}
 ${P} .ap-page .aprc-doc{max-width:800px;margin:0 auto;padding:clamp(22px,6%,40px) clamp(18px,6%,46px) 40px clamp(22px,7%,56px);border-radius:2px;box-shadow:0 1px 3px rgba(0,0,0,.4),0 8px 28px rgba(0,0,0,.35);font-size:10.5pt}
 ${P} .ap-page .ap-rule.long{min-width:min(22em,100%)}
@@ -433,10 +460,11 @@ const STALE_WORD: Record<AprcSrc | 'rows', string> = {
   orbat: 'The ORBAT figures changed after you wrote this',
   time: 'The timings worked out from H and the Time Req changed after you wrote this',
   h: 'H changed since you wrote this',
+  aim: "The aim's limitations changed since you wrote this",
   rows: 'Rows you typed in are gone from the new reading: your figures are kept as added rows',
 };
 /** What a reading is called in the sheet. */
-const SRC_WORD: Record<AprcSrc, string> = { gr: 'Gr', map: 'map', plan: 'plan check', en: 'en options', orbat: 'ORBAT', time: 'timings', h: 'H' };
+const SRC_WORD: Record<AprcSrc, string> = { gr: 'Gr', map: 'map', plan: 'plan check', en: 'en options', orbat: 'ORBAT', time: 'timings', h: 'H', aim: "aim's limitations" };
 
 const svg = (body: string, size = 14): string => `<svg width="${size}" height="${size}" viewBox="0 0 14 14" aria-hidden="true">${body}</svg>`;
 const ICON: Record<ParaStatus, string> = {
@@ -547,6 +575,11 @@ export default class GroundAppreciation {
   /** The en options' and timings' inputs of the last Read, so a new H re-times them without reading again. */
   private _lastTime: AprcTimeDataIn | null = null;
   private _lastHSum: AprcHSumIn | null = null;
+  /** What the two Aprc books' mechanics need from the last Read (re-applied on H, D Day, time now or a limitation). */
+  private _mx: MechsCtx | null = null;
+  private _mxKind: AprcKind | null = null;
+  /** The MITG's place (lng, lat) of the last reading: the night of D Day is worked out there. */
+  private _mxLL: [number, number] | null = null;
   private _note = '';
   private _sel: string | null = null;
   /** The outline's filter. */
@@ -662,6 +695,8 @@ export default class GroundAppreciation {
       this._doc = kept ?? newDoc(this._opts.kind);
     }
     EngineLogger.nextStep(ENGINE, 'Aprc on: open the sheet and press Read');
+    // a kept sheet's line of denial to the Ground Guide's AOR trace
+    this._syncDenial();
   }
 
   disable(): void {
@@ -671,6 +706,8 @@ export default class GroundAppreciation {
     this._busy = false;
     this._stopBusyClock();
     this.openPanel(false);
+    // the line of denial it gave the Ground Guide goes with it
+    this._syncDenial();
   }
 
   /** Off, and everything the sheet put in the page goes: its timers, listeners, the print frame, its style when it is the last. */
@@ -840,6 +877,9 @@ export default class GroundAppreciation {
     const undoAtStart = this._undo && this._undo.ver === this._docVer ? this._undo : null;
     const doc = newDoc(this._opts.kind);
     const attk = doc.kind === 'attk';
+    const wdr = doc.kind === 'wdr';
+    // the line of denial the sheet holds (a def's limitation) is marked on the trace drawn by this Read
+    const denial = prev && prev.kind === doc.kind && doc.kind === 'def' ? (prev.limits?.denial ?? null) : null;
     const notes: string[] = [];
     const at = this._clock();
     // readings not taken this time: what the previous sheet holds from them is kept
@@ -848,6 +888,16 @@ export default class GroundAppreciation {
     let lastEnemy: AprcEnemyIn | null = null;
     let timeIn: AprcTimeDataIn | null = null;
     let hsum: AprcHSumIn | null = null;
+    const ech0 = this._opts.echelon === 'coy' ? 'Coy' : this._opts.echelon === 'bde' ? 'Bde' : 'Bn';
+    const mx: MechsCtx = { echelon: ech0, reading: null, ipbRows: [], planRows: [], check: null, planAdv: [], planDis: [], time: null, attk: null, attkPlan: null, hsum: null, enNear: {}, symbols: [] };
+    // the doctrine books' heads that apply to this reading (AprcBooks.readHeads) and their drafts
+    const books: { mounted: boolean; mountains: boolean; patches: AprcPatch[] } = { mounted: false, mountains: false, patches: [] };
+    const rowsOf = (ps: Array<{ id: string; table?: { rows: string[][] } | null }>, id: string): string[][] => ps.find((x) => x.id === id)?.table?.rows ?? [];
+    const advDis = (rows: Array<{ name: string; st: string; reason: string }>): void => {
+      const say = (x: { name: string; reason: string }): string => `${x.name}: ${x.reason}`.replace(/\.$/, '');
+      mx.planAdv = rows.filter((x) => x.st === 'pass').map(say);
+      mx.planDis = rows.filter((x) => x.st === 'fail' || x.st === 'warn').map(say);
+    };
     try {
       // 1. the ground, through the Ground Guide (the attack: round the obj, from own side)
       let guide = this._host.guide?.() ?? null;
@@ -882,6 +932,7 @@ export default class GroundAppreciation {
       const { symbols, drawn } = await this._symbols(aor?.reading ?? null);
       if (!live()) return null;
       const sym = writeSymbols(symbols, { attack: attk });
+      mx.symbols = symbols;
       applyPatches(doc, sym.patches, 'map');
       doc.confirm.push(...tag(sym.confirm, 'map'));
 
@@ -891,8 +942,22 @@ export default class GroundAppreciation {
         step('Apchs onto the obj (IPB)');
         const ipb = await this._ipbAttk(guide, r, start, ech);
         if (!live()) return null;
+        mx.reading = r;
+        mx.echelon = ech;
+        mx.attk = ipb?.in ?? null;
+        mx.enNear = this._enNear(r, drawn);
+        if (r.country === 'Mountains') {
+          books.mountains = true;
+          books.patches.push(liftDraft('attk', ech));
+        }
         const gin = await this._groundIn(guide, aor, graphic, sym.drawnObs, seq, step);
         if (!live() || !gin) return null;
+        // the uphill assault in mountains: the climb from the SL / FUP to the obj off the 30 m elevation (MW Annex F)
+        if (r.country === 'Mountains') {
+          step('The climb to the obj');
+          mx.climb = await this._climbIn(guide, r, gin.ground?.elevationM ?? null, ipb);
+          if (!live()) return null;
+        }
         gin.attack = true;
         gin.threatMarked = !!start;
         gin.startWords = start ? `${start.label ? `${start.label} ` : ''}${this._where(r, this._ground(r, start.merc))}` : null;
@@ -916,15 +981,42 @@ export default class GroundAppreciation {
           const si = await this._strengthIn(orbat, r, ech, null, drawn, true);
           if (!live()) return null;
           if (si) {
-            const sw = writeStrength(si, { attack: true, disposns: sym.ownWhere });
+            const sw = writeStrength(si, { attack: true, disposns: sym.ownWhere, mountains: r.country === 'Mountains' });
             applyPatches(doc, sw.patches, 'orbat');
             doc.confirm.push(...tag(sw.confirm, 'orbat'));
+            books.mounted = si.own.some((u) => !!u.mounted);
+            const cp = this._casPatch(orbat, si);
+            if (cp) books.patches.push(cp);
           }
         } else {
           unread.add('orbat');
           notes.push(`No ORBAT at ${this._orbatBase || 'the ORBAT url'}: relative strength is counted from the symbols only.`);
         }
         applyPatches(doc, attkHeads(ech), 'gr');
+        doc.sources = this._sources(guide);
+        step('Figures');
+        doc.figures = await this._figures(aor);
+        if (!live()) return null;
+      } else if (aor && wdr) {
+        // the withdrawal (OoW Vol III): the MITG is the new def posn, its AOR the Gr forward of it the wdr crosses
+        const r = aor.reading;
+        if (!o.at && !graphic) notes.push('Wdr: the MITG is taken as the new def posn (a VG symbol, else the map centre). Select the new posn and Read again.');
+        const gin = await this._groundIn(guide, aor, graphic, sym.drawnObs, seq, step);
+        if (!live() || !gin) return null;
+        if (threat) {
+          gin.threatMarked = true;
+          gin.threatWords = threat.words;
+        }
+        const w = writeGround(gin);
+        applyPatches(doc, w.patches, 'gr');
+        const ww = writeGroundWdr(r);
+        applyPatches(doc, ww.patches, 'gr');
+        // only the confirm items of paragraphs the withdrawal has
+        doc.confirm.unshift(...tag([...w.confirm, ...ww.confirm].filter((c) => !c.paras.length || c.paras.some((id) => !!find(doc, id))), 'gr'));
+        doc.frame = w.frame ?? null;
+        mx.reading = r;
+        mx.echelon = w.frame?.echelon ?? ech0;
+        ['en', 'orbat'].forEach((k) => unread.add(k as AprcSrc));
         doc.sources = this._sources(guide);
         step('Figures');
         doc.figures = await this._figures(aor);
@@ -945,6 +1037,12 @@ export default class GroundAppreciation {
         applyPatches(doc, w.patches, 'gr');
         doc.confirm.unshift(...tag(w.confirm, 'gr'));
         doc.frame = w.frame ?? null;
+        mx.reading = r;
+        mx.echelon = w.frame?.echelon ?? ech0;
+        if (r.country === 'Mountains') {
+          books.mountains = true;
+          books.patches.push(liftDraft('def', mx.echelon));
+        }
         const tw = writeTasks(r);
         applyPatches(doc, tw.patches, 'gr');
         let en: AprcEnemyIn | null = null;
@@ -958,6 +1056,7 @@ export default class GroundAppreciation {
         if (en) {
           const ew = writeEnemy(en);
           applyPatches(doc, ew.patches, 'en');
+          mx.ipbRows = rowsOf(ew.patches, 'crs.react');
           doc.confirm.push(...tag(ew.confirm, 'en'));
         } else {
           unread.add('en');
@@ -987,6 +1086,8 @@ export default class GroundAppreciation {
             const sw = writeStrength(si);
             applyPatches(doc, sw.patches, 'orbat');
             doc.confirm.push(...tag(sw.confirm, 'orbat'));
+            const cp = this._casPatch(orbat, si);
+            if (cp) books.patches.push(cp);
           }
         } else {
           unread.add('orbat');
@@ -997,13 +1098,15 @@ export default class GroundAppreciation {
         if (!live()) return null;
         const tr = writeTimeReq(tin);
         applyPatches(doc, tr.patches, 'orbat');
+        const minesH = tin.mines ? [tin.mines.handH, tin.mines.mechH].filter((x): x is number => x !== null).sort((a, b) => a - b)[0] ?? null : null;
+        mx.time = { moveH: tin.move ? tin.move.km / tin.move.kmh : null, prepH: tin.prep?.h[0] ?? null, minesH, reqH: tr.reqH };
         doc.confirm.push(...tag(tr.confirm, 'orbat'));
         const fdl = en ? en.avenues.flatMap((a) => (a.lines ?? []).filter((l) => l.role === 'FDLs').map((l) => l.h[0])) : [];
         timeIn = { hHour: this._hHour(guide), reqH: tr.reqH, fdlH: fdl.length ? Math.min(...fdl) : null };
         applyPatches(doc, writeTimeData(timeIn).patches, 'time');
         doc.sources = this._sources(guide);
         step('Figures');
-        doc.figures = await this._figures(aor);
+        doc.figures = await this._figures(aor, denial);
         if (!live()) return null;
       } else if (this._opts.figures !== 'trace') {
         step('A shot of the map');
@@ -1021,15 +1124,21 @@ export default class GroundAppreciation {
           const pw = writeAttkPlan(ac);
           applyPatches(doc, pw.patches, 'plan');
           doc.confirm.push(...tag(pw.confirm, 'plan'));
+          mx.attkPlan = ac;
+          advDis([...ac.rows, ...ac.axes.flatMap((a) => a.rows.map((x) => ({ ...x, name: `${a.label}: ${x.name}` })))]);
         }
         hsum = rep?.task === 'attack' ? this._hSumOf(rep) : null;
+        mx.hsum = hsum;
         applyPatches(doc, writeTimeCalcAttk(this._hHour(guide), hsum).patches, 'time');
-      } else {
+      } else if (!wdr) {
         const chk = rep?.task === 'attack' ? null : this._checkIn();
         if (chk) {
           const pw = writePlan(chk);
           applyPatches(doc, pw.patches, 'plan');
           doc.confirm.push(...tag(pw.confirm, 'plan'));
+          mx.check = chk;
+          mx.planRows = rowsOf(pw.patches, 'crs.react');
+          advDis(chk.rows);
           if (aor) applyPatches(doc, writeCoyTasks(this._coysIn(rep, aor.reading)).patches, 'plan');
         }
       }
@@ -1041,6 +1150,25 @@ export default class GroundAppreciation {
         doc.confirm.push(...tag(aw.confirm, 'plan'));
       }
       if (!live()) return null;
+
+      // the doctrine books' heads where they apply (a mounted unit's dismounting area, mules and porters in mountains,
+      // the cas estimate from the ORBAT), kept where the last sheet holds the planner's words in them
+      readHeads(doc, { mounted: books.mounted, mountains: books.mountains, orbat: books.patches.some((x) => x.id === 'plan.adm.cas') }, prev, unread);
+      applyPatches(doc, books.patches);
+
+      // the two Aprc books' mechanics (the aim's limitations, the layout by them, the course, the Vis, the timings, the
+      // attack's tests and Time Calc, the sketch list); what was not read this time is taken from the last Read
+      const was = this._mxKind === doc.kind ? this._mx : null;
+      if (was) {
+        if (!mx.reading) Object.assign(mx, { reading: was.reading, echelon: was.echelon, enNear: was.enNear });
+        if (unread.has('en')) Object.assign(mx, { ipbRows: was.ipbRows, attk: mx.attk ?? was.attk });
+        if (!mx.time) mx.time = was.time;
+      }
+      if (prev && prev.kind === doc.kind && prev.limits) doc.limits = { ...prev.limits };
+      if (aor) this._mxLL = mercToLngLat(...this._toMerc(aor.reading, aor.reading.mitg.at));
+      const mw = writeMechs(this._mechsIn(doc, mx));
+      applyPatches(doc, mw.patches);
+      doc.confirm.push(...tag(mw.confirm, 'gr'));
 
       // what was not read this time: the previous reading of it is kept, never lost
       const same = prev && prev.kind === doc.kind ? prev : null;
@@ -1078,6 +1206,8 @@ export default class GroundAppreciation {
         this._slideMaps = null;
       }
       if (!unread.has('en') || !this._lastEnemy) this._lastEnemy = lastEnemy;
+      this._mx = mx;
+      this._mxKind = doc.kind;
       if (timeIn || !unread.has('time')) this._lastTime = timeIn;
       this._lastHSum = hsum;
       this._note = notes.join(' ');
@@ -1524,6 +1654,29 @@ export default class GroundAppreciation {
     return this._orbat;
   }
 
+  /** The Cas Estimate under Adm and Log: the own units' strength by rank and lsf row, from the ORBAT (lsf pp 47-51). */
+  private _casPatch(o: any, si: AprcStrengthIn | null): AprcPatch | null {
+    if (!o?.own || !si?.own.length) return null;
+    const acc = new Map<string, AprcCasGroup>();
+    const missing: string[] = [];
+    for (const u of si.own) {
+      if (!u.id) {
+        missing.push(u.name);
+        continue;
+      }
+      const g = casGroupsOf(o.own, u.id, u.count);
+      for (const x of g.groups) {
+        const a = acc.get(x.arm) ?? { arm: x.arm, offr: 0, jco: 0, sldr: 0 };
+        a.offr += x.offr;
+        a.jco += x.jco;
+        a.sldr += x.sldr;
+        acc.set(x.arm, a);
+      }
+      missing.push(...g.missing);
+    }
+    return casEstimate({ groups: [...acc.values()], missing: [...new Set(missing)], src: [...new Set(si.own.map((u) => u.src))].join('; '), assumed: si.ownAssumed });
+  }
+
   /** Own and en units for the relative strength: a built plan's, else the symbols marked, else assumed (and said so). */
   private async _strengthIn(o: any, r: AorReading, echWord: string, need: number | null, drawn: any[], attack = false): Promise<AprcStrengthIn | null> {
     const { brief, ownUnitFor, enUnitFor } = await import('../DeploymentBuilder/PlanOrbat');
@@ -1535,7 +1688,7 @@ export default class GroundAppreciation {
       const b = id ? brief(o, id) : null;
       if (!b) return null;
       const n = (l: Array<{ count: number }>) => l.reduce((a, w) => a + (Number(w.count) || 0), 0);
-      return { name: b.name, count, coys: b.coys, strength: b.strength, atgm: n(b.atgm), mortars: n(b.mortars), plsPerCoy: b.plsPerCoy, src: b.src };
+      return { name: b.name, count, coys: b.coys, strength: b.strength, atgm: n(b.atgm), mortars: n(b.mortars), plsPerCoy: b.plsPerCoy, src: b.src, id: b.id, mounted: !!b.mounted };
     };
     const group = (pairs: Array<string | null>): AprcForceUnit[] => {
       const m = new Map<string, number>();
@@ -1566,7 +1719,7 @@ export default class GroundAppreciation {
       enAssumed = meta?.enemy
         ? `the built plan's en (${ECHW[e] ?? e}, ${type})`
         : attack
-          ? `one level down, a ${ECHW[e] ?? e} in def, inf: an attacker wants more than 3 : 1 (${String(pd?.enemy?.defaultUp?.src ?? 'MW p 80').replace(/\s*\(.*\)\s*$/, '')})`
+          ? `one level down, a ${ECHW[e] ?? e} in def, inf: an attacker keeps the usual 3 : 1 (${r.country === 'Mountains' ? 'MW p 80: in mountains comparatively more, in sequence' : 'IBB p 248'})`
           : `one level up, a ${ECHW[e] ?? e} (${pd?.enemy?.defaultUp?.src ?? 'PlanDoctrine'}), ${type} (${type === 'mech' ? pd?.enemy?.defaultType?.src ?? 'PlanDoctrine' : 'mountains: inf'})`;
     }
     if (!en.length || !own.length) return null;
@@ -1578,7 +1731,8 @@ export default class GroundAppreciation {
     const pd: any = (await import('../../Data/PlanDoctrine.json')).default;
     const md: any = (await import('../../Data/MoveDoctrine.json')).default;
     const ownEch = ({ Coy: '15', Bn: '16', Bde: '18' } as Record<string, string>)[echWord] ?? '16';
-    const out: AprcTimeIn = { move: null, prep: null, mines: null };
+    // the DS guns (a Bn's fd Bty, a Bde's fd Regt; a Coy has none of its own: IBB p 122) and the ground's own prep notes
+    const out: AprcTimeIn = { move: null, prep: null, mines: null, guns: echWord === 'Coy' ? null : gunUnitFor(echWord), ground: r.country };
     // the move in: an own symbol of the AOR's echelon outside the AOR, 2 km or more from the MITG
     const inside = (p: AorXY): boolean => {
       let c = false;
@@ -1601,7 +1755,12 @@ export default class GroundAppreciation {
       break;
     }
     const ready = pd?.readyBy?.coyPosnH;
-    if (Array.isArray(ready?.value)) out.prep = { h: [Number(ready.value[0]), Number(ready.value[1])], src: String(ready.src ?? 'PlanDoctrine readyBy.coyPosnH') };
+    if (echWord === 'Bn' || echWord === 'Bde') {
+      // a Bn's (and a Bde's Bns') posns: OoW Vol I p 39 (PlanDoctrine readyBy.bnPosnH when it holds one), not a Coy's
+      const bn = pd?.readyBy?.bnPosnH;
+      const h = Number(Array.isArray(bn?.value) ? bn.value[0] : bn?.value) || 36;
+      out.prep = { h: [h, h], src: String(bn?.src ?? 'A battalion needs a minimum of 36 working hours for preparing positions to meet a full-scale attack; Inf subunits about 12 h (OoW Vol I p 39); a Coy 24-36 h (IC s75 p 399); the guide\'s specimen 36 h (Understanding Aprc Sec II sheet 7)'), note: `A Bn prepares its posns in at least ${h} working hrs` };
+    } else if (Array.isArray(ready?.value)) out.prep = { h: [Number(ready.value[0]), Number(ready.value[1])], src: String(ready.src ?? 'PlanDoctrine readyBy.coyPosnH') };
     const fdl = r.lines.find((l) => l.role === 'FDLs');
     if (o && fdl) {
       const { ownEngrTypes, minesByEngr, engrShare } = await import('../DeploymentBuilder/PlanEngr');
@@ -1773,7 +1932,7 @@ export default class GroundAppreciation {
       // the view from the MITG toward the reading's threat side (the attack: toward own side, his view from the obj)
       mitgObsn: ext?.obs ? { near: null, radiusM: ext.radiusM ?? 2000, seenPct: ext.obs.seenPct, clearMedianM: ext.obs.clearMedianM, country: ext.obs.country, overlook: ext.obs.overlook ? { riseM: ext.obs.overlook.riseM, distM: ext.obs.overlook.distM, compass: toward(ext.obs.overlook.bearingDeg) } : null } : null,
       // the place's zone (groundAppreciation.utcOffsetH), never the computer's
-      light: lightTimes(new Date(), ll[1], ll[0], Number(this._opts.utcOffsetH) * 60),
+      light: lightTimes(this._dDate(), ll[1], ll[0], Number(this._opts.utcOffsetH) * 60),
       drawnObs,
       threatMarked: !r.originsAssumed,
       readAt: `${this._clock()} (${zoneWord(Number(this._opts.utcOffsetH))})`,
@@ -1808,24 +1967,81 @@ export default class GroundAppreciation {
 
   // ── figures ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-  private async _figures(aor: { reading: AorReading; frame: AorFrame }): Promise<AprcFigure[]> {
+  private async _figures(aor: { reading: AorReading; frame: AorFrame }, denial: string | null = null): Promise<AprcFigure[]> {
     const out: AprcFigure[] = [];
-    const W = 900, H = 800;
     if (this._opts.figures !== 'map') {
-      const frame: AorFrame = { ...aor.frame, reading: aor.reading, style: 'trace', orient: 'north', northDeg: 0, layers: { going: true, apch: true, line: true, itg: true, dml: true, msr: true }, loading: false };
-      try {
-        const svg = aorMapSvg(aor.reading, frame, W, H, 'full');
-        const png = await this._rasterise(svg, W, H, 2);
-        out.push({ id: 'trace', kind: 'trace', caption: `Trace: apchs, lines of def and going for ${aor.frame.profileLabel.toLowerCase()}. North up.`, svg, png: png ?? undefined, w: W, h: H });
-      } catch (err) {
-        console.warn('[Aprc] trace', err);
-      }
+      const t = await this._traceFigure(aor, denial);
+      if (t) out.push(t);
     }
     if (this._opts.figures !== 'trace') {
       const shot = await this._mapShot();
       if (shot) out.push(shot);
     }
     return out;
+  }
+
+  /** The trace of the AOR reading, the line of denial given marked "Line of Denial" on it (OoW Vol I pp 17-18). */
+  private async _traceFigure(aor: { reading: AorReading; frame: AorFrame }, denial: string | null): Promise<AprcFigure | null> {
+    const W = 900, H = 800;
+    const den = denial && aor.reading.lines.some((l) => l.id === denial) ? denial : null;
+    const frame: AorFrame = { ...aor.frame, reading: aor.reading, style: 'trace', orient: 'north', northDeg: 0, layers: { going: true, apch: true, line: true, itg: true, dml: true, msr: true }, loading: false, denial: den };
+    try {
+      const svg = aorMapSvg(aor.reading, frame, W, H, 'full');
+      const png = await this._rasterise(svg, W, H, 2);
+      return { id: 'trace', kind: 'trace', caption: `Trace: apchs, lines of def${den ? ` (Line ${den} the line of denial)` : ''} and going for ${aor.frame.profileLabel.toLowerCase()}. North up.`, svg, png: png ?? undefined, w: W, h: H };
+    } catch (err) {
+      console.warn('[Aprc] trace', err);
+      return null;
+    }
+  }
+
+  /**
+   * The line of denial changed on the sheet: the trace of this session's reading is drawn again with it, the slides'
+   * traces too (the line of denial is the planner's, set after the Read).
+   */
+  private async _retrace(): Promise<void> {
+    const doc = this._doc, aor = this._aor;
+    // the slides' traces are drawn again from the reading when next asked for
+    this._slideMaps = null;
+    if (!doc || !aor || !this._readHere || !doc.figures.some((f) => f.id === 'trace')) return;
+    const fig = await this._traceFigure(aor, doc.kind === 'def' ? (doc.limits?.denial ?? null) : null);
+    if (!fig || this._doc !== doc) return;
+    doc.figures = doc.figures.map((f) => (f.id === 'trace' ? fig : f));
+    this._save();
+    this._render();
+  }
+
+  /**
+   * The climb from the SL (else the FUP) to the obj for the uphill assault in mountains (MW Annex F pp 311-313): the
+   * height at each read off the terrain data's 30 m elevation through the Ground Guide (`sectionsAround`, as at the MITG),
+   * the obj's the MITG's. The start: the checked attack plan's first-phase SL, else its FUP, else the FUP of the apch the
+   * IPB reading leads with. Null when a height is not read or the way is not uphill.
+   */
+  private async _climbIn(guide: any, r: AorReading, objElev: number | null, ipb: { in: AprcAttkIn | null; view: any } | null): Promise<AprcClimb | null> {
+    if (objElev === null || !Number.isFinite(objElev) || !guide?.sectionsAround) return null;
+    const cen = (pts: any[]): [number, number] => [pts.reduce((a, p) => a + p.x, 0) / pts.length, pts.reduce((a, p) => a + p.y, 0) / pts.length];
+    let at: [number, number] | null = null;
+    let what = '';
+    const c: any = this._host.planCheck?.() ?? null;
+    if (c?.task === 'attack' && c.groups?.length) {
+      const g = c.groups.find((x: any) => (x.phase ?? 1) === 1) ?? c.groups[0];
+      if (g.sl?.pts?.length) ((at = cen(g.sl.pts)), (what = g.sl.label ? `SL ${g.sl.label}` : 'the SL'));
+      else if (g.fup?.pts?.length) ((at = cen(g.fup.pts)), (what = g.fup.label ? `FUP ${g.fup.label}` : 'the FUP'));
+    }
+    if (!at && ipb?.in && ipb.view) {
+      const first = attkFirst(ipb.in)?.first ?? null;
+      const aa = first ? (ipb.view.aas ?? []).find((x: any) => String(x.id) === first.id) : null;
+      if (first && Array.isArray(aa?.fupAt)) ((at = [Number(aa.fupAt[0]), Number(aa.fupAt[1])]), (what = `the FUP of Apch ${first.id} (${first.label})`));
+    }
+    if (!at) return null;
+    const s: any = await withTimeout<any>(guide.sectionsAround(mercToLngLat(...at)), 20000);
+    const e = s?.ground?.elevationM;
+    if (typeof e !== 'number' || !Number.isFinite(e)) return null;
+    const g = this._ground(r, at);
+    const horizM = Math.hypot(g[0] - r.mitg.at[0], g[1] - r.mitg.at[1]);
+    const m = Math.round(objElev - e);
+    if (m <= 0 || horizM < 50) return null;
+    return { m, horizM, from: `${what} ${this._where(r, g)}`, to: r.mitg.name && r.mitg.name !== 'MITG' ? r.mitg.name : 'the Obj' };
   }
 
   private _rasterise(svg: string, w: number, h: number, scale: number, mime: 'image/png' | 'image/jpeg' = 'image/png'): Promise<string | null> {
@@ -2019,8 +2235,10 @@ export default class GroundAppreciation {
     }
     const wasRead = this._wasRead(doc);
     this._opts.kind = next;
-    this._persist('kind', next);
+    // the sheet takes the new kind before the setting does: the setting's echo (setOptions) then finds nothing to change
+    // (persisted first, it came back while the sheet still held the old kind and started this again, without end)
     this.clear(`Changed to ${label(next)}`);
+    this._persist('kind', next);
     if (wasRead) void this.read();
   }
 
@@ -2147,7 +2365,8 @@ export default class GroundAppreciation {
     const { reading, frame } = this._aor;
     const kind = this._doc.kind;
     const W = 900, H = 800;
-    const base: AorFrame = { ...frame, reading, style: 'dark', orient: 'north', northDeg: 0, layers: { going: true, apch: true, line: true, itg: true, dml: true, msr: true }, loading: false };
+    const denial = kind === 'def' ? (this._doc.limits?.denial ?? null) : null;
+    const base: AorFrame = { ...frame, reading, style: 'dark', orient: 'north', northDeg: 0, layers: { going: true, apch: true, line: true, itg: true, dml: true, msr: true }, loading: false, denial: denial && reading.lines.some((l) => l.id === denial) ? denial : null };
     const r0: AorReading = kind === 'attk' ? { ...reading, apchs: reading.apchs.map((a) => ({ ...a, side: deckSideOfReading(kind, a.side) as AorSide })) } : reading;
     const draw = async (r: AorReading): Promise<DeckMap | null> => {
       try {
@@ -2370,6 +2589,8 @@ export default class GroundAppreciation {
 <span class="ap-hint-copy" data-p="copyhint"></span>
 <span class="sp"></span>
 <label class="ap-hfield" title="H as a clock time on D Day: the en's times get clock times beside H+. Empty takes the Ground Guide's IPB H.">H on D Day<input type="text" data-o="hHour" inputmode="numeric" maxlength="5" placeholder="HH:MM" autocomplete="off"></label>
+<label class="ap-hfield" title="D Day's date: first and last lt and the moon are worked out for it. Empty takes today.">D Day<input type="date" data-o="dDay"></label>
+<label class="ap-hfield" title="Time now as a D-time (D-1 1000): the time aval and the essential timings run from it. Empty leaves them out.">Now<input class="wide" type="text" data-o="timeNow" maxlength="16" placeholder="D-1 1000" autocomplete="off"></label>
 <button class="ap-btn icon sm ghost ap-pane-btn" data-a="pane" data-v="rt" data-p="panert" aria-controls="ap-pane-rt" aria-keyshortcuts="]">${UI.paneR}</button>
 </div>
 <div class="ap-page" data-p="page"></div>
@@ -2557,9 +2778,12 @@ export default class GroundAppreciation {
       if (t.isConnected && this._doc && this._sel) this._commitCell(t as HTMLInputElement);
       return;
     }
+    if (t.dataset?.lim) return this._limitInput(t as HTMLInputElement);
     const k = t.dataset?.o;
     if (!k) return;
     if (k === 'hHour') return void this.setH(t.value);
+    if (k === 'dDay') return this.setDDay(t.value);
+    if (k === 'timeNow') return this.setNow(t.value);
     if (k === 'kind') {
       const next = t.value as AprcKind;
       // A sheet that held a reading is read again for the new kind (the planner asked for a reading once: it is kept
@@ -2592,7 +2816,7 @@ export default class GroundAppreciation {
         ...(this._lastTime && doc.kind === 'def' ? writeTimeData({ ...this._lastTime, hHour: hh }).patches : []),
         ...(doc.kind === 'attk' ? writeTimeCalcAttk(hh, this._lastHSum).patches : []),
       ];
-      const n = retime(doc, patches, ['en', 'time'], 'h');
+      const n = retime(doc, patches, ['en', 'time'], 'h') + (this._mx && this._mxKind === doc.kind ? retime(doc, writeMechs(this._mechsIn(doc)).patches, MECHS_FROM, 'h') : 0);
       if (this._lastTime) this._lastTime = { ...this._lastTime, hHour: hh };
       this._msg = n ? `${word}: ${n} paragraph${n === 1 ? '' : 's'} re-timed` : `${word}: nothing carries a time to change`;
       this._changed();
@@ -2611,6 +2835,178 @@ export default class GroundAppreciation {
     }
     this._msg = !read ? `${word}: the en options are timed from it when you Read` : `${word}: this reading has no en options or timings to re-time`;
     this._render();
+  }
+
+  // ── the two Aprc books' mechanics: the aim's limitations, D Day, time now ─────────────────────────────────────
+
+  /** The mechanics' inputs: the last Read's (or `mx`), with the sheet's limitations, H, time now and the night of D Day. */
+  private _mechsIn(doc: AprcDoc, mx: MechsCtx | null = this._mxKind === doc.kind ? this._mx : null): AprcMechsIn {
+    const base: MechsCtx = mx ?? { echelon: this._opts.echelon === 'coy' ? 'Coy' : this._opts.echelon === 'bde' ? 'Bde' : 'Bn', reading: null, ipbRows: [], planRows: [], check: null, planAdv: [], planDis: [], time: null, attk: null, attkPlan: null, hsum: null, enNear: {}, symbols: [] };
+    const ll = this._mxLL;
+    const off = Number(this._opts.utcOffsetH) * 60;
+    let night: AprcNight | null = null;
+    try {
+      night = ll ? nightOf(this._opts.dDay || null, ll[1], ll[0], off) : null;
+    } catch (err) {
+      console.warn('[Aprc] night', err);
+    }
+    return { ...base, kind: doc.kind, limits: doc.limits ?? {}, hHour: this._hHour(this._host.guide?.() ?? null), timeNow: this._opts.timeNow || null, night, zone: zoneWord(Number(this._opts.utcOffsetH)) };
+  }
+
+  /** D Day's date at noon in the place's zone (the sheet's D Day, else today). */
+  private _dDate(): Date {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(this._opts.dDay ?? '').trim());
+    return m ? new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12) - Number(this._opts.utcOffsetH) * 3600000) : new Date();
+  }
+
+  /**
+   * En units of a Pl or more marked within 1 km of each apch onto the obj, those within 1.5 km of the obj left out (its
+   * own garrison): an apch with a Pl or more seen on it is discarded (Understanding Aprc p 17). By the reading's side.
+   */
+  private _enNear(r: AorReading, drawn: any[]): Partial<Record<AorSide, string[]>> {
+    const big = new Set(['14', '15', '16', '17', '18', '21', '22', '23']);
+    const out: Partial<Record<AorSide, string[]>> = {};
+    const en = drawn.filter((x) => x?.side === 'enemy' && String(x.key ?? '').startsWith('10') && big.has(String(x.ech)) && x.pts?.length);
+    const segD = (p: AorXY, a: AorXY, b: AorXY): number => {
+      const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2));
+      return Math.hypot(a[0] + t * dx - p[0], a[1] + t * dy - p[1]);
+    };
+    for (const a of r.apchs) {
+      const names: string[] = [];
+      for (const x of en) {
+        const m: [number, number] = [x.pts.reduce((q: number, p: any) => q + p.x, 0) / x.pts.length, x.pts.reduce((q: number, p: any) => q + p.y, 0) / x.pts.length];
+        const g = this._ground(r, m);
+        if (Math.hypot(g[0] - r.mitg.at[0], g[1] - r.mitg.at[1]) < 1500) continue;
+        let d = Infinity;
+        for (let i = 0; i + 1 < a.path.length; i++) d = Math.min(d, segD(g, a.path[i], a.path[i + 1]));
+        if (d <= 1000) names.push(String(x.label || x.name || 'En'));
+      }
+      if (names.length) out[a.side] = [...new Set(names)];
+    }
+    return out;
+  }
+
+  /** Re-apply the mechanics after a sheet input changed; returns how many paragraphs changed. */
+  private _reapply(cause: AprcSrc): number {
+    const doc = this._doc;
+    if (!doc) return 0;
+    const w = writeMechs(this._mechsIn(doc));
+    // with no limitation left, the aim goes back to the outline's (the attack keeps its drafted words)
+    if (!w.patches.some((x) => x.id === 'aim')) {
+      const fresh = find(newDoc(doc.kind), 'aim');
+      const now = find(doc, 'aim');
+      if (fresh && now && now.src === 'aim') w.patches.unshift(doc.kind !== 'attk' ? { id: 'aim', draft: null, state: 'yours', basis: [], children: fresh.children, src: 'aim' } : { id: 'aim', children: fresh.children, src: 'aim' });
+    }
+    const n = retime(doc, w.patches, MECHS_FROM, cause);
+    for (const c of w.confirm) if (!doc.confirm.some((x) => x.text === c.text)) doc.confirm.push({ ...c, src: 'gr' });
+    return n;
+  }
+
+  /** The aim's limitations as set (a copy). */
+  limits(): AprcLimits {
+    return { ...(this._doc?.limits ?? {}) };
+  }
+
+  /**
+   * Set the aim's limitations (merged into those set; null clears them). The aim, the def's layout, analysis and course,
+   * the Vis and the timings (the attack's Time Calc) follow at once; the planner's words over them go stale.
+   */
+  setLimits(patch: Partial<AprcLimits> | null): void {
+    if (!this._doc) this._doc = newDoc(this._opts.kind);
+    const doc = this._doc;
+    const denialWas = doc.limits?.denial ?? null;
+    doc.limits = patch === null ? undefined : normLimits({ ...(doc.limits ?? {}), ...patch });
+    const n = this._reapply('aim');
+    this._msg = `Limitations ${doc.limits ? 'set' : 'cleared'}: ${n} paragraph${n === 1 ? '' : 's'} ${n === 1 ? 'follows' : 'follow'}`;
+    this._changed();
+    // the line of denial is marked on the trace: drawn again when it changes
+    if ((doc.limits?.denial ?? null) !== denialWas) void this._retrace();
+  }
+
+  /** D Day's date ("YYYY-MM-DD", or empty for today): first / last lt and the moon follow; the Met para on the next Read. */
+  setDDay(value: string): void {
+    const v = String(value ?? '').trim();
+    if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+      this._msg = 'D Day: pick a date, or leave it empty for today';
+      return this._render();
+    }
+    this.setOptions({ dDay: v });
+    this._persist('dDay', v);
+    const n = this._reapply('time');
+    this._msg = `D Day ${v || 'today'}: ${n} paragraph${n === 1 ? '' : 's'} re-timed${this._readHere ? '; the Met para takes it on the next Read' : ''}`;
+    this._changed();
+  }
+
+  /** Time now as a D-time ("D-1 1000", or empty): the time aval, the essential timings and more / less time follow. */
+  setNow(value: string): void {
+    const v = String(value ?? '').trim();
+    if (v && parseDTime(v) === null) {
+      this._msg = 'Now: type a D-time such as D-1 1000, or leave it empty';
+      return this._render();
+    }
+    this.setOptions({ timeNow: v });
+    this._persist('timeNow', v);
+    const n = this._reapply('time');
+    this._msg = `Time now ${v || 'cleared'}: ${n} paragraph${n === 1 ? '' : 's'} re-timed`;
+    this._changed();
+  }
+
+  /** A control of the Limitations box changed. */
+  private _limitInput(t: HTMLInputElement): void {
+    const k = t.dataset.lim as keyof AprcLimits;
+    const v: any = t.type === 'checkbox' ? t.checked : k === 'other' ? String(t.value).split(/\n+/) : k === 'delayH' || k === 'maxCoys' || k === 'climbM' ? (t.value ? Number(t.value) : null) : t.value.trim() || null;
+    if ((k === 'by' || k === 'deny' || k === 'noMovBefore' || k === 'clearBy') && v && parseDTime(v) === null) {
+      this._msg = `${k === 'by' ? 'By' : k === 'deny' ? 'Denied until' : k === 'noMovBefore' ? 'No rearward mov before' : 'Clear by'}: type a D-time such as 0600 D+1`;
+      return this._render();
+    }
+    this.setLimits({ [k]: v } as Partial<AprcLimits>);
+  }
+
+  /** The Limitations box in the Aim's panel. */
+  private _limitsHtml(doc: AprcDoc): string {
+    const l = doc.limits ?? {};
+    const box = (k: string, on: boolean | undefined, label: string): string => `<label><input type="checkbox" data-lim="${k}" ${on ? 'checked' : ''}>${esc(label)}</label>`;
+    const txt = (k: string, v: string | null | undefined, label: string, ph: string): string => `<label>${esc(label)}<input type="text" data-lim="${k}" value="${esc(v ?? '')}" placeholder="${esc(ph)}" autocomplete="off"></label>`;
+    const num = (k: string, v: number | null | undefined, label: string): string => `<label>${esc(label)}<input type="number" min="1" step="1" data-lim="${k}" value="${v ?? ''}"></label>`;
+    let h = '<div class="ap-lims" role="group" aria-label="Limitations"><h5>Limitations</h5>';
+    if (doc.kind === 'def') {
+      const lines = this._mx?.reading?.lines.map((x) => x.id) ?? ['W', 'X', 'Y', 'Z'];
+      h += box('fwd', l.fwd, 'Def to be as far fwd as tac feasible');
+      h += `<label>No pen beyond line<select data-lim="noPen"><option value="">None</option>${lines.map((x) => `<option value="${x}" ${l.noPen === x ? 'selected' : ''}>Line ${x}</option>`).join('')}</select></label>`;
+      h += `<label>Line of denial (given)<select data-lim="denial"><option value="">None</option>${lines.map((x) => `<option value="${x}" ${l.denial === x ? 'selected' : ''}>Line ${x}</option>`).join('')}</select></label>`;
+      h += txt('allCosts', l.allCosts, 'Def at all costs', 'a place');
+      h += box('attrition', l.attrition, 'Cause max attrition / delay onto the En');
+      h += num('delayH', l.delayH, 'Delay the En for (hrs)');
+      h += num('maxCoys', l.maxCoys, 'Not more than (Coys)');
+      h += txt('by', l.by, 'Def to be ready by', '0600 D Day');
+      h += box('salient', l.salient, 'Def of a salient');
+      h += box('penetrated', l.penetrated, 'The En has pen the defs');
+    } else if (doc.kind === 'wdr') {
+      h += txt('newPosn', l.newPosn, 'New def posn (given)', 'a place');
+      h += txt('deny', l.deny, 'Posn denied until', '0200 D+1');
+      h += txt('noMovBefore', l.noMovBefore, 'No rearward mov before', '1900 D Day');
+      h += txt('clearLine', l.clearLine, 'All tps clear of (line)', 'a line');
+      h += txt('clearBy', l.clearBy, 'Clear by', '0500 D+1');
+      h += num('delayH', l.delayH, 'Delay the En fwd of the new posn (hrs)');
+      h += box('byDay', l.byDay, 'Wdr by day');
+    } else {
+      h += txt('by', l.by, 'Area to be captured by', '0600 D+1');
+      h += box('destr', l.destr, 'Ensure max destr of the En (block before the attk)');
+      h += box('night', l.night, 'Attk to be conducted at ni');
+      h += box('bunkers', l.bunkers, 'The obj a tough area with bunkers');
+    }
+    h += `<label style="display:block">Others, one a line<textarea data-lim="other">${esc((l.other ?? []).join('\n'))}</textarea></label>`;
+    h += `<p class="ap-mut">Given by the higher comd. ${doc.kind === 'def' ? 'They place the FDLs, the depth and the screens, and become advs (Understanding Aprc pp 3-4, 12); the line of denial stands for the line of no pen when none is set (OoW Vol I pp 17-18), and is marked on the trace.' : doc.kind === 'wdr' ? 'The essential timings are laid down by the highest comd (OoW Vol III p 19 para 17); the delay fwd of the new posn by the higher comd (p 10 para 6c). They set the Time and Space: the new posn ready by them, its prep 36 working hrs a Bn (OoW Vol I p 39), a ni wdr finished before first lt (OoW Vol III p 44).' : 'They set the Time Calc: backward from the time given (Mechs of Aprc (Attk) p 13).'}</p>`;
+    if (doc.kind === 'attk') {
+      const rd = this._mxKind === 'attk' ? this._mx?.climb ?? null : null;
+      h += '<h5>Time Calc</h5>';
+      h += box('quick', l.quick, 'A quick attk (from contact)');
+      h += `<label>Climb SL to Obj (m, mountains)<input type="number" min="1" step="1" data-lim="climbM" value="${l.climbM ?? ''}" placeholder="${rd ? `read ${rd.m}` : ''}"></label>`;
+      h += `<p class="ap-mut">Yours, not limitations: a quick attk takes contact to H by MIB p 89 / Annex L and IBB p 133; the climb puts the assault on the slant with 1 h for every 350 m (MW Annex F pp 311-313). In mountains Read takes it off the 30 m elevation from the SL (else the FUP) to the obj${rd ? `: ${rd.m} m from ${esc(rd.from)}` : ''}; a climb typed here overrides it.</p>`;
+    }
+    h += '</div>';
+    return h;
   }
 
   /** Commit a typed cell; true when the sheet was drawn again. */
@@ -3239,7 +3635,25 @@ export default class GroundAppreciation {
     return t;
   }
 
+  /**
+   * The line of denial the aim's limitations give (a defence's), passed to the Ground Guide so its Gr Scope AOR trace marks
+   * it too (`guide.setAorDenial`). Sent only when it changes (or the guide is a new one), so a denial another host set on
+   * the guide is not overwritten by every redraw; off (the Aprc turned off) it takes back the one it sent.
+   */
+  private _denialSent: { guide: any; id: string | null } | null = null;
+  private _syncDenial(): void {
+    const g = this._host.guide?.() ?? null;
+    if (!g || typeof g.setAorDenial !== 'function') return;
+    const id = this._enabled && this._doc?.kind === 'def' ? (this._doc.limits?.denial ?? null) : null;
+    if (this._denialSent && this._denialSent.guide === g && this._denialSent.id === id) return;
+    // nothing sent yet and nothing to send: leave the guide's own as it is
+    if (!this._denialSent && id === null) return;
+    g.setAorDenial(id);
+    this._denialSent = { guide: g, id };
+  }
+
   private _render(): void {
+    this._syncDenial();
     if (!this._el || !this._open) return;
     const doc = this._doc ?? newDoc(this._opts.kind);
     const copy = this._opts.copy;
@@ -3277,6 +3691,10 @@ export default class GroundAppreciation {
     this._part('copyhint').textContent = copy === 'fair' ? 'As it goes up: blanks print a ruled line' : 'With the marks, the proposals and the annexes';
     const hin = this._el.querySelector('[data-o="hHour"]') as HTMLInputElement;
     if (document.activeElement !== hin) hin.value = this._opts.hHour ?? '';
+    const din = this._el.querySelector('[data-o="dDay"]') as HTMLInputElement;
+    if (document.activeElement !== din) din.value = this._opts.dDay ?? '';
+    const nin = this._el.querySelector('[data-o="timeNow"]') as HTMLInputElement;
+    if (document.activeElement !== nin) nin.value = this._opts.timeNow ?? '';
 
     // the note under the header
     const guideOff = !this._host.guide?.()?.isEnabled;
@@ -3342,8 +3760,9 @@ export default class GroundAppreciation {
     if (t.open) h += `<button class="ap-btn sm" data-a="accept-all" title="Take every open proposal as it stands; you can take any back">Accept all ${t.open} proposal${t.open === 1 ? '' : 's'}</button>`;
     // the last Read's summary stays here after its toast has gone
     const last = doc.readAt ? Object.values(doc.readAt).sort().pop() : null;
-    if (last || doc.confirm.length)
-      h += `<div class="ap-lastread">${last ? `Last Read ${esc(last)}${chg ? `: ${chg} changed` : ''}. ` : ''}${doc.confirm.length ? `<button data-a="confirm" title="What the reading asks you to check on the ground (C)">Confirm on Gr ${doc.confirm.length}</button>` : ''}</div>`;
+    const style = styleNotes(doc);
+    if (last || doc.confirm.length || style.length)
+      h += `<div class="ap-lastread">${last ? `Last Read ${esc(last)}${chg ? `: ${chg} changed` : ''}. ` : ''}${doc.confirm.length ? `<button data-a="confirm" title="What the reading asks you to check on the ground (C)">Confirm on Gr ${doc.confirm.length}</button>` : ''}${style.length ? `${doc.confirm.length ? ' · ' : ''}<button data-a="sel" data-v="${esc(style[0].id)}" title="The books' writing rules: the first paragraph that breaks one">Writing rules ${style.length}</button>` : ''}</div>`;
     h += '</div><div class="ap-list">';
 
     let rows = '', pending = '', any = false;
@@ -3468,6 +3887,9 @@ export default class GroundAppreciation {
     let h = `<h3 class="ap-rt-h"><span class="ap-rt-n">${esc(num)}</span>${esc(head)}</h3>`;
     const why = staleWhy(p);
     if (s !== 'head') h += `<div class="ap-badges"><span class="ap-badge st-${s}">${ICON[s]}${esc(s === 'stale' && why ? `${STALE_MARK[why]} you wrote it` : WORD[s])}</span></div>`;
+    if (p.id === 'aim') h += this._limitsHtml(doc);
+    const notes = styleNotes(doc).filter((x) => x.id === p.id);
+    if (notes.length) h += `<div class="ap-call style"><div class="ap-call-t">The books' writing rules</div><ul>${notes.map((x) => `<li>${esc(x.note)}</li>`).join('')}</ul></div>`;
 
     if (s === 'stale' && why === 'rows' && !p.mine) {
       h += `<div class="ap-call stale"><div class="ap-call-t">${ICON.stale}${esc(STALE_WORD.rows)}</div><p>The table below shows them as added rows. Keep them, or take the new reading without them (Undo brings them back).</p><div class="ap-acts"><button class="ap-btn" data-a="keep">Keep my rows</button><button class="ap-btn" data-a="give">Use the new reading</button></div></div>`;
@@ -3478,7 +3900,7 @@ export default class GroundAppreciation {
     } else if (s === 'accepted') {
       h += `<div class="ap-call done">${ICON.accepted}<span class="sp">Accepted: it prints as it stands.</span><button class="ap-btn sm ghost" data-a="acc" data-v="off">Take back</button></div>`;
     } else if (s === 'gr' || s === 'map') {
-      h += `<p class="ap-lead">${s === 'gr' ? 'Drafted from the ground reading.' : 'Read from the symbols on the map and the last Check my plan.'} It prints as it stands. Edit it, or save it as yours, and Read will not change it.</p>`;
+      h += `<p class="ap-lead">${s === 'gr' ? 'Drafted from the ground reading.' : p.src === 'aim' || p.src === 'time' ? 'Written from what you set on the sheet (the limitations, H, D Day, time now).' : 'Read from the symbols on the map and the last Check my plan.'} It prints as it stands. Edit it, or save it as yours, and Read will not change it.</p>`;
     } else if (s === 'yours') {
       h += `<p class="ap-lead">The map cannot tell this. Write it, or it prints a ruled line.</p>`;
     } else if (s === 'head') {

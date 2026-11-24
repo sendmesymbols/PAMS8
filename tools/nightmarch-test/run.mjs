@@ -59,14 +59,14 @@ check('long leg gets check points', flat.legs[0].long && flat.legs[0].checkPts.l
 check('no terrain: flat 3 km/h + 15%', flat.timing.flatKmh === 3 && near(flat.legs[0].minNight, 30 * 1.15, 1), String(flat.legs[0].minNight));
 check('FUP 1500 m: ok', flat.fup.tone === 'ok' && near(flat.fup.distToObjM, 1500, 3));
 check('axis on the Obj (north)', near(flat.fup.axisDeg, 0, 0.5) || near(flat.fup.axisDeg, 360, 0.5));
-check('SL square to the axis, company front 200 m', near(P.plDist(flat.fup.sl[0], flat.fup.sl[1]), 200, 1) && near(P.plBearing(flat.fup.sl[0], flat.fup.sl[1]), 90, 1));
+check('SL square to the axis, company front 250 m (IBB S47 para 17 a p 248)', near(P.plDist(flat.fup.sl[0], flat.fup.sl[1]), 250, 1) && near(P.plBearing(flat.fup.sl[0], flat.fup.sl[1]), 90, 1));
 check('SL in front of the FUP centre', P.plDist(N.nearestOnPath([flat.fup.sl[0], flat.fup.sl[1]], obj).at, obj) < 1500);
 check('company FUP: 4 places', flat.fup.slots.length === 4 && flat.fup.slots.some((x) => x.hq));
 check('approach from the rear: ok', flat.fup.approachTone === 'ok', flat.fup.approachDeg.toFixed(0));
 const totalMin = flat.legs.reduce((a, l) => a + l.minNight, 0);
 check('march time = legs + halts', flat.timing.marchMin === flat.legs[2].endMin && near(flat.timing.marchMin, totalMin + flat.timing.halts.length * 15, 2), `${flat.timing.marchMin} vs ${totalMin}+${flat.timing.halts.length}h`);
 check('leave SP = H - march - FUP time', flat.timing.leaveBeforeH === flat.timing.marchMin + 20 && flat.timing.leaveSp === N.clock(180 - flat.timing.leaveBeforeH), `${flat.timing.leaveSp}`);
-check('stores: SL + FUP + axis tape', flat.stores.tapeM === 200 + 2 * (200 + 120) + 100 && flat.stores.rolls === 10, `${flat.stores.tapeM} m ${flat.stores.rolls}`);
+check('stores: SL + FUP + axis tape', flat.stores.tapeM === 250 + 2 * (250 + 120) + 100 && flat.stores.rolls === 11, `${flat.stores.tapeM} m ${flat.stores.rolls}`);
 check('lights: SP, turns, route, entry, SL, corners, axis', flat.lights.filter((l) => l.kind === 'turn').length === 2 && flat.lights.filter((l) => l.kind === 'sl').length === 2 && flat.lights.some((l) => l.kind === 'axis'));
 check('night sight ring entered before the FUP', flat.sights.night.enterAtM === null, String(flat.sights.night.enterAtM));
 check('thermal ring entered', flat.sights.thermal.enterAtM !== null && flat.sights.thermal.enterAtM < flat.lengthM);

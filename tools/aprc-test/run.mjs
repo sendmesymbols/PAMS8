@@ -72,9 +72,9 @@ const gin = {
   check('outline: ids are unique', new Set(ids).size === ids.length, `${ids.length}`);
   for (const id of ['rev.en', 'aim', 'gr.gen', 'gr.apchs', 'gr.itg', 'gr.obs', 'gr.cover', 'gr.met', 'gr.ded.pri', 'gr.ded.dp1.fdls', 'en.opts', 'own.str', 'ts.req', 'crs.react', 'crs.adopted', 'plan.exec.outline', 'plan.comd'])
     if (!ids.includes(id)) check(`outline: has ${id}`, false);
-  check('outline: parts in order', d.parts.map((p) => p.title).join('|') === 'REVIEW OF SIT|AIM|FACTORS|COURSES|PLAN');
+  check('outline: parts in order, the sketch an annex', d.parts.map((p) => p.title).join('|') === 'REVIEW OF SIT|AIM|FACTORS|COURSES|PLAN|ANX P: SKETCH');
   check('outline: FACTORS groups', d.parts[2].groups.map((g) => g.title).join('|') === 'Gr and Weather|En Sit|Own Sit|Time and Space');
-  const top = M.lines(d).filter((l) => l.type === 'para' && l.depth === 0).map((l) => l.label);
+  const top = M.lines(d).filter((l) => l.type === 'para' && l.depth === 0 && l.part.id !== 'anx').map((l) => l.label);
   check('numbering: top level runs 1. to n. across parts', top.every((l, i) => l === `${i + 1}.`), top.slice(0, 6).join(' '));
   check('numbering: labels by depth', M.label(1, 0) === 'a.' && M.label(2, 2) === '(3)' && M.label(3, 1) === '(b)' && M.label(4, 3) === 'iv.');
   check('numbering: Gen Description is para 5, Apchs 6', M.numberOf(d, 'gr.gen') === '5' && M.numberOf(d, 'gr.apchs') === '6');
@@ -423,9 +423,12 @@ M.setMine(doc, 'aim', 'To def <Qila Mor> & hold it.');
   const d = M.newDoc('def');
   M.applyPatches(d, tr.patches);
   const t = M.find(d, 'ts.req').table;
-  check('time: the move in as a lower bound', t.rows[0][2] === '0.9 +' && /18\.4 km in a straight line at 20 km\/h by night/.test(t.rows[0][3]));
-  check('time: posn preparation and mine laying with their books', t.rows[1][2] === '24-36' && t.rows[3][2] === '63' && M.find(d, 'ts.req').basis.some((b) => /p 399/.test(b.text)) && M.find(d, 'ts.req').basis.some((b) => /p 439/.test(b.text)));
-  check('time: the rows it cannot tell are left blank; total is a floor', t.rows[2][2] === '' && t.rows[4][2] === '' && t.rows[t.rows.length - 1][2] === '88 +' && M.find(d, 'ts.req').state === 'judge');
+  const row = (what) => t.rows.find((r) => r[1] === what);
+  check('time: battle procedure first, the guide\'s specimen said', t.rows[0][1] === 'Battle procedure at all lvls' && t.rows[0][2] === '12' && /specimen \(Understanding Aprc Sec II sheet 7\)/.test(t.rows[0][3]));
+  check('time: the move in as a lower bound', row('Mov / occupation of def')[2] === '0.9 +' && /18\.4 km in a straight line at 20 km\/h by night/.test(row('Mov / occupation of def')[3]));
+  check('time: posn preparation and mine laying with their books', row('Prep of main def (altn / sec)')[2] === '24-36' && row('Protective M fd laying')[2] === '63' && M.find(d, 'ts.req').basis.some((b) => /p 399/.test(b.text)) && M.find(d, 'ts.req').basis.some((b) => /p 439/.test(b.text)));
+  check('time: the guide\'s standard list, as specimen hours', row('Prep of C pen posn')[2] === '12' && row('C attk and C pen rehearsals')[2] === '8' && row('Laying of wire obs')[2] === '6' && row('Participation in Bde rehearsals')[2] === '12' && t.rows.length === 15);
+  check('time: two totals, one row after the other and the critical path', row('Total, one row after the other')[2] === '198 +' && row('Total time (critical path)')[2] === '76 +' && tr.reqH > 75.9 && tr.reqH < 76 && M.find(d, 'ts.req').state === 'judge', `${row('Total, one row after the other')[2]} / ${row('Total time (critical path)')[2]} / ${tr.reqH}`);
   check('time: nothing known, nothing written', W.writeTimeReq({ move: null, prep: null, mines: null }).patches.length === 0);
 }
 
@@ -453,8 +456,8 @@ M.setMine(doc, 'aim', 'To def <Qila Mor> & hold it.');
   const ids = [];
   M.walk(d, (p) => ids.push(p.id));
   check('attk outline: ids are unique', new Set(ids).size === ids.length, `${ids.length}`);
-  check('attk outline: parts in the book\'s order', d.parts.map((p) => p.title).join('|') === 'REVIEW OF THE SIT|AIM|FACTORS|COURSES|PLAN');
-  const top = M.lines(d).filter((l) => l.type === 'para' && l.depth === 0);
+  check('attk outline: parts in the book\'s order', d.parts.map((p) => p.title).join('|') === 'REVIEW OF THE SIT|AIM|FACTORS|COURSES|PLAN|ANX P: SKETCH');
+  const top = M.lines(d).filter((l) => l.type === 'para' && l.depth === 0 && l.part.id !== 'anx');
   check('attk numbering: 24 paras as the book', top.length === 24 && top.every((l, i) => l.label === `${i + 1}.`), `${top.length}`);
   const at = (id) => M.numberOf(d, id);
   check('attk numbering: Gen Description 5, Imp Tac Grs 6, Apchs 7, Deductions 11', at('gr.gen') === '5' && at('gr.itg') === '6' && at('gr.apchs') === '7' && at('gr.ded') === '11');
@@ -463,8 +466,10 @@ M.setMine(doc, 'aim', 'To def <Qila Mor> & hold it.');
   check('attk numbering: Msn 21, Exec 22, Adm and Log 23, Comd and Sig 24', at('plan.msn') === '21' && at('plan.exec') === '22' && at('plan.adm') === '23' && at('plan.comd') === '24');
   check('attk numbering: sub-paragraphs as the book', at('gr.ded.aps') === '11d' && at('plan.exec.coord.loc') === '22h(2)' && at('crs.react.ph2.depth') === '17e(3)' && at('en.ded.basic') === '12c(1)', `${at('gr.ded.aps')} ${at('plan.exec.coord.loc')} ${at('crs.react.ph2.depth')} ${at('en.ded.basic')}`);
   let unref = 0;
-  M.walk(d, (p) => { if (p.draft === null && !p.prompts.some((x) => /^Mechs of Aprc \(Attk\) pp? [\d-]+$/.test(x))) unref++; });
-  check('attk prompts: every ruled paragraph cites the book and its page', unref === 0, `${unref} without`);
+  // the book's sheet, or (the doctrine review's heads, 24 Nov 2026) another book with its printed page
+  const cites = (x) => /^Mechs of Aprc \(Attk\) pp? [\d-]+$/.test(x) || /\((?:OoW Vol I{1,3}|IBB|MIB|MW|DW|lsf|IDD|SO's Hbk 2019 Sec 12)\b[^()]*\bpp? \d[\d-]*[^()]*\)$/.test(x);
+  M.walk(d, (p) => { if (p.draft === null && !p.prompts.some(cites)) unref++; });
+  check('attk prompts: every ruled paragraph cites its book and page', unref === 0, `${unref} without`);
   check('attk tables: Assessment of Tasks and Almt with the book\'s heads, Backward Calc with its 18 events', M.find(d, 'own.tasks').table.head.join('|') === 'Ser|Task / Loc|Inf (Sec)|Armr (Tp)|Aslt Pnr|Arty|BS / W pn Sec' && M.find(d, 'almt').table.rows.some((r) => r[1] === '- FUP protection') && M.find(d, 'ts.calc').table.rows.length === 18 && M.find(d, 'ts.calc').table.rows[12][1] === 'H hr');
   const t = M.toText(d, 'fair');
   check('attk text: an empty attack prints ruled lines, never "whites"', t.includes('5. Gen Description. ________________') && t.includes('24. Comd and Sig.') && !/whites/i.test(t));
@@ -492,7 +497,7 @@ const ad = M.newDoc('attk');
   check('attk Apchs: own Lt first, from own side onto the obj', ap.children.map((c) => c.head).join('|') === 'Lt Apch|Cen Apch|Rt Apch' && /from own side onto Qila Mor/.test(ap.draft) && ap.figure === 'trace', ap.children.map((c) => c.head).join('|'));
   check('attk Apchs: the book\'s twelve heads in its order', ap.children.every((c) => c.children.map((x) => x.head).join('|') === 'Definition|Length|Capacity|Cover|Mutual Sp|Depl Areas|Obs|Dominating Features|Obsn and F of F|Tfc|Dir Keeping|Significance'));
   check('attk Apchs: own Lt is the reading\'s Rt (it narrows to 1.1 km)', /^No narrower than 1\.1 km between NO-GO areas: room for a Coy size force/.test(P('gr.apch.lt.capacity').draft) && /room for a Bn size force/.test(P('gr.apch.rt.capacity').draft), `${P('gr.apch.lt.capacity').draft} / ${P('gr.apch.rt.capacity').draft}`);
-  check('attk Apchs: capacity rests on the book\'s 4 km Bde and the IPB widths', P('gr.apch.lt.capacity').basis.some((b) => b.kind === 'rule' && /Mechs of Aprc \(Attk\) p 2/.test(b.text) && /IPB book p 7/.test(b.text)));
+  check('attk Apchs: capacity rests on the IPB widths (the pamphlet), the two guides beside it', (() => { const b = P('gr.apch.lt.capacity').basis; const i = b.findIndex((x) => x.kind === 'rule' && /a Bde 3 km, a Div 6 km \(IPB book p 7\)/.test(x.text)); const j = b.findIndex((x) => /Mechs of Aprc/.test(x.text)); return i >= 0 && j > i; })() && P('gr.apch.lt.capacity').basis.some((b) => /Mechs of Aprc \(Attk\) p 2/.test(b.text) && /Understanding Aprc p 18/.test(b.text)));
   check('attk Apchs: Depl Areas left to the planner with the book\'s heads', P('gr.apch.lt.depl-areas').draft === null && P('gr.apch.lt.depl-areas').prompts.some((x) => /FAA, FUP or BOF/.test(x)) && P('gr.apch.lt.depl-areas').prompts.includes('Mechs of Aprc (Attk) p 2'));
   check('attk Apchs: Obsn and F of F where read (the reading\'s Lt is own Rt)', /about 41 % of the ground/.test(P('gr.apch.rt.obsn-and-f-of-f').draft) && P('gr.apch.lt.obsn-and-f-of-f').draft === null);
   const m = P('gr.itg.mitg');
@@ -550,7 +555,9 @@ const ad = M.newDoc('attk');
   const d = M.newDoc('attk');
   M.applyPatches(d, s.patches);
   const p = M.find(d, 'own.str');
-  check('attk strength: ratio own to en, against the 3 : 1 an attacker wants (MW p 80)', p.table.rows[0][4] === '4.0 : 1' && /more than the 3 : 1 an attacker wants/.test(p.draft) && p.basis.some((b) => /MW p 80/.test(b.text)), JSON.stringify(p.table.rows[0]));
+  check('attk strength: ratio own to en, against the usual 3 : 1 (IBB p 248; MW p 80 only in mountains)', p.table.rows[0][4] === '4.0 : 1' && /more than the 3 : 1 an attacker wants\.$/.test(p.draft) && p.basis.some((b) => /IBB p 248/.test(b.text)) && !p.basis.some((b) => /MW p 80/.test(b.text)), JSON.stringify(p.table.rows[0]));
+  { const pm = W.writeStrength({ en: [coy], enAssumed: 'one level down', own: [bn], ownAssumed: null, need: null }, { attack: true, mountains: true }).patches.find((x) => x.id === 'own.str');
+    check('attk strength: in mountains MW p 80, comparatively more than 3 : 1, in sequence', pm.basis.some((b) => /MW p 80/.test(b.text) && /no figure printed/.test(b.text)) && /in mountains comparatively more is wanted, in sequence/.test(pm.draft), pm.draft); }
   check('attk strength: composition and disposns in one paragraph', /4 manoeuvre Coys of 3 Pls/.test(M.find(d, 'own.comp').draft) && /Disposns: 1 Bn \(Bn\) 6\.0 km SW of Qila Mor\./.test(M.find(d, 'own.comp').draft));
 }
 {
@@ -687,6 +694,325 @@ const ad = M.newDoc('attk');
   check('time calc (attk): neither H nor a plan, the book\'s blank table stays', W.writeTimeCalcAttk(null, null).patches.length === 0 && W.writeTimeCalcAttk('02:00', null).patches[0].table.rows.filter((r) => r[3]).length === 1);
   const adm = W.writeAdm({ kind: 'BAA', sites: [{ rank: 2, where: 'at Burj', tone: 'warn', verdict: 'Needs a culvert.' }, { rank: 1, where: '2 km S of Nurpur', tone: 'ok', verdict: '' }] });
   check('adm: the Admin Area finder\'s best sites, a proposal to walk', adm.patches[0].id === 'plan.adm' && adm.patches[0].draft === 'BAA: site 1 2 km S of Nurpur (passes); site 2 at Burj (needs work: Needs a culvert).' && adm.patches[0].state === 'judge' && adm.confirm.length === 1 && W.writeAdm({ kind: 'BAA', sites: [] }).patches.length === 0, adm.patches[0].draft);
+}
+
+// ── the two Aprc books' mechanics (Understanding Aprc, Mechs of Aprc (Attk); 24 Nov 2026) ─────────────────────────
+{
+  const X = await import('../../MS/Engines/GroundAppreciation/AprcMechs.ts');
+  // D-times
+  check('mechs: D-times parse as the books write them', X.parseDTime('0600 D+1') === 1800 && X.parseDTime('D-1 1000') === -840 && X.parseDTime('1000 hrs D-10') === -13800 && X.parseDTime('06:00 D Day') === 360 && X.parseDTime('0600') === 360 && X.parseDTime('2400') === null && X.parseDTime('') === null && X.dClock(1505) === '0105 hrs D+1');
+  check('mechs: day lt and ni hrs between two D-times', (() => { const dn = X.dayNight(-840, 360, 360, 1080); return dn.day === 8 && dn.ni === 12; })() && X.lastLtBefore(360, 1080) === -360 && X.lastLtBefore(1300, 1080) === 1080);
+
+  // 2 up / 3 up: the pamphlet drives, the guide beside
+  const c4 = X.coysUp(4000), c76 = X.coysUp(7600), c12 = X.coysUp(12000), c68 = X.coysUp(6800);
+  check('mechs: Coys up by IBB p 481 (two up to 4.5 km, three to 6.5 km, then extended)', c4.up === 2 && !c4.ext && c76.up === 3 && c76.ext && c76.guideUp === 3 && c76.plsUp === 2 && c12.plsUp === 3 && /extended frontage/.test(c76.text) && c76.basis[0].text.includes('IBB Annex U App 6 p 481'), c76.text);
+  check('mechs: where the guide differs the pamphlet is taken, and said', X.coysUp(5500).up === 3 && X.coysUp(5500).guideUp === 2 && /the pamphlet's figure is taken/.test(X.coysUp(5500).text) && /between its bands/.test(c68.text) && X.coysUp(7600, 2).up === 2 && /held to 2 Coys up by the aim/.test(X.coysUp(7600, 2).text));
+
+  // the def laid by the aim
+  const L0 = X.layoutDef(reading, {}, 'Bn');
+  check('mechs: no limitation, the reading\'s roles stand', L0.fdl.id === 'X' && L0.depth.id === 'Y' && L0.ahead.map((l) => l.id).join() === 'W' && L0.strPt.id === 'Z' && !L0.moved && L0.screenKm[0] === 1.5 && L0.screenKm[1] === 2 && L0.detsWhere === 'on Line W (Sukh Nala)', JSON.stringify(L0.screenKm));
+  const Lf = X.layoutDef(reading, { fwd: true }, 'Bn');
+  check('mechs: as far fwd as tac feasible: the line nearest 5-8 km past the border, depth behind it', Lf.fdl.id === 'Y' && Lf.depth.id === 'Z' && Lf.ahead.map((l) => l.id).join() === 'W,X' && Lf.moved && Lf.detsWhere === '1.5-2 km past the Intl Border' && /the line nearest the 5-8 km a Bn leaves/.test(Lf.reasons[0]) && Lf.basis.some((b) => /Understanding Aprc p 3/.test(b.text)), Lf.reasons[0]);
+  const Ln = X.layoutDef(reading, { noPen: 'Y' }, 'Bn');
+  check('mechs: no pen beyond Line Y: the depth on it, the FDLs 3-5 km ahead (OoW Vol I p 17 cited)', Ln.fdl.id === 'W' && Ln.depth.id === 'Y' && Ln.detsWhere === null && Ln.basis.some((b) => /OoW Vol I p 17/.test(b.text)) && /held in depth, the FDLs 2\.8 km ahead/.test(Ln.reasons[0]), Ln.reasons[0]);
+  const La = X.layoutDef(reading, { allCosts: 'Qila Mor', salient: true }, 'Bn');
+  check('mechs: def at all costs puts the depth on it; a salient is a prompt', La.depth.id === 'Z' && La.prompts.some((x) => /def at its base/.test(x)) && La.reasons.some((x) => /Qila Mor, to be def at all costs, is held in depth on Line Z/.test(x)));
+  const lp = X.writeLayoutDef(L0, reading);
+  const LP = (id) => lp.find((x) => x.id === id);
+  check('mechs: lines of def in pri with the reasons for pri 1', /^Pri of lines of def: \(1\) Line X \(FDLs\), \(2\) Line Y \(depth\), \(3\) Line W \(protective dets\), \(4\) Line Z \(str pt Qila Mor\)\. Reasons for Line X as pri 1: \(a\) It draws str from the gr: along Lakhan Disty/.test(LP('gr.ded.lines.pri').draft) && LP('gr.ded.lines.pri').state === 'judge', LP('gr.ded.lines.pri').draft);
+  check('mechs: DP 1 FDLs with Coys up; screens 1-1.5 km ahead (OoW Vol I Annex A p 102 first)', /^Line X \(Kot Jaimal – Dhok Rai\) along Lakhan Disty, 3 km past the Intl Border: 3 Coys up, Pls 2 up/.test(LP('gr.ded.dp1.fdls').draft) && LP('gr.ded.dp1.screens').draft === '1.5-2 km past the Intl Border, 1-1.5 km ahead of Line X.' && LP('gr.ded.dp1.screens').basis[0].text.includes('OoW Vol I Annex A p 102'), LP('gr.ded.dp1.fdls').draft);
+  check('mechs: adv posn on a natural obs (OoW Vol I p 14), C pen, res and armr by the guide', /Protective dets on Line W \(Sukh Nala\); an adv posn on Sukh Nala \(Line W\)/.test(LP('gr.ded.dp1.adv').draft) && LP('gr.ded.dp1.adv').basis[0].text.includes('OoW Vol I p 14') && /^On the Lt apch, the most threatened: about 1,500 m behind Line X/.test(LP('gr.ded.dp1.cpen').draft) && LP('gr.ded.dp1.cpen').basis.some((b) => /IBB p 310/.test(b.text)) && /LAT and HAT never in res/.test(LP('gr.ded.dp1.res').draft) && /HAT: in the protective dets, then in the FDL gaps on the tk apch \(Lt and Cen\)/.test(LP('gr.ded.dp1.armr').draft), LP('gr.ded.dp1.armr').draft);
+  const doc0 = M.newDoc('def');
+  check('mechs: the new DP heads and the Vis are in the def outline', ['gr.ded.dp1.cpen', 'gr.ded.dp1.res', 'gr.ded.dp1.armr', 'en.vis', 'ts.data.time-now', 'ts.data.first-lt', 'ts.data.last-lt', 'anx.sketch'].every((id) => M.find(doc0, id)) && M.find(M.newDoc('attk'), 'anx.sketch') && M.numberOf(doc0, 'anx.sketch') === '1');
+
+  // analysis and course
+  const an = X.analysisDef(Lf, reading, { fwd: true, attrition: true });
+  check('mechs: analysis under the book\'s heads, the limitations as advs or disadvs', an.dis.some((x) => /^FDLs only 4\.3 km past the Intl Border: little room for the protective dets \(Aim\)$/.test(x)) && an.adv.some((x) => /^Max attrition: the protective dets fight on successive lines \(Line W, Line X\) \(Aim\)$/.test(x)) && an.dis.some((x) => /Def is not based on an eff obs \(Lines of def\)/.test(x)), JSON.stringify(an));
+  const an0 = X.analysisDef(L0, reading, {});
+  check('mechs: all apchs covered when a BUA stands on each; an extended frontage a disadv', an0.adv.some((x) => /All apchs eff covered: a BUA astride each on Line X \(Apchs\)/.test(x)) && an0.adv.some((x) => /eff obs, Lakhan Disty/.test(x)) && an0.dis.some((x) => /over-stretched/.test(x)) && an0.dis.some((x) => /Depth only 1\.3 km behind the FDLs/.test(x)));
+  const cr = X.courseDef(L0, reading, { check: null, prepFrom: '0600 hrs D-2', readyBy: '0600 hrs D Day' });
+  check('mechs: Course A in the book\'s paragraph, what is missing named', /^Def along Line X along Lakhan Disty \(Kot Jaimal – Dhok Rai\)\. FDLs comprising 3 Coys, a Coy each in area Kot Jaimal, Nurpur and Dhok Rai\. Depth comprising 2 Coys, a Coy each in area Chak 21 and Pindi Dogran\./.test(cr.text) && /C attk objs in order of pri: Kot Jaimal, Nurpur and Dhok Rai\./.test(cr.text) && /Having bias of def towards the Lt and Cen apchs and that of A tk def towards the Lt and Cen\. Commencing prep of def by 0600 hrs D-2 and completing def by 0600 hrs D Day\.$/.test(cr.text) && cr.missing.some((x) => /res/.test(x)) && !/^To\b/.test(cr.text), cr.text);
+  const crp = X.courseDef(L0, reading, { check: { title: 'Bn Def', posns: [{ label: 'A Coy', kind: 'fwd' }, { label: 'B Coy', kind: 'fwd' }, { label: 'D Coy', kind: 'depth' }, { label: 'C Coy', kind: 'res' }, { label: 'C pen 1', kind: 'cpen' }], rows: [] }, prepFrom: null, readyBy: null });
+  check('mechs: a checked plan names the Coys', /FDLs comprising 2 Coys, a Coy each in area A Coy and B Coy\. Depth comprising 1 Coy, in area D Coy\./.test(crp.text) && /Res in area C Coy\./.test(crp.text) && /C pen posns in area C pen 1\./.test(crp.text) && crp.missing.some((x) => /timings/.test(x)), crp.text);
+
+  // the vis of the en op
+  const v = X.visDef(L0, reading, { hMin: 360, night: null });
+  const vt = v.steps.map((s) => s.en);
+  check('mechs: the Vis tier by tier at the guide\'s figures, best to the En', /^En is likely to cross the Intl Border on a broad front, on the Lt, Cen and Rt apchs, at 0600 hrs D Day$/.test(vt[1]) && /contact the protective dets on Line W \(Burj – Tibbi\) at 0730 hrs D Day/.test(vt[2]) && /clear Line W and resume the adv at 1330 hrs D Day/.test(vt[3]) && /contact the screens ahead of Line X at 1345 hrs D Day/.test(vt[4]) && /contact the FDLs on Line X at 1600 hrs D Day/.test(vt[5]) && /at 2200 hrs D Day$/.test(vt[6]), vt.slice(1, 7).join(' | '));
+  check('mechs: his phases, the C pen by IBB p 310 and the str pt after 12 h', /complete Ph 1 on Line X by 0200 hrs D\+1/.test(vt[9]) && /not later than 2330 hrs D Day to 0000 hrs D\+1/.test(v.steps[9].own) && /Ph 2 onto the depth on Line Y .* by 0400 hrs D\+1/.test(vt[10]) && /launch Ph 3 onto Qila Mor at 1600 hrs D\+1, taking 6-8 h/.test(vt[11]) && vt.every((t) => /\bis likely to\b/.test(t) && !/\bwill\b/.test(t)), vt.slice(9).join(' | '));
+  check('mechs: the Vis cites the guide and the linear model, KYE beside', v.basis.some((b) => /Understanding Aprc p 9-11/.test(b.text) && /Sec V p 5-8/.test(b.text)) && v.basis.some((b) => /KYE 2019 p 216/.test(b.text)));
+  const vw = X.writeVisDef(v, [['a.', 'The En lead element at TAI 1', 'DP 1: blow the br']], [['a.', 'Ph 1 done: lead elm at C pen 1 in 40 min', 'D Coy to C pen 1: in time']]);
+  const rt2 = vw.find((x) => x.id === 'crs.react').table.rows;
+  check('mechs: reactions in the three phases, the IPB rows in prep, the what-if in C attk', rt2[0][1] === 'Prep Ph' && rt2.findIndex((r) => r[1] === 'Aslt Ph') > rt2.findIndex((r) => /TAI 1/.test(r[1])) && rt2.findIndex((r) => /C pen 1 in 40/.test(r[1])) > rt2.findIndex((r) => r[1] === 'C Attk Ph') && rt2.filter((r) => r[0]).length === v.steps.length + 3 && vw[0].children.length === v.steps.length && vw[0].children[0].id === 'en.vis.a');
+
+  // time and space (the def)
+  const nt = { firstLt: 360, lastLt: 1080, spans: [], moonPct: 50, waxing: true, quarter: 2, light: { firstLight: '0600', lastLight: '1800', moonPct: 50, utcOffsetH: 5, date: '2027-02-15' } };
+  const ts = X.writeTsDef({ lim: {}, hMin: 360, nowMin: -2520, night: nt, zone: 'UTC+5, PKT', moveH: 1, prepH: 36, minesH: 63, reqH: 76 });
+  const TS = (id) => ts.patches.find((x) => x.id === id);
+  check('mechs: no time given, the def ready by the last lt before the En attk (UA p 8)', ts.readyMin === -360 && /^By the last lt before the En attk: 1800 hrs D-1 \(the En H 0600 hrs D Day\)\.$/.test(TS('ts.data.time-by-which-def-to-be-ready').draft) && TS('ts.data.time-by-which-def-to-be-ready').basis[0].text.includes('Understanding Aprc p 8'));
+  check('mechs: time now, first and last lt, the time aval split day / ni', TS('ts.data.time-now').draft === '0600 hrs D-2.' && TS('ts.data.first-lt').draft === '0600 hrs (2027-02-15).' && TS('ts.data.total-time-aval').draft === '36 h: 24 h of day lt and 12 h of ni.', TS('ts.data.total-time-aval').draft);
+  check('mechs: essential timings back from ready, OoW Vol I p 39 for the 36 h; less time aval deduced', /^Essential timings: battle procedure to start by 1700 hrs D-3; mov from the conc A to the FDLs by 0500 hrs D-2; prep of the main def from 0600 hrs D-2/.test(TS('ts.ded.dp').draft) && /Short by 27 h: the M fd laying should have started at 0300 hrs D-3/.test(TS('ts.ded.dp').draft) && TS('ts.ded.dp').basis[0].text.includes('OoW Vol I p 39') && /^Less time aval \(36 h against 76 h/.test(TS('ts.ded.common').draft), TS('ts.ded.dp').draft);
+  const ts2 = X.writeTsDef({ lim: { by: '0600 D Day' }, hMin: 360, nowMin: -10000, night: nt, zone: 'x', moveH: null, prepH: 36, minesH: null, reqH: 48 });
+  check('mechs: the aim\'s ready-by wins; more time aval deduced', ts2.readyMin === 360 && /^0600 hrs D Day: the aim's limitation\.$/.test(ts2.patches.find((x) => x.id === 'ts.data.time-by-which-def-to-be-ready').draft) && /^More time aval/.test(ts2.patches.find((x) => x.id === 'ts.ded.common').draft));
+
+  // the aim
+  const aimD = X.writeAim('def', { fwd: true, noPen: 'Y', by: '0600 D Day', other: ['Pl size protection to gd the brs'] }, { place: 'Qila Mor', hMin: null, lastLt: null, turn: null, readyDerived: null });
+  check('mechs: the def aim with its limitations tabulated', aimD[0].draft === 'To def the given AOR with fol limitations:-' && aimD[0].children.map((c) => c.draft).join(' | ') === 'Def to be as far fwd as tac feasible. | No pen beyond Line Y. | Def to be ready by 0600 hrs D Day. | Pl size protection to gd the brs.' && aimD[0].src === 'aim' && X.writeAim('def', {}, { place: 'x', hMin: null, lastLt: null, turn: null, readyDerived: null }).length === 0);
+  const aimA = X.writeAim('attk', { destr: true, night: true, by: '0600 D+1' }, { place: 'Qila Mor', hMin: null, lastLt: null, turn: 'Br 1', readyDerived: null });
+  check('mechs: the attk aim: max destr blocks the wdr before the attk', aimA[0].draft === 'To capture area Qila Mor with fol limitations:-' && aimA[0].children.map((c) => c.id).join() === 'aim.destr,aim.wdr,aim.by,aim.ni' && /block at Br 1 before the attk/.test(aimA[0].children[1].draft) && aimA[0].children[2].draft === 'Area to be captured by 0600 hrs D+1.');
+
+  // the attack: the apchs on the book's planning parameters
+  const tt = X.apchTestsAttk(reading, { fupM: 1100, echelon: 'Bn', enNear: { Rt: ['A Coy'] } });
+  check('mechs: the apch tests in own Lt / Cen / Rt order (the reading\'s sides mirrored)', tt.table.head.join('|') === 'Ser|Test|Lt Apch|Cen Apch|Rt Apch' && /^Yes: Dhok Rai/.test(tt.table.rows[1][2]) && /^Yes: Kot Jaimal/.test(tt.table.rows[1][4]) && /^Yes: A Coy: discard it/.test(tt.table.rows[4][2]) && /^No: narrows to 1\.1 km/.test(tt.table.rows[5][2]) && /^No: the FUP 5\.5 km inside the En area/.test(tt.table.rows[0][2]), JSON.stringify(tt.table.rows.map((r) => r[2])));
+  check('mechs: the apch tests: MITG in Ph 1, a feature ending Ph 1, the BUA to confirm', /^No: Dhok Rai first/.test(tt.table.rows[3][2]) && /^Yes: Lakhan Disty/.test(tt.table.rows[2][3]) && tt.confirm.length === 3 && tt.basis[0].text.includes('Understanding Aprc p 16-17') && tt.basis[1].text.includes('IBB p 201'));
+  check('mechs: the tests\' advs and disadvs per side; a Pl seen tells against it', tt.dis.Lt.some((x) => /En seen on it/.test(x)) && !tt.best.includes('Lt') && tt.adv.Rt.includes('Ph 1 ends on Lakhan Disty, a distinguishable feature'));
+
+  // the attack: the time calc against the books' own specimens
+  const tB = X.timeCalcAttk({ echelon: 'Bn', hMin: null, msnBy: 1800, nowMin: null, hsum: null, phases: 2, bunkers: false, fupM: 933, night: null });
+  const rB = (i) => tB.table.rows[i];
+  check('mechs: Bn backward calc gives the guide\'s specimen: H 0110, A hr 0348 (UA p 24)', tB.h === 1510 && rB(12)[2] === '0110 hrs D+1' && rB(6)[2] === '0348 hrs D+1' && rB(11)[2] === '28 mins' && rB(14)[3] === '2305 hrs D Day' && rB(1)[2] === '40 mins' && rB(10)[2] === '90 mins', `${rB(12)[2]} ${rB(6)[2]} ${rB(14)[3]}`);
+  const tC = X.timeCalcAttk({ echelon: 'Coy', hMin: null, msnBy: 300, nowMin: null, hsum: null, phases: 2, bunkers: false, fupM: 1100, night: null });
+  const rC = (i) => tC.table.rows[i];
+  check('mechs: Coy backward calc gives Mechs p 14\'s specimen: H 0200, A hr 0315, FAA 0025', rC(12)[2] === '0200 hrs D Day' && rC(6)[2] === '0315 hrs D Day' && rC(14)[3] === '0025 hrs D Day' && rC(15)[3] === '0005 hrs D Day' && rC(1)[3] === '0400 hrs D Day', `${rC(12)[2]} ${rC(6)[2]} ${rC(14)[3]}`);
+  const tH = X.timeCalcAttk({ echelon: 'Bn', hMin: 120, msnBy: null, nowMin: null, hsum: { leaveBeforeMin: 90, objMin: 42, h2Min: null, obj2Min: null }, phases: 1, bunkers: true, fupM: 1100, night: null });
+  check('mechs: fwd calc from H with the plan\'s march and assault, one phase, bunkers', tH.table.rows[11][2] === '42 mins' && tH.table.rows[14][2] === '90 mins' && tH.table.rows[10][2] === '2 hrs' && tH.table.rows[4][2] === '-' && tH.table.rows[6][2] === '-' && tH.table.rows[0][2] === dClockOf(X, 120 + 42 + 120 + 15 + 40) && tH.basis.some((b) => /IBB p 18/.test(b.text)));
+  const moonNight = { firstLt: 360, lastLt: 1080, spans: [{ from: 1080, to: 1380, moon: false }, { from: 1380, to: 1800, moon: true }], moonPct: 70, waxing: false, quarter: 3, light: nt.light };
+  const tM = X.timeCalcAttk({ echelon: 'Bn', hMin: 1380, msnBy: null, nowMin: null, hsum: null, phases: 2, bunkers: false, fupM: 1100, night: moonNight });
+  check('mechs: the moon: adv all timings to keep the mov, H and Ph 1 dark (UA Sec III sheet 7)', tM.shift === -150 && /^adv all timings by 2 h 30/.test(tM.moonText), `${tM.shift} ${tM.moonText}`);
+  const lateDark = { firstLt: 380, lastLt: 1080, spans: [{ from: 1080, to: 1563, moon: true }, { from: 1563, to: 1820, moon: false }], moonPct: 66, waxing: true, quarter: 2, light: nt.light };
+  const tL1 = X.timeCalcAttk({ echelon: 'Bn', hMin: null, msnBy: 1800, nowMin: null, hsum: null, phases: 2, bunkers: false, fupM: 1100, night: lateDark });
+  const tL2 = X.timeCalcAttk({ echelon: 'Bn', hMin: 1505, msnBy: null, nowMin: null, hsum: null, phases: 2, bunkers: false, fupM: 1100, night: lateDark });
+  check('mechs: the moon: else at least H and Ph 1 dark, the mov by covered routes; never past the msn time', tL1.shift === null && /^no shift of the timetable within the msn time puts H and Ph 1 in the dark/.test(tL1.moonText) && tL2.shift === 90 && /^delay all timings by 1 h 30 so that H and Ph 1 fall in the dark \(the mov from the FAA in the moonlight/.test(tL2.moonText), `${tL1.moonText} / ${tL2.moonText}`);
+  check('mechs: the moon\'s words: quarter, spans, the part of the ni', /^The moon is in its 3rd qtr \(70 % lit\), up 2300-0600 hrs; dark 1800-2300 hrs: attk in the early part of the ni, reorg in the moonlight\.$/.test(X.moonWords(moonNight)), X.moonWords(moonNight));
+  const night = X.nightOf('2027-02-15', 32.5, 74.5, 300);
+  check('mechs: the night of D Day: first / last lt and spans that run last lt to first lt', night.firstLt > 300 && night.firstLt < 450 && night.lastLt > 1000 && night.lastLt < 1150 && night.spans[0].from === night.lastLt && night.spans[night.spans.length - 1].to === 1440 + night.firstLt && night.spans.every((s, i) => !i || s.from === night.spans[i - 1].to) && [1, 2, 3, 4].includes(night.quarter), `${night.firstLt} ${night.lastLt} q${night.quarter}`);
+
+  // all of it, the attack
+  const wa = X.writeMechs({ kind: 'attk', echelon: 'Bn', reading, limits: { by: '0600 D+1', destr: true }, hHour: null, timeNow: 'D-1 1000', night: nt, zone: 'z', ipbRows: [], planRows: [], check: null, planAdv: [], planDis: [], time: null, attk: null, attkPlan: null, hsum: null, enNear: {}, symbols: [] });
+  const WA = (id) => wa.patches.find((x) => x.id === id);
+  check('mechs: attk: the tests ride under Pri of Apchs, the Time Calc, the data and the timings', WA('gr.ded.apch').children[0].id === 'gr.ded.apch.tests' && WA('gr.ded.apch').draft === undefined && WA('ts.calc').table.rows.length === 18 && WA('ts.data.now').draft === '1000 hrs D-1.' && WA('ts.data.total').draft === '44 hrs.' && /^Mov from the FAA to the FUP .*; BOF to be estb by .*; Blocking posn to be estb by/.test(WA('ts.ded.timings').draft) && /^(\d+ h( \d+)?|\d+ min) more than the time req|^Short by/.test((WA('ts.ded.more') ?? WA('ts.ded.less')).draft) && WA('anx.sketch').table.rows.length === 14, WA('ts.ded.timings').draft);
+  const ad = M.newDoc('attk');
+  M.applyPatches(ad, wa.patches);
+  check('mechs: attk: applied to the outline, the analysis from the tests', /\(Apch\)/.test(M.find(ad, 'crs.an.adv').draft ?? M.find(ad, 'crs.an.dis').draft) && M.find(ad, 'gr.ded.apch.tests').table && M.find(ad, 'aim.wdr').draft);
+
+  // the sketch and the style
+  const sk = X.writeSketch('def', [{ id: '1', key: '25270703', name: 'Minefield - Anti Tank Mine', side: 'own', ech: null, label: 'Mf 1', where: null }, { id: '2', key: '10110000', name: 'Inf', side: 'own', ech: '15', label: 'A Coy', where: null }, { id: '3', key: '25342203', name: 'Screen', side: 'own', ech: null, label: '', where: null }], null, null)[0];
+  const skr = (re) => sk.table.rows.find((r) => re.test(r[1]));
+  check('mechs: the sketch (Anx P): what the map holds, what is by hand, what is not marked', skr(/^SD aspects/)[2] === 'By hand' && skr(/^M fds/)[2] === '1: Mf 1' && skr(/^Screens/)[2] === '1: Screen' && /no Pl symbols: marked one step down/.test(skr(/^Coy locs/)[2]) && skr(/^C pen posns/)[2] === 'Not marked' && sk.basis[0].text.includes('Understanding Aprc p 31-32') && sk.state === 'map', skr(/^Coy locs/)[2]);
+  const sd = M.newDoc('def');
+  M.setMine(sd, 'aim', 'Defend the AOR');
+  M.setMine(sd, 'crs.a', 'To def along line X');
+  M.setMine(sd, 'gr.ded.common', 'Keeping in view the flat gr, I must lay mines');
+  M.setMine(sd, 'crs.an.adv', 'Def on higher gr. Good depth.');
+  M.applyPatches(sd, [{ id: 'en.vis', draft: '', state: 'judge', children: [M.para('en.vis.a', null, { draft: 'En will cross the border at 0600; I must engage him.', state: 'judge' })] }]);
+  const notes = X.styleNotes(sd).map((x) => x.id).sort().join(',');
+  check('mechs: style notes on the books\' writing rules', notes === 'aim,crs.a,crs.an.adv,en.vis.a,en.vis.a,gr.ded.common', notes);
+  const sa = M.newDoc('attk');
+  M.setMine(sa, 'en.ded.obj', 'Keeping in view the En cap, the pri stands cfm');
+  check('mechs: style: the attack keeps "Keeping in view" (the guide\'s own attk specimens use it)', X.styleNotes(sa).length === 0);
+
+  // all of it, the def, on the outline
+  const wd = X.writeMechs({ kind: 'def', echelon: 'Bn', reading, limits: { fwd: true }, hHour: '06:00', timeNow: null, night: nt, zone: 'z', ipbRows: [], planRows: [], check: null, planAdv: [], planDis: [], time: { moveH: 1, prepH: 36, minesH: 63, reqH: 76 }, attk: null, attkPlan: null, hsum: null, enNear: {}, symbols: [] });
+  const dd = M.newDoc('def');
+  M.applyPatches(dd, W.writeGround(gin).patches);
+  M.applyPatches(dd, wd.patches);
+  check('mechs: def: the aim, the layout, the course, the Vis and the reactions land on the outline', M.find(dd, 'aim').children.length === 2 && /^To def the given AOR/.test(M.find(dd, 'aim').draft) && /^Pri of lines of def: \(1\) Line Y \(FDLs\)/.test(M.find(dd, 'gr.ded.lines.pri').draft) && /^Def along Line Y/.test(M.find(dd, 'crs.a').draft) && M.find(dd, 'en.vis').children.length > 6 && M.find(dd, 'crs.react').table.rows[0][1] === 'Prep Ph' && M.find(dd, 'anx.sketch').table && M.find(dd, 'aim').src === 'aim' && M.find(dd, 'gr.ded.lines.pri').src === 'gr', M.find(dd, 'gr.ded.lines.pri').draft);
+  check('mechs: the limitations ride in the doc and survive a file', (() => { const d2 = M.newDoc('def'); d2.limits = { fwd: true, noPen: 'Y', delayH: '72', junk: 1 }; const n2 = M.normalizeDoc(JSON.parse(JSON.stringify(d2))); return n2.limits.fwd === true && n2.limits.noPen === 'Y' && n2.limits.delayH === 72 && !('junk' in n2.limits) && M.normalizeDoc(JSON.parse(JSON.stringify(M.newDoc('def')))).limits === undefined; })());
+  check('mechs: typed cells follow a column renamed by head (Inf -> Inf (Pl), A tk -> Remarks)', (() => { const f = M.colMap(['Ser', 'Locs', 'Inf', 'A tk', 'Engrs'], ['Ser', 'Task / Loc', 'Inf (Pl)', 'Armr (Tp)', 'LAT (Pl)', 'HAT (Pl)', 'Engrs (Sec)', 'Remarks']); return f(1) === 1 && f(2) === 2 && f(3) === 7 && f(4) === 6; })());
+}
+
+// ── the doctrine books (Doctrine_Review.md GroundAppreciation R69-R93; 24 Nov 2026) ─────────────────────────────────
+{
+  const X = await import('../../MS/Engines/GroundAppreciation/AprcMechs.ts');
+  const B = await import('../../MS/Engines/GroundAppreciation/AprcBooks.ts');
+  const has = (p, re) => !!p && p.prompts.some((x) => re.test(x));
+
+  // R69: the DS guns in the Time Req, by ni, with IBB p 122 and p 154; R80 / R88: the ground's own prep notes
+  const base = { move: { from: '7 Bn at Pasrur', km: 18.4, kmh: 20, src: 'x' }, prep: { h: [36, 36], src: 'OoW Vol I p 39', note: 'A Bn prepares its posns in at least 36 working hrs' }, mines: null };
+  const tg = W.writeTimeReq({ ...base, guns: 'Bty', ground: 'Desert' });
+  const tgT = tg.patches[0].table, tgRow = (w) => tgT.rows.find((r) => r[1] === w);
+  check('books R69: the DS fd Bty in the Time Req at 40 min by ni (IBB p 122), not on the critical path', tgRow('Depl of the DS fd Bty')[2] === '0.7' && /By ni 40 min \(20 by day\), excluding travel; registration 20 min each plus 20; without daylight recce a Bty 2 h/.test(tgRow('Depl of the DS fd Bty')[3]) && tg.patches[0].basis.some((b) => /IBB p 122 para 5/.test(b.text) && /IBB p 154/.test(b.text)) && Math.abs(tg.reqH - W.writeTimeReq(base).reqH) < 1e-9, tgRow('Depl of the DS fd Bty')[3]);
+  check('books R80: desert trenches by frames on the prep row (DW Annex B p 97, p 95)', /In desert: revetted trenches by frames, 6 h for a wpn crew with the frames to hand, 4-6 h more to make them/.test(tgRow('Prep of main def (altn / sec)')[3]) && tg.patches[0].basis.some((b) => /DW Annex B p 97/.test(b.text) && /DW p 95 note b/.test(b.text)));
+  const tm = W.writeTimeReq({ ...base, guns: 'Regt', ground: 'Mountains' });
+  check('books R88: mountain digging and cold-weather maint (MW pp 147, 262); a Bde\'s fd Regt 1.5 h', /In mountains: the difficulty of digging means more time \(no figure printed\)/.test(tm.patches[0].table.rows.find((r) => r[1].startsWith('Prep of main def'))[3]) && tm.patches[0].basis.some((b) => /MW p 147/.test(b.text) && /MW p 262/.test(b.text)) && tm.patches[0].table.rows.find((r) => r[1] === 'Depl of the DS fd Regt')[2] === '1.5' && W.writeTimeReq({ ...base, ground: 'Plains' }).patches[0].table.rows.length === 15);
+
+  // R70 / R82: the quick attk, contact to H
+  const qB = X.timeCalcAttk({ echelon: 'Bn', hMin: 120, msnBy: null, nowMin: null, hsum: null, phases: 1, bunkers: false, fupM: 1100, night: null, quick: true });
+  const qr = (i) => qB.table.rows[i];
+  check('books R70: a Bn quick attk by MIB Annex L: recce and orders 65 min, to the FUP 25, in the FUP 10 (100 min)', qB.quickMin === 100 && qr(17)[1] === 'Recce, planning and orders (from contact)' && qr(17)[2] === '65 mins' && qr(14)[1] === 'Mov to the FUP' && qr(14)[2] === '25 mins' && qr(13)[2] === '10 mins' && qr(15)[2] === '-' && qr(16)[2] === '-' && qB.start[17] === -100 && qr(17)[3] === X.dClock(20) && qB.basis.some((b) => /MIB p 89/.test(b.text) && /IBB p 133/.test(b.text) && /Annex L pp 347-348/.test(b.text)), JSON.stringify(qB.table.rows.slice(13)));
+  const qC = X.timeCalcAttk({ echelon: 'Coy', hMin: 120, msnBy: null, nowMin: null, hsum: null, phases: 2, bunkers: false, fupM: null, night: null, quick: true });
+  check('books R70: a Coy quick attk 45 min, inside MIB 30-60 and IBB at most 30-45', qC.quickMin === 45 && qC.table.rows[17][2] === '45 mins' && /^Contact to H/.test(qC.table.rows[17][1]) && [13, 14, 15, 16].every((i) => qC.table.rows[i][2] === '-') && qC.start[17] === -45);
+  const wq = X.writeMechs({ kind: 'attk', echelon: 'Bn', reading, limits: { quick: true, night: true }, hHour: '02:00', timeNow: null, night: null, zone: 'z', ipbRows: [], planRows: [], check: null, planAdv: [], planDis: [], time: null, attk: null, attkPlan: null, hsum: null, enNear: {}, symbols: [] });
+  const wqt = wq.patches.find((x) => x.id === 'ts.ded.timings');
+  check('books R69 / R82: essential timings: contact, the Annex L drill, the DS fd Bty depl by ni (IBB p 122)', /^Contact not later than 0020 hrs D Day \(a quick attk, contact to H 100 min\); recce 0020 hrs D Day to 0100 hrs D Day, orders 0110 hrs D Day to 0125 hrs D Day, in the FUP by 0150 hrs D Day; H hr 0200 hrs D Day/.test(wqt.draft) && /DS fd Bty to start its depl not later than 0120 hrs D Day \(40 min by ni, excluding travel and registration\)/.test(wqt.draft) && wqt.basis.some((b) => /IBB p 170 para 5/.test(b.text)), wqt.draft);
+  const wd0 = X.writeMechs({ kind: 'attk', echelon: 'Bde', reading, limits: {}, hHour: '14:00', timeNow: null, night: { firstLt: 360, lastLt: 1080, spans: [], moonPct: 0, waxing: true, quarter: 1, light: null }, zone: 'z', ipbRows: [], planRows: [], check: null, planAdv: [], planDis: [], time: null, attk: null, attkPlan: null, hsum: null, enNear: {}, symbols: [] });
+  check('books R69: a Bde attk by day: the DS fd Regt 45 min', /DS fd Regt to start its depl not later than 1315 hrs D Day \(45 min by day/.test(wd0.patches.find((x) => x.id === 'ts.ded.timings').draft));
+
+  // R85: the uphill assault in mountains (MW Annex F)
+  check('books R85: the slant factor table as printed (next row up; none below 30 degrees; the last above 70)', B.slantFactor(29).factor === 1 && B.slantFactor(29).row === null && B.slantFactor(45).factor === 1.41 && B.slantFactor(32.5).row === 35 && B.slantFactor(65).factor === 2.37 && B.slantFactor(80).factor === 2.93 && /beyond the table/.test(B.slantFactor(80).note));
+  const tMtn = X.timeCalcAttk({ echelon: 'Bn', hMin: 120, msnBy: null, nowMin: null, hsum: null, phases: 1, bunkers: false, fupM: 1100, night: null, climbM: 700 });
+  check('books R85: FUP to obj on the slant (32.5 degrees: 1.22) plus 1 h a 350 m of climb: 33 min -> 160 min', tMtn.table.rows[11][2] === '160 mins' && tMtn.basis.some((b) => /MW Annex F pp 311-313/.test(b.text)) && tMtn.basis.some((b) => /x 1\.22, plus 120 min/.test(b.text)), tMtn.table.rows[11][2]);
+
+  // R72 / R82: the Vis basis (IBB pp 310, 312) and the En's quick attk in the reactions table
+  const L0 = X.layoutDef(reading, {}, 'Bn');
+  const v = X.visDef(L0, reading, { hMin: 360, night: null });
+  const rt = X.writeVisDef(v).find((x) => x.id === 'crs.react');
+  const iQ = rt.table.rows.findIndex((r) => /quick attk on contact/.test(r[1]));
+  check('books R72: the Vis cites IBB p 310 (his Ph 1 by 1.5-2 h, a Bde 3 h) and p 312 (two phases, 2,000-3,000 m)', v.basis.some((b) => /IBB S57 para 11 p 310/.test(b.text) && /IBB S57 para 17 p 312/.test(b.text)));
+  check('books R82: the En quick attk off contact in the Aslt Ph, MIB pp 96-97 (a Coy gp 30-60, a Bn gp 60-100 min)', iQ > 0 && /contact the FDLs/.test(rt.table.rows[iQ - 1][1]) && /a Coy gp 30-60 min, a Bn gp 60-100 min after it \(from 1630 hrs D Day, a Bn gp from 1700 hrs D Day\)/.test(rt.table.rows[iQ][1]) && rt.basis.some((b) => /MIB p 89; pp 96-97/.test(b.text)), rt.table.rows[iQ]?.[1]);
+
+  // R74: the line of denial
+  const Ld = X.layoutDef(reading, { denial: 'Y' }, 'Bn');
+  check('books R74: the line of denial stands for the line of no pen when none is set (OoW Vol I pp 17-18)', Ld.depth.id === 'Y' && Ld.fdl.id === 'W' && /the line of denial \(Line Y\) is held in depth/.test(Ld.reasons[0]) && Ld.basis.some((b) => /OoW Vol I pp 17-18/.test(b.text)), Ld.reasons[0]);
+  const Lnd = X.layoutDef(reading, { noPen: 'Z', denial: 'Y' }, 'Bn');
+  check('books R74: a line of no pen behind the line of denial is flagged (OoW Vol I p 17)', Lnd.prompts.some((x) => /Line Z \(no pen\) lies behind Line Y, the line of denial given/.test(x)) && Lnd.depth.id === 'Z');
+  const aDn = X.writeAim('def', { denial: 'Y' }, { place: 'x', hMin: null, lastLt: null, turn: null, readyDerived: null });
+  const anD = X.analysisDef(Ld, reading, { denial: 'Y' });
+  check('books R74: the aim and the analysis carry the line of denial', aDn[0].children[0].id === 'aim.denial' && aDn[0].children[0].draft === 'Integrity of Line Y, the line of denial, to be preserved.' && anD.adv.some((x) => /^The integrity of the line of denial \(Line Y\) is preserved/.test(x)) && anD.basis.some((b) => /OoW Vol I pp 17-18/.test(b.text)) && X.analysisDef(L0, reading, { denial: 'W' }).dis.some((x) => /^FDLs behind the line of denial \(Line W\)/.test(x)));
+  const anB = X.analysisDef(X.layoutDef(reading, {}, 'Bde'), reading, {});
+  check('books R74: a Bde\'s depth line tested on its obs (OoW Vol I p 17 para 24); a Bn\'s not', anB.dis.some((x) => /^The depth line \(Line Y\) rests on no strong obs/.test(x)) && anB.basis.some((b) => /OoW Vol I p 17 para 24/.test(b.text)) && !X.analysisDef(L0, reading, {}).dis.some((x) => /rests on no strong obs/.test(x)));
+  check('books: the new limitations survive a file (denial, quick, climb)', (() => { const n2 = M.normLimits({ denial: 'Y', quick: 1, climbM: '450', junk: 2 }); return n2.denial === 'Y' && n2.quick === true && n2.climbM === 450 && !('junk' in n2); })());
+
+  // R75 / R77 / R79 / R83 / R84 / R90 / R92 / R93: the books' heads to consider
+  const dd = M.newDoc('def'), da = M.newDoc('attk');
+  check('books R75: Res prompts: four factors, point / timing / dir (OoW Vol I pp 19-20)', has(M.find(dd, 'gr.ded.dp1.res'), /OoW Vol I p 19\)$/) && has(M.find(dd, 'gr.ded.dp1.res'), /point of employment, the timing .* the dir \(OoW Vol I p 20\)/));
+  check('books R84: the mountain str pt (MW pp 151-152, 166, 176) and pri of work (MW p 172)', has(M.find(dd, 'gr.ded.dp1.strpt'), /30 days staying power.*\(MW p 152\)/) && has(M.find(dd, 'gr.ded.dp1.strpt'), /one third of the force.*\(MW p 176\)/) && has(M.find(dd, 'ts.ded.common'), /^In mountains, pri of work: fighting and amn bunkers.*\(MW p 172\)/));
+  check('books R77: the leading En option, contingency plans, the res and silent / noisy (OoW Vol II pp 27, 30-32)', has(M.find(da, 'en.lead'), /OoW Vol II p 30/) && has(M.find(da, 'plan.exec.cont'), /OoW Vol II p 32/) && has(M.find(da, 'own.ded.c.res'), /OoW Vol II pp 31-32/) && has(M.find(da, 'en.ded.c.arty'), /^Silent or noisy:.*\(OoW Vol II p 27\)$/) && M.numberOf(da, 'plan.exec.coord.loc') === '22h(2)' && M.numberOf(da, 'plan.exec.cont') === '22i');
+  check('books R79: desert ITG heads (DW pp 7, 20, 38)', has(M.find(dd, 'gr.itg'), /water sources \(DW p 7\)$/) && has(M.find(dd, 'gr.itg'), /\(DW p 20\)$/) && has(M.find(da, 'gr.ded.obj'), /sources of water supply.*\(DW p 38\)$/) && M.find(dd, 'gr.itg').draft === '');
+  check('books R83: think two down, interdiction, spoiling attks (MIB pp 161-162)', has(M.find(dd, 'own.tasks.dp1'), /Think two down.*\(MIB p 162\)/) && has(M.find(dd, 'gr.ded.common'), /^Interdiction tgts: defiles.*\(MIB p 162\)/) && has(M.find(dd, 'gr.ded.common'), /\(MIB p 161\)$/));
+  check('books R90: Adm and Log prompts: commodity pts, 1st line, cas evac 4 h / 12 h (lsf pp 23-27, 47, 81-82)', has(M.find(dd, 'plan.adm'), /AP open 24 h.*PP open 2-4 h.*Sup P 2 h daily/) && has(M.find(dd, 'plan.adm'), /rations 3 days in reserve.*\(lsf p 23\)/) && has(M.find(dd, 'plan.adm'), /4 h without expert treatment, surgery within 12 h \(lsf p 47\)/) && has(M.find(da, 'plan.adm.cap'), /lsf p 47/));
+  check('books R92: the En on a DCB (IDD pp 3, 5-8)', has(M.find(da, 'en.opt1.dis'), /^En on a DCB, its vulnerabilities \(IDD pp 5-7\)/) && has(M.find(da, 'en.opt1.adv'), /^En on a DCB, its strengths \(IDD pp 7-8\)/) && has(M.find(da, 'en.opt1.obs'), /600-800 m deep \(IDD p 3; 600 m on p 5\)/));
+  check('books R93: air sp requests (SO\'s Hbk 2019 Sec 12 pp 1203-1204), no timings printed', has(M.find(dd, 'plan.exec.coord'), /pre-planned requests up the chain fd units, Bde HQ, Div HQ, ASOC \(SO's Hbk 2019 Sec 12 p 1203\); emergency requests \(p 1204\); no timings printed/) && has(M.find(da, 'own.ded.c.df'), /ASOC/));
+
+  // R86: mules and porters
+  check('books R86: mules and porters for the attk by echelon (MW pp 142, 145-146, 324-325, 330-331)', /^Build-up and maint after capture: 16 vehs, 582 mules or 1,164 porters \(1st line reserve \(amn\) 154/.test(B.liftDraft('attk', 'Bn').draft) && /1,746 mules or 3,492 porters for the Bde/.test(B.liftDraft('attk', 'Bde').draft) && /^F ech stores: pri 1 the rifle Coys' \(24 mules or 62 porters a Coy\).*pri 2 the rest \(69 mules or 180 porters a Bn\)/.test(B.liftDraft('attk', 'Coy').draft) && B.liftDraft('attk', 'Bn').basis.some((b) => /MW p 145 para 11/.test(b.text)) && B.MW_LIFT.bnRows.reduce((a, r) => a + r[2], 0) === 582 && B.MW_LIFT.bnRows.reduce((a, r) => a + r[3], 0) === 1164 && B.MW_LIFT.bnRows.reduce((a, r) => a + r[1], 0) === 16);
+  check('books R86 / R88: maint in def (MW pp 322-323); a Bde\'s not printed, said so', /^Maint in def: 158 mules a week for rations and 123 mules a lift of amn replenishment, a Bn's\. /.test(B.liftDraft('def', 'Bn').draft) && /a Bde's not printed \(three Bns: 474 and 369, by sum\)/.test(B.liftDraft('def', 'Bde').draft));
+
+  // R91: the cas estimate from the ORBAT strength by rank
+  const list = [
+    { id: 'bn', arm: 'inf', subtype: 'std', name: 'Inf Bn', strength: { offr: 26, jco: 24, sldr: 727, sw: 20, att: 12, total: 809 } },
+    { id: 'hq', arm: 'inf', subtype: 'hq', name: 'Bde HQ', strength: { offr: 5, jco: 2, sldr: 63, sw: 2, total: 72 } },
+    { id: 'bde', arm: 'inf', subtype: 'inf-bde', name: 'Inf Bde', children: [{ role: 'Bde HQ', unit: 'hq', count: 1 }, { role: 'Inf Bn', unit: 'bn', count: 3 }, { role: 'Sig Coy', count: 1 }] },
+  ];
+  const g1 = B.casGroupsOf(list, 'bn', 1), g3 = B.casGroupsOf(list, 'bde', 1);
+  check('books R91: strength by rank and lsf row; SW and att with the Sldrs; units without ranks named', g1.groups.length === 1 && g1.groups[0].arm === 'SIB' && g1.groups[0].sldr === 759 && g3.groups[0].offr === 83 && g3.groups[0].sldr === 2342 && g3.missing.join() === 'Sig Coy' && B.casArmOf({ arm: 'inf', id: 'inf-bn-mech' }) === 'MIB' && B.casArmOf({ arm: 'inf', id: 'inf-coy-hat-atgm' }) === 'LAT / HAT' && B.casArmOf({ arm: 'armr' }) === 'AC' && B.casArmOf({ arm: 'log' }) === 'Svcs');
+  const ce = B.casEstimate({ groups: g1.groups, missing: [], src: "SO's Hbk 2019 p 10 (bn)" });
+  check('books R91: the cas estimate at the lsf rates (pp 50-51), sick 0.10 % (p 50), ADS 75 a day (p 48)', Math.abs(B.battleCas(g1.groups, 'intense') - 19.714) < 1e-9 && ce.table.rows[0].join('|') === 'Intense|20|1|21|1' && ce.table.rows[2][0] === 'Low' && /^809 all ranks \(SIB 809\): a day of intense fighting about 20 battle cas and 1 sick and injured, 21 in all, 1 ADS at 75 a day/.test(ce.draft) && ce.state === 'judge' && ce.src === 'orbat' && ce.basis.some((b) => /lsf pp 50-51/.test(b.text)) && ce.basis.some((b) => /Annex K p 80/.test(b.text)) && B.casEstimate({ groups: [], missing: [], src: 'x' }) === null, ce.draft);
+
+  // R81 / R86 / R91: the heads a Read adds where they apply, the planner's kept
+  const ha = M.newDoc('attk');
+  const added = B.readHeads(ha, { mounted: true, mountains: true, orbat: true });
+  check('books R81: a mounted unit\'s AP-1 gets a Dismounting Area after the FUP (MIB pp 90, 120-123)', added.join() === 'gr.ded.ap1.dis,plan.adm.lift,plan.adm.cas' && M.find(ha, 'gr.ded.ap1.depl').children.map((c) => c.id).join() === 'gr.ded.ap1.fup,gr.ded.ap1.dis,gr.ded.ap1.bof,gr.ded.ap1.faa' && has(M.find(ha, 'gr.ded.ap1.dis'), /out of hand-thrown grenade range.*\(MIB p 121\)/) && M.find(ha, 'plan.adm').children.slice(-2).map((c) => c.id).join() === 'plan.adm.lift,plan.adm.cas');
+  const hd = M.newDoc('def');
+  B.readHeads(hd, { mounted: true, mountains: false, orbat: true });
+  M.applyPatches(hd, [ce]);
+  check('books R91: the def\'s Adm and Log gets the Cas Estimate (no dismounting area in a def)', !M.find(hd, 'gr.ded.ap1.dis') && M.find(hd, 'plan.adm').children.map((c) => c.id).join() === 'plan.adm.cas' && M.find(hd, 'plan.adm.cas').table.rows.length === 3 && /\d+a$/.test(M.numberOf(hd, 'plan.adm.cas')) && M.toText(hd, 'fair').includes('Cas Estimate.'));
+  const prev = M.newDoc('attk');
+  B.readHeads(prev, { mounted: true, mountains: false, orbat: true });
+  M.setMine(prev, 'gr.ded.ap1.dis', 'Dismount 600 m short in the nala');
+  M.applyPatches(prev, [ce]);
+  const next = M.newDoc('attk');
+  const kept = B.readHeads(next, { mounted: false, mountains: false, orbat: false }, prev, ['orbat']);
+  const next2 = M.newDoc('attk');
+  check('books: a head with the planner\'s words, or from a reading not taken, stays; else it goes', kept.join() === 'gr.ded.ap1.dis,plan.adm.cas' && B.readHeads(next2, { mounted: false, mountains: false, orbat: false }, prev, []).join() === 'gr.ded.ap1.dis' && B.readHeads(M.newDoc('attk'), { mounted: false, mountains: false, orbat: false }, M.newDoc('attk')).length === 0, kept.join());
+}
+
+// ── the last open doctrine items (R78 withdrawal, R85 climb read, R74 line of denial drawn; 24 Nov 2026) ─────────────
+{
+  const X = await import('../../MS/Engines/GroundAppreciation/AprcMechs.ts');
+  const S = await import('../../MS/Engines/GroundGuide/GroundGuideScopeAor.ts');
+  const has = (p, re) => !!p && p.prompts.some((x) => re.test(x));
+  const nt = { firstLt: 360, lastLt: 1080, spans: [], moonPct: 50, waxing: true, quarter: 2, light: { firstLight: '0600', lastLight: '1800', moonPct: 50, utcOffsetH: 5, date: '2027-02-15' } };
+  const mIn = (o) => ({ kind: 'wdr', echelon: 'Bn', reading, limits: {}, hHour: null, timeNow: null, night: nt, zone: 'z', ipbRows: [], planRows: [], check: null, planAdv: [], planDis: [], time: null, attk: null, attkPlan: null, hsum: null, enNear: {}, symbols: [], ...o });
+
+  // R78: the withdrawal outline (OoW Vol III)
+  const w0 = M.newDoc('wdr');
+  const ids = [];
+  M.walk(w0, (p) => ids.push(p.id));
+  check('wdr R78: a kind of its own, ready in the Kind select, ids unique', w0.kind === 'wdr' && M.aprcKinds().find((k) => k.kind === 'wdr')?.ready === true && M.aprcKinds().find((k) => k.kind === 'wdr').label === 'Withdrawal' && new Set(ids).size === ids.length, `${ids.length}`);
+  check('wdr R78: parts as the def\'s, the factors as OoW Vol III pp 7-16 groups them', w0.parts.map((p) => p.title).join('|') === 'REVIEW OF SIT|AIM|FACTORS|COURSES|PLAN|ANX P: SKETCH' && w0.parts[2].groups.map((g) => g.title).join('|') === 'Terrain and Weather|Time and Space|Own and En Sit|Int, Security and Deception|Dmls, Air and Adm');
+  const W0 = (id) => M.find(w0, id);
+  check('wdr R78: the factors cite their pages (terrain p 8, weather p 9, T&S pp 9-10, own and en p 10, int p 11, security p 12, deception p 13, dmls p 14, air p 15, adm pp 15-16)',
+    has(W0('gr.obs'), /OoW Vol III p 8 para 5a/) && has(W0('gr.met'), /OoW Vol III p 9 para 5b/) && has(W0('ts.ded.common'), /OoW Vol III p 10 para 6c/) && has(W0('ts.ded.common'), /OoW Vol III p 9 para 6a/) && has(W0('en.comp'), /OoW Vol III p 10 para 7a/) && has(W0('sec.int'), /OoW Vol III p 11 para 8a/) && has(W0('sec.sec'), /OoW Vol III p 12 para 9a/) && has(W0('sec.decep'), /OoW Vol III p 13 para 10c/) && has(W0('sp.dml'), /OoW Vol III p 14 para 11a/) && has(W0('sp.air'), /OoW Vol III p 15 para 12/) && has(W0('sp.adm'), /OoW Vol III pp 15-16 para 13b/));
+  check('wdr R78: the main decisions in Course A (pp 6-7 para 3)', has(W0('crs.a'), /OoW Vol III p 6 para 3a-b/) && has(W0('crs.a'), /OoW Vol III p 7 para 3c/) && has(W0('crs.a'), /OoW Vol III p 7 para 3d/) && has(W0('crs.a'), /OoW Vol III p 7 para 3e-l/) && has(W0('crs.an.adv'), /OoW Vol III p 6 para 2/));
+  check('wdr R78: what the plan must fix: covering tps (p 31), intmed posns (pp 33-34), routes back (p 8), timings (p 19, Annex A), rear parties (p 45)',
+    has(W0('plan.exec.cover'), /OoW Vol III p 31 para 9b/) && has(W0('gr.ded.intmed'), /OoW Vol III p 33 para 16/) && has(W0('plan.exec.intmed'), /OoW Vol III p 34 para 22/) && has(W0('gr.routes'), /OoW Vol III p 8 para 5a/) && has(W0('ts.ded.timings'), /OoW Vol III p 19 para 17/) && has(W0('plan.exec.coord'), /OoW Vol III pp 72-73, Annex A/) && has(W0('plan.exec.rear'), /OoW Vol III p 45 para 5/) && has(W0('plan.exec.seq'), /OoW Vol III p 44 para 2/) && has(W0('ts.req'), /OoW Vol I p 39/));
+  {
+    const all = [];
+    M.walk(w0, (p) => p.prompts.forEach((x) => all.push(x)));
+    const plain = all.filter((x) => !/\((OoW Vol III|OoW Vol I|Understanding Aprc|lsf|SO's Hbk)|OoW Vol III p|OoW Vol I p/.test(x) && !/^(With reasons|On the same lines|MITG: the new def posn)/.test(x));
+    check('wdr R78: every book prompt carries its book and page; never "his / he" for the En', !plain.length && !all.some((x) => /\b(his|he)\b/i.test(x)), plain.join(' | '));
+  }
+  const wn = M.normalizeDoc(JSON.parse(JSON.stringify({ ...M.newDoc('wdr'), limits: { deny: '0300 D+1', noMovBefore: '1900 D Day', clearLine: 'Line Y', clearBy: '0500 D+1', newPosn: 'Qila Mor', byDay: 1, junk: 2 } })));
+  check('wdr R78: a file keeps the kind and the wdr limitations', wn.kind === 'wdr' && wn.limits.deny === '0300 D+1' && wn.limits.noMovBefore === '1900 D Day' && wn.limits.clearLine === 'Line Y' && wn.limits.clearBy === '0500 D+1' && wn.limits.newPosn === 'Qila Mor' && wn.limits.byDay === true && !('junk' in wn.limits));
+
+  // R78: the Gr drafted from the AOR reading round the new posn
+  const gw = W.writeGroundWdr(reading);
+  const G = (id) => gw.patches.find((x) => x.id === id);
+  check('wdr R78: routes back from the reading (MSR, Rd through, Rds along the apchs, laterals; OoW Vol III p 8)', G('gr.routes').state === 'gr' && /^MSR: Qila Mor – Pasrur metalled, 0\.3 km from Qila Mor\. Rd Nurpur – Qila Mor metalled runs through Qila Mor\. Rds along the apchs: Lt \(Burj – Kot Jaimal\); Cen \(Burj – Kot Jaimal\)\. Laterals: the Lt and Cen apchs joined by 2 metalled Rds; the Cen and Rt apchs joined by 1 metalled Rd\./.test(G('gr.routes').draft), G('gr.routes').draft);
+  check('wdr R78: the new posn read at the MITG, a proposal (OoW Vol III p 39)', G('gr.ded.newposn').state === 'judge' && /^Read at Qila Mor: FDLs on Line X \(Kot Jaimal – Dhok Rai, 7\.6 km between bdys, along Lakhan Disty\), depth on Line Y \(Chak 21 – Jhanda\)\./.test(G('gr.ded.newposn').draft) && G('gr.ded.newposn').basis.some((b) => /OoW Vol III p 39 para 1/.test(b.text)), G('gr.ded.newposn').draft);
+  check('wdr R78: intmed posns: the lines forward of the new FDLs, those on an obs first, their spacing (OoW Vol III p 33 para 16)', G('gr.ded.intmed').state === 'judge' && /^Lines across the En apchs forward of the new posn, from the front: Line W \(Burj – Tibbi, along Sukh Nala, 1\.5 km ahead of Line X\)\. As intmed posns or the covering tps' delay lines, those on an obs first: Line W\. Apart: W to X 1\.5 km; far enough that the En must redeploy/.test(G('gr.ded.intmed').draft) && G('gr.ded.intmed').basis.some((b) => /OoW Vol III p 33 para 16/.test(b.text)), G('gr.ded.intmed').draft);
+  check('wdr R78: routes to keep open and to block, the primary dml belt (OoW Vol III pp 8, 55-56)', /^Keep open for the wdr until the rear parties are through: the Lt and Cen apchs \(a Rd along it\); reserve dmls on the brs they cross\. Block early: the Rt apch \(no Rd/.test(G('gr.ded.routes').draft) && /Sukh Nala \(nala\) and Lakhan Disty \(canal\)/.test(G('gr.ded.routes').draft) && G('gr.ded.routes').basis.some((b) => /p 56 para 5a/.test(b.text)), G('gr.ded.routes').draft);
+  check('wdr R78: brs on the En apchs as facts, Engr advice to confirm (OoW Vol III pp 55-56)', G('sp.dml').state === 'gr' && G('sp.dml').draft === 'Brs over water on the En apchs: over Lakhan Disty on the Lt apch, 40 m off its crossing. 3 brs in the AOR, 0 with a load class recorded.' && gw.confirm.some((c) => /Engr advice/.test(c.text) && c.paras[0] === 'sp.dml'), G('sp.dml').draft);
+
+  // R78: the aim and Time and Space by the limitations, the night of D Day, the 36 working hrs
+  const lim = { deny: '0300 D+1', noMovBefore: '1900 D Day', clearLine: 'Line Y', clearBy: '0500 D+1', delayH: 12, newPosn: 'Qila Mor' };
+  const wm = X.writeMechs(mIn({ limits: lim, timeNow: 'D-1 1000' }));
+  const P = (id) => wm.patches.find((x) => x.id === id);
+  check('wdr R78: the aim: to occupy the new posn with the min of interference and cas (OoW Vol III p 3 para 7a), the limitations tabulated (p 19 para 17, p 10 para 6c)', P('aim').draft === 'To wdr to the new def posn at Qila Mor and occupy it with the min of interference from the En and the min of cas, with fol limitations:-' && P('aim').children.map((c) => c.id).join() === 'aim.deny,aim.nomov,aim.clear,aim.delay' && P('aim').children[0].draft === 'Posn to be denied to the En until 0300 hrs D+1.' && P('aim').children[2].draft === 'All tps to be clear of Line Y by 0500 hrs D+1.' && P('aim').basis.some((b) => /p 3 para 7a/.test(b.text)) && P('aim').children[0].basis.some((b) => /p 19 para 17a/.test(b.text)), P('aim').draft);
+  check('wdr R78: nothing set, nothing written; the new posn alone gives the aim without limitations', X.writeAim('wdr', {}, { place: 'Qila Mor', hMin: null, lastLt: null, turn: null, readyDerived: null }).length === 0 && X.writeAim('wdr', { newPosn: 'Burj' }, { place: 'Qila Mor', hMin: null, lastLt: null, turn: null, readyDerived: null })[0].draft === 'To wdr to the new def posn at Burj and occupy it with the min of interference from the En and the min of cas.');
+  check('wdr R78: time data: the limitations, last lt D Day, first lt D+1, the hrs of darkness', P('ts.data.deny').draft === '0300 hrs D+1.' && P('ts.data.no-mov').draft === '1900 hrs D Day.' && P('ts.data.clear').draft === 'Line Y: 0500 hrs D+1.' && P('ts.data.last-lt').draft === '1800 hrs D Day (D Day 2027-02-15).' && P('ts.data.first-lt').draft === '0600 hrs D+1, the end of the ni of D Day.' && P('ts.data.dark').draft === '12 h on the ni of D Day.' && P('ts.data.time-now').draft === '1000 hrs D-1.');
+  check('wdr R78: Time Req: the new posn 36 working hrs a Bn (OoW Vol I p 39), the rest no figure printed, said so', P('ts.req').table.rows[0].join('|') === 'a.|Prep of the new def posn|36|A Bn needs at least 36 working hrs to prep its posns to meet a full-scale attk (OoW Vol I p 39)' && P('ts.req').table.rows.slice(1, 4).every((r) => r[2] === '' && /^No figure printed/.test(r[3])) && X.writeMechs(mIn({ limits: lim, echelon: 'Coy' })).patches.find((x) => x.id === 'ts.req').table.rows[0][2] === '12');
+  const tdr = P('ts.ded.timings').draft;
+  check('wdr R78: essential timings back from the new posn ready (denied till + the delay fwd of it, OoW Vol III pp 10, 24, 31), the darkness for the mov back, in time', /^Essential timings: no rearward mov except recce parties before 1900 hrs D Day; prep of the new def posn to start not later than 0300 hrs D Day, 36 hrs before it is to be ready at 1500 hrs D\+1 \(the posn denied until 0300 hrs D\+1 and the En held fwd of the new posn 12 hrs\); posn denied until 0300 hrs D\+1, then finally abandoned; all tps clear of Line Y by 0500 hrs D\+1; 10 h of darkness for the mov back, 1900 hrs D Day to 0500 hrs D\+1\. In time: 17 h to spare/.test(tdr) && P('ts.ded.timings').basis.some((b) => /OoW Vol III p 24 para 1/.test(b.text)) && P('ts.ded.timings').basis.some((b) => /p 44 para 1/.test(b.text)), tdr);
+  const wl = X.writeMechs(mIn({ limits: { deny: '0300 D+1', noMovBefore: '1500 D Day', clearBy: '0700 D+1' }, timeNow: '0500 D Day' })).patches.find((x) => x.id === 'ts.ded.timings').draft;
+  check('wdr R78: the checks: clear after first lt (OoW Vol III p 44 para 1), rearward mov before last lt (p 13 para 10c(2)), the prep short from time now', /All tps clear at 0700 hrs D\+1, after first lt \(0600 hrs D\+1\): a ni wdr is to finish before daylight \(OoW Vol III p 44 para 1\)/.test(wl) && /Rearward mov from 1500 hrs D Day, before last lt/.test(wl) && /Short by 14 h: the prep of the new posn should have started at 1500 hrs D-1;.*\(OoW Vol III p 39 para 2\)/.test(wl) && /36 hrs before it is to be ready at 0300 hrs D\+1 \(when the tps disengage from the posn\)/.test(wl), wl);
+  check('wdr R78: ni or day: the hrs of darkness and the moon, a proposal (OoW Vol III pp 43-44)', /^By ni: 12 h of darkness on the ni of D Day, last lt 1800 hrs D Day to first lt 0600 hrs D\+1; the wdr to start so as to finish before first lt\. The moon 50 % lit, too low or too thin to light the ni\.$/.test(P('gr.ded.time').draft) && P('gr.ded.time').state === 'judge', P('gr.ded.time').draft);
+  const wday = X.writeMechs(mIn({ limits: { byDay: true, deny: '1400 D Day' } }));
+  check('wdr R78: the sequence by ni (OoW Vol III p 44 para 2) and by day (p 41 para 2)', /^By ni: a\. recce parties for the rear posns and the routes back, the only rearward mov before 1900 hrs D Day; b\. AD depl/.test(P('plan.exec.seq').draft) && /\(0300 hrs D\+1\)/.test(P('plan.exec.seq').draft) && /^By day: /.test(wday.patches.find((x) => x.id === 'plan.exec.seq').draft) && wday.patches.find((x) => x.id === 'plan.exec.seq').basis.some((b) => /p 41 para 2/.test(b.text)) && /^By day, as given/.test(wday.patches.find((x) => x.id === 'gr.ded.time').draft) && wday.patches.find((x) => x.id === 'aim').children.some((c) => c.id === 'aim.day'));
+  check('wdr R78: the sketch: Annex P and Q (OoW Vol III pp 75-76)', P('anx.sketch').table.rows.length === 13 && P('anx.sketch').basis[0].text.includes('Annex P p 75') && P('anx.sketch').table.rows.some((r) => /^Intmed posns$/.test(r[1])) && P('anx.sketch').table.rows.some((r) => /^Bomb line$/.test(r[1])));
+
+  // R78: the whole sheet, its copies and exports
+  const wd = M.newDoc('wdr');
+  wd.limits = lim;
+  M.applyPatches(wd, W.writeGround(gin).patches, 'gr');
+  M.applyPatches(wd, gw.patches, 'gr');
+  M.applyPatches(wd, wm.patches);
+  const tx = M.toText(wd, 'draft');
+  check('wdr R78: the Gr and the timings land on the outline', /^MSR:/.test(M.find(wd, 'gr.routes').draft) && /^Canal plains\./.test(M.find(wd, 'gr.gen').draft) && M.find(wd, 'gr.apchs').children.length === 3 && M.find(wd, 'gr.met').draft !== null && M.find(wd, 'ts.req').table.rows.length === 5 && M.find(wd, 'aim').children.length === 4 && tx.includes('Routes Back.') && tx.includes('Rear Parties.') && !/NCGDB|whites/i.test(tx));
+  check('wdr R78: the page, Word and the style notes walk it', H.bodyHtml(wd, 'fair').includes('Intmed Posns') && D.docxFiles(wd, 'fair')['word/document.xml'].includes('Covering Tps, Flk Gds and Rearguards') && (() => { const s2 = M.newDoc('wdr'); M.setMine(s2, 'aim', 'Withdraw to X'); return X.styleNotes(s2).some((n) => n.id === 'aim' && /Understanding Aprc p 8/.test(n.note)); })());
+  const ko = { copy: 'draft', blankBg: 'data:image/png;base64,BBBB' };
+  const kf = K.buildDeck(wd, { ...ko, kind: 'full' }), kd = K.buildDeck(wd, { ...ko, kind: 'decision' }), ks = K.buildDeck(wd, { ...ko, kind: 'sand' });
+  check('wdr R78: slides: its own short decks, "Wdr" on the foot', K.DECK_IDS.wdr && kf.some((s) => s.sourceRef === 'aprc:gr.routes') && kd.length < kf.length && kd.some((s) => s.sourceRef === 'aprc:ts.ded') && ks.every((s) => !/^aprc:(aim|en|own|crs|plan)/.test(s.sourceRef ?? '')) && kf.some((s) => s.overlays.some((v) => /^Aprc · Wdr/.test(v.text ?? ''))) && K.buildDeck(doc, { ...ko, kind: 'full' }).some((s) => s.overlays.some((v) => /^Aprc · Def/.test(v.text ?? ''))), kd.map((s) => s.sourceRef).join(' '));
+
+  // R85: the climb read off the ground, a typed climb overriding it
+  const cr = { m: 700, horizM: 1100, from: 'the SL 1.1 km SW of Burj', to: 'Qila Mor' };
+  const base = { echelon: 'Bn', hMin: 120, msnBy: null, nowMin: null, hsum: null, phases: 1, bunkers: false, fupM: 1100, night: null };
+  const tR = X.timeCalcAttk({ ...base, climbRead: cr });
+  check('books R85: the climb read off the 30 m elevation sets the assault (1.22 slant + 120 min: 160 mins), the basis says it was read', tR.table.rows[11][2] === '160 mins' && tR.climb.by === 'read' && tR.climb.m === 700 && tR.basis.some((b) => b.kind === 'data' && /read off the 30 m elevation from the SL 1\.1 km SW of Burj to Qila Mor \(1\.1 km apart\); a climb typed in the Limitations box overrides it/.test(b.text)) && tR.basis.some((b) => /MW Annex F pp 311-313/.test(b.text)), tR.table.rows[11][2]);
+  const tT = X.timeCalcAttk({ ...base, climbM: 350, climbRead: cr });
+  check('books R85: a typed climb overrides the one read, and says so (17.6 degrees: no factor, 33 + 60 = 93 mins)', tT.table.rows[11][2] === '93 mins' && tT.climb.by === 'typed' && tT.basis.some((b) => b.kind === 'input' && /350 m of climb, as typed in the Limitations box \(read off the 30 m elevation: 700 m from the SL 1\.1 km SW of Burj, not used\)/.test(b.text)) && X.timeCalcAttk(base).climb === null && X.timeCalcAttk({ ...base, climbRead: { ...cr, m: 0 } }).climb === null, tT.table.rows[11][2]);
+  const aIn = (o) => ({ kind: 'attk', echelon: 'Bn', reading, limits: {}, hHour: '02:00', timeNow: null, night: null, zone: 'z', ipbRows: [], planRows: [], check: null, planAdv: [], planDis: [], time: null, attk: null, attkPlan: null, hsum: null, enNear: {}, symbols: [], ...o });
+  const tcR = X.writeMechs(aIn({ climb: cr })).patches.find((x) => x.id === 'ts.calc'), tcT = X.writeMechs(aIn({ climb: cr, limits: { climbM: 450 } })).patches.find((x) => x.id === 'ts.calc');
+  check('books R85: the Time Calc paragraph says which climb it used; none, no words', tcR.draft === 'FUP to Obj uphill: 700 m of climb, read off the 30 m elevation from the SL 1.1 km SW of Burj to Qila Mor (1.1 km apart); a climb typed in the Limitations box overrides it.' && /^FUP to Obj uphill: 450 m of climb, as typed in the Limitations box \(read off the 30 m elevation: 700 m/.test(tcT.draft) && X.writeMechs(aIn({})).patches.find((x) => x.id === 'ts.calc').draft === '' && has(M.find(M.newDoc('attk'), 'ts.calc'), /Read takes the climb off the 30 m elevation from the SL, else the FUP, to the obj; a climb typed in the Limitations box overrides it/), tcR.draft);
+
+  // R74: the line of denial drawn on the AOR trace and listed on the sketch
+  const fr = { reading, layout: 'deductions', style: 'trace', orient: 'north', layers: { going: true, apch: true, line: true, itg: true, dml: true, msr: true }, northDeg: 0, source: 'echelon', used: 'echelon', note: null, echelon: 'Bn', profileLabel: 'Tracked', when: 'Dry · Feb', season: 'dry', month: 'Feb', loading: false, keys: { detail: false } };
+  const svgD = S.aorMapSvg(reading, { ...fr, denial: 'Y' }, 900, 800, 'full'), svg0 = S.aorMapSvg(reading, fr, 900, 800, 'full'), svgM = S.aorMapSvg(reading, { ...fr, denial: 'Y' }, 397, 300, 'min');
+  check('books R74: the trace marks the line of denial given, "Line of Denial" beside its letter; none set, none marked', (svgD.match(/>Line of Denial</g) ?? []).length === 1 && (svgD.match(/stroke-width="12"/g) ?? []).length === 1 && !svg0.includes('Line of Denial') && !svg0.includes('stroke-width="12"') && svgM.includes('>Line of Denial<') && !S.aorMapSvg(reading, { ...fr, denial: 'Q' }, 900, 800, 'full').includes('Line of Denial'));
+  // the Gr Scope rail's Copy as Text (guide.aorText) names it too, once the guide has it (guide.setAorDenial)
+  const txD = S.aorText(reading, { ...fr, denial: 'Y' }), tx0 = S.aorText(reading, fr);
+  check('books R74: the AOR Copy as Text names the line of denial on its line of def (OoW Vol I pp 17-18); none set, none named', /Line Y \(Line of Denial, given by the higher comd: OoW Vol I pp 17-18\)\./.test(txD) && (txD.match(/Line of Denial/g) ?? []).length === 1 && !tx0.includes('Line of Denial'), txD.match(/.*Line Y.*/)?.[0]);
+  check('books R74: the rail\'s Lines row names it ("Denial Y"); a letter the reading has no line for, not', / · Denial Y$/.test(S.aorWords(reading, { ...fr, denial: 'Y' }).rows.line[0]) && !/Denial/.test(S.aorWords(reading, { ...fr, denial: 'Q' }).rows.line[0]) && !/Denial/.test(S.aorWords(reading, fr).rows.line[0]), S.aorWords(reading, { ...fr, denial: 'Y' }).rows.line[0]);
+  const skD = X.writeSketch('def', [], null, null, { denial: 'Y', lines: ['W', 'X', 'Y', 'Z'] })[0], skN = X.writeSketch('def', [], null, null, { denial: 'Q', lines: ['W', 'X', 'Y', 'Z'] })[0], sk0 = X.writeSketch('def', [], null, null)[0];
+  const lastD = skD.table.rows[skD.table.rows.length - 1];
+  check('books R74: the sketch annex lists the line of denial, on the trace or not (OoW Vol I pp 17-18)', skD.table.rows.length === sk0.table.rows.length + 1 && lastD[1] === 'Line of denial: Line Y, given by the higher comd with the msn' && lastD[2] === 'On the trace: Line Y, "Line of Denial"' && /OoW Vol I pp 17-18/.test(lastD[3]) && /^Not on the trace: no Line Q in the reading$/.test(skN.table.rows[skN.table.rows.length - 1][2]) && X.writeSketch('attk', [], null, null, { denial: 'Y', lines: ['Y'] })[0].table.rows.length === 14);
+  const wdD = X.writeMechs({ ...mIn({ kind: 'def', limits: { denial: 'Y' } }), hHour: '06:00' }).patches.find((x) => x.id === 'anx.sketch');
+  check('books R74: a def Read with a line of denial set carries it to the sketch annex', wdD.table.rows.some((r) => r[1] === 'Line of denial: Line Y, given by the higher comd with the msn'));
+}
+
+function dClockOf(X, m) {
+  return X.dClock(m);
 }
 
 console.log(`\n${n - fails} of ${n} checks passed`);

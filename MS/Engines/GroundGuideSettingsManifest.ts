@@ -1067,6 +1067,14 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     keywords: ['extended', 'ipb', 'air', 'airspace', 'roz', 'hidacz', 'aca', 'gun-target line', 'gtl', 'engagement zone'],
   },
   {
+    path: ['groundGuide', 'extended', 'ipb', 'wind'],
+    label: 'IPB: wind (ERA5 normal)',
+    group: 'Extended View (F)',
+    type: 'boolean',
+    help: 'Reads the month\'s usual wind from the terrain bundle (ERA5 1990-2019, 0.25 degrees): its direction, how steady it is and whether it turns by night. Shown in Annex A, read on each LZ (run in from downwind, leave upwind), each DZ (drift) and proforma g. A normal, not a forecast. Off: not loaded.',
+    keywords: ['extended', 'ipb', 'wind', 'era5', 'lz', 'dz', 'drift', 'smoke', 'nbc', 'weather'],
+  },
+  {
     path: ['groundGuide', 'extended', 'ipb', 'airBand'],
     label: 'IPB air: flight band',
     group: 'Extended View (F)',

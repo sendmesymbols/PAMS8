@@ -788,7 +788,8 @@ export function readWater(probe: WaterProbe, R: WaterRules, click: MercXY, opts:
   if (num(a.dp)) depth = fig(num(a.dp)!, 'sheet');
   else if (reach && (num(reach.dp) || num(reach.dm))) depth = num(reach.dp) && num(reach.dm) ? { v: num(reach.dp), lo: num(reach.dp), hi: num(reach.dm), src: 'reach', note: 'mean to max' } : fig((num(reach.dp) ?? num(reach.dm))!, 'reach');
   else if (def.depthM) depth = rng(def.depthM, 'pamphlet');
-  const current: Fig = reach && num(reach.cu) ? fig(num(reach.cu)!, 'reach') : NONE;
+  // The reach's own current, else the pamphlet's for the type (IBB S60 pp 329-330: canals 2-3 knots, link canals 4-5).
+  const current: Fig = reach && num(reach.cu) ? fig(num(reach.cu)!, 'reach') : def.currentMs ? rng(def.currentMs, 'pamphlet') : NONE;
   const bed = reach ? str(reach.s) : null;
 
   // Which way it flows (sheet bank sides need it): the line's ends at least 3 m apart in height over 3 km.

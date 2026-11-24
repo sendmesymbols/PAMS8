@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Deployment Cursor Card</title>
+<!--
+  PAMS8 Deployment Mgr, Intelligent Deployment tab: the cursor card (PlanBuildTab._showCard / _cardHtml / cardCheckHtml,
+  Widgets.css .pb-card) and the verdict ring on each posn (_drawProducts). Mockup for approval, 24 Nov 2026.
+  "Now" copies the live .pb-card rules of MS/Styles/Widgets.css. A, B and C are proposals; B is recommended.
+  Colours and sizes are GroundGuideTokens.ts (TONE, SURFACE, TEXT, LINE, FS): no new hex for verdicts.
+  Content: a Bn Def, two up, with SAMPLE figures so a fail, warns and passes all show. Not a real reading.
+  One self-contained file: no network, no build.
+  BUILT 24 Nov 2026 with the user's picks: card C Ledger (500 px) and rings M2 (icon + tag): PlanBuildTab._cardHtml /
+  ledgerRow / verdictMarks, Widgets.css .pb-card. Built-time changes: three ledger rows (the rest counted), the first
+  laid-out row opens, a posn's repeat of a plan row is shown once, only the latest late move carries a tag, the card
+  steps down out from under the host's bars.
+-->
+<style>
+:root{
+  --font:system-ui,'Segoe UI',Arial,sans-serif;
+  /* GroundGuideTokens.ts */
+  --s-ring:#14181d;--s-card:#1b1f25;--s-strip:#20262e;--s-raised:#222830;--s-head:#262d36;
+  --t-strong:#f7f8fa;--t-main:#f1f3f6;--t-label:#c3cbd3;--t-soft:#b8c1ca;--t-warn:#ffd27a;
+  --l-hair:rgba(255,255,255,.14);--l-soft:rgba(255,255,255,.1);--accent:#8ec1ea;
+  --go:#2fa862;--go-t:#74dca3;--wn:#ee8a1f;--wn-t:#ffb46b;--no:#e5484d;--no-t:#ff8a8d;--ck:#7f8893;--ck-t:#c3cbd3;
+  /* the page around the mockups */
+  --pg:#121519;--pg-2:#171b20;--pg-t:#d5dbe3;--pg-m:#9aa4af;
+}
+*{box-sizing:border-box}
+html{background:var(--pg)}
+body{margin:0;background:var(--pg);color:var(--pg-t);font:400 14.5px/1.55 var(--font);-webkit-font-smoothing:antialiased}
+.pg{max-width:1300px;margin:0 auto;padding:36px 28px 80px}
+h1{font-size:26px;line-height:1.2;font-weight:700;margin:0 0 8px;color:#f1f3f6;letter-spacing:-.01em}
+h2{font-size:19px;font-weight:650;margin:56px 0 6px;color:#f1f3f6}
+h3{font-size:15.5px;font-weight:650;margin:0 0 4px;color:#f1f3f6}
+p{margin:0 0 10px;max-width:74ch}
+.lede{color:var(--pg-m);font-size:15px}
+.mut{color:var(--pg-m)}
+code{font:12.5px/1.4 Consolas,'SF Mono',monospace;color:#c9d6e3;background:rgba(255,255,255,.06);padding:1px 5px;border-radius:4px}
+ul.pts{margin:8px 0 0;padding-left:18px;max-width:80ch}
+ul.pts li{margin:4px 0}
+ul.pts li::marker{color:#5d6772}
+
+/* controls */
+.ctl{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;margin:18px 0 12px}
+.ctl .grp{display:flex;align-items:center;gap:8px}
+.ctl .lb{font-size:13px;color:var(--pg-m)}
+.seg-b{display:inline-flex;border:1px solid var(--l-hair);border-radius:7px;overflow:hidden;background:#1b1f25}
+.seg-b button{appearance:none;border:0;background:none;color:#c3cbd3;font:600 13px/1 var(--font);padding:8px 12px;cursor:pointer;border-left:1px solid var(--l-soft)}
+.seg-b button:first-child{border-left:0}
+.seg-b button:hover{background:#232a33;color:#f1f3f6}
+.seg-b button[aria-pressed="true"]{background:#2a3644;color:#f7f8fa;box-shadow:inset 0 -2px 0 var(--accent)}
+.seg-b button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.seg-b button:disabled{opacity:.4;cursor:default}
+
+/* the map stage */
+.stage-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--l-soft);background:#0d0f12}
+.stage{position:relative;width:1240px;height:800px}
+.stage>svg{display:block}
+#stageCard{position:absolute}
+#stageCard>*{animation:cdIn .15s cubic-bezier(.25,1,.5,1)}
+@keyframes cdIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#stageCard>*{animation:none}}
+.cap{font-size:13px;color:var(--pg-m);margin-top:8px}
+
+/* galleries */
+.gal{display:flex;flex-wrap:wrap;gap:34px 34px;align-items:flex-start;margin-top:18px}
+.gi{display:grid;gap:10px;align-content:start}
+.gi .gh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.gi .sz{font-size:12.5px;color:var(--pg-m);font-variant-numeric:tabular-nums}
+.gi .rec{font-size:12px;font-weight:700;color:#121519;background:var(--accent);border-radius:4px;padding:1px 6px}
+.gi ul.pts{max-width:560px;font-size:14px}
+.board{padding:22px;border-radius:12px;background:#2a2f2c;background-image:radial-gradient(rgba(255,255,255,.04) 1px,transparent 1px);background-size:14px 14px}
+
+/* ── the cards (proposals) ───────────────────────────────────────────────────────────────────── */
+.cd{position:relative;color:var(--t-main);font:400 13.5px/1.42 var(--font);background:var(--s-card);border:1px solid rgba(255,255,255,.16);border-radius:10px;box-shadow:0 0 0 1px rgba(11,13,16,.85),0 18px 38px -10px rgba(0,0,0,.6);overflow:hidden;font-variant-numeric:tabular-nums;text-align:left}
+.cd *{box-sizing:border-box}
+.ic{width:16px;height:16px;flex:none;display:inline-block;vertical-align:-3px}
+.cd-h{display:flex;gap:14px;align-items:flex-start;padding:10px 14px;background:var(--s-head);border-bottom:1px solid var(--l-soft)}
+.cd-tt{min-width:0}
+.cd-t{font-size:15.5px;font-weight:600;color:var(--t-strong);line-height:1.3}
+.chip{display:inline-flex;align-items:center;height:19px;padding:0 6px;border-radius:4px;border:1px solid var(--l-hair);font-size:12px;font-weight:600;color:var(--t-label);margin-left:7px;vertical-align:2px}
+.cd-ctx{font-size:12px;color:var(--t-label);margin-top:2px}
+.cd-fit{margin-left:auto;display:grid;justify-items:end;gap:6px;flex:none;padding-top:1px}
+.cd-fit .lb{font-size:12px;color:var(--t-label);margin-right:5px}
+.cd-fit .n{font-size:22px;font-weight:750;line-height:1;color:var(--t-strong)}
+.cd-fit .n small{font-size:12px;font-weight:600;color:var(--t-label);margin-left:1px}
+.fitbar{width:100px;height:4px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden}
+.fitbar i{display:block;height:100%;background:var(--accent)}
+.fitbar.prov i{background:repeating-linear-gradient(90deg,var(--accent) 0 6px,transparent 6px 9px)}
+
+/* the main point: the worst check */
+.mp{padding:12px 14px}
+.mp-h{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.vb{display:inline-flex;align-items:center;gap:5px;height:23px;padding:0 8px 0 5px;border-radius:5px;font-size:12px;font-weight:750;white-space:nowrap}
+.vb.fail{background:rgba(229,72,77,.15);color:var(--no-t);box-shadow:inset 0 0 0 1px rgba(229,72,77,.55)}
+.vb.warn{background:rgba(238,138,31,.14);color:var(--wn-t);box-shadow:inset 0 0 0 1px rgba(238,138,31,.5)}
+.vb.pass{background:rgba(47,168,98,.14);color:var(--go-t);box-shadow:inset 0 0 0 1px rgba(47,168,98,.5)}
+.vb.unchecked{background:rgba(127,136,147,.16);color:var(--ck-t);box-shadow:inset 0 0 0 1px rgba(127,136,147,.5)}
+.mp-n{font-size:15.5px;font-weight:600;color:var(--t-strong)}
+.mp-sc{margin-left:auto;font-size:12px;color:var(--t-label)}
+.mp-hd{margin-top:5px;color:var(--t-main);display:flex;gap:10px;align-items:baseline}
+.mp-hd .lg-k{margin-left:auto;font-size:12px;color:var(--t-label);white-space:nowrap}
+.also{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+.also .al{font-size:12px;font-weight:600;color:var(--t-label)}
+.also .ai{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.also .ai.warn{color:var(--wn-t)}.also .ai.fail{color:var(--no-t)}
+.tal2{display:grid;grid-template-columns:1fr 1fr;gap:5px 8px}
+.tal2 .ti{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--t-label);white-space:nowrap}
+.tal2 .ti b{font-size:13.5px;color:var(--t-strong)}
+.tal2 .ti.zero,.tal2 .ti.zero b{color:#8a939d}
+.aos{display:grid;gap:3px;margin-top:8px;padding-top:7px;border-top:1px solid var(--l-soft)}
+.ao{display:grid;grid-template-columns:16px 1fr;gap:5px;font-size:12px;line-height:17px}
+.ao .ic{margin-top:0}
+.ao.warn{color:var(--wn-t)}.ao.fail{color:var(--no-t)}
+.rail .pcs{gap:3px 11px}
+.rail .pc{background:none;border:0;padding:0;height:20px}
+.rail .pc.unchecked{border:0}
+.band{display:grid;gap:5px;padding:8px 14px 9px;border-top:1px solid var(--l-soft);font-size:12px;color:var(--t-soft)}
+.band .bl{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.band .bk{color:var(--t-label);font-weight:600}
+.lyi-row{display:inline-flex;flex-wrap:wrap;gap:3px 13px}
+.lyi{display:inline-flex;align-items:center;gap:5px;color:var(--t-label);white-space:nowrap}
+.lyi i{display:inline-block;width:30px;height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden}
+.lyi i b{display:block;height:100%;background:#6b7785}
+.lyi.top{color:var(--t-strong);font-weight:650}
+.lyi.top i b{background:var(--accent)}
+
+/* the race: own move against the En, minutes */
+.race{display:grid;grid-template-columns:max-content minmax(56px,1fr) max-content max-content;gap:6px 10px;align-items:center;margin-top:10px}
+.race .rh{font-size:12px;color:var(--t-label)}
+.race .r{text-align:right}
+.race .wh{white-space:nowrap}
+.bar{position:relative;height:6px;border-radius:3px;background:rgba(255,255,255,.08)}
+.bar i{position:absolute;top:0;bottom:0}
+.bar .o{left:0;background:#9aa3ad;border-radius:3px 0 0 3px}
+.bar .lt{background:var(--no);border-radius:0 3px 3px 0}
+.bar .sp{background:rgba(47,168,98,.45);border-radius:0 3px 3px 0}
+.bar .en{width:2px;top:-4px;bottom:-4px;background:var(--t-main);border-radius:1px}
+.race .mm{font-size:12px;color:var(--t-label);white-space:nowrap}
+.race .rs{font-weight:650;white-space:nowrap}
+.rs.fail{color:var(--no-t)}.rs.pass{color:var(--go-t)}.rs.warn{color:var(--wn-t)}
+.race .more{grid-column:1/-1;font-size:12px;color:var(--t-label)}
+.items{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:3px}
+.items li{display:grid;grid-template-columns:10px 1fr;gap:4px;color:var(--t-main)}
+.items li::before{content:"";width:4px;height:4px;border-radius:50%;background:#7f8893;margin-top:8px}
+
+/* why and fix */
+.wf{display:grid;grid-template-columns:30px 1fr;gap:7px 8px;margin-top:11px}
+.wf .k{font-size:12px;font-weight:700;color:var(--t-warn);line-height:19px}
+.wf .v{color:var(--t-soft);min-width:0}
+.fx{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.fx li{display:grid;grid-template-columns:14px 1fr;gap:4px}
+.fx li>b{font-size:12px;color:var(--t-label);font-weight:700;line-height:19px}
+.fx .more{display:block;font-size:12px;color:var(--t-label);margin-top:1px}
+kbd{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:19px;padding:0 5px;border-radius:4px;background:#2c343e;border:1px solid rgba(255,255,255,.2);border-bottom-width:2px;font:700 12px/1 var(--font);color:var(--t-strong);vertical-align:1px;margin-right:3px}
+
+/* the other fails and warns, Gr moves */
+.then{border-top:1px solid var(--l-soft);padding:9px 14px 11px;display:grid;gap:6px}
+.tl{display:grid;grid-template-columns:16px 1fr;gap:7px;align-items:start}
+.tl .ic{margin-top:1px}
+.tl .w{font-weight:600;color:var(--t-main)}
+.tl .x{color:var(--t-soft)}
+
+/* the rail (B): checks, posns, layouts */
+.rail{background:var(--s-strip);border-left:1px solid var(--l-soft);padding:12px;display:grid;align-content:start;gap:14px}
+.rl{font-size:12px;font-weight:600;color:var(--t-label);margin-bottom:6px}
+.sbar{display:flex;gap:2px;height:6px;margin-bottom:8px}
+.sbar i{border-radius:2px}
+.tal{display:grid;grid-template-columns:16px 1fr auto;gap:4px 7px;align-items:center}
+.tal .c{font-weight:700;color:var(--t-strong)}
+.tal .zero{color:#8a939d}
+.pcs{display:flex;flex-wrap:wrap;gap:4px}
+.pc{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px 0 4px;border-radius:5px;background:rgba(255,255,255,.05);border:1px solid var(--l-soft);font-size:12px;color:var(--t-main);white-space:nowrap}
+.pc .ic{width:14px;height:14px;vertical-align:0}
+.pc.warn{border-color:rgba(238,138,31,.55);color:var(--wn-t)}
+.pc.fail{border-color:rgba(229,72,77,.6);color:var(--no-t)}
+.pc.unchecked{color:var(--ck-t);border-style:dashed}
+.lays{display:grid;gap:5px}
+.ly{display:grid;grid-template-columns:64px 1fr 20px;gap:7px;align-items:center;font-size:12px;color:var(--t-label)}
+.ly .b{height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+.ly .b i{display:block;height:100%;background:#6b7785}
+.ly.top{color:var(--t-strong);font-weight:650}
+.ly.top .b i{background:var(--accent)}
+.ly>span:last-child{text-align:right}
+
+/* keys at the foot */
+.keys{display:flex;flex-wrap:wrap;gap:6px 14px;padding:8px 14px 9px;background:var(--s-ring);border-top:1px solid var(--l-soft);font-size:12px;color:var(--t-label)}
+.keys>span{white-space:nowrap}
+
+/* B: answer column + rail; mirrored when the card sits left of the cursor, so the answer stays nearest it */
+.cdB .bd{display:grid;grid-template-columns:minmax(0,1fr) 192px}
+.cdB.flip .bd{grid-template-columns:192px minmax(0,1fr)}
+.cdB.flip .rail{order:-1;border-left:0;border-right:1px solid var(--l-soft)}
+.cdB.flip .cd-h{flex-direction:row-reverse}
+.cdB.flip .cd-fit{margin-left:0;margin-right:auto;justify-items:start}
+.cdB.flip .cd-tt{text-align:right}
+
+/* A: one column */
+.cdA .tb{padding:10px 14px 0}
+.cdA .tc{display:flex;gap:4px 14px;flex-wrap:wrap;font-size:12px;color:var(--t-label)}
+.cdA .tc span{display:inline-flex;gap:5px;align-items:center}
+.cdA .tc b{color:var(--t-strong)}
+.cdA .mpx{margin:10px 10px 0;border-radius:8px;padding:11px 12px}
+.cdA .mpx.fail{background:rgba(229,72,77,.07);box-shadow:inset 0 0 0 1px rgba(229,72,77,.3)}
+.cdA .mpx.warn{background:rgba(238,138,31,.07);box-shadow:inset 0 0 0 1px rgba(238,138,31,.28)}
+.cdA .row{padding:10px 14px 0}
+.cdA .row .rl{margin-bottom:5px}
+.cdA .then{border-top:0;padding-top:10px}
+.cdA .lline{font-size:12px;color:var(--t-label)}
+.cdA .lline b{color:var(--t-strong)}
+.cdA .keys{margin-top:10px}
+
+/* C: ledger */
+.lg{padding:2px 0 4px}
+.lr{padding:10px 14px;border-top:1px solid var(--l-soft)}
+.lr:first-child{border-top:0}
+.lr-h{display:grid;grid-template-columns:92px 1fr;gap:4px 10px;align-items:center}
+.lr-h .vb{justify-self:start}
+.lr-n{font-weight:600;color:var(--t-strong)}
+.lr-n span{color:var(--t-label);font-weight:400}
+.lr-x{grid-column:2;color:var(--t-soft)}
+.lr .open{margin-left:102px}
+.lr .open .race{margin-top:8px}
+.lsum{padding:9px 14px;border-top:1px solid var(--l-soft);display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--t-label)}
+.lsum span{display:inline-flex;gap:5px;align-items:center}
+.lsum b{color:var(--t-strong)}
+
+/* one-line states */
+.cdM{display:grid;width:max-content;min-width:300px;max-width:560px}
+.cdM .msg{display:flex;gap:9px;align-items:flex-start;padding:11px 14px}
+.cdM .msg .ic{margin-top:2px}
+.cdM .st{font-weight:650;color:var(--t-strong)}
+/* skeleton while fitting: static, no shimmer */
+.sk{display:block;height:9px;border-radius:4px;background:rgba(255,255,255,.08)}
+
+/* ── "Now": the live .pb-card rules of Widgets.css ─────────────────────────────────────────────── */
+.now .pb-card{position:relative;z-index:30;width:max-content;min-width:210px;max-width:290px;padding:7px 9px;border-radius:8px;background:rgba(18,22,27,.94);border:1px solid rgba(90,140,220,.3);box-shadow:0 6px 18px rgba(0,0,0,.4);color:#dce8f5;font:11.5px/1.4 'Inter','Segoe UI',system-ui,sans-serif}
+.now .pb-card b{font-weight:650}
+.now .pb-card .pb-card-dim{color:rgba(155,180,215,.8);font-size:11px}
+.now .pb-card .pb-card-rk{display:grid;grid-template-columns:64px 1fr 24px;gap:6px;align-items:center;margin:2px 0}
+.now .pb-card .pb-card-rk i{display:block;height:5px;border-radius:3px;background:#64b4ff}
+.now .pb-card .pb-card-rk.pb-top{color:#fff;font-weight:650}
+.now .pb-card .pb-card-rk.pb-top i{background:#6fd7ad}
+.now .pb-card .pb-card-w{margin-top:4px}
+.now .pb-card .pb-card-items,.now .pb-card .pb-card-fix ul{margin:3px 0 0;padding-left:15px}
+.now .pb-card .pb-card-items li,.now .pb-card .pb-card-fix li{margin:1px 0}
+.now .pb-card .pb-card-why,.now .pb-card .pb-card-fix{margin-top:4px;color:rgba(205,220,238,.92)}
+.now .pb-card .pb-card-why b,.now .pb-card .pb-card-fix b{color:#f2c178;font-weight:650;margin-right:3px}
+.now .pb-card .pb-card-foot{margin-top:5px;color:rgba(155,180,215,.7);font-size:10.5px}
+.now .pb-card .pb-pill{display:inline-block;padding:0 6px;border-radius:8px;font-size:10px;font-weight:700}
+.now .pb-card .pb-pass{background:rgba(29,158,117,.25);color:#6fd7ad}
+.now .pb-card .pb-warn{background:rgba(229,165,64,.25);color:#f2c178}
+.now .pb-card .pb-fail{background:rgba(220,60,48,.28);color:#ff8f86}
+
+/* map palettes (on the <svg> that shows the map) */
+.m-topo{--f1:#ece6d2;--f2:#e3e4c9;--f3:#dbe5cb;--f4:#e8dec3;--fb:#cbbf9f;--water:#7fb0d8;--bank:#5b8db6;--road:#f4d37a;--roadC:#a98a3a;--road2:#fbfaf6;--road2C:#9a988d;--track:#857c66;--bua:#d9cab3;--buaS:#9c8a70;--tree:#b7d2a2;--treeS:#89ab74;--cont:#c19b6c;--grid:rgba(60,80,110,.2);--gridT:#5f6f84;--lbl:#4b4436;--halo:#f4efe2;--own:#1e64c8;--ownF:rgba(30,100,200,.08);--apch:#d93c42;--route:#2d6fb3}
+.m-dark{--f1:#252a2e;--f2:#282d2a;--f3:#232a27;--f4:#2b2a27;--fb:#363c40;--water:#2f6491;--bank:#244a6a;--road:#8c7a45;--roadC:#4d4228;--road2:#9ea4a8;--road2C:#3b4044;--track:#6c675c;--bua:#47423d;--buaS:#6b625a;--tree:#29382a;--treeS:#3c5440;--cont:#6e5a40;--grid:rgba(160,180,210,.13);--gridT:#8793a3;--lbl:#b9b3a6;--halo:#1c2023;--own:#5d9cf2;--ownF:rgba(93,156,242,.08);--apch:#ff6b6f;--route:#8ec1ea}
+.mf{stroke:var(--fb);stroke-width:.8}
+.f1{fill:var(--f1)}.f2{fill:var(--f2)}.f3{fill:var(--f3)}.f4{fill:var(--f4)}
+.mlbl{font:italic 600 12px var(--font);fill:var(--lbl);paint-order:stroke;stroke:var(--halo);stroke-width:3px}
+.mgt{font:600 11px var(--font);fill:var(--gridT)}
+.bp path{fill:var(--ownF);stroke:var(--own);stroke-width:2.2;stroke-dasharray:7 4}
+.bp text,.own-t{font:700 13px var(--font);fill:var(--own);text-anchor:middle;paint-order:stroke;stroke:var(--halo);stroke-width:3px}
+.bp .ech{font-size:12px}
+.apch-t{font:700 12px var(--font);fill:var(--apch);paint-order:stroke;stroke:var(--halo);stroke-width:3px}
+.tag-t{font:600 12px var(--font)}
+
+/* picks */
+.picks{display:grid;gap:14px;margin-top:16px;padding:18px 20px;border-radius:12px;background:var(--pg-2);border:1px solid var(--l-soft);max-width:900px}
+.picks .grp{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.picks .lb{width:120px;font-size:13.5px;color:var(--pg-m)}
+.sum{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--l-soft);padding-top:14px}
+.sum output{font:600 14px var(--font);color:#f1f3f6}
+.btn{appearance:none;border:1px solid var(--l-hair);background:#232a33;color:#f1f3f6;font:600 13px/1 var(--font);padding:8px 12px;border-radius:7px;cursor:pointer}
+.btn:hover{background:#2b3440}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:28px;max-width:1100px}
+@media (max-width:860px){.two{grid-template-columns:1fr}.pg{padding:24px 16px 60px}}
+</style>
+</head>
+<body>
+
+<!-- the ladder icons (GroundGuideTokens: tick, filled triangle, octagon with a cross, three dots) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-pass" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="#2fa862"/><path d="M4.6 8.3l2.2 2.2 4.6-4.8" fill="none" stroke="#0f1d15" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 16 16"><path d="M8 1.6l7 12.5H1z" fill="#ee8a1f" stroke="#ee8a1f" stroke-width="1.2" stroke-linejoin="round"/><path d="M8 6.1v3.5" stroke="#21170a" stroke-width="1.8" stroke-linecap="round"/><circle cx="8" cy="11.9" r="1" fill="#21170a"/></symbol>
+    <symbol id="i-fail" viewBox="0 0 16 16"><path d="M5.1 1h5.8L15 5.1v5.8L10.9 15H5.1L1 10.9V5.1z" fill="#e5484d"/><path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" stroke="#fff5f5" stroke-width="1.9" stroke-linecap="round"/></symbol>
+    <symbol id="i-unchecked" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.6" fill="none" stroke="#7f8893" stroke-width="1.4"/><circle cx="5" cy="8" r="1.15" fill="#c3cbd3"/><circle cx="8" cy="8" r="1.15" fill="#c3cbd3"/><circle cx="11" cy="8" r="1.15" fill="#c3cbd3"/></symbol>
+    <symbol id="i-move" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.6" fill="none" stroke="#8ec1ea" stroke-width="1.4"/><path d="M5.4 10.6l5-5M6.6 5.4h3.9v3.9" fill="none" stroke="#8ec1ea" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-ghost" viewBox="0 0 16 16"><rect x="2" y="3.5" width="12" height="9" rx="4.5" fill="none" stroke="#c3cbd3" stroke-width="1.4" stroke-dasharray="2.6 1.8"/></symbol>
+  </defs>
+</svg>
+<!-- the sample map and the plan's ghost, drawn once and shown by <use> -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="mapDefs"></defs></svg>
+
+<main class="pg">
+  <h1>Intelligent Deployment: the cursor card</h1>
+  <p class="lede">The card beside the cursor while a built plan rests on the map: the fit, the worst check with why and the fix, the keys. Three wider layouts against the card as it is now, and the verdict ring on each posn. Sample figures from a Bn Def, two up: not a real reading.</p>
+
+  <h2>On the map</h2>
+  <p class="mut">The plan rests with the HQ under the cursor, facing the threat to the north. Switch the card, the map and the side the card sits on.</p>
+  <div class="ctl" role="group" aria-label="Stage controls">
+    <div class="grp"><span class="lb">Card</span>
+      <div class="seg-b" data-ctl="card"><button data-v="now">Now</button><button data-v="A">A Brief</button><button data-v="B" aria-pressed="true">B Split</button><button data-v="C">C Ledger</button></div></div>
+    <div class="grp" id="wGrp"><span class="lb">B width</span>
+      <div class="seg-b" data-ctl="w"><button data-v="560" aria-pressed="true">560</button><button data-v="600">600</button><button data-v="640">640</button></div></div>
+    <div class="grp"><span class="lb">Map</span>
+      <div class="seg-b" data-ctl="map"><button data-v="topo" aria-pressed="true">Topo</button><button data-v="dark">Dark</button></div></div>
+    <div class="grp"><span class="lb">Side</span>
+      <div class="seg-b" data-ctl="side"><button data-v="r" aria-pressed="true">Right of cursor</button><button data-v="l">Left (near the map's edge)</button></div></div>
+    <div class="grp"><span class="lb">Rings</span>
+      <div class="seg-b" data-ctl="mk"><button data-v="now">Now</button><button data-v="m1">M1</button><button data-v="m2" aria-pressed="true">M2</button></div></div>
+  </div>
+  <div class="stage-wrap"><div class="stage" id="stage">
+    <svg id="stageSvg" class="m-topo" viewBox="0 0 1240 800" width="1240" height="800" role="img" aria-label="Sample map with the ghost of a Bn defence, two up">
+      <use href="#mapBase"/><use href="#planG"/><g id="stageMarks"></g>
+      <g transform="translate(620 280)"><circle r="10" fill="none" stroke="#ffd27a" stroke-width="1.6"/><path d="M0 0v18l4.6-4.2 3 7 2.6-1.1-3-6.8h6.3z" fill="#fbfaf6" stroke="#14181d" stroke-width="1.1" stroke-linejoin="round"/></g>
+    </svg>
+    <div id="stageCard"></div>
+  </div></div>
+  <p class="cap" id="stageCap"></p>
+
+  <h2>What the card does badly now</h2>
+  <ul class="pts">
+    <li><b>Too narrow, too small.</b> 290 px at most and text at 10 to 11.5 px, under the 12 px floor every Ground Guide surface keeps (GroundGuideTokens <code>FS.meta</code>). Why and Fix wrap into a tall column of short lines.</li>
+    <li><b>The answer comes third.</b> The layout scores sit above the verdict, so the eye reads four bars before it learns the plan has a fail.</li>
+    <li><b>Colour carries the verdict.</b> A 10 px pill; no icon, and the ring on the map is a colour only.</li>
+    <li><b>One check out of thirteen.</b> The other warns, how many passed and what is still not checked are not on the card.</li>
+    <li><b>Times as text.</b> "19 vs 12 min" has to be read and subtracted; how late the move is never shows.</li>
+    <li><b>Keys as one run-on line</b> at 10.5 px.</li>
+  </ul>
+
+  <h2>Three ways to lay it out</h2>
+  <p class="mut">Same data, same words, same keys. Each at 1 : 1 on a dark field.</p>
+  <div class="gal" id="gal"></div>
+
+  <h2>B in every state</h2>
+  <p class="mut">The card never shows a verdict it has not checked: grey "Checking" until the Gr is in, and a known fail is never hidden behind it. One-line states shrink to their text.</p>
+  <div class="gal" id="states"></div>
+
+  <h2>The verdict marker on the map</h2>
+  <p class="mut">Today each posn that fails or warns gets a 13 px ring in its colour (Rule lines: Fail / warn). The same icons as the card make the link between the two, and a short tag says what is wrong where it is wrong.</p>
+  <div class="gal" id="marks"></div>
+
+  <h2>Your picks</h2>
+  <div class="picks" id="picks">
+    <div class="grp"><span class="lb">Card</span><div class="seg-b" data-pick="card"><button data-v="A">A Brief</button><button data-v="B" aria-pressed="true">B Split</button><button data-v="C">C Ledger</button><button data-v="now">Keep now</button></div></div>
+    <div class="grp"><span class="lb">B width</span><div class="seg-b" data-pick="w"><button data-v="560" aria-pressed="true">560</button><button data-v="600">600</button><button data-v="640">640</button></div></div>
+    <div class="grp"><span class="lb">Rings on the map</span><div class="seg-b" data-pick="mk"><button data-v="now">Keep now</button><button data-v="m1">M1 icon</button><button data-v="m2" aria-pressed="true">M2 icon + tag</button></div></div>
+    <div class="sum"><output id="pickOut"></output><button class="btn" id="copyPick" type="button">Copy picks</button><span class="mut" id="copyMsg" role="status"></span></div>
+  </div>
+
+  <h2>How it would be built</h2>
+  <ul class="pts">
+    <li><code>PlanBuildTab._cardHtml</code> and <code>cardCheckHtml</code> write the new markup; the <code>.pb-card</code> block in <code>Widgets.css</code> is replaced. Sizes and verdict colours come from <code>GroundGuideTokens</code> (<code>TONE</code>, <code>FS</code>, <code>SURFACE</code>), so a Warn on this card is the same orange as SLOW-GO on the Ground Guide.</li>
+    <li>The race rows read the trigger table (<code>fit.whatIf.triggers</code>: own min, En min, verdict) instead of parsing the short text; any other check shows its short lines as they are.</li>
+    <li><code>_showCard</code> flips on the card's measured width (it assumes 290 today) and mirrors B's columns when the card sits left of the cursor. 22 px off the cursor and never off the map's foot, as now.</li>
+    <li>The rings: <code>_drawProducts</code> draws the icon marker (and the tag with M2) in place of the coloured circle; Rule lines still say which posns get one. A late move gets its marker on its route.</li>
+    <li>A short screen-reader sentence on the card (<code>role="status"</code>): "Bn Def, two up, fit 74. Too late: Moves in time, 3 of 5 in time. 1 fail, 2 warn, 9 pass, 1 not checked."</li>
+    <li>No check, verdict, figure or key changes. Card off still works (<code>planBuilder.card: false</code>).</li>
+  </ul>
+</main>
+
+<script>
+// ── sample data: a Bn Def, two up (SAMPLE figures) ──────────────────────────────────────────────────────────
+// a key's "back" twin is folded into one entry (Shift J / Shift G: back) so the foot keeps to two lines
+const KEYS = [['Click', 'place'], ['J', 'worst posn to better Gr'], ['G', 'site the gun area'], ['Shift J|Shift G', 'back'], ['Esc', 'cancel']];
+const D = {
+  name: 'Bn Def, two up', auto: true, ctx: 'Plains · En Armd Bn · faces the threat (N)', fitLb: 'Fit', score: 74,
+  layouts: [['Two up', 74], ['Three up', 66], ['All round', 52], ['One up', 47]],
+  tally: { fail: 1, warn: 2, pass: 9, unchecked: 1 },
+  posns: [['A Coy', 'pass'], ['B Coy', 'pass'], ['C Coy', 'warn'], ['D Coy', 'pass'], ['Bn HQ', 'pass'], ['Mor', 'unchecked']],
+  worst: {
+    st: 'fail', word: 'Too late', name: 'Moves in time', scope: 'Plan', head: '3 of 5 moves in time; the 2 late',
+    race: [['B Coy → Alt', 19, 12, 'fail'], ['Res → C Pen', 31, 24, 'fail']],
+    why: 'En tanks at 12 km/h beat Own Coys on foot at 3 km/h under shelling',
+    fix: [['', 'Start the move on the first shelling, before En leaves the start: a trigger in the orders'], ['J', 'moves the Res nearer the main apch']], fixMore: 2,
+  },
+  others: [
+    { st: 'warn', where: 'C Coy', name: 'Fd of fire', text: 'about 240 m clear across its front; 270-500 m wanted (IC s72)', short: 'C Coy Fd of fire 240 m' },
+    { st: 'warn', where: 'Plan', name: 'Flanks', text: 'Rt flank open 1.4 km to the canal', short: 'Rt flank open 1.4 km' },
+  ],
+  slides: 'C Coy up 120 m to Gr 6 m higher · A Coy slid 80 m out of NO-GO',
+  keys: KEYS,
+  sr: 'Bn Def, two up, fit 74. Too late: Moves in time, 3 of 5 in time. 1 fail, 2 warn, 9 pass, 1 not checked.',
+};
+const WORD = { pass: 'Pass', warn: 'Warn', fail: 'Fail', unchecked: 'Not checked' };
+const DOT = { fail: '#e5484d', warn: '#ee8a1f', pass: '#2fa862', unchecked: '#7f8893' };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ic = (st, cls = 'ic') => `<svg class="${cls}" viewBox="0 0 16 16" aria-hidden="true"><use href="#i-${st}"/></svg>`;
+const kb = (k) => k.split('|').map((c) => c.split(' ').map((x) => `<kbd>${esc(x)}</kbd>`).join('')).join(' / ');
+
+// ── shared pieces ──────────────────────────────────────────────────────────────────────────────────────────
+function head(d, o = {}) {
+  const fit = o.fitting
+    ? `<div class="cd-fit"><span class="cd-ctx" style="margin:0">${esc(o.fitting)}</span><div class="fitbar"><i style="width:0"></i></div></div>`
+    : `<div class="cd-fit"><div><span class="lb">${esc(d.fitLb)}</span><span class="n">${d.prov ? '~' : ''}${d.score}<small>/100</small></span></div><div class="fitbar${d.prov ? ' prov' : ''}"><i style="width:${d.score}%"></i></div></div>`;
+  return `<div class="cd-h"><div class="cd-tt"><div class="cd-t">${esc(d.name)}${d.auto ? '<span class="chip">Auto</span>' : ''}</div><div class="cd-ctx">${esc(d.ctx)}</div></div>${fit}</div>`;
+}
+function race(w) {
+  if (!w.race) return w.items ? `<ul class="items">${w.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
+  const max = Math.max(...w.race.flatMap((r) => [r[1], r[2]])) * 1.08;
+  const pc = (v) => `${(100 * v / max).toFixed(1)}%`;
+  const rows = w.race.map(([who, own, en, st]) => {
+    const late = own > en;
+    const bar = late
+      ? `<i class="o" style="width:${pc(en)}"></i><i class="lt" style="left:${pc(en)};width:${pc(own - en)}"></i>`
+      : `<i class="o" style="width:${pc(own)}"></i><i class="sp" style="left:${pc(own)};width:${pc(en - own)}"></i>`;
+    return `<span class="wh">${esc(who)}</span><span class="bar" title="Own ${own} min, En ${en} min">${bar}<i class="en" style="left:calc(${pc(en)} - 1px)"></i></span><span class="mm r">${own} / ${en}</span><span class="rs r ${st}">${late ? `${own - en} late` : `${en - own} spare`}</span>`;
+  }).join('');
+  return `<div class="race" aria-label="Own move against the En, minutes">${rows}${w.raceMore ? `<span class="more">${esc(w.raceMore)}</span>` : ''}</div>`;
+}
+function whyFix(w) {
+  const fix = w.fix?.length ? `<span class="k">Fix</span><div class="v"><ol class="fx">${w.fix.map(([k, t], i) => `<li><b>${i + 1}</b><span>${k ? kb(k) : ''}${esc(t)}</span></li>`).join('')}</ol>${w.fixMore ? `<span class="more">${w.fixMore} more in the Check step</span>` : ''}</div>` : '';
+  return w.why || fix ? `<div class="wf">${w.why ? `<span class="k">Why</span><div class="v">${esc(w.why)}</div>` : ''}${fix}</div>` : '';
+}
+function mainPoint(w, cls = 'mp') {
+  return `<div class="${cls}"><div class="mp-h"><span class="vb ${w.st}">${ic(w.st)}${esc(w.word ?? WORD[w.st])}</span><span class="mp-n">${esc(w.name)}</span>${w.scope ? `<span class="mp-sc">${esc(w.scope)}</span>` : ''}</div><div class="mp-hd"><span>${esc(w.head)}</span>${w.race ? '<span class="lg-k">min: Own / En</span>' : ''}</div>${race(w)}${whyFix(w)}</div>`;
+}
+/** B: the other fails and warns on one line, in their short forms. */
+function alsoLine(d) {
+  const o = d.others ?? [];
+  return o.length ? `<div class="then"><div class="also"><span class="al">Also</span>${o.map((x) => `<span class="ai ${x.st}">${ic(x.st)}${esc(x.short ?? `${x.where} · ${x.name}`)}</span>`).join('')}</div></div>` : '';
+}
+function thenLines(d) {
+  const o = (d.others ?? []).map((x) => `<div class="tl">${ic(x.st)}<div><span class="w">${esc(x.where)} · ${esc(x.name)}</span> <span class="x">${esc(x.text)}</span></div></div>`).join('');
+  const s = d.slides ? `<div class="tl">${ic('move')}<div class="x">${esc(d.slides)}</div></div>` : '';
+  return o || s ? `<div class="then">${o}${s}</div>` : '';
+}
+function tallyBlock(d) {
+  const t = d.tally, n = t.fail + t.warn + t.pass + t.unchecked;
+  const bar = ['fail', 'warn', 'pass', 'unchecked'].filter((k) => t[k]).map((k) => `<i style="flex:${t[k]};background:${DOT[k]}"></i>`).join('');
+  const SHORT = { pass: 'Pass', warn: 'Warn', fail: 'Fail', unchecked: 'Not chkd' };
+  const rows = ['fail', 'warn', 'pass', 'unchecked'].map((k) => `<span class="ti${t[k] ? '' : ' zero'}" title="${WORD[k]}">${ic(k)}<b>${t[k]}</b>${SHORT[k]}</span>`).join('');
+  // the other fails and warns (not the one in the answer column), short forms
+  const also = (d.others ?? []).map((x) => `<div class="ao ${x.st}">${ic(x.st)}<span>${esc(x.short ?? `${x.where} ${x.name}`)}</span></div>`).join('');
+  return `<div><div class="rl">${n} checks</div><div class="sbar" aria-hidden="true">${bar}</div><div class="tal2">${rows}</div>${also ? `<div class="aos">${also}</div>` : ''}</div>`;
+}
+function posnBlock(d) {
+  return `<div><div class="rl">Posns</div><div class="pcs">${d.posns.map(([p, st]) => `<span class="pc ${st}" title="${WORD[st]}">${ic(st)}${esc(p)}</span>`).join('')}</div></div>`;
+}
+/** B: one band under both columns: the Gr moves the fit made, and the layouts fitted at this spot. */
+function bandB(d) {
+  const mv = d.slides ? `<div class="bl">${ic('move')}<span>${esc(d.slides)}</span></div>` : '';
+  const ly = d.layouts?.length > 1 ? `<div class="bl"><span class="bk">Layouts here</span><span class="lyi-row">${d.layouts.map(([n, s], i) => `<span class="lyi${i ? '' : ' top'}">${esc(n)}<i><b style="width:${s}%"></b></i>${s}</span>`).join('')}</span></div>` : '';
+  return mv || ly ? `<div class="band">${mv}${ly}</div>` : '';
+}
+function layBlock(d) {
+  if (!d.layouts || d.layouts.length < 2) return '';
+  return `<div><div class="rl">Layouts at this spot</div><div class="lays">${d.layouts.map(([n, s], i) => `<div class="ly${i ? '' : ' top'}"><span>${esc(n)}</span><span class="b"><i style="width:${s}%"></i></span><span>${s}</span></div>`).join('')}</div></div>`;
+}
+function keys(d) {
+  return `<div class="keys">${d.keys.map(([k, t]) => `<span>${kb(k)}${esc(t)}</span>`).join('')}</div>`;
+}
+
+// ── the options ───────────────────────────────────────────────────────────────────────────────────────────
+function cardB(d, o = {}) {
+  const main = d.worst ? mainPoint(d.worst) : d.passMain;
+  return `<div class="cd cdB${o.flip ? ' flip' : ''}" style="width:${o.w ?? 560}px" role="status" aria-label="${esc(d.sr ?? d.name)}">${head(d, o)}<div class="bd"><div>${main}</div><div class="rail">${tallyBlock(d)}${posnBlock(d)}</div></div>${bandB(d)}${keys(d)}</div>`;
+}
+function cardA(d) {
+  const t = d.tally;
+  const tc = ['fail', 'warn', 'pass', 'unchecked'].filter((k) => t[k]).map((k) => `<span>${ic(k)}<b>${t[k]}</b> ${WORD[k]}</span>`).join('');
+  const bar = ['fail', 'warn', 'pass', 'unchecked'].filter((k) => t[k]).map((k) => `<i style="flex:${t[k]};background:${DOT[k]}"></i>`).join('');
+  const lay = d.layouts.map(([n, s], i) => (i ? `${esc(n)} ${s}` : `<b>${esc(n)} ${s}</b>`)).join(' · ');
+  return `<div class="cd cdA" style="width:440px" role="status" aria-label="${esc(d.sr)}">${head(d)}<div class="tb"><div class="sbar" aria-hidden="true">${bar}</div><div class="tc">${tc}</div></div>${mainPoint(d.worst, `mp mpx ${d.worst.st}`)}${alsoLine(d)}<div class="row" style="padding-top:0"><div class="lline">Layouts at this spot: ${lay}</div></div>${keys(d)}</div>`;
+}
+function cardC(d) {
+  const w = d.worst;
+  const first = `<div class="lr"><div class="lr-h"><span class="vb ${w.st}">${ic(w.st)}${esc(w.word)}</span><span class="lr-n">${esc(w.name)} <span>· ${esc(w.scope)}</span></span><span class="lr-x">${esc(w.head)}</span></div><div class="open">${race(w)}${whyFix(w)}</div></div>`;
+  const rest = d.others.map((x) => `<div class="lr"><div class="lr-h"><span class="vb ${x.st}">${ic(x.st)}${WORD[x.st]}</span><span class="lr-n">${esc(x.name)} <span>· ${esc(x.where)}</span></span><span class="lr-x">${esc(x.text)}</span></div></div>`).join('');
+  const t = d.tally;
+  const sum = `<div class="lsum"><span>${ic('pass')}<b>${t.pass}</b> Pass</span><span>${ic('unchecked')}<b>${t.unchecked}</b> Not checked: Mor, no sight data</span><span>${ic('move')}${esc(d.slides)}</span></div>`;
+  const lay = d.layouts.map(([n, s], i) => (i ? `${esc(n)} ${s}` : `<b>${esc(n)} ${s}</b>`)).join(' · ');
+  return `<div class="cd cdC" style="width:500px" role="status" aria-label="${esc(d.sr)}">${head(d)}<div class="lg">${first}${rest}</div>${sum}<div class="lsum"><span>Layouts at this spot: ${lay}</span></div>${keys(d)}</div>`;
+}
+function cardNow(d) {
+  const w = d.worst;
+  const rows = d.layouts.map(([n, s], i) => `<div class="pb-card-rk${i ? '' : ' pb-top'}"><span>${n}</span><i style="width:${s}%"></i><span>${s}</span></div>`).join('');
+  return `<div class="now"><div class="pb-card"><b>${d.name} (Auto)</b>
+    ${rows}
+    <div class="pb-card-w"><span class="pb-pill pb-fail">Too late</span> <b>Moves in time</b> · 3 of 5 in time</div>
+    <ul class="pb-card-items"><li>B Coy → alt (shelled): 19 vs 12 min</li><li>Res → C Pen: 31 vs 24 min</li><li>A Coy → alt (shelled): 9 vs 14 min</li><li class="pb-card-dim">2 more in the Check step</li></ul>
+    <div class="pb-card-why"><b>Why</b> En tanks (12 km/h) beat Own Coys on foot at 3 km/h under shelling</div>
+    <div class="pb-card-fix"><b>Fix</b><ul><li>Start the move on the first shelling, before En leaves the start: write it into the orders as a trigger</li><li>Commit the reserve on the first sign of the En main effort, or pre-position it at the C Pen posn</li><li class="pb-card-dim">2 more in the Check step</li></ul></div>
+    <div class="pb-card-dim">C Coy up 120 m to ground 6 m higher, A Coy slid 80 m out of NO-GO</div>
+    <div class="pb-card-dim">J: the worst posn to better Gr nearby</div>
+    <div class="pb-card-foot">Click: place · J: worst posn to better Gr · Shift+J: back · G: site the gun area · Shift+G: back · Esc: cancel</div></div></div>`;
+}
+function cardMsg(icon, st, text, k = KEYS.slice(0, 1).concat([['Esc', 'cancel']])) {
+  return `<div class="cd cdM" role="status"><div class="msg">${ic(icon)}<div><span class="st">${esc(st)}</span> <span class="x" style="color:var(--t-soft)">${esc(text)}</span></div></div>${keys({ keys: k })}</div>`;
+}
+function cardFitting(d) {
+  const sk = (w) => `<span class="sk" style="width:${w}"></span>`;
+  return `<div class="cd cdB" style="width:560px" role="status" aria-label="Fitting 4 layouts">${head(d, { fitting: 'Fitting 4 layouts…' })}<div class="bd"><div class="mp" style="display:grid;gap:10px">${sk('46%')}${sk('80%')}${sk('70%')}${sk('62%')}</div><div class="rail"><div><div class="rl">Checks</div><div class="tal">${ic('unchecked')}<span style="color:var(--ck-t)">Checking</span><span></span></div></div><div><div class="rl">Layouts at this spot</div><div class="lays">${['Two up', 'Three up', 'All round', 'One up'].map((n) => `<div class="ly"><span>${n}</span><span class="b"></span><span></span></div>`).join('')}</div></div></div></div>${keys({ keys: [['Esc', 'cancel']] })}</div>`;
+}
+
+// state data
+const LOADING = { ...D, prov: true, ctx: 'Plains · En Armd Bn · Gr loading: 5 checks wait for tiles', tally: { fail: 1, warn: 1, pass: 6, unchecked: 5 },
+  posns: [['A Coy', 'pass'], ['B Coy', 'pass'], ['C Coy', 'unchecked'], ['D Coy', 'unchecked'], ['Bn HQ', 'pass'], ['Mor', 'unchecked']],
+  others: [{ st: 'warn', where: 'Plan', name: 'Flanks', text: 'Rt flank open 1.4 km to the canal', short: 'Rt flank open 1.4 km' }], slides: '' };
+const ALLPASS = { ...D, score: 88, ctx: 'Plains · En Armd Bn · faces the threat (N)', tally: { fail: 0, warn: 0, pass: 12, unchecked: 1 },
+  posns: [['A Coy', 'pass'], ['B Coy', 'pass'], ['C Coy', 'pass'], ['D Coy', 'pass'], ['Bn HQ', 'pass'], ['Mor', 'unchecked']],
+  layouts: [['Two up', 88], ['Three up', 71], ['All round', 55], ['One up', 49]], worst: null, others: [], slides: 'B Coy up 90 m to Gr 4 m higher',
+  passMain: `<div class="mp"><div class="mp-h"><span class="vb pass">${ic('pass')}Pass</span><span class="mp-n">Nothing to fix here</span></div><div class="mp-hd">12 checks pass on this Gr. Mor not checked: no sight data in the bundle, so check its Fd of fire on the Gr.</div></div>` };
+const AMBUSH = { name: 'Pl Ambush, L', auto: false, ctx: 'Target wheeled · KZ on the metalled Rd · En from the N', fitLb: 'Site', score: 64,
+  layouts: [['L', 64], ['Line', 58], ['V', 51]], tally: { fail: 0, warn: 1, pass: 5, unchecked: 0 },
+  posns: [['KZ', 'warn'], ['Stop 1', 'pass'], ['Stop 2', 'pass'], ['Fire gp', 'pass'], ['RV', 'pass']],
+  worst: { st: 'warn', word: 'Warn', name: 'Target held', scope: 'KZ', head: 'Wheeled can leave the Rd both sides',
+    items: ['No NO-GO beside the Rd for 400 m either side of the KZ'],
+    why: 'Wheeled drive off the KZ and out of the fire',
+    fix: [['J', 'KZ to a better site 300 m toward the En: scores 81 (here 64)'], ['', 'Block the open sides with mines or obstacles, covered by the stops']], fixMore: 1 },
+  others: [], slides: '', keys: [['Click', 'set, then aim and place'], ['J', 'KZ to the better site'], ['Shift J', 'back'], ['M', 'target tanks'], ['Esc', 'cancel']],
+  sr: 'Pl Ambush, L, site 64. Warn: Target held, wheeled can leave the Rd both sides.' };
+
+// ── the map (SAMPLE) ─────────────────────────────────────────────────────────────────────────────────────────
+function rng(seed) { return () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646; }
+function buildMap() {
+  const r = rng(11), W = 1240, H = 800, C = 10, R = 7, cw = W / C, ch = H / R;
+  const V = [];
+  for (let j = 0; j <= R; j++) { V[j] = []; for (let i = 0; i <= C; i++) { const ex = i === 0 || i === C, ey = j === 0 || j === R; V[j][i] = [i * cw + (ex ? 0 : (r() - 0.5) * 44), j * ch + (ey ? 0 : (r() - 0.5) * 40)]; } }
+  const P = (p) => p.map((q) => `${q[0].toFixed(1)},${q[1].toFixed(1)}`).join(' ');
+  let s = '<g id="mapBase">';
+  for (let j = 0; j < R; j++) for (let i = 0; i < C; i++) {
+    const a = V[j][i], b = V[j][i + 1], c = V[j + 1][i + 1], d = V[j + 1][i];
+    if (r() < 0.6) { // split the field in two
+      const t = 0.35 + r() * 0.3, m1 = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], m2 = [d[0] + (c[0] - d[0]) * t, d[1] + (c[1] - d[1]) * t];
+      s += `<polygon class="mf f${1 + Math.floor(r() * 4)}" points="${P([a, m1, m2, d])}"/><polygon class="mf f${1 + Math.floor(r() * 4)}" points="${P([m1, b, c, m2])}"/>`;
+    } else s += `<polygon class="mf f${1 + Math.floor(r() * 4)}" points="${P([a, b, c, d])}"/>`;
+  }
+  // 1 km grid (160 px)
+  for (let x = 60; x < W; x += 160) s += `<line x1="${x}" y1="0" x2="${x}" y2="${H}" stroke="var(--grid)"/><text class="mgt" x="${x + 4}" y="14">${41 + (x - 60) / 160}</text>`;
+  for (let y = 80; y < H; y += 160) s += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="var(--grid)"/><text class="mgt" x="4" y="${y - 4}">${66 - (y - 80) / 160}</text>`;
+  // a low mound NE (rising ground) and a spot height
+  [[96, 58], [64, 38], [34, 20]].forEach(([rx, ry], i) => { s += `<ellipse cx="${960 + i * 4}" cy="${150 - i * 3}" rx="${rx}" ry="${ry}" fill="none" stroke="var(--cont)" stroke-width="${i ? 1 : 1.4}"/>`; });
+  s += `<circle cx="966" cy="144" r="2" fill="var(--lbl)"/><text class="mlbl" x="974" y="140">216</text>`;
+  // trees
+  const tr = rng(5);
+  for (const [cx, cy, n] of [[170, 360, 34], [1110, 640, 30], [300, 70, 18]]) for (let k = 0; k < n; k++) s += `<circle cx="${(cx + (tr() - 0.5) * 120).toFixed(1)}" cy="${(cy + (tr() - 0.5) * 70).toFixed(1)}" r="${(4 + tr() * 4).toFixed(1)}" fill="var(--tree)" stroke="var(--treeS)" stroke-width=".8"/>`;
+  // canal and distributary
+  s += `<path d="M-10 580 C260 560 520 540 760 490 S1100 420 1250 412" fill="none" stroke="var(--bank)" stroke-width="14"/><path d="M-10 580 C260 560 520 540 760 490 S1100 420 1250 412" fill="none" stroke="var(--water)" stroke-width="9"/>`;
+  s += `<path d="M760 490 C800 580 845 660 905 810" fill="none" stroke="var(--water)" stroke-width="4.5"/>`;
+  s += `<text class="mlbl" x="160" y="560" transform="rotate(-3 160 560)">Main canal</text>`;
+  // roads: metalled (yellow, cased), unmetalled (white, cased), a track (dashed)
+  const road = (d, w, a, b) => `<path d="${d}" fill="none" stroke="var(${b})" stroke-width="${w + 2.4}" stroke-linecap="round"/><path d="${d}" fill="none" stroke="var(${a})" stroke-width="${w}" stroke-linecap="round"/>`;
+  s += road('M-10 262 C200 270 420 304 610 318 S980 336 1250 304', 5, '--road', '--roadC');
+  s += road('M330 -10 C342 210 300 430 282 810', 3.2, '--road2', '--road2C');
+  s += `<path d="M905 -10 C885 160 945 320 1005 810" fill="none" stroke="var(--track)" stroke-width="1.6" stroke-dasharray="6 4"/>`;
+  // villages
+  const vr = rng(3);
+  for (const [cx, cy, n, name, lx, ly] of [[300, 640, 22, 'Chak 42', 250, 700], [1060, 200, 16, 'Dhok Sial', 1040, 250]]) {
+    for (let k = 0; k < n; k++) { const x = cx + (vr() - 0.5) * 90, y = cy + (vr() - 0.5) * 60; s += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(7 + vr() * 8).toFixed(1)}" height="${(6 + vr() * 7).toFixed(1)}" fill="var(--bua)" stroke="var(--buaS)" stroke-width=".8"/>`; }
+    s += `<text class="mlbl" x="${lx}" y="${ly}">${name}</text>`;
+  }
+  // scale and north
+  s += `<g transform="translate(1060 772)"><rect x="0" y="0" width="160" height="5" fill="var(--lbl)"/><rect x="80" y="0" width="80" height="5" fill="var(--halo)" stroke="var(--lbl)"/><text class="mgt" x="0" y="-5">0</text><text class="mgt" x="140" y="-5">1 km</text></g>`;
+  s += `<g transform="translate(36 740)"><path d="M0 -22 L7 0 L0 -5 L-7 0z" fill="var(--lbl)"/><text class="mgt" x="-4" y="16">N</text></g>`;
+  s += '</g>';
+
+  // the plan's ghost (own, dashed): two up, facing N
+  const bp = (cx, cy, rx, ry, lbl, thin) => {
+    const a1 = (102 * Math.PI) / 180, a2 = (78 * Math.PI) / 180;
+    const p1 = [cx + rx * Math.cos(a1), cy + ry * Math.sin(a1)], p2 = [cx + rx * Math.cos(a2), cy + ry * Math.sin(a2)];
+    return `<g class="bp"${thin ? ' opacity=".7"' : ''}><path d="M${p1[0].toFixed(1)} ${p1[1].toFixed(1)} A${rx} ${ry} 0 1 1 ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}"${thin ? ' style="stroke-width:1.6;stroke-dasharray:4 4"' : ''}/><text class="ech" x="${cx}" y="${cy + ry + 4}">I</text><text x="${cx}" y="${cy + 5}">${lbl}</text></g>`;
+  };
+  let g = '<g id="planG">';
+  // En approaches and the threat
+  g += `<path d="M722 -10 C738 40 726 92 742 150" fill="none" stroke="var(--apch)" stroke-width="3"/><circle cx="731" cy="74" r="7" fill="none" stroke="var(--apch)" stroke-width="2"/><text class="apch-t" x="752" y="58">1 main</text>`;
+  g += `<path d="M402 -10 C420 50 452 96 470 150" fill="none" stroke="var(--apch)" stroke-width="2" stroke-dasharray="7 5"/><text class="apch-t" x="376" y="62">2</text>`;
+  g += `<g transform="translate(606 36)"><path d="M0 -11 L11 0 L0 11 L-11 0z" fill="rgba(217,60,66,.18)" stroke="var(--apch)" stroke-width="2"/><text class="apch-t" x="16" y="5">Threat</text></g>`;
+  // FDL (FEBA)
+  g += `<path d="M392 150 C520 140 700 138 868 146" fill="none" stroke="var(--own)" stroke-width="2.2"/>`;
+  for (const [x, y] of [[404, 149], [416, 148], [844, 145], [856, 146]]) g += `<path d="M${x - 4} ${y}h8M${x} ${y - 4}v8" stroke="var(--own)" stroke-width="1.8"/>`;
+  g += `<text class="own-t" x="630" y="130" style="font-size:12px">FDL</text>`;
+  g += bp(500, 190, 78, 34, 'A') + bp(745, 186, 80, 34, 'B') + bp(470, 322, 70, 30, 'C') + bp(566, 402, 62, 28, 'D') + bp(852, 262, 44, 22, 'Alt B', true);
+  // Mor
+  g += `<circle cx="418" cy="418" r="7" fill="var(--ownF)" stroke="var(--own)" stroke-width="2" stroke-dasharray="3 2"/><text class="own-t" x="418" y="444" style="font-size:12px">Mor</text>`;
+  // Bn HQ at the cursor
+  g += `<path d="M620 280 V254" stroke="var(--own)" stroke-width="2"/><rect x="604" y="236" width="32" height="18" fill="var(--ownF)" stroke="var(--own)" stroke-width="2" stroke-dasharray="5 3"/><text class="own-t" x="620" y="231" style="font-size:12px">II</text>`;
+  // B Coy's move to Alt B (dotted)
+  g += `<path d="M770 210 C800 230 820 240 834 248" fill="none" stroke="var(--route)" stroke-width="2" stroke-dasharray="2 4" stroke-linecap="round"/>`;
+  g += '</g>';
+  document.getElementById('mapDefs').innerHTML = s + g;
+}
+
+// the verdict markers: now (colour ring) · M1 (icon) · M2 (icon + tag)
+// tag: where the tag's near end sits (outside the posn outline), and which way it runs
+const MARKS = [
+  { x: 470, y: 322, st: 'warn', tag: 'C Coy · Fd of fire 240 m', at: [392, 322], side: 'l' },
+  { x: 806, y: 230, st: 'fail', tag: 'B Coy → Alt · 7 min late', at: [826, 212], side: 'r', slotless: true },
+];
+const TAGC = { warn: ['#ee8a1f', '#ffb46b'], fail: ['#e5484d', '#ff8a8d'] };
+function marks(mode) {
+  return MARKS.map((m) => {
+    if (mode === 'now') return m.slotless ? '' : `<circle cx="${m.x}" cy="${m.y}" r="6.5" fill="${TAGC[m.st][0]}" fill-opacity=".35" stroke="${TAGC[m.st][0]}" stroke-width="2.5"/>`;
+    const pin = `<g transform="translate(${m.x} ${m.y})"><circle r="12.5" fill="#14181d" fill-opacity=".92" stroke="${TAGC[m.st][0]}" stroke-width="2"/><use href="#i-${m.st}" x="-8" y="-8.6" width="16" height="16"/></g>`;
+    if (mode === 'm1') return pin;
+    const w = Math.round(m.tag.length * 6.7 + 18);
+    const [ax, ay] = m.at, x0 = m.side === 'l' ? ax - w : ax;
+    // a short leader from the marker's rim to the tag's near end
+    const d = Math.hypot(ax - m.x, ay - m.y) || 1, rx = m.x + ((ax - m.x) * 13) / d, ry = m.y + ((ay - m.y) * 13) / d;
+    return `<line x1="${rx.toFixed(1)}" y1="${ry.toFixed(1)}" x2="${ax}" y2="${ay}" stroke="#14181d" stroke-width="3.4" stroke-linecap="round"/><line x1="${rx.toFixed(1)}" y1="${ry.toFixed(1)}" x2="${ax}" y2="${ay}" stroke="${TAGC[m.st][0]}" stroke-width="1.4" stroke-linecap="round"/>${pin}<g transform="translate(${x0} ${ay - 12})"><rect width="${w}" height="24" rx="5" fill="#14181d" fill-opacity=".92" stroke="${TAGC[m.st][0]}" stroke-opacity=".7"/><text class="tag-t" x="9" y="16.5" fill="${TAGC[m.st][1]}">${esc(m.tag)}</text></g>`;
+  }).join('');
+}
+
+// ── state + rendering ──────────────────────────────────────────────────────────────────────────────────────
+const S = { card: 'B', w: 560, map: 'topo', side: 'r', mk: 'm2' };
+const CUR = { x: 620, y: 280 };
+function stageCardHtml() {
+  if (S.card === 'now') return cardNow(D);
+  if (S.card === 'A') return cardA(D);
+  if (S.card === 'C') return cardC(D);
+  return cardB(D, { w: S.w, flip: S.side === 'l' });
+}
+function renderStage() {
+  const svg = document.getElementById('stageSvg');
+  svg.setAttribute('class', `m-${S.map}`);
+  document.getElementById('stageMarks').innerHTML = marks(S.mk);
+  const box = document.getElementById('stageCard');
+  box.innerHTML = stageCardHtml();
+  const el = box.firstElementChild.classList.contains('now') ? box.querySelector('.pb-card') : box.firstElementChild;
+  const w = el.offsetWidth, h = el.offsetHeight;
+  box.style.left = `${S.side === 'l' ? CUR.x - 22 - w : CUR.x + 22}px`;
+  // as _showCard: below the cursor, else above it, never off the map's foot
+  let y = CUR.y + 22;
+  if (y + h + 8 > 800) y = CUR.y - h - 22;
+  box.style.top = `${Math.max(4, Math.min(y, 800 - h - 8))}px`;
+  document.getElementById('wGrp').style.visibility = S.card === 'B' ? 'visible' : 'hidden';
+  const name = { now: 'Now', A: 'A Brief', B: 'B Split', C: 'C Ledger' }[S.card];
+  document.getElementById('stageCap').textContent = `${name}: ${w} × ${h} px at the sample's content. ${S.side === 'l' && S.card === 'B' ? 'Left of the cursor the columns mirror, so the answer stays the column nearest the cursor.' : 'Placed 22 px off the cursor, as now.'}`;
+}
+function gallery() {
+  const item = (title, html, pts, rec) => `<div class="gi"><div class="gh"><h3>${title}</h3>${rec ? '<span class="rec">Recommended</span>' : ''}<span class="sz"></span></div><div class="board">${html}</div><ul class="pts">${pts.map((p) => `<li>${p}</li>`).join('')}</ul></div>`;
+  document.getElementById('gal').innerHTML = [
+    item('Now', cardNow(D), ['Max 290 px, text 10 to 11.5 px', 'Layout bars, then the verdict, then Why and Fix', 'One check; keys as one line']),
+    item('B Split, 560 px', cardB(D), [
+      '<b>Answer column</b> on the cursor\'s side: the worst check with its icon and word, what it means, the late moves as a race (grey: Own, red: how late, tick: En), Why, Fix',
+      '<b>Rail</b>: all 13 checks counted, the other warns by name, every posn with the icon its ring has on the map',
+      '<b>Band</b>: the Gr moves the fit made and the layouts fitted at this spot',
+      'About as tall as now at twice the width, with every check accounted for; text on the 12 / 13.5 / 15.5 / 22 px ladder'], true),
+    item('A Brief, 440 px', cardA(D), ['One column, read top to bottom; the tally under the title', 'The worst check sits in a tinted box (a full border, not a side stripe)', 'No posn list: the rings on the map carry it', 'Taller than B, so it hides more of the plan below the cursor']),
+    item('C Ledger, 500 px', cardC(D), ['Every fail and warn as a row, worst first; the first one opens', 'Best when a plan has several problems of the same weight', 'The tallest: it grows with each warn']),
+  ].join('');
+  document.getElementById('states').innerHTML = [
+    item('Moving', cardMsg('ghost', 'Moving:', 'quick ghost at doctrinal spacing. Rest the mouse to fit it to the Gr.'), ['One line; the card shrinks to its text']),
+    item('Fitting', cardFitting(D), ['Static skeleton, no shimmer; the layouts it is fitting are named']),
+    item('Gr loading', cardB(LOADING), ['Fit marked ~ and dashed until every check is in', 'Posns waiting for tiles are grey Checking; the known fail stays on top']),
+    item('All pass', cardB(ALLPASS), ['Says so in words, and still names what was not checked and where to look on the Gr']),
+    item('Fit failed', cardMsg('fail', 'The fit failed here:', 'no Gr data under the plan. The quick ghost stands; move to try again.'), ['The reason in words, and what still works']),
+    item('Ambush (small op)', cardB(AMBUSH), ['Same card for every task: the KZ, stops and RV are the posns; Site replaces Fit', 'J named in the Fix it does']),
+  ].join('');
+  const crop = (mode, title, pts, rec) => `<div class="gi"><div class="gh"><h3>${title}</h3>${rec ? '<span class="rec">Recommended</span>' : ''}</div><svg class="m-topo" viewBox="200 130 820 290" width="820" height="290" style="border-radius:10px;border:1px solid var(--l-soft);max-width:100%;height:auto"><use href="#mapBase"/><use href="#planG"/>${marks(mode)}</svg><ul class="pts">${pts.map((p) => `<li>${p}</li>`).join('')}</ul></div>`;
+  document.getElementById('marks').innerHTML = [
+    crop('now', 'Now', ['A 13 px ring in the verdict colour; nothing for a plan-level fail such as a late move']),
+    crop('m1', 'M1 icon', ['The card\'s icons on a dark disc: the shape says Warn or Fail without colour', 'A late move gets its marker on its route']),
+    crop('m2', 'M2 icon + tag', ['M1 plus a short tag: the posn, the check and its figure', 'Only on fail and warn, as Rule lines says; each tag sits outside the posn outline, joined by a short leader'], true),
+  ].join('');
+  document.querySelectorAll('.gi').forEach((g) => {
+    const c = g.querySelector('.pb-card, .cd');
+    if (c && g.querySelector('.sz')) g.querySelector('.sz').textContent = `${c.offsetWidth} × ${c.offsetHeight} px`;
+  });
+}
+function bind(sel, attr, fn) {
+  document.querySelectorAll(sel).forEach((grp) => grp.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    grp.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    fn(grp.dataset[attr], b.dataset.v);
+  }));
+}
+const PICK = { card: 'B', w: '560', mk: 'm2' };
+function renderPick() {
+  const card = { A: 'A Brief (440 px)', B: `B Split (${PICK.w} px)`, C: 'C Ledger (500 px)', now: 'keep the card as now' }[PICK.card];
+  const mk = { now: 'keep the rings', m1: 'rings M1 (icon)', m2: 'rings M2 (icon + tag)' }[PICK.mk];
+  document.getElementById('pickOut').textContent = `Card ${card} · ${mk}`;
+}
+buildMap();
+gallery();
+renderStage();
+renderPick();
+bind('[data-ctl]', 'ctl', (k, v) => { S[k] = k === 'w' ? Number(v) : v; renderStage(); });
+bind('[data-pick]', 'pick', (k, v) => { PICK[k] = v; renderPick(); });
+document.getElementById('copyPick').addEventListener('click', async () => {
+  const t = `Cursor card picks: ${document.getElementById('pickOut').textContent}`;
+  const msg = document.getElementById('copyMsg');
+  try { await navigator.clipboard.writeText(t); msg.textContent = 'Copied'; } catch { msg.textContent = t; }
+});
+</script>
+</body>
+</html>

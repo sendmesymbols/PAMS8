@@ -1,0 +1,306 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "bn-attk-mtn",
+  "family": "bn-attk-mtn",
+  "layout": "mtn",
+  "echelon": "16",
+  "unit": "inf-bn-mtn",
+  "basis": "D",
+  "task": "attack",
+  "name": "Bn Attk (Mtn): multidirectional, fire base and infiltration",
+  "frontageRow": "Battalion, set-piece attack in plains",
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "A mountain attack by multiple threats on one posn (MW s1 para 13 a pp 83-84): the assault onto the Obj's left flank from its FUP, a fire base on an adjoining hill to the right (long range direct fire weapons, one target per two weapons, MW para 28 p 94), and a Pl of D Coy infiltrating to block the En routes of reinforcement and escape behind the Obj (p 84 (b), (d)). The Obj a hill feature on a flank of the main axis or in the rear that dominates the defences (p 78 para 3); a reserve on this axis, C Coy (p 82 para 9: a central reserve is of little value); P adds phases with liberal timings. Laid on the left flank attack's geometry (IBB p 201 FUP), which the ground notes for mountains qualify (MW pp 83, 85, 228).",
+  "slots": [
+    {
+      "role": "obj",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ",
+      "order": 1,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -1500,
+          "wM": {
+            "doctrine": "size.coy.frontageM"
+          },
+          "hM": {
+            "doctrine": "size.coy.depthM"
+          }
+        }
+      }
+    },
+    {
+      "role": "objTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          -1500
+        ]
+      }
+    },
+    {
+      "role": "assy",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": -4270,
+          "backM": 965,
+          "wM": 1000,
+          "hM": 700
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ],
+        "prefer": [
+          "roadAccess"
+        ]
+      }
+    },
+    {
+      "role": "fup",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -1914,
+            -655
+          ],
+          [
+            -1429,
+            -415
+          ]
+        ]
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "sl",
+      "kind": "line",
+      "sym": "25140303",
+      "label": "SL",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -1648,
+            -895
+          ],
+          [
+            -1348,
+            -375
+          ]
+        ]
+      },
+      "terrainRule": {
+        "onGround": "linearFeature"
+      }
+    },
+    {
+      "role": "axis",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -1498,
+            -635
+          ],
+          [
+            -520,
+            -1200
+          ]
+        ],
+        "widthM": 400
+      }
+    },
+    {
+      "role": "asltL",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "A Coy",
+      "echelon": "15",
+      "order": 3,
+      "shape": {
+        "at": [
+          -1731,
+          -639
+        ]
+      }
+    },
+    {
+      "role": "asltR",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "B Coy",
+      "echelon": "15",
+      "order": 3,
+      "shape": {
+        "at": [
+          -1611,
+          -431
+        ]
+      }
+    },
+    {
+      "role": "bof",
+      "kind": "area",
+      "sym": "25152100",
+      "label": "Fire Base",
+      "order": 3,
+      "shape": {
+        "base": [
+          [
+            700,
+            -700
+          ],
+          [
+            1100,
+            -700
+          ]
+        ],
+        "ctrl": [
+          300,
+          -1300
+        ]
+      },
+      "terrainRule": {
+        "sees": "obj",
+        "prefer": [
+          "highGround"
+        ]
+      }
+    },
+    {
+      "role": "bofCoy",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "D Coy less a Pl (Fire Base)",
+      "echelon": "15",
+      "order": 4,
+      "shape": {
+        "at": [
+          900,
+          -700
+        ]
+      }
+    },
+    {
+      "role": "infil",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Infil Pl (D Coy), block",
+      "echelon": "14",
+      "order": 4,
+      "shape": {
+        "at": [
+          700,
+          -2300
+        ]
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "C Coy (Res, this axis)",
+      "echelon": "15",
+      "order": 4,
+      "shape": {
+        "at": [
+          -2278,
+          -185
+        ]
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bn HQ",
+      "order": 4,
+      "shape": {
+        "at": [
+          -2441,
+          -668
+        ]
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111402",
+      "label": "81 mm Mor",
+      "order": 4,
+      "shape": {
+        "at": [
+          0,
+          300
+        ]
+      }
+    },
+    {
+      "role": "loe",
+      "kind": "line",
+      "sym": "25140900",
+      "label": "LOE",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            751,
+            -2800
+          ],
+          [
+            1501,
+            -1500
+          ]
+        ]
+      }
+    }
+  ],
+  "checks": [
+    "fupDistance",
+    "assaultFrontage",
+    "bofFlank",
+    "bofRange",
+    "morReach",
+    "fireLift",
+    "reserveReach",
+    "approaches"
+  ]
+}

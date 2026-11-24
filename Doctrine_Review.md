@@ -8,6 +8,211 @@ engine lacks). Every item is a reader's finding: check the page before changing 
 **Margin notes:** the Literature copies of IBB, OOW1 and OOW2 carry a reader's typed notes (IBB "(Source: ARIB)" tables pp 277, 279, 283,
 "8-12x DFs" pp 107 / 298; OOW2 page-head definitions). They are not doctrine, and verify.py cannot tell them from the print.
 
+## Status (24 Nov 2026)
+
+**Applied in the Deployment Builder** (PlanDoctrine.json, recipes, Plan*.ts; every new ref found on its page by
+`verify.py --write`; all 19 Plan Builder suites pass; no tsc errors in the touched files):
+- Canal defence (R99-R101, R104, R131-R133): three up max 4115 m (IBB p 333, Annex V; IC's 5000 m kept beside it, the
+  stricter used), depth 1830-2750 m (Annex V / App 8; p 333 more depth than normal), mask posns 300-500 m (p 340; the
+  900-1500 m scaled off the AT-ditch App 9 withdrawn), two-up front no longer 4500 m (no two-up figure printed: E 3750),
+  home bank raise IBB 1-1.2 m beside IC 1-2 m, all re-cited from S57 Fig 34 to S60-62 + Annex V.
+- Bn reserve reach (R102): a Bn's counter-attack within an hour (IBB p 306), not the Coy's 30 min; the p 279 "(Source:
+  ARIB)" margin figures demoted to context with DW p 27 as the rule; tests solve.mjs / orbat.mjs updated.
+- Mountains (R117, R118, R165 + descent): night foot 0.5-1 km/h (MW p 81), the climb allowance now D (MW pp 48, 81,
+  309), **descent** charged on own moves (30-60 min per 600 m; the En's times left without it: his earliest arrival),
+  first layout three up (MW p 151: all round may be beyond the resources).
+- Withdrawal (R109 / R154): the new main posn must also force the En to move his field artillery from the intermediate
+  posn (IBB p 373 "the next position", p 369); the 2 km clean break kept as a floor; a fix offered (second intermediate
+  posn, OOW3 Annex P). A default 25 km plan now warns on this row, honestly.
+- ATGM pairs the fit adds (R103): 500-600 m behind the forward edge in the depth localities (IBB p 295;
+  `atFramework.atgmBehindRrM`), not 150 m.
+- DF count (R113 / R123): 6-8 for a Bn (MIB p 176; IBB p 61), the 8-12 margin note kept as context (no code reads it).
+- AD (R110 / R157): the VP set cited (OOW1 p 27), tank harbours added as VPs; the order stays a decision (`ad.vps`, E).
+- Figures now backed by a book (E/U to D or refs added): `ad.minFus` (IBB p 83), `attack.phase2.maxGapMin` (IDD p 5),
+  `checkBands.bnDepthMinM` 2000 (IBB p 277), `crossing.observe`, `cpen.behindFwdM`, `layoutHints` (MIB pp 271, 172,
+  171), `attack.msrChoke` / `attack.form` rules (OOW2 pp 36, 60, 21; DW p 37), `crossing.bnHqMen` (IBB p 24),
+  `qrfTurnOutMin` / `rushKmh` (IBB pp 345, 293 as analogies), `attack.tanks.aheadMin` (IBB p 187, MIB p 129), new
+  `readyBy.bnPosnH` 36 h (OOW1 p 39) for the Aprc.
+- Wrong refs fixed (R124-R130, R134-R144, R147): pages, sections, "glossary" cites that were a reader's overlay, the
+  "about 16 km between" axes that is a depth label, break-out "before first light" (own, OOW2 p 52).
+- Books differ, recorded side by side (`booksDiffer`): safe distances and fire lifts (IBB p 123 vs IC), En minefield depth
+  (IBB / IC / IDD), boats per Bn (Coy 141 vs 130), 81 mm range (IBB 4550 vs ORBAT 3749).
+
+**Ground Guide, done by "IPB - Wind Data" (its report, 24 Nov 2026, user approved, uncommitted; every new ref found by
+verify.py --write):** applied R1 (81 mm min 550 m), R3 / R23 / R24 (strike-bh 8 wide x 6 deep as PlanDoctrine, the En's
+size E, 2-3 Bdes ex RAPID(S)), R5 (Inf - MIB tracked), R6 (no after-rain slowing on desert sand / dunes), R7 (tracked
+gradability 60 %, side slope recorded), R8-R10 (MW mountain foot rates and descent in the Decision tab and the speed
+engine), R11 (MW mules), R12 / R13 / R40 / R60 / R61 (def-bde rebuilt from IDD pp 2-5: SZ phase, Bde res 2-4 h; Fig 6
+marked resolved by IDD, its reading still unconfirmed), R14 (AD triple Anza only), R15-R22 / R25-R27 refs, R17 (IBB App 4
+rows as En devices), R28 (II nil in haze / fog), R29, R31, R32, R36, R39, R41, R42 / R45 (heliborne note), R46 (C attk
+cues on the DP), R47 (En FUP as a TAI), R49 (def-desert template + desert test), R50, R53 (firm desert LZ bonus), R55 /
+R56 (Rann tracked all year; wet slides a note), R57 (infiltration + def-mtn), R62 (reserves ladder). Kept on purpose:
+R30 (AVLB 18 m stays the threshold, 24 m recorded), R33 (dune ground concealment 2, safety first), R4 (dunes NO-GO for
+wheels, reason given), R37 (tracked not added to mech). Data / text only: R2, R38, R43 / R44, R48 / R54 / R63, R51, R52,
+R58, R59. Blocked: R64. The OcokaDoctrine frontage rows were done by the approach-calculations session.
+
+**Appreciation, done by "Ground appreciation mechanisms" (its report, 24 Nov 2026, uncommitted):** R66 (Bn / Bde Time Req
+prep 36 working h, OOW1 p 39, reading PlanDoctrine readyBy.bnPosnH); R72 in part (DP heads C Pen Posns, Res, Use of Armr /
+ATGM, IBB S54 pp 281-282, IBB p 310); R73 (screen always, OOW1 Annex A p 102; adv posn on a natural obs within arty
+reach, OOW1 p 14); R74 in part (a "no pen beyond line" limitation, OOW1 p 17; no Line of Denial input yet); R75 in part
+(Res para, OOW1 pp 19-20); R76 (dawn / dusk in the Timing of Attk prompt, OOW2 pp 26-27). R67 / R68 on the Aprc side
+(`ratioRule(mountains)`: 3 : 1 from IBB S47 para 17 a p 248 "keeping the usual 3:1 superiority" off the mountains, MW p 80
+"more than 3 : 1" in them). The Plan Builder side of R67 / R68 done the same day in this session: `forceRow(..., kind)` cites the usual 3 : 1 (IBB
+p 248) off the mountains and passes a mountain attack only above 3 : 1 (MW p 80, as written: "more than"); PlanDoctrine
+enemy.ratio / enemy.defaultUp re-cited (IBB p 248 rule, MW p 80 context); three checks in check.mjs. Open: R70, R77-R93.
+
+**Frontages, done by "GroundGuide approach calculations"** (at the user's request, 24 Nov 2026; its report, uncommitted,
+every ref verify.py-checked): R153 (OcokaDoctrine rows 'Company, night attack' 250 m and 'Battalion, night attack, two
+companies up' 450-650 m, IBB S47 para 17 a p 248; the calc rows gone; attack.assaultRow and the Coy attack recipes point
+at them; attack.assaultRowByEch for drawn plans); R132 ('x = yards', Annex V p 483; a 'Battalion along a canal' row
+2750-4115 m, depth 1830-2750 m, now the own Bn row on an obstacle, the Foxland 6000 m the En's); R182 (IBB App 7 row 6300 m,
+Pls 300 m, gaps 800 m); R106 (an own mountain Bn on IBB's extended rows, no MW figure; Foxland 6-8 km for the En only);
+R192 / R215 (assaultFrontageCheck on every ground: plains by day wider, no figure, warns; mountains narrower, MW p 79;
+never fails); R220 (a Bde / Div beyond its row on extended ground warns, frontageRowCheck). Also AMP p 1.10 (Coy
+1200-1500 m), AMP p 1.3 (Pl 500 m at most; IBB App 5's 600 m kept as the Size limit, books differ), size.plPostFrontageM
+300 (IBB App 7); posnFrontageM.16 and smallOps.screen.frontM no longer cite the p 277 margin table. Not changed:
+NightMarchDoctrine layout company.frontM 200 / battalion.frontM 450 (E), in the IPB session's file: IBB p 248's 250 /
+450-650 m would replace them.
+
+**Handed to the sessions that hold the files:** Ground Guide section (R1-R64) to "GroundGuide approach calculations"
+(it fixed the FUP page in GroundGuideIpbCorridors.ts) and "IPB - Wind Data" (IpbDoctrine, OcokaDoctrine, IpbTemplates,
+GroundGuideIpb*.ts); Appreciation section (R65-R93) to "Ground appreciation mechanisms".
+
+**Frontages by the ground (user, 24 Nov 2026: "We use extended frontages in Desert", follow DW and MW):** a Bn in the
+plains passes inside the normal 3000-5000 m (IBB S53 p 277) and warns on an extended frontage (IBB S59 p 325, Annex U:
+4.5 km two up, 6.5 km three up) with its costs and a fix; the desert (DW pp 22, 24, 56) and the mountains (MW pp 148,
+150, 179; the mountain row 6-8 km) are extended ground where it passes, with large gaps accepted (the mountains newly);
+Coy frontages are never extended (IBB p 326). `PlanContext.bnFrontageCheck`, used by the build and Check my plan; six
+new checks in check.mjs. R106 is settled by this (MW over OOW1 p 72 and IBB p 276).
+
+**Desert night attack (user, 24 Nov 2026):** the assault frontage row is a night figure (GSP p 86: a Bde two up by night
+1100-1500 m, a Bn half); in the desert a day attack may take twice it and a night attack stays at it (DW s12 para 18 a
+p 47: by night half the day's frontage and depth, more in bright moonlight), which meets GSP p 87 (a Bde in the desert up
+to 3000-4000 m) at its lower end (`attack.desertNightOfDay`, `PlanContext.assaultFrontageCheck`, in the build and in
+Check my plan; a built attack carries Day / Night in pbMeta.night, a hand-drawn one is judged at night with "by day or in
+bright moonlight only"). Six checks in attack.mjs. Not done: mountain attack frontages "limited" (MW p 79, GSP p 87:
+compact and narrow, no figure) and IBB p 248 (Coy 250 m by night).
+
+**Decided by the user 24 Nov 2026 and done here:** R110: in the desert the AD covers the reserve first, then HQs, then gun
+areas (DW s18 para 5 p 63; crossing sites highest, DW p 64): `ad.vps.desert` (D), `PlanAD.vpOf(role, ground)`, sited for the
+ground set in the tab and checked on the ground read (fit, Check my plan); the plains order stays E. R115: the attack's tank
+Sqn waits in the **Sqn Assy Area** (MIB p 118; a harbour is in the rear, out of contact, MIB p 65) and a defence's tank Sqns
+stand in **leaguers** beside the reserve (MIB p 68): labels, rows ('Tank leaguer') and H-hour steps renamed, roles
+(tkHarbour / tkSqn) kept so saved plans still read. Three checks in ad.mjs; tanks.mjs and check.mjs renamed.
+
+**Still the user's:** R100 / R120 / R121 where the books differ and one was chosen. (R106 and R153 are settled: see
+the frontage paragraphs above.)
+
+**Deployment Builder gaps filled (24 Nov 2026, this session; all Plan Builder suites pass, `tools/planbuilder-test/gaps.mjs`
+28 checks, every new doctrine ref found by verify.py):**
+- New plans: `div-def-three-axes` (R187: OOW1 Annex D p 105, three Bdes up, the armour in hand as the Div reserve timed on
+  tracks, an AT Res); a Bn HQ in every Bn defence layout (R169: IBB S3 p 23, centrally behind the depth localities; the AD
+  now covers it, OOW1 p 27); an AT Res in the Bde and Div defences (R186: OOW1 pp 26, 45).
+- A ground-notes pass (`PlanContext.groundNotes`, run last in the build, the fit and Check my plan) adds the ground's books
+  to rows already judged: mountains: no classic FUP, the plains band set aside (R240: MW pp 83, 85, 228), reserves split
+  and forward (R191, R242: MW pp 148, 165, 169; OOW1 p 72), guns by section, concentrations (R243: MW pp 240-246), air lift
+  falls with altitude (R246: MW p 263), fresh troops per phase (R199: OOW2 p 60, MW pp 210-215); desert: reserves 1/3 or
+  more (R214: DW p 26), towed guns stick, dune lee not engaged (R218: DW pp 60-61; OOW1 p 70), MML / TAM fail on soft sand
+  (R216: DW p 65), tanks under the infantry's command at night (R222: DW p 48); any ground: FUP reducible in broken ground
+  and BUA (R171: IBB p 203), an alternative FUP always (R170, R230: IBB pp 204, 212; MIB p 91), depth or abreast (R232: MIB
+  pp 103-106), strong points (R197: OOW2 pp 45-46), tanks by night only with night kit (R233: MIB p 140), a third of the
+  ammunition kept (R236: MIB p 108), the C Pen rules (R180: IBB pp 308-313).
+- Rows and rules: the mountain breach (R241: MW pp 86, 106, 113, no lane time), the Bde reserve on foot a C Pen role
+  (R189: OOW1 p 83), the Mor Pl whole or split (R177: IBB pp 54, 61), the AT rules on the AT cover row (R174, R179: IBB
+  pp 73, 294-295; the count against the En tanks to confirm, no En tank figure in the ORBAT), who leads and grouping
+  (R229, R231: MIB pp 24, 26, 117), the desert En armour led (R223: DW p 10), the advance by night and its maintenance
+  range (R193, R253: OOW2 pp 13-14; lsf pp 4-5, 27, 72), crossings: twin obstacle, regulated water, APC swim, past one
+  night, a carrying Coy (R257, R224, R178: IDD p 8; MIB pp 278-280; IBB pp 247, 261), the withdrawal: Coy RVs 183-457 m
+  (R183: IBB p 381; C and D Coys' RVs moved out to 250 m), thin-out and the mech order of leaving (R225: MIB pp 223-228),
+  AD in the night sequence, bridges as reserve demolitions, finish before daylight (R202, R203, R205: OOW3 pp 12, 28, 44,
+  55, 63-64), desert and hill rows (R217, R211: DW pp 32-33; OOW3 pp 8-9, 15); IBB Figs 26 / 28 cited (R181); refs for the
+  Assy area (R196: OOW2 pp 31, 36) and the OP cap (R235: MIB p 173).
+
+**Appreciation items filled (24 Nov 2026, this session through an agent; `node tools/aprc-test/run.mjs` 322 checks, from 291;
+figures in the new `AprcBooks.ts`):** R69 (the DS guns' deployment in the Time Req and the attack's essential timings, IBB
+pp 122, 154, 170), R70 / R82 (a quick attack box: contact to H, MIB pp 89, 96-97, Annex L pp 347-348; IBB p 133), R72 / R74 /
+R75 remainders (IBB pp 310, 312; a Line of Denial select, OOW1 pp 17-18, 24; reserve factors, OOW1 pp 19-20), R77 (leading En
+option, Emp of Res, Contingency Plans, silent / noisy: OOW2 pp 27, 30-32), R79 (desert ITG prompts, DW pp 7, 20, 38), R80 /
+R88 (desert and mountain prep notes, DW pp 95, 97; MW pp 147, 262), R81 (a Dismounting Area head for a mounted unit, MIB
+pp 90, 120-123), R83 (MIB pp 161-162), R84 (mountain SPs and priority of work, MW pp 151-152, 166, 172, 176), R85 (an uphill
+assault on the slant + 1 h per 350 m, MW Annex F pp 311-313), R86 (mules and porters, MW pp 142-146, 322-331), R90 (Adm and
+Log prompts, lsf pp 23-27, 47, Annex L), R91 (a casualty estimate from the ORBAT at the lsf rates, pp 47-51, Annex K p 80),
+R92 (the En on a DCB, IDD pp 3, 5-8), R93 (air support requests, SO's Hbk Sec 12 pp 1203-1204). R89 (sub-conventional)
+stays out of scope (the user's decision).
+
+**Appreciation remainders done (24 Nov 2026, second round; `node tools/aprc-test/run.mjs` 352 checks, from 322):** R78, a
+withdrawal appreciation (kind `wdr`, "Withdrawal"): the commander's main decisions (OoW Vol III pp 6-7) as Course A's prompts,
+the factors in five groups (pp 7-16), what the plan must fix (new posn p 39, intermediate posns pp 33-34, covering troops and
+rearguards pp 31-35, rear parties pp 4, 27, 45, sequence pp 41, 44, coordinating instructions Annex A pp 72-73, refugees p 70),
+the sketch after Annexes P / Q pp 75-76; a Read drafts the routes back, the new posn's lines, the intermediate posns, the
+demolition belt and the time data (new posn 36 working h, OOW1 p 39; finish before first light, p 44); all exports. R85: in
+the mountains the climb is read from the 30 m elevation (start: the checked plan's SL, else its FUP, else the lead approach's
+FUP; the Obj's height at the MITG), a typed climb overriding it. R74: the line of denial set in the Limitations box drawn on
+the para 6 trace and the slides, named in the sketch annex; the Aprc passes it to the Ground Guide
+(`guide.setAorDenial`), whose Gr Scope AOR trace, Lines row, D sheet and Copy as Text mark it. The En's quick-attack time is in the Plan Builder's what-if (below).
+Left: the climb is the height difference between the two ends, not the total ascent along the way.
+
+**Deployment Builder gaps filled, second round (24 Nov 2026; `tools/planbuilder-test/gaps2.mjs` 40 checks; every new figure
+found on its page by `verify.py --write`; all Plan Builder suites pass, tsc baseline 851, none in DeploymentBuilder):**
+- The advance: a Bn group as the Adv Gd (`bn-advance-one-up`, family Bn Advance; R172, R228): the vanguard a Coy group (IBB
+  p 138), its depth 500-600 m and the link groups 800-900 m, 40-65 min, by night (IBB Fig 12 p 150), the main guard at least
+  300-400 m behind (p 149), by day gaps in time not space (p 138), flanks cleared 800 m either side by day (p 133), Bn HQ one
+  bound behind the vanguard, tanks always in it, mortars / ATGM / RR well forward (MIB pp 81-82), who leads read from the
+  country (MIB p 82 f; close / mixed shares E), the night rules (IBB pp 148-149). An Armd Div on a broad front with two Bdes
+  (`div-advance-two-bde`, family Armd Div Advance; R194, R221): OoW Vol II pp 52-53, DW pp 35, 55; axes 3-8 km apart (E),
+  each axis routed and read for its going and crossings; the Bdes' report lines left to them. Halting areas sited on the
+  ground (R176, R198): right or left of the axis and 500 m up or back, scored for cover, firm ground and entry (IBB p 160;
+  OoW Vol II p 12; shares E).
+- The second obstacle beyond a bridgehead (R195): read across the BH's width; the BH line laid 300 m beyond it, a warn when
+  that deepens the BH past its size, as drawn a warn when it lies just beyond (OoW Vol II p 51; `crossing.secondObstacle`).
+- An RR and its alternative in each forward locality of every Bn defence layout, row RR (R173: IBB S8 pp 38-42; IC p 367),
+  the alternatives following the Alternates setting. The Mortars row (R177) now measures its DF points in front of the
+  forward posns (they were behind): Bn three up warns at the recipe's spot, with the split-into-sections fix.
+- The Div Arty in groups behind each forward Bde on a Div defence, rows Arty groups and Arty reinforcement (R190: OoW Vol I
+  pp 83, 70; `divArty`). AD sites on dominating features in the mountains, row AD sites (R244: MW p 247; 500 m / 10 m E).
+- The desert reserve share measured on Bde and Div defences, a warn below a third (R214: DW pp 26-27; `reserveH` now read).
+- Mine gaps: the reserve's routes against own minefields (R188: OoW Vol I pp 38, 42). En quick attack: contact to H 30-60 /
+  60-100 min (MIB p 89; IBB p 133 beside it), told beside the moves, never used to pass one (R82).
+- Check my plan runs `PlanMountain.layoutRows` on plans built from a mountain recipe (the doctrine review session's layouts).
+
+**New plan types and withdrawal checks built (24 Nov 2026, the doctrine review session; `tools/planbuilder-test/plantypes.mjs`
+78 checks, `withdrawal.mjs` 37; every new doctrine ref found by verify.py):**
+- R226 a Bn delaying action (`bn-delay`, `PlanDelay.ts`): successive posns DP 1-3 the En must redeploy his close support
+  weapons to cross (MIB pp 233, 237-238: the En 81 mm Mor 4.2 km, ORBAT), all Coys forward and a small reserve, OPs in the
+  gaps, the echelons behind the next posn (pp 238-239), long range observation and obstacles in front read on the ground
+  (p 237), the time each holds the higher Comd's (OOW3 p 29).
+- R211 a withdrawal by day (`bn-wdr-day`): the forward Coys back through the depth Coys by passage points to fresh posns,
+  leap-frogging, tanks last (MIB pp 223-224; OOW3 pp 40-43), no rear parties or programme, routes timed by day.
+- R212 a Bde and a Div withdrawal (`bde-wdr-night`, `div-wdr-night`, `PlanWithdrawalFmn.ts`) on OOW3 Annex P (p 75): two
+  intermediate posns each beyond the En field artillery of the one before (p 33), held by a complete unit / formation with
+  less depth (p 34), covering troops in front of each (Div: an Armd Regt gp, p 32), a flank guard (p 34), several axes that
+  must not merge (p 8), the reserve (p 40), the primary demolition belt (p 56), the BL; Annex A timings to confirm.
+- R238 / R239 mountain layouts (`PlanMountain.ts`, family Bn Def (Mtn) and Bn Attk (Mtn), the Mtn Inf Bn): a ridge between
+  nullahs 1/3 : 2/3 counted in Pls (MW p 154), a penetrant ridge in depth with side spurs and valley blocks (p 155), a lateral
+  ridge held on its top (p 157), a pass on both shoulders (p 158), a valley on both sides in successive posns (pp 161-162),
+  strong points (p 152); the multidirectional attack: assault, a fire base on an adjoining hill and an infiltration block
+  in three directions, a reserve on the axis (pp 78, 82-84, 94, 109).
+- R185 the BUA attack and defence (`PlanBua.ts`): a foothold from a flank soon after dusk, bounds within, Pls no wider than
+  100 m, heavy weapons by the minefield (IBB S49 pp 265-268); localities, a screen, strong points in depth, barricades, a
+  mobile reserve (IBB S58 pp 319-324).
+- R227 the MIB Gp fixing force (`mib-def-fixing`): strong points in depth, the killing zone between the Coy groups, APCs in
+  the locality, a mounted counter-attack force, within Annex P's 6 x 10 km (MIB s23 pp 157-172, Annex P pp 357-359).
+- Withdrawal checks: the intermediate posn's view and both flanks on water or tank NO-GO (R204: OOW3 pp 33-34); a second
+  intermediate posn in the Bde / Div plans and in the Bn's fix (R206); each En approach meeting a rear party's MG reach,
+  457 m (R207: OOW3 p 27); Coy check pts, the BL and its "all clear" time, two passage lanes and a contact point through the
+  intermediate posn (R208-R210: OOW3 Annex Q p 76, pp 19, 48, 67); converging routes from the outer flanks to confirm and
+  the formation Axes row (R213: p 8).
+- The mountain, BUA and fixing-force rows reach the build (PlanBuildTab), the fit (PlanFit) and Check my plan (PlanCheck
+  `mountainRowsOf`, by the peer session) through `PlanMountain.layoutRows`.
+- Left: the crest across the way for an intermediate posn (R204, the elevation not yet read for it); refugee routes through
+  BUAs (R213, Ground Guide population); the BUA defence and the lateral ridge stand shallower than the row's depth (MW p 148
+  and IBB S58 accept it: the Depth row warns honestly); the MIB fixing force has no frontage row (its Gp area row gives
+  Annex P's figure).
+
+**Not done yet:** the Gun / Admin site-finder items (R111, R119, R120, R146, R148, R149), R114 / R116 / R122 / R161 /
+R166 / R168, and the 90 Deployment Builder GAPs (new recipes and rows: mounted attack and dismount areas, quick-attack
+timings, delaying action, mountain recipes, APC swim crossing, mobile-defence fixing force, desert branches ...).
+
 | Engine | CONFLICT | WRONG-REF | E→R | GAP |
 |---|---|---|---|---|
 | GroundGuide | 13 | 14 | 14 | 23 |

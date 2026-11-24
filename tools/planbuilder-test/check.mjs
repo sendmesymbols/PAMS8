@@ -50,7 +50,11 @@ check('force: an en Bde on a Bn is the 3 : 1 it plans to hold (pass)', fr('18').
 check('force: an en Div on a Bn is more than it holds alone (warn)', fr('21').st === 'warn', fr('21').reason);
 check('force: an en Bn on a Bn is short of 3 : 1 (a probe or raid)', fr('16').st === 'pass' && /short of/.test(fr('16').reason));
 const fa = C.forceRow(doc, 'attack', '16', { echelon: '15', type: 'inf', source: 'default' });
-check('force: a Bn attacking an en Coy is 3 : 1 (MW p 80)', fa.st === 'pass' && fa.name === 'Force ratio', fa.reason);
+check('force: a Bn attacking an en Coy is 3 : 1, the usual superiority (IBB p 248)', fa.st === 'pass' && fa.name === 'Force ratio' && /IBB S47 para 17 a p 248/.test(fa.reason), fa.reason);
+const fm = C.forceRow(doc, 'attack', '16', { echelon: '15', type: 'inf', source: 'default' }, 3, 1, {}, 'mountain');
+check('force in mountains: exactly 3 : 1 is not enough, more than 3 : 1 in sequence (MW p 80)', fm.st === 'warn' && /about 3 : 1/.test(fm.reason) && /MW p 80/.test(fm.reason) && /in sequence/.test(fm.reason), fm.reason);
+const fm4 = C.forceRow(doc, 'attack', '16', { echelon: '15', type: 'inf', source: 'default' }, 4, 1, {}, 'mountain');
+check('force in mountains: 4 : 1 passes', fm4.st === 'pass', fm4.reason);
 
 // ── the fit with the enemy ─────────────────────────────────────────────────────────────────────────────────────────
 function ground({ cls = () => 2, elev = () => 200, sight = () => 0.2, avenues = null, calls = [] } = {}) {
@@ -102,11 +106,40 @@ const bde = { echelon: '18', type: 'mech', source: 'user' };
   const flFar = F.fitLayout(fitIn(ground({ cls: (x, y) => (y > 2250 && y < 2350 ? 20 : 2) }), { enemy: bde, terrain: 'obstacle' }));
   check('a canal 1.3 km out is beyond the MGs: warn, move up or a mask posn', row(flFar.res.rows, 'Obstacle tie-in')?.st === 'warn', row(flFar.res.rows, 'Obstacle tie-in')?.reason);
   const al = C.frontageAllowance(doc, '16', 'obstacle');
-  check('on an obstacle a Bn may hold 6 km (IC s113)', al?.range[1] === 6000);
-  const rows = C.applyContext([{ name: 'Frontage', st: 'fail', reason: '' }], doc, '16', 'defence', 5500, 2, null, { kind: 'obstacle', source: 'user' });
-  check('5.5 km fails two up on plains but passes on an obstacle', row(rows, 'Frontage').st === 'pass', row(rows, 'Frontage').reason);
-  check('mountains: a Bn holds up to 8 km (IC s113)', C.frontageAllowance(doc, '16', 'mountain')?.range[1] === 8000);
-  check('a Coy frontage is not extended on any ground (IC s84.6b)', C.frontageAllowance(doc, '15', 'obstacle')?.range[1] === 1500);
+  // frontages from the books, own rows only (24 Nov 2026): the Foxland (enemy) rows of IC s113 are never own
+  check('on an obstacle a Bn holds 2750-4115 m (IBB Annex V p 483, x = yards), not the Foxland 6 km', al?.range[0] === 2750 && al?.range[1] === 4115 && /IBB Annex V p 483/.test(al?.src ?? ''), al?.src);
+  const onOb = (m) => row(C.applyContext([{ name: 'Frontage', st: 'pass', reason: '' }], doc, '16', 'defence', m, 2, null, { kind: 'obstacle', source: 'user' }), 'Frontage');
+  check('on an obstacle 4 km passes, 5.5 km fails (IBB Annex V: up to 4115 m)', onOb(4000).st === 'pass' && onOb(5500).st === 'fail', `${onOb(4000).st} / ${onOb(5500).st}: ${onOb(5500).reason}`);
+  check('mountains: no own Bn figure in MW, so three up is held to IBB\'s extended 6.5 km (the Foxland 6-8 km is the enemy\'s)', C.frontageAllowance(doc, '16', 'mountain', 3)?.range[1] === 6500 && !/Mountain infantry battalion/.test(C.frontageAllowance(doc, '16', 'mountain', 3)?.src ?? ''), C.frontageAllowance(doc, '16', 'mountain', 3)?.src);
+  // frontages by the ground (user, 24 Nov 2026: extended frontages in the desert, large ones in mountains, DW / MW):
+  // plains normal 3-5 km (IBB p 277), extended (IBB S59, Annex U) warns there; the desert and mountains pass extended
+  const fv = (kind, n, m) => C.applyContext([{ name: 'Frontage', st: 'pass', reason: '' }, { name: 'Gaps', st: 'warn', reason: 'widest 1.2 km' }], doc, '16', 'defence', m, n, null, { kind, source: 'user' });
+  check('plains: a Bn two up on 4.5 km passes, the normal 3-5 km (IBB p 277)', row(fv('plains', 2, 4500), 'Frontage').st === 'pass' && /IBB S53 para 4 c p 277/.test(row(fv('plains', 2, 4500), 'Frontage').reason), row(fv('plains', 2, 4500), 'Frontage').reason);
+  check('plains: three up on 6 km warns: an extended frontage (IBB S59 p 325), with a fix', row(fv('plains', 3, 6000), 'Frontage').st === 'warn' && /extended frontage/.test(row(fv('plains', 3, 6000), 'Frontage').reason) && row(fv('plains', 3, 6000), 'Frontage').detail?.fix?.length === 2, row(fv('plains', 3, 6000), 'Frontage').reason);
+  check('plains: three up on 7 km fails (beyond Annex U App 6, 6.5 km)', row(fv('plains', 3, 7000), 'Frontage').st === 'fail', row(fv('plains', 3, 7000), 'Frontage').reason);
+  check('desert: three up on 6 km passes, extended ground (DW p 24, p 56); its gaps accepted', row(fv('desert', 3, 6000), 'Frontage').st === 'pass' && /DW p 24/.test(row(fv('desert', 3, 6000), 'Frontage').reason) && row(fv('desert', 3, 6000), 'Gaps').st === 'pass', row(fv('desert', 3, 6000), 'Frontage').reason);
+  check('mountains: three up on 6.5 km passes (MW p 148: frontages generally large); its gaps accepted (MW p 148)', row(fv('mountain', 3, 6500), 'Frontage').st === 'pass' && /MW p 148/.test(row(fv('mountain', 3, 6500), 'Frontage').reason) && /MW p 148/.test(row(fv('mountain', 3, 6500), 'Gaps').reason), row(fv('mountain', 3, 6500), 'Frontage').reason);
+  check('mountains: three up on 7.5 km fails (beyond IBB Annex U App 6, 6.5 km)', row(fv('mountain', 3, 7500), 'Frontage').st === 'fail', row(fv('mountain', 3, 7500), 'Frontage').reason);
+  // a Bde / Div on extended ground: no figure printed, so beyond its row it warns there and fails in the plains
+  const rc = (ech, kind, m) => C.frontageRowCheck(doc, ech, kind, 2, m);
+  check('a Bde on 14 km: fails in the plains (OOW1 10-12 km), warns in the desert (DW p 56) and mountains (MW p 148), no figure printed', rc('18', 'plains', 14000).st === 'fail' && rc('18', 'desert', 14000).st === 'warn' && /DW p 56/.test(rc('18', 'desert', 14000).reason) && rc('18', 'mountain', 14000).st === 'warn' && /MW p 148/.test(rc('18', 'mountain', 14000).reason), `${rc('18', 'plains', 14000).st} / ${rc('18', 'desert', 14000).st} / ${rc('18', 'mountain', 14000).st}`);
+  check('a Coy on 1.8 km fails in the desert too: never extended (IBB S59 para 6 b p 326)', rc('15', 'desert', 1800).st === 'fail' && /IBB S59 para 6 b p 326/.test(rc('15', 'desert', 1800).reason), rc('15', 'desert', 1800).reason);
+  check('a Pl on 550 m passes (IBB App 5 600 m) and names AMP\'s 500 m most', rc('14', 'plains', 550).st === 'pass' && /AMP p 1\.3/.test(rc('14', 'plains', 550).reason), rc('14', 'plains', 550).reason);
+  // no source cites the margin table on IBB p 277 ('(Source: ARIB)'): it is a reader's note, not IBB
+  {
+    const bad = [];
+    // an entry (an object) that names the margin note must say, in one of its own strings, that it is not IBB
+    const walk = (o, path) => {
+      if (!o || typeof o !== 'object') return;
+      const own = Object.values(o).filter((v) => typeof v === 'string');
+      if (own.some((v) => /ARIB/.test(v)) && !own.some((v) => /not IBB|not AP 8360|reader's/.test(v))) bad.push(path);
+      for (const [k, v] of Object.entries(o)) walk(v, `${path}.${k}`);
+    };
+    walk(doc.plan, 'PlanDoctrine'); walk(doc.ocoka, 'OcokaDoctrine');
+    check('every mention of the IBB margin tables (Source: ARIB) says they are a typed note by a reader, not IBB', !bad.length, bad.join(', '));
+  }
+  check('plains: gaps are not accepted by the ground (the row stays a warning)', row(fv('plains', 3, 4800), 'Gaps').st === 'warn');
+  check('a Coy frontage is not extended on any ground (IBB S59 para 6 b p 326; AMP p 1.10: 1200-1500 m)', C.frontageAllowance(doc, '15', 'obstacle')?.range[1] === 1500 && /IBB S59 para 6 b p 326/.test(C.frontageAllowance(doc, '15', 'obstacle')?.src ?? ''));
   // desert: sand dunes all round
   const flD = F.fitLayout(fitIn(ground({ cls: () => 14 }), { enemy: bde, terrain: 'auto' }));
   check('Auto reads dunes all round as desert', flD.terrain.kind === 'desert', JSON.stringify(flD.terrain));
@@ -162,7 +195,7 @@ const flatGround = ground({ sight: () => 0.6 });
   check('Bn Def: the force about 3 : 1, the attack it plans for', row(r.rows, 'En force')?.st === 'pass', row(r.rows, 'En force')?.reason);
   check('Bn Def: the drawn en axes read as his approaches', row(r.rows, 'Drawn en axes')?.reason.startsWith('3 enemy axes'), row(r.rows, 'Drawn en axes')?.reason);
   check('Bn Def: the drawn en FUP is the one judged', /drawn en FUP/.test(row(r.rows, 'En FUP')?.reason ?? ''), row(r.rows, 'En FUP')?.reason);
-  check('Bn Def: frontage held to a Coy\'s 1.5 km', /Coy 1\.5 km/.test(row(r.rows, 'Frontage')?.reason ?? ''), row(r.rows, 'Frontage')?.reason);
+  check('Bn Def: frontage held to a Coy\'s 1200-1500 m (AMP p 1.10), never extended (IBB p 326)', /Coy 1200-1500 m \(AMP p 1\.10/.test(row(r.rows, 'Frontage')?.reason ?? '') && /IBB S59 para 6 b p 326/.test(row(r.rows, 'Frontage')?.reason ?? ''), row(r.rows, 'Frontage')?.reason);
   check('Bn Def: nothing moved (check only)', r.fit && Object.keys(r.fit.nudges).length === 0);
 }
 {
@@ -316,7 +349,7 @@ const S = await import('../../MS/Engines/DeploymentBuilder/PlanSolve.ts');
   const r = K.checkPlan(syms, doc, { ground: g, recipes: { [d1.id]: d1 }, orbat });
   const sqnPosn = r.posns.find((p) => p.label === 'A Sqn');
   check('built with 1 tank Sqn: Check my plan does not take the Sqn for a posn held (not a posn, or ignored), the Coys read as before', (!sqnPosn || sqnPosn.kind === 'ignore') && r.posns.find((p) => p.label === 'A Coy')?.kind === 'fwd' && r.posns.find((p) => p.label === 'D Coy')?.kind === 'res', r.posns.map((p) => `${p.label}:${p.kind}`).join(', '));
-  check('...its Tank harbour row read from the symbol, the same verdict as the build', row(r.rows, 'Tank harbour')?.st === row(fl.res.rows, 'Tank harbour')?.st && /A Sqn: tracks go/.test(row(r.rows, 'Tank harbour')?.reason ?? ''), row(r.rows, 'Tank harbour')?.reason);
+  check('...its Tank leaguer row read from the symbol, the same verdict as the build', row(r.rows, 'Tank leaguer')?.st === row(fl.res.rows, 'Tank leaguer')?.st && /A Sqn: tracks go/.test(row(r.rows, 'Tank leaguer')?.reason ?? ''), row(r.rows, 'Tank leaguer')?.reason);
   check('...its Tank AT cover row read the same as the build\'s: the guns on each approach from the C Pen and Sup posns', !!row(fl.res.rows, 'Tank AT cover') && row(r.rows, 'Tank AT cover')?.st === row(fl.res.rows, 'Tank AT cover')?.st && /A1 \(main\): under their guns/.test(row(r.rows, 'Tank AT cover')?.reason ?? ''), row(r.rows, 'Tank AT cover')?.reason);
   check('...and the A Sqn\'s switch to the Sup posn is in the trigger table as the build timed it', r.whatIf?.triggers.some((t) => t.id.startsWith('tk-sup-') && t.min === fl.whatIf.triggers.find((x) => x.id === t.id)?.min), r.whatIf?.triggers.map((t) => t.id).join(' '));
   check('...the Sqn\'s move to the C Pen posn in the trigger table, mounted, as the build timed it', r.whatIf?.triggers.some((t) => t.id === 'tk-cpen-tkSqn' && t.route?.mounted === true && t.min === fl.whatIf.triggers.find((x) => x.id === 'tk-cpen-tkSqn')?.min), r.whatIf?.triggers.map((t) => `${t.id}:${t.min}`).join(' '));

@@ -83,7 +83,8 @@ coverSplit:
     7:  [1, 1, 3, 3]    # mangrove
     9:  [2, 1, 2, 0]    # steep slope: reverse-slope defilade
     10: [1, 1, 1, 0]
-    14: [1, 1, 2, 0]    # dunes
+    14: [1, 1, 2, 0]    # dunes: considerable cover from ground observation, some from fire, none from air (DW p 8); ground kept at 2, safety first
+    16: [0, 0, 1, 0]    # salt pan (Rann): some cover from ground observation, none from fire or air (DW p 8)
     15: [2, 1, 2, 1]    # rocky ground
     17: [2, 1, 2, 0]    # dry riverbed
     19: [0, 0, 1, 0]
@@ -294,6 +295,7 @@ profiles:
       "28": "Wheels cross a railway only at a level crossing or under a bridge."
       "21": "Even a small canal stops wheels: find a bridge or culvert."
       "24": "An earth bank over 2 m stops wheels; look for a ramp or a road cut."
+      "14": "Dunes: NO-GO for wheels kept, safety first. The book calls dune ridges partial obstacles to wheels (OoW Vol II p 68) and loose sand bogs them (DW p 60): cross only on a track."
   tracked:
     label: Tracked Vehicle
     nogo:    [4, 6, 7, 8, 9, 11, 20, 27, 41, 43, 44]
@@ -303,6 +305,7 @@ profiles:
       "41": "Below class 50: Al-Khalid (~48 t) and T-80UD (~46 t) need class 60."
       "40": "Class 50–59: Al-Zarrar crosses; Al-Khalid and T-80UD need class 60."
       "42": "No load class on record: recce the bridge before crossing with tanks."
+      "14": "High sand dunes restrict armour across them (DW p 54); tanks operate easily over soft sand."
       "21": "A distributary can be crossed where the banks are low; check the width first."
   vessel:
     label: Surface Vessel
@@ -323,6 +326,7 @@ profiles:
       "19": "Over 7° a gun cannot be laid steadily: find level ground."
       "10": "Far too steep for a gun position."
       "1":  "Trees give concealment but check crest clearance for the guns."
+      "13": "Loose sand: guns are hard to move (DW p 60); SP guns are ideal there."
       "34": "Guns on the road block the route: deploy off it."
       "23": "Soft irrigated fields: spades and platforms sink after watering."
   ad:
@@ -400,6 +404,7 @@ profileOverrides:
   entities:
     "10:1211": dismounted
     "10:121101": amphibious   # amphibious infantry
+    "10:121102": tracked      # mech infantry: tracked M113 APCs that stay in the locality (MIB pp 10-11, 170; Doctrine_Review R5)
     "10:1203": amphibious
     "10:1301": ad             # air defence
     "10:1303": gun            # field artillery

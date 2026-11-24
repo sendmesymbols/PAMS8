@@ -1,0 +1,204 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": false
+  },
+  "id": "bn-def-mtn-ridge",
+  "family": "bn-def-mtn",
+  "layout": "ridge",
+  "echelon": "16",
+  "unit": "inf-bn-mtn",
+  "basis": "D",
+  "name": "Bn Def (Mtn): ridge between nullahs, 1/3 : 2/3",
+  "frontageRow": "Battalion on extended frontages, two companies and three platoons up",
+  "subRow": null,
+  "alternates": [],
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "flanks",
+    "exposure",
+    "reserveReach",
+    "mutualSupport",
+    "fieldOfFire"
+  ],
+  "note": "A ridge line the LOC divides, the En faced on the ridge, sandwiched in nullahs: 1/3 of the troops guard the nullahs against infiltration, 2/3 defend the ridge line (MW s2 para 11 p 154). A, B Coys and D Coy less 12 Pl on the ridge in depth; C Coy's three Pls and 12 Pl on the nullahs, a Pl post forward and one back in each. Strong points with all round defence, at least a Pl strong point in each Coy posn on its most dominating feature with 30 days' staying power; tiers from the foothills or valleys to the ridge, the final battle on the ridge (MW s2 paras 8-9 p 152). Frontage on IBB's extended row (MW prints no figure).",
+  "slots": [
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "A Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": -1500
+      },
+      "rule": {},
+      "terrainRule": {
+        "prefer": [
+          "highGround",
+          "itg"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "depth",
+      "kind": "depth",
+      "sym": "25151200",
+      "label": "B Coy",
+      "echelon": "15",
+      "order": 2,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": -300
+      },
+      "rule": {},
+      "terrainRule": {
+        "prefer": [
+          "highGround",
+          "itg"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "D Coy less 12 Pl (Res)",
+      "echelon": "15",
+      "order": 2,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": 900
+      },
+      "rule": {
+        "reach": {
+          "slots": [
+            "fwdL"
+          ],
+          "withinMin": {
+            "doctrine": "cpen.coyMin"
+          }
+        }
+      },
+      "terrainRule": {
+        "vehicleAccess": false,
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "nulL1",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "7 Pl (C Coy), L nullah",
+      "echelon": "14",
+      "order": 3,
+      "shape": {
+        "rect": {
+          "acrossM": -1200,
+          "backM": -1200,
+          "wM": 300,
+          "hM": 250
+        }
+      }
+    },
+    {
+      "role": "nulL2",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "8 Pl (C Coy), L nullah",
+      "echelon": "14",
+      "order": 3,
+      "shape": {
+        "rect": {
+          "acrossM": -1200,
+          "backM": -200,
+          "wM": 300,
+          "hM": 250
+        }
+      }
+    },
+    {
+      "role": "nulR1",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "9 Pl (C Coy), R nullah",
+      "echelon": "14",
+      "order": 3,
+      "shape": {
+        "rect": {
+          "acrossM": 1200,
+          "backM": -1200,
+          "wM": 300,
+          "hM": 250
+        }
+      }
+    },
+    {
+      "role": "nulR2",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "12 Pl (D Coy), R nullah",
+      "echelon": "14",
+      "order": 3,
+      "shape": {
+        "rect": {
+          "acrossM": 1200,
+          "backM": -200,
+          "wM": 300,
+          "hM": 250
+        }
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bn HQ",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          1600
+        ]
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111402",
+      "label": "81 mm Mor",
+      "order": 6,
+      "shape": {
+        "at": [
+          0,
+          1300
+        ]
+      }
+    }
+  ]
+}

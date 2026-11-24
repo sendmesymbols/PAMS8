@@ -1,0 +1,372 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "bde-wdr-night",
+  "family": "bde-wdr",
+  "layout": "night",
+  "echelon": "18",
+  "unit": "inf-bde",
+  "basis": "D",
+  "task": "withdrawal",
+  "name": "Bde Withdrawal: by night, two Int Posns (Annex P)",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "pivot": "hq",
+  "note": "A Bde two Bns up with a depth Bn withdrawing by night (OOW3 2006 s2-s12; IBB s72-76 for each Bn). The click is the Bde HQ of the old posn; the aim is the way of withdrawal, the second click the new defensive posn (planned). Laid on OOW3 Annex P (p 75): rear parties left by each forward Bn (s9 para 5 p 45); the Bns back on their own axes to the clear line, several axes to avoid congestion and the En air, the routes converging from the outer flanks protected (s2 para 5 a p 8); covering troops delaying in front of each intermediate posn (s6 paras 9-13 pp 31-32); a flank guard on the threatened flank if required (para 24 p 34); two intermediate posns, each held by a complete unit under one Comd with more fire in front and less depth (paras 16-22 pp 33-34), each far enough beyond the one before that the En must re-deploy his field artillery (p 33; IBB p 373: the En 105 mm IFG 17.2 km, ORBAT); the depth Bn the reserve (s7 para 5 p 40); the primary demolition belt continuous across the new posn's front (s12 para 5 a p 56); the BL close to own troops and moved back often (p 67). Timings in the Annex A pattern (pp 72-73). Posns are drawn turned to face the En behind the plan.",
+  "checks": [],
+  "slots": [
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Left Bn",
+      "echelon": "16",
+      "order": 1,
+      "size": {
+        "wM": 4500,
+        "hM": 3000
+      },
+      "seed": {
+        "acrossM": -3000,
+        "backM": 2500
+      },
+      "turnDeg": 180,
+      "rule": {}
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Right Bn",
+      "echelon": "16",
+      "order": 1,
+      "size": {
+        "wM": 4500,
+        "hM": 3000
+      },
+      "seed": {
+        "acrossM": 3000,
+        "backM": 2500
+      },
+      "turnDeg": 180,
+      "rule": {}
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "Depth Bn (Res)",
+      "echelon": "16",
+      "order": 1,
+      "size": {
+        "wM": 4500,
+        "hM": 3000
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": -1800
+      },
+      "turnDeg": 180,
+      "rule": {}
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bde HQ",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rpA",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Rear Party (Left Bn)",
+      "order": 2,
+      "shape": {
+        "at": [
+          -3000,
+          2500
+        ]
+      },
+      "echelon": "15"
+    },
+    {
+      "role": "rpB",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Rear Party (Right Bn)",
+      "order": 2,
+      "shape": {
+        "at": [
+          3000,
+          2500
+        ]
+      },
+      "echelon": "15"
+    },
+    {
+      "role": "bl",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "BL",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -5250.0,
+            5000.0
+          ],
+          [
+            5250.0,
+            5000.0
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rtA",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -3000,
+            1000.0
+          ],
+          [
+            -3000,
+            -6000
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rtB",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            3000,
+            1000.0
+          ],
+          [
+            3000,
+            -6000
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rtC",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            0,
+            -3300.0
+          ],
+          [
+            0,
+            -6000
+          ]
+        ]
+      }
+    },
+    {
+      "role": "clrLine",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "PL Clear",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -5250.0,
+            -6000
+          ],
+          [
+            5250.0,
+            -6000
+          ]
+        ]
+      }
+    },
+    {
+      "role": "cov1",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "Covering Tps (delaying posn)",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -8600.0,
+          "wM": 6000,
+          "hM": 1500
+        }
+      },
+      "echelon": "16",
+      "planned": true
+    },
+    {
+      "role": "flankG",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "Flank Gd (if required)",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": -7000.0,
+          "backM": -8600.0,
+          "wM": 2000,
+          "hM": 3000
+        }
+      },
+      "echelon": "15",
+      "planned": true
+    },
+    {
+      "role": "intPosn",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "Int Posn 1 (Bn)",
+      "order": 5,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -17200,
+          "wM": 4500,
+          "hM": 2000
+        }
+      },
+      "echelon": "16",
+      "planned": true
+    },
+    {
+      "role": "ppI1",
+      "kind": "point",
+      "sym": "25131200",
+      "label": "PP 1 (Int Posn)",
+      "order": 5,
+      "shape": {
+        "at": [
+          -750.0,
+          -16200.0
+        ]
+      }
+    },
+    {
+      "role": "ppI2",
+      "kind": "point",
+      "sym": "25131200",
+      "label": "PP 2 (Int Posn)",
+      "order": 5,
+      "shape": {
+        "at": [
+          750.0,
+          -16200.0
+        ]
+      }
+    },
+    {
+      "role": "ctI",
+      "kind": "point",
+      "sym": "25130500",
+      "label": "Contact Pt (Int Posn)",
+      "order": 5,
+      "shape": {
+        "at": [
+          0,
+          -16200.0
+        ]
+      }
+    },
+    {
+      "role": "cov2",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "Covering Tps (delaying posn)",
+      "order": 5,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -26800.0,
+          "wM": 6000,
+          "hM": 1500
+        }
+      },
+      "echelon": "16",
+      "planned": true
+    },
+    {
+      "role": "intPosn2",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "Int Posn 2 (Bn)",
+      "order": 5,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -36400.0,
+          "wM": 4500,
+          "hM": 2000
+        }
+      },
+      "echelon": "16",
+      "planned": true
+    },
+    {
+      "role": "newMain",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "New Main Posn (Bde)",
+      "order": 6,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -57100.0,
+          "wM": 10000,
+          "hM": 5000
+        }
+      },
+      "planned": true
+    },
+    {
+      "role": "dmlBelt",
+      "kind": "line",
+      "sym": "25290100",
+      "label": "Pri Dml Belt",
+      "order": 6,
+      "planned": true,
+      "shape": {
+        "pts": [
+          [
+            -5000.0,
+            -54400.0
+          ],
+          [
+            5000.0,
+            -54400.0
+          ]
+        ]
+      }
+    }
+  ]
+}
