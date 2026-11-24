@@ -193,7 +193,7 @@
       "mountainTest": { "basis": "E", "rule": "Elevation range within 1 km of the LZ of 200 m or more (the book's NO-GO relief, IPB p 10): the mountain rule applies." },
       "measure": { "basis": "E", "rule": "Slope from the 30 m elevation over 60 m; the LZ's slope is the 90th percentile of its cells (the 30 m elevation is noisy)." }
     },
-    "approach": { "basis": "T", "src": "FM 3-21.38 (obstacle clearance ratio)", "ratio": 10, "text": "10 to 1: an obstacle h metres high must be 10 h metres from the LZ's edge on the approach and departure; one clear direction at least, two opposite ones best (wind not known)." },
+    "approach": { "basis": "T", "src": "FM 3-21.38 (obstacle clearance ratio)", "ratio": 10, "text": "10 to 1: an obstacle h metres high must be 10 h metres from the LZ's edge on the approach and departure; one clear direction at least, two opposite ones best; with the wind grid, the run-in from downwind and the departure upwind are read (wind.lz)." },
     "dz": {
       "basis": "T", "src": "DAFMAN 13-217 Drop Zone and Landing Zone Operations (personnel DZ minimum, one jumper)", "widthM": 550, "lengthM": 550,
       "note": "600 x 600 yd for one jumper; a stick needs a longer DZ (the per-jumper increment is not confirmed). MW p 258: DZs scarce in mountains (level, free of rocks and trees)."
@@ -305,6 +305,18 @@
       "sampleM": 50
     }
   },
+  "wind": {
+    "note": "The wind (added 2026-11-24): where it usually comes from, how steady it is and whether it turns by night, from the bundle's wind grid (ERA5 1990-2019 normal at 0.25 degrees, 00 / 06 / 12 / 18 UTC; sources.lock era5_wind). WorldClim (the climate grid) still gives the mean speed Annex A is judged on. A normal, not a forecast: Met gives the wind on the day.",
+    "steadyMin": { "value": 0.3, "basis": "E", "decided": "Steadiness = |mean wind vector| / mean speed. Under 0.3 the wind blows from many sides: it is called variable, no direction is named and nothing is decided by it.", "searched": "IPB Annex A pp 19-20 (speed limits only), IBB p 109, OoW Vol II p 93, FM 3-09 (2024), ATP 2-01.3: no steadiness figure." },
+    "steadyWord": { "value": 0.6, "basis": "E", "decided": "From 0.6 the wind is called steady, between 0.3 and 0.6 'mostly' from its direction. A word for the reader, it decides nothing.", "searched": "as steadyMin" },
+    "lightKt": { "value": 3, "basis": "E", "decided": "A mean under 3 kt is light: any approach clear by 10 : 1 serves an LZ; the direction is still named.", "searched": "IPB Annex A p 20 gives upper limits only (Avn < 20 kt GO, Airborne < 10 kt GO); FM 3-21.38 not on disk." },
+    "turnDeg": { "value": 90, "basis": "E", "decided": "Day (local 06:00-18:00) and night directions 90 degrees or more apart, both named: the wind turns, and both are shown.", "searched": "MW (valley winds) gives no figure." },
+    "lz": { "basis": "T", "src": "FM 3-21.38 Pathfinder Operations (helicopters land and take off into the wind)", "unverified": true, "rule": "The run-in comes from the downwind side of the LZ and the departure leaves upwind: those two sectors are read on the 10 : 1 approach test (air.approach); a light wind (lightKt) lets any clear approach serve; a variable one keeps the rule of two opposite approaches.", "searched": "FM 3-21.38 is not on disk; fetched 2026-11-24: bits.de 404, irp.fas.org 202 (bot check), marines.mil 403. Pakistani books on disk (IBB, OoW I-II, DW, MW, IPB): no LZ wind rule." },
+    "dz": { "basis": "E", "decided": "Jumpers drift downwind: the release point lies upwind of the DZ and its downwind edge needs clear ground. No drift distance is worked out (the drift formula and exit height are not on disk); the speed is judged on Annex A Airborne (IPB p 20).", "searched": "DAFMAN 13-217 and FM 3-21.220 not on disk." },
+    "smoke": { "basis": "D", "src": "IBB p 109", "refs": [{ "book": "IBB", "page": "109", "quote": "Wind direction must always be kept in view when planning a smoke screen", "role": "rule" }] },
+    "nbc": { "basis": "D", "src": "OOW2 p 93", "refs": [{ "book": "OOW2", "page": "93", "quote": "released at a substantial distance upwind of the target area", "role": "context" }], "decided": "E: proforma g names each avenue's heading against the wind (behind it, into it, across it); the sign stays the user's, as the book's g row is judged." }
+  },
+
   "rates": {
     "basis": "D", "src": "IPB p 18",
     "footKmh": { "go": [4, 3.2], "slow": [2.4, 1.6], "nogo": [1.0, [0.1, 0.5]] },

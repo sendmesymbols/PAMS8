@@ -740,12 +740,13 @@
     },
     "reserveMin": {
       "15": { "doctrine": "cpen.coyMin" },
-      "16": { "doctrine": "cpen.coyMin" },
+      "16": { "doctrine": "cpen.bnMin" },
       "18": {
         "value": 120,
         "basis": "D",
-        "src": "IBB p 279 margin (Source: ARIB): Bde Res (Local C Attk) 2 - 3 hrs (the lower figure)",
-        "refs": [{ "book": "IBB", "page": "279", "quote": "Bde Res: 2 - 3 hrs", "role": "rule", "checked": { "status": "ok", "pdfPage": 296, "on": "2026-11-23", "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf" } }]
+        "src": "IBB p 279 margin (Source: ARIB): Bde Res (Local C Attk) 2 - 3 hrs (the lower figure); DW p 27: reserves committed within 2-6 hours",
+        "note": "The 2-3 h is a reader's typed margin note in the Literature copy of IBB quoting ARIB, not AP 8360's own text (the official scan has no margin); DW p 27 backs the order of time.",
+        "refs": [{ "book": "DW", "page": "27", "quote": "within 2 -- 6 hours", "role": "rule" }, { "book": "IBB", "page": "279", "quote": "Bde Res: 2 - 3 hrs", "role": "context", "checked": { "status": "ok", "pdfPage": 296, "on": "2026-11-23", "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf" } }]
       },
       "21": {
         "value": 240,
@@ -1186,7 +1187,7 @@
     "coyMin": {
       "value": 30,
       "basis": "D",
-      "src": "IBB S58 para 12b p 279 (PDF 296): a local counter-attack (company level) 'mounted immediately, within half an hour.'",
+      "src": "IBB S53 para 12b p 279 (PDF 296): a local counter-attack (company level) 'mounted immediately, within half an hour.'",
       "refs": [
         {
           "book": "IBB",
@@ -1205,13 +1206,19 @@
     "bnMin": {
       "value": 60,
       "basis": "D",
-      "src": "IBB p 279 (PDF 296), margin (Source: ARIB): 'Coy Depth Pl (Local C Attk): 30 mins; Bn Res (Local C Attk): 1 hr;'",
+      "src": "IBB S56 para 24 c p 306: the battalion counter-attack must be launched within an hour (the Coy's within 30 minutes); the same in the p 279 margin note (Source: ARIB, a reader's annotation, not AP 8360 text)",
       "refs": [
+        {
+          "book": "IBB",
+          "page": "306",
+          "quote": "the battalion counter-attack must be launched within an hour",
+          "role": "rule"
+        },
         {
           "book": "IBB",
           "page": "279",
           "quote": "Bn Res (Local C Attk): 1 hr",
-          "role": "rule",
+          "role": "context",
           "checked": {
             "status": "ok",
             "pdfPage": 296,
