@@ -36,7 +36,7 @@ export interface ScopeOcokaScene {
     side: 'enemy' | 'own';
     aas: Array<{ id: string; viable: boolean; main: boolean; line: Float64Array; fill: Float64Array; stroke: Float64Array; inner: Float64Array | null }>;
     mcs: Float64Array[];
-    narrows: Array<{ at: XY; widthM: number; kind: 'crossing' | 'slow' | 'narrow' }>;
+    narrows: Array<{ at: XY; widthM: number; kind: 'crossing' | 'slow' | 'narrow' | 'steep' }>;
     crossovers: Array<{ from: XY; to: XY }>;
     /** Decision support (extended.ipb.decision): TAIs and decision points. */
     dec: { tais: XY[]; dps: Array<{ at: XY; n: number; catk: boolean }> } | null;

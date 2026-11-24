@@ -123,7 +123,7 @@ const viableOf = (v: IpbApchView): IpbApchAa[] => v.aas.filter((a) => a.viable);
 const loneOf = (v: IpbApchView): IpbApchAa[] => v.aas.filter((a) => !a.viable);
 const sideWord = (v: IpbApchView): string => (v.side === 'enemy' ? 'En' : 'Own');
 const colourOf = (v: IpbApchView, a: IpbApchAa): string => (!a.viable ? LONE : (v.side === 'enemy' ? SHADES_EN : SHADES_OWN)[Math.max(0, a.rank - 1) % 6]);
-const narrowsWord = (n: IpbApchAa['narrows'][number]): string => (n.kind === 'crossing' ? `Br / ford ${fmtDistance(n.widthM)}` : n.kind === 'slow' ? `SLOW-GO ${fmtDistance(n.widthM)}` : `Gap ${fmtDistance(n.widthM)}`);
+const narrowsWord = (n: IpbApchAa['narrows'][number]): string => (n.kind === 'crossing' ? `Br / ford ${fmtDistance(n.widthM)}` : n.kind === 'slow' ? `SLOW-GO ${fmtDistance(n.widthM)}` : n.kind === 'steep' ? `Climb ${n.slopePct ?? ''} %` : `Gap ${fmtDistance(n.widthM)}`);
 /**
  * How many corridors of the avenue's width it holds side by side, as the card's own line says it: an approach onto the
  * Obj is kept even when narrower than one (the engine forces it viable), so `viable` alone does not mean two.

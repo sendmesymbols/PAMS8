@@ -155,7 +155,28 @@ const meanX = (pts, y0, y1) => {
   // Behind a 40 m hill the same LZ zone is hidden from him: LZ 1 is chosen in the hill's shadow.
   const hill = grid(({ elev }) => { for (let y = 25; y < 35; y++) for (let x = 0; x < N; x++) elev[y * N + x] = 240; });
   const rh = run(hill, { observers: [{ x: 150, y: 5, eyeM: 2, reachM: 6000, label: 'En' }] });
-  check('a hill between the observer and the zone: LZ 1 is hidden behind it', rh.lzs[0]?.seenP !== null && rh.lzs[0]?.seenP < 0.2 && rh.lzs[0].y > 35, rh.lzs[0] ? `${rh.lzs[0].why} · y ${rh.lzs[0].y.toFixed(0)}` : 'none');
+  // On the hill's top (behind its crest) or behind the hill, never in front of it (y < 25, toward him).
+  check('a hill between the observer and the zone: LZ 1 is hidden behind its crest', rh.lzs[0]?.seenP !== null && rh.lzs[0]?.seenP < 0.2 && rh.lzs[0].y >= 25, rh.lzs[0] ? `${rh.lzs[0].why} · y ${rh.lzs[0].y.toFixed(0)}` : 'none');
+}
+{
+  // Review fixes (23 Nov 2026). Ground rising beside the LZ counts in the 10 : 1 test: a 690 m wide flat corridor between
+  // 50 m walls (x 128-150 in the zone): no LZ has its east or west approach clear (at most 530 m to a wall 62 m up, which needs 620 m).
+  // The walls are wooded high ground (class 1, 12 m trees, 50 m up): no LZ on them, and 62 m to clear from the corridor.
+  const walls = grid(({ elev, cls }) => { for (let y = 0; y < 110; y++) for (let x = 0; x < N; x++) if (x < 128 || x > 150) { elev[y * N + x] = 250; cls[y * N + x] = 1; } });
+  const rw = run(walls);
+  check('ground rising beside the LZ blocks the 10 : 1 approach: no east / west approach between 50 m walls', rw.lzs.length >= 1 && rw.lzs.every((z) => !z.approaches.includes(90) && !z.approaches.includes(270) && (z.approaches.includes(0) || z.approaches.includes(180))), rw.lzs.map((z) => `${z.id} ${z.approaches.join('/')}`).join(' | '));
+  // An existing helipad is favoured for own LZs only: for the enemy's it ranks by the ground, with a caution.
+  const ex = [{ x: 230, y: 60, kind: 'helipad', label: 'Helipad', name: 'Test' }];
+  const re = run(grid(), { existing: ex, enemyLz: true });
+  const hp = re.lzs.find((z) => z.existing);
+  check("the enemy's LZs: an existing helipad is not favoured (ranks by the ground) and carries a caution", re.lzs[0] && !re.lzs[0].existing && (!hp || hp.caution.some((c) => /not favoured/.test(c))), re.lzs.map((z) => `${z.id}${z.existing ? ' ' + z.existing : ''}`).join(', '));
+  // His AD on the straight line, 3 km range: own air avenue goes round its ring; without it the way is straight.
+  const ra = run(grid(), { hisAd: [{ x: 150, y: 150, rangeM: 3000, label: 'En AD' }] });
+  const a1 = ra.routes[0];
+  const dAd = Math.min(...a1.pts.map(([x, y]) => Math.hypot(x - 150, y - 150) * RES));
+  check("his AD site on the line: the air avenue keeps out of its ring (under his AD under 10 %), a note names it", dAd >= 2700 && a1.adPct < 10 && ra.notes.some((n) => /AD site/.test(n)), `${dAd.toFixed(0)} m · under AD ${a1.adPct.toFixed(0)} %`);
+  const r0 = run(grid());
+  check('without his AD the way is straight and says nothing of AD', r0.routes[0].adPct === 0 && !/AD/.test(r0.routes[0].why));
 }
 {
   // Bigger area (600 x 900 cells, about 18 x 27 km) with 6 observers: in time.

@@ -113,6 +113,8 @@ function airPicture(o: GroundGuideOcoka, v: IpbApchView, av: IpbAirView, wpx = 3
   const col = airCol(av);
   const k = Math.cosh(((y0 + y1) / 2) / 6378137);
   for (const a of av.ad) svgEl('circle', { cx: X(a.at).toFixed(1), cy: Y(a.at).toFixed(1), r: (av.adRangeM * k * s).toFixed(1), fill: AD, 'fill-opacity': a.rank === 1 ? 0.07 : 0.035, stroke: AD, 'stroke-opacity': 0.55, 'stroke-width': 1, 'stroke-dasharray': '2 3' }, g);
+  // The other side's AD sites read off the map: the rings the avenues pay to cross.
+  for (const d of av.hisAd ?? []) svgEl('circle', { cx: X(d.at).toFixed(1), cy: Y(d.at).toFixed(1), r: (d.rangeM * k * s).toFixed(1), fill: 'none', stroke: airCol(av), 'stroke-opacity': 0.6, 'stroke-width': 1, 'stroke-dasharray': '1 3' }, g);
   for (const o2 of av.obstructions) {
     const cx = X(o2.at), cy = Y(o2.at);
     svgEl('path', { d: `M${cx.toFixed(1)} ${(cy - 4).toFixed(1)}l2.6 6.5h-5.2z`, fill: '#ffd27a', stroke: '#0b0d10', 'stroke-width': 0.8 }, g);
@@ -272,6 +274,7 @@ export function airTiles(o: GroundGuideOcoka): HTMLElement[] {
   };
   k(airCol(av), `${sideWord(av)} air Apch / LZ`);
   k(AD, `${av.side === 'enemy' ? 'own' : 'en'} AD, ${km(av.adRangeM)}`);
+  if (av.hisAd?.length) k(airCol(av), `${av.side === 'enemy' ? 'own' : 'en'} AD on the map (${av.hisAd.length}): the avenues pay to cross`);
   if (av.side === 'enemy') k(OWN, 'OP over an en LZ');
   k('#ffd27a', 'mast / tower');
   out.push(tile(`${sideWord(av)} Air Apchs, LZ / DZ, AD Sites`, airPicture(o, v, av), key));

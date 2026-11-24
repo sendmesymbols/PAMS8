@@ -1990,7 +1990,7 @@ export default class GroundGuide {
     const thr = over.threatDeg !== undefined ? { allRound: false, bearingDeg: over.threatDeg } : resolveThreat(o, this._opts.footprint.bearingDeg, at, this._threatMerc());
     const readFor = over.readFor ?? ip.readFor;
     const side: 'enemy' | 'own' = readFor === 'defence' ? 'enemy' : 'own';
-    const mover: IpbMover = over.mover ?? (ip.mover !== 'auto' ? ip.mover : readFor === 'defence' ? 'armour' : ipbMoverOf(this._liveProfile() ?? this._lastArmedProfile ?? 'dismounted', this._ipbRules));
+    let mover: IpbMover = over.mover ?? (ip.mover !== 'auto' ? ip.mover : readFor === 'defence' ? 'armour' : ipbMoverOf(this._liveProfile() ?? this._lastArmedProfile ?? 'dismounted', this._ipbRules));
     const month = over.month ?? resolveMonth(this._opts.going.month);
     const k = Math.cosh(at[1] / 6378137); // Web Mercator metres per ground metre here
     const snap = snapStep(F.w / 4, at[1]);
@@ -2009,6 +2009,17 @@ export default class GroundGuide {
       return [dx * A[0] + dy * A[1], dx * Rr[0] + dy * Rr[1]];
     };
     const fromFrame = (aM: number, qM: number): MercXY => pt(aM, qM);
+    // The enemy's mover (his options, mover auto): read off the en symbols in the area, not always armour (review fix,
+    // 23 Nov 2026); armour when none is on the map, and the reading says which.
+    let moverNote: string | null = null;
+    if (readFor === 'defence' && over.mover === undefined && ip.mover === 'auto') {
+      const em = this._enemyMoverIn((p) => {
+        const [al, ac] = toFrame(p);
+        return al >= 0 && al <= lengthM && Math.abs(ac) <= F.w / 2;
+      });
+      if (em) ((mover = em.mover), (moverNote = em.note));
+      else moverNote = 'His mover taken as armour: no en symbol in the area read (extended.ipb.mover sets it)';
+    }
     const obj = ip.apchEnd === 'through' || thr.allRound ? null : this._apchObjective(at, sidc, side, toFrame, lengthM, F.w, mcWidthM, k, over.objectiveAt ?? null, over.objectiveLabel);
     // Obstacles drawn on the map inside the area (minefields, ditches, wire; lanes through them): part of the coding.
     const obstacles = this._ipbObstacles(side, (p) => {
@@ -2030,7 +2041,30 @@ export default class GroundGuide {
     const r10 = (p: MercXY | null | undefined): string => (p ? `${Math.round(p[0] / 10)},${Math.round(p[1] / 10)}` : '');
     const objKey = obj ? [r10(obj.at), Math.round(obj.frontageM), Math.round(obj.depthM), r10(obj.from?.at), Math.round(obj.from?.halfWidthM ?? 0), ip.fupM, ip.turn ? 't' : ''].join(',') : '';
     const key = [codeKey, ech ?? '', ip.apchEnd, objKey].join('|');
-    return { hq, fk, note, row, F, mcWidthM, spacingM, thr, side, mover, month, anchor, start, axisDeg, lengthM, corners, k, key, codeKey, obj, toFrame, fromFrame, obstacles, ech: ech ? (ECH_SHORT[ech] ?? null) : null, threatAssumed: !(o.threat === 'point' && tAt) && over.threatDeg === undefined };
+    return { hq, fk, note, moverNote, row, F, mcWidthM, spacingM, thr, side, mover, month, anchor, start, axisDeg, lengthM, corners, k, key, codeKey, obj, toFrame, fromFrame, obstacles, ech: ech ? (ECH_SHORT[ech] ?? null) : null, threatAssumed: !(o.threat === 'point' && tAt) && over.threatDeg === undefined };
+  }
+
+  /**
+   * The enemy's mover from the hostile land symbols in an area: the heaviest mover a third or more of them use (a mixed
+   * force moves as its armour does), with the count for the reading's notes; null when none is in the area.
+   */
+  private _enemyMoverIn(inArea: (p: MercXY) => boolean): { mover: IpbMover; note: string } | null {
+    const count: Record<IpbMover, number> = { armour: 0, mech: 0, dismounted: 0 };
+    let n = 0;
+    for (const g of this._placedGraphics()) {
+      if (g.geometry?.type !== 'point') continue;
+      const s = normaliseSidc(graphicSidc(g));
+      if (!s || s.length !== 20 || (s[3] !== '5' && s[3] !== '6')) continue;
+      const set = s.substring(4, 6);
+      if (set !== '10' && set !== '15') continue;
+      const p = toMercatorShape(g.geometry)?.parts[0]?.[0] as MercXY | undefined;
+      if (!p || !inArea(p)) continue;
+      count[ipbMoverOf(resolveProfile(s, this._rules), this._ipbRules)]++;
+      n++;
+    }
+    if (!n) return null;
+    const mover: IpbMover = count.armour >= n / 3 ? 'armour' : count.mech >= n / 3 ? 'mech' : 'dismounted';
+    return { mover, note: `His mover ${mover}: from ${n} en symbol${n > 1 ? 's' : ''} in the area read (${count.armour} armour, ${count.mech} mech, ${count.dismounted} dismounted)` };
   }
 
   /**
@@ -2373,6 +2407,12 @@ export default class GroundGuide {
       spacingM: fr.spacingM,
       sectorDeg: this._opts.extended.sectorDeg,
       objective,
+      // The slope judged along each way's own heading (review fix, 23 Nov 2026) and the book's day rates in the rank.
+      elev: { data: grid.elev, w: grid.w, h: grid.h, slowPct: this._ipbRules.slowUphillPct, nogoPct: this._ipbRules.nogoUphillPct },
+      rates: (() => {
+        const dr = decRatesFrom(IPB_DOCTRINE, fr.mover);
+        return { goKmh: dr.go[0], slowKmh: dr.slow[0] };
+      })(),
     });
     const toM = (x: number, y: number): MercXY => pxToMerc(grid.px0 + coding.x0 + x, grid.py0 + coding.y0 + y, z, ts);
     const pairs = (f: Float32Array): MercXY[] => {
@@ -2411,9 +2451,11 @@ export default class GroundGuide {
         twoPct: a.twoPct,
         onePct: a.onePct,
         goPct: a.goPct,
+        steepPct: a.steepPct,
+        hoursDay: a.hoursDay,
         medianWidthM: a.medianWidthM,
         minWidthM: a.minWidthM,
-        narrows: a.narrows.map((q) => ({ at: toM(q.x, q.y), alongM: q.alongM, widthM: q.widthM, kind: q.kind })),
+        narrows: a.narrows.map((q) => ({ at: toM(q.x, q.y), alongM: q.alongM, widthM: q.widthM, kind: q.kind, ...(q.slopePct !== undefined ? { slopePct: q.slopePct } : {}) })),
         waterLines: a.waterLines,
         why: a.why,
         sideM: a.sideM,
@@ -2463,7 +2505,7 @@ export default class GroundGuide {
     const end = ip.apchEnd;
     const LET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
     let aas: IpbApchAa[];
-    const notes = [...r.notes, ...(fr.note ? [fr.note] : [])];
+    const notes = [...r.notes, ...(fr.note ? [fr.note] : []), ...(fr.moverNote ? [fr.moverNote] : [])];
     // The obstacles read, who each stops, and (own obstacles, the en's options) whether own fire covers it (ATP 4-14).
     const obsView = this._ipbObstacleNotes(fr, base);
     if (obsView.note) notes.push(obsView.note);
@@ -2969,6 +3011,32 @@ export default class GroundGuide {
    * ranges from the catalogue (`Rng`: anti-armour against an armoured mover, else direct fire; small arms 300 m when
    * none), and, for own Posns, the symbol being placed. At most 16, nearest the area's middle first.
    */
+  /** One side's AD symbols in and round an area, with the catalogue's effective range against aircraft (`Rng.ad`). */
+  private _ipbAdSites(v: IpbApchView, side: 'own' | 'enemy'): Array<{ at: MercXY; rangeM: number; label: string }> {
+    const want = side === 'own' ? ['2', '3'] : ['5', '6'];
+    const k = Math.cosh(v.anchor[1] / 6378137);
+    const xs = v.frame.map((p) => p[0]), ys = v.frame.map((p) => p[1]);
+    const pad = this._airRules.adRangeM * k;
+    const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
+    const out: Array<{ at: MercXY; rangeM: number; label: string }> = [];
+    for (const g of this._placedGraphics()) {
+      if (g.geometry?.type !== 'point') continue;
+      const s = normaliseSidc(graphicSidc(g));
+      if (!s || s.length !== 20 || !want.includes(s[3])) continue;
+      const set = s.substring(4, 6);
+      if (set !== '10' && set !== '15') continue;
+      const at = toMercatorShape(g.geometry)?.parts[0]?.[0];
+      if (!at || at[0] < x0 || at[0] > x1 || at[1] < y0 || at[1] > y1) continue;
+      const ck = catalogKey(s);
+      const found = ck ? this._rangeLookup(ck) : null;
+      const ad = (found?.rng as any)?.ad;
+      if (!Array.isArray(ad)) continue;
+      const rangeM = Number(ad[1]) || Number(ad[2]) || this._airRules.adRangeM;
+      out.push({ at: [at[0], at[1]], rangeM, label: found?.name ?? g.attributes?.drawEssentials?.SYM_NAME ?? 'AD' });
+    }
+    return out.slice(0, 24);
+  }
+
   private _ipbPosns(v: IpbApchView, side: 'own' | 'enemy'): Array<{ at: MercXY; label: string; effM: number; obsM: number; eyeM: number; spot: boolean; assumed: boolean }> {
     const want = side === 'own' ? ['2', '3'] : ['5', '6'];
     const k = Math.cosh(v.anchor[1] / 6378137);
@@ -3829,6 +3897,11 @@ export default class GroundGuide {
       lines.push({ kind: l.key, name: tidyName(l.a.n, F!.kindLabel(l.key)) ?? (l.a.r ? String(l.a.r) : null), pts });
     }
     const lzZone = enemy ? { fromM: Math.max(0, anchorAlong - 1000), toM: lengthM } : { fromM: Math.min(lengthM - 1500, anchorAlong + 2000), toM: lengthM };
+    // The other side's AD symbols in the area: a cost on the air avenues (review fix, 23 Nov 2026).
+    const hisAd = this._ipbAdSites(v, enemy ? 'own' : 'enemy').map((d) => {
+      const [x, y] = toPx(d.at);
+      return { x, y, rangeM: d.rangeM, label: d.label };
+    });
     let objective: { x: number; y: number };
     if (enemy) {
       const [x, y] = toPx(v.anchor);
@@ -3853,6 +3926,7 @@ export default class GroundGuide {
       obstructions,
       lines,
       existing,
+      hisAd,
       lzZone,
       // AD against the air avenues sits on the defender's side: own ground from 6 km forward of the spot (the enemy's air
       // avenues), the enemy's ground from 1 km beyond it (own air avenues).
@@ -3902,7 +3976,8 @@ export default class GroundGuide {
       lpM: R.lpSizeM[ip.lzClass] ?? 80,
       lzSideM: r.lzSideM,
       adRangeM: R.adRangeM,
-      routes: r.routes.map((q) => ({ id: q.id, rank: q.rank, line: q.pts.map(([x, y]) => toM(x, y)), to: q.to, lengthM: q.lengthM, seenPct: q.seenPct, valleyPct: q.valleyPct, parallelPct: q.parallelPct, buaPct: q.buaPct, follows: q.follows, wires: q.wires, obstructionsNear: q.obstructionsNear, why: q.why, profile: q.profile })),
+      routes: r.routes.map((q) => ({ id: q.id, rank: q.rank, line: q.pts.map(([x, y]) => toM(x, y)), to: q.to, lengthM: q.lengthM, seenPct: q.seenPct, valleyPct: q.valleyPct, parallelPct: q.parallelPct, buaPct: q.buaPct, adPct: q.adPct, follows: q.follows, wires: q.wires, obstructionsNear: q.obstructionsNear, why: q.why, profile: q.profile })),
+      hisAd: hisAd.map((d) => ({ at: toM(d.x, d.y), rangeM: d.rangeM, label: d.label })),
       lzs: r.lzs.map(zone),
       dzs: r.dzs.map(zone),
       ad: r.ad.map((q) => ({ id: q.id, rank: q.rank, at: toM(q.x, q.y), seenM: q.seenM, longM: q.longM, flankM: q.flankM, bottom: q.bottom, kinds: q.kinds, routes: q.routes, why: q.why })),

@@ -483,12 +483,16 @@ export interface IpbAirView {
     valleyPct: number;
     parallelPct: number;
     buaPct: number;
+    /** Share of its length within the other side's AD range, %. */
+    adPct?: number;
     follows: Array<{ kind: string; name: string | null; lengthM: number }>;
     wires: number;
     obstructionsNear: Array<{ kind: string; label: string; heightM: number }>;
     why: string;
     profile: Array<{ alongM: number; groundM: number; topM: number; seen: boolean; crest: boolean }>;
   }>;
+  /** The other side's AD sites read off the map (their effective range): the avenues pay to cross their rings. */
+  hisAd?: Array<{ at: MercXY; rangeM: number; label: string }>;
   lzs: IpbAirZone[];
   dzs: IpbAirZone[];
   ad: Array<{ id: string; rank: number; at: MercXY; seenM: number; longM: number; flankM: number; bottom: number; kinds: Array<'long' | 'flank' | 'bottom'>; routes: string[]; why: string }>;
@@ -627,9 +631,14 @@ export interface IpbApchAa {
   twoPct: number;
   onePct: number;
   goPct: number;
+  /** Share of its length climbing at the book's SLOW-GO figure or worse along the way, %. */
+  steepPct?: number;
+  /** Hours along it at the book's day rates for the mover; null when the rates are not given. */
+  hoursDay?: number | null;
   medianWidthM: number;
   minWidthM: number;
-  narrows: Array<{ at: MercXY; alongM: number; widthM: number; kind: 'crossing' | 'slow' | 'narrow' }>;
+  /** A 'steep' narrows is a climb along the way (its `slopePct`). */
+  narrows: Array<{ at: MercXY; alongM: number; widthM: number; kind: 'crossing' | 'slow' | 'narrow' | 'steep'; slopePct?: number }>;
   waterLines: number;
   why: string[];
   /** Mean place across the area, metres (negative: left as the mover sees). */

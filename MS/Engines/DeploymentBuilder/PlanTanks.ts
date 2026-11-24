@@ -374,7 +374,7 @@ export function addTankTimes(h: HSum, res: SolveResult, f: FitFrame | null, g: P
     rows.push(goingRow(w, 'the Sqn\'s way to its fire posns'));
   }
   // called again on the same sum (a re-fit): the tanks' earlier steps are replaced, never doubled
-  h.steps = [...h.steps.filter((x) => !/^Tanks /.test(x.label)), ...steps].sort((a, b) => a.at - b.at);
+  h.steps = [...h.steps.filter((x) => !/^Tanks /.test(x.label) && !/^Sqn leaves its harbour/.test(x.label)), ...steps].sort((a, b) => a.at - b.at);
   return rows;
 }
 

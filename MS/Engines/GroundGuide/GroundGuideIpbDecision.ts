@@ -27,7 +27,7 @@ export interface DecAaIn {
   endM: number;
   /** The going along it, in order; `riseM` the ascent inside the stretch (metres climbed, descents not counted). */
   going: Array<{ fromM: number; toM: number; cls: DecCls; riseM?: number }>;
-  narrows: Array<{ alongM: number; widthM: number; kind: 'crossing' | 'slow' | 'narrow' }>;
+  narrows: Array<{ alongM: number; widthM: number; kind: 'crossing' | 'slow' | 'narrow' | 'steep' }>;
   /** Where own depth localities stand along it (the rearmost own Posn beside it), metres; null when none. */
   depthM: number | null;
 }
@@ -203,7 +203,7 @@ export function decide(a: DecArgs): DecResult {
     const fn = timeAt.get(aa.id)!;
     raw.push({ aa: aa.id, alongM: aa.startM, kind: 'entry', shows: SHOWS.entry, earliestH: fn(aa.startM, false), latestH: fn(aa.startM, true), tai: null, widthM: null });
     for (const nw of aa.narrows) {
-      const kind: DecNai['kind'] = nw.kind === 'crossing' ? 'crossing' : nw.kind === 'slow' ? 'slow' : 'narrows';
+      const kind: DecNai['kind'] = nw.kind === 'crossing' ? 'crossing' : nw.kind === 'slow' || nw.kind === 'steep' ? 'slow' : 'narrows';
       raw.push({ aa: aa.id, alongM: nw.alongM, kind, shows: SHOWS[kind], earliestH: fn(nw.alongM, false), latestH: fn(nw.alongM, true), tai: null, widthM: nw.widthM });
     }
   }

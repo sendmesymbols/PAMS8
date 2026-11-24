@@ -20,6 +20,10 @@
  *     flank (beside it) and bottom (below where it crosses a crest) shots, on a terrain line of sight to an aircraft at
  *     the bottom of the band (AD coverage never overstated).
  *   - **Flight profile** of each avenue: the ground, the highest obstacle beside it, the stretch the other side may see.
+ *   - Review fixes (23 Nov 2026): the 10 : 1 approach test counts the ground rising beside the LZ as well as what
+ *     stands on it (a spur 40 m above the LZ within 400 m blocks that approach); an existing helipad or airfield is
+ *     favoured for own LZs only (the enemy does not land on an obvious, watched site in your rear); the other side's AD
+ *     sites on the map (`ad`: the AD symbols with their effective range) are a cost on the air avenues, as his eyes are.
  */
 
 import { analyseSight, bearingsFor, fineStep, sightTo, type OcokaGrid, type SightTables } from './GroundGuideOcoka';
@@ -71,6 +75,8 @@ export interface AirRules {
     alternates: number;
     detour: number;
     overlap: number;
+    /** Added to a cell within the other side's AD range (basis E). */
+    ad: number;
   };
 }
 
@@ -145,6 +151,7 @@ export function airRulesFrom(doc: any): AirRules {
       alternates: num(C.alternates, 3),
       detour: num(C.detour, 1.6),
       overlap: num(C.overlap, 0.6),
+      ad: num(C.ad, 3),
     },
   };
 }
@@ -172,6 +179,13 @@ export interface AirLine {
   name: string | null;
   pts: Array<[number, number]>;
 }
+/** One of the other side's AD sites read off the map (grid pixels) and its effective range against helicopters. */
+export interface AirHisAd {
+  x: number;
+  y: number;
+  rangeM: number;
+  label: string;
+}
 /** An existing helipad, airfield, landing ground or road runway (grid pixels). */
 export interface AirExisting {
   x: number;
@@ -194,6 +208,8 @@ export interface AirArgs {
   obstructions: AirObstruction[];
   lines: AirLine[];
   existing: AirExisting[];
+  /** The other side's AD sites on the map: ground within their range costs more to fly over. */
+  hisAd?: AirHisAd[];
   /** Where LZ / DZ are looked for: distance along the area from its start edge, metres. */
   lzZone: { fromM: number; toM: number };
   /** Where AD sites are looked for (the side that defends against the air avenues), along the area; default all of it. */
@@ -256,6 +272,8 @@ export interface AirRoute {
   valleyPct: number;
   parallelPct: number;
   buaPct: number;
+  /** Share of its length within the other side's AD range, %. */
+  adPct: number;
   follows: Array<{ kind: string; name: string | null; lengthM: number }>;
   wires: number;
   obstructionsNear: Array<{ kind: string; label: string; heightM: number }>;
@@ -453,6 +471,7 @@ export function airIpb(a: AirArgs): AirResult {
   const wireC = new Uint8Array(N);
   const nearObs = new Uint8Array(N);
   const parC = new Uint8Array(N);
+  const adC = new Uint8Array(N);
   const valley = new Uint8Array(N);
   const followC = new Map<number, number[]>(); // cell -> parallel line indices
   for (let i = 0; i < N; i++) {
@@ -516,6 +535,20 @@ export function airIpb(a: AirArgs): AirResult {
       }
     }
   });
+  // The other side's AD: every cell within a site's range.
+  const hisAd = (a.hisAd ?? []).filter((d) => d.rangeM > 0);
+  for (const d of hisAd) {
+    const rc = d.rangeM / C.cellM;
+    const i0 = Math.floor((d.x - X0) / cs), j0 = Math.floor((d.y - Y0) / cs);
+    const rr0 = Math.ceil(rc) + 1;
+    for (let v = -rr0; v <= rr0; v++)
+      for (let u = -rr0; u <= rr0; u++) {
+        const i = i0 + u, j = j0 + v;
+        if (i < 0 || j < 0 || i >= W || j >= Hc) continue;
+        const k = j * W + i;
+        if (Math.hypot(cxOf(k) - d.x, cyOf(k) - d.y) * res <= d.rangeM) adC[k] = 1;
+      }
+  }
   const nr = Math.max(1, Math.round(R.nearM / C.cellM));
   for (const o of obs) {
     const k = cellOf(o.x, o.y);
@@ -562,7 +595,7 @@ export function airIpb(a: AirArgs): AirResult {
       cost[k] = Infinity;
       continue;
     }
-    const base = 1 + C.seen * expo[k] + (nearObs[k] ? C.obstruction : 0) + (wireC[k] ? C.wire : 0) + C.bua * buaC[k] + (noData[k] ? C.noData : 0);
+    const base = 1 + C.seen * expo[k] + (nearObs[k] ? C.obstruction : 0) + (wireC[k] ? C.wire : 0) + C.bua * buaC[k] + (noData[k] ? C.noData : 0) + (adC[k] ? C.ad : 0);
     cost[k] = base * (valley[k] ? C.valley : 1) * (parC[k] ? C.parallel : 1);
   }
   const sources: number[] = [];
@@ -666,13 +699,19 @@ export function airIpb(a: AirArgs): AirResult {
   const existing = a.existing.filter((e) => inGrid(Math.floor(e.x), Math.floor(e.y)));
   const dirs8 = [0, 45, 90, 135, 180, 225, 270, 315];
   // Directions clear by 10 : 1 from a square (centre and half-extents in grid pixels). The distance to an obstacle is
-  // read every half pixel from the square's edge and taken half a pixel short (never overstating the clearance).
-  const approachesOf = (cx: number, cy: number, halfW: number, halfL: number): number[] => {
+  // read every half pixel from the square's edge and taken half a pixel short (never overstating the clearance). An
+  // obstacle is what stands on the ground plus the ground itself rising above the LZ (`eLz`, the square's elevation):
+  // a spur 40 m higher within 400 m blocks the approach as a 40 m mast would. The ground is read out to the terrain
+  // reach (150 m of rise, 1.5 km) a pixel at a time beyond the tallest standing obstacle's reach.
+  const TERRAIN_RISE_M = 150;
+  const approachesOf = (cx: number, cy: number, halfW: number, halfL: number, eLz: number): number[] => {
     const out: number[] = [];
     let maxH = 0;
     for (const v of Object.values(R.pointH)) maxH = Math.max(maxH, v);
     for (const v of R.classH) maxH = Math.max(maxH, v);
-    const reach = (maxH * R.approachRatio) / res;
+    const nearReach = (maxH * R.approachRatio) / res;
+    const reach = (Math.max(maxH, TERRAIN_RISE_M) * R.approachRatio) / res;
+    const hasE = eLz === eLz;
     for (const b of dirs8) {
       const dx = Math.sin(b * D2R), dy = -Math.cos(b * D2R);
       const px = -dy, py = dx;
@@ -680,11 +719,13 @@ export function airIpb(a: AirArgs): AirResult {
       let clear = true;
       for (const off of [-1, 0, 1]) {
         const ox = cx + px * off * halfW * 0.9, oy = cy + py * off * halfW * 0.9;
-        for (let t = 0.5; t <= reach + 1 && clear; t += 0.5) {
+        for (let t = 0.5; t <= reach + 1 && clear; t += t < nearReach ? 0.5 : 1) {
           const x = Math.floor(ox + dx * (edge + t)), y = Math.floor(oy + dy * (edge + t));
           if (!inGrid(x, y)) break;
-          const hh = H[y * w + x];
-          if (hh && (t - 0.5) * res < hh * R.approachRatio) clear = false;
+          const k = y * w + x;
+          const e = g.elev[k];
+          const top = H[k] + (hasE && e === e ? Math.max(0, e - eLz) : 0);
+          if (top > 0 && (t - 0.5) * res < top * R.approachRatio) clear = false;
         }
         if (!clear) break;
       }
@@ -732,12 +773,23 @@ export function airIpb(a: AirArgs): AirResult {
         for (const c of seen) caution.push(R.cautionWhy[c] ?? `class ${c}`);
       }
       if (ex) caution.push(blocked > 0 ? 'existing site: the bundle shows obstacles on it, check it on the ground' : 'existing site: its size and state not recorded, check it');
-      const app = approachesOf(cx, cy, nW / 2, nL / 2);
+      if (ex && a.enemyLz) caution.push('an existing site is obvious and likely watched: not favoured for his LZ');
+      // The square's own elevation (the mean of its cells), for the ground rising beside it.
+      let eSum = 0, eN = 0;
+      for (let v = 0; v < nL; v++)
+        for (let u = 0; u < nW; u++) {
+          const xx = x + u, yy = y + v;
+          if (!inGrid(xx, yy)) continue;
+          const e = g.elev[yy * w + xx];
+          if (e === e) ((eSum += e), eN++);
+        }
+      const app = approachesOf(cx, cy, nW / 2, nL / 2, eN ? eSum / eN : NaN);
       if (!app.length && !ex) return null; // no approach clear by 10 : 1
       const opp = app.some((b) => app.includes((b + 180) % 360));
       const d = distObj(cx, cy);
-      // A slope over the limit ranks below every LZ within it (safety first: land where no care is needed).
-      const pre = 2 * Math.max(0, (R.slopeCautionDeg - s90) / R.slopeCautionDeg) + 2 * (app.length / 8) + (opp ? 1 : 0) + (d === null ? 0 : 3 * (1 - Math.min(1, d / 8000))) - 2 * (nc / all) - (s90 > okDeg ? 4 : 0) + (ex ? 6 : 0);
+      // A slope over the limit ranks below every LZ within it (safety first: land where no care is needed). An existing
+      // site is favoured for own LZs only: the enemy does not land on an obvious, watched site in your rear.
+      const pre = 2 * Math.max(0, (R.slopeCautionDeg - s90) / R.slopeCautionDeg) + 2 * (app.length / 8) + (opp ? 1 : 0) + (d === null ? 0 : 3 * (1 - Math.min(1, d / 8000))) - 2 * (nc / all) - (s90 > okDeg ? 4 : 0) + (ex && !a.enemyLz ? 6 : 0);
       return { x: cx, y: cy, slope: s90, mountain, caution, approaches: app, existing: ex ? `${ex.label}${ex.name ? ` ${ex.name}` : ''}` : null, pre, along: alongOf(cx, cy) };
     };
     for (let y = zy0; y + nL <= zy1; y += step)
@@ -934,7 +986,7 @@ export function airIpb(a: AirArgs): AirResult {
   const lineName = (li: number): { kind: string; name: string | null } => ({ kind: a.lines[li].kind, name: a.lines[li].name });
   const routes: AirRoute[] = ways.map((wy, i) => {
     const p = wy.path;
-    let len = 0, seen = 0, vall = 0, par = 0, bua = 0, wireN = 0;
+    let len = 0, seen = 0, vall = 0, par = 0, bua = 0, wireN = 0, adL = 0;
     const fol = new Map<string, { kind: string; name: string | null; lengthM: number }>();
     for (let s = 0; s < p.length; s++) {
       const k = p[s];
@@ -943,6 +995,7 @@ export function airIpb(a: AirArgs): AirResult {
       if (expo[k] >= 0.5) seen += step;
       if (valley[k]) vall += step;
       if (parC[k]) par += step;
+      if (adC[k]) adL += step;
       bua += buaC[k] * step;
       if (wireC[k] && (!s || !wireC[p[s - 1]])) wireN++;
       for (const li of followC.get(k) ?? []) {
@@ -1008,6 +1061,7 @@ export function airIpb(a: AirArgs): AirResult {
     if (wireN) bits.push(`${wireN} power line${wireN > 1 ? 's' : ''} crossed`);
     if (near2.length) bits.push(`${near2.length} obstruction${near2.length > 1 ? 's' : ''} within ${R.nearM} m`);
     if (bua >= 0.1 * len) bits.push(`over BUA ${Math.round((100 * bua) / len)} %`);
+    if (adL >= 0.01 * len) bits.push(`under his AD ${Math.round((100 * adL) / len)} %`);
     return {
       id: String(i + 1),
       rank: i + 1,
@@ -1018,6 +1072,7 @@ export function airIpb(a: AirArgs): AirResult {
       valleyPct: (100 * vall) / Math.max(1, len),
       parallelPct: (100 * par) / Math.max(1, len),
       buaPct: (100 * bua) / Math.max(1, len),
+      adPct: (100 * adL) / Math.max(1, len),
       follows,
       wires: wireN,
       obstructionsNear: near2,
@@ -1122,6 +1177,7 @@ export function airIpb(a: AirArgs): AirResult {
       s.why = bits.join(' · ');
     });
   }
+  if (hisAd.length) notes.push(`${hisAd.length} of the other side's AD site${hisAd.length > 1 ? 's' : ''} in the area (${hisAd.slice(0, 3).map((d) => `${d.label} ${(d.rangeM / 1000).toFixed(1)} km`).join(', ')}${hisAd.length > 3 ? ', ...' : ''}): the avenues pay to cross their rings.`);
   notes.push('Air space control measures on the map (ROZ, gun-target lines) are not read yet.');
   return { band: a.band, bandM: [band.minM, band.maxM], lzSideM: lzSide, lzPoints: lzPts, routes, lzs, dzs, ad, observers: eyes.length, notes, ms: Math.round(now() - t0) };
 }

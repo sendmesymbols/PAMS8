@@ -449,7 +449,7 @@ export class GroundGuideIpbApchMap {
       }
       if (on.corridors) for (const m of v.mcs) if (m.aa && m.line.length >= 2) tag(along(m.line, 0.62), `Mob Cor ${m.id}${all ? ` · ${dist(v.mcWidthM)}` : ''}`, MC, '#2a3038', 0, true, 5);
       for (const a of v.aas)
-        for (const n of a.narrows) tag(n.at, `${n.kind === 'crossing' ? 'Crossing' : 'Narrows'} ${Math.round(n.widthM)} m`, NARROWS, '#3a2a10', 12, true, 1);
+        for (const n of a.narrows) tag(n.at, n.kind === 'steep' ? `Climb ${n.slopePct ?? ''} %` : `${n.kind === 'crossing' ? 'Crossing' : 'Narrows'} ${Math.round(n.widthM)} m`, NARROWS, '#3a2a10', 12, true, 1);
       for (const x of v.crossovers) tag([(x.from[0] + x.to[0]) / 2, (x.from[1] + x.to[1]) / 2], `Crossover ${x.a}-${x.b}`, CROSS, '#2a3038', 0, true, 5);
     }
     // The labels that fit at this zoom, most important first; the rest come back on a closer look.

@@ -164,9 +164,9 @@
     "method": {
       "basis": "E",
       "obstacles": "NO-GO, SLOW-GO, not classed and not assessed ground narrow a corridor; water lines whose width is not recorded and crossings are crossed. Patches under a quarter of the corridor width squared are left out (a corridor is relatively free of obstacles).",
-      "ways": "One least-cost field from the start edge (GO 1, SLOW-GO and not assessed 3, NO-GO never crossed, ground nearer an obstacle than half a corridor width up to 3 times dearer); the cheapest way back from each strip of the end edge (strips two spacings wide); a way within half the spacing of one kept for 60 % of its length is the same avenue.",
+      "ways": "One least-cost field from the start edge (GO 1, SLOW-GO and not assessed 3, NO-GO never crossed, ground nearer an obstacle than half a corridor width up to 3 times dearer; with the elevation the slope is judged along each edge, a cell coded for slope alone passable, a climb at the SLOW-GO figure 3 times dearer, at the NO-GO figure impassable, a diagonal step by the worse of its components); the cheapest way back from each strip of the end edge (strips as wide as an avenue can be: two corridors and the spacing between); a way within half the spacing of one kept for 60 % of its length, or through the same narrows, is the same avenue (24 Nov 2026).",
       "viable": "An avenue: two corridor widths fit side by side in the free width over 60 % of its length (book p 12: two or more corridors). One corridor width over 60 %: a lone corridor. Less: no corridor. Less than one corridor width: a narrows.",
-      "ranking": "Until the proforma (Phase 4): 15 x share of the area run + 0.3 x GO % + 6 x corridors side by side (up to 3) - 5 per narrows - 6 per narrows under half a corridor width - 10 when stopped + 25 x cheapest cost / its cost. Higher is better going for the user of the avenue."
+      "ranking": "Until the proforma (Phase 4): 15 x share of the area run + 0.3 x GO % - 0.3 x share climbing at SLOW-GO or worse along the way + 6 x corridors side by side (up to 3) - 5 per narrows - 6 per narrows under half a corridor width - 10 when stopped + 25 x cheapest cost / its cost - 8 per hour over the fastest at the book's day rates (p 18). Higher is better going for the user of the avenue. Onto an objective: a flank +15, frontal -25, turning 15 + 15 x cheapest cost / its cost (first only while the way round is as good going; 24 Nov 2026)."
     }
   },
 
@@ -228,7 +228,8 @@
     "cost": {
       "basis": "E", "note": "My weights for the least-cost air avenue on a 150 m grid (length 1 per cell).",
       "cellM": 150, "seen": 4, "obstruction": 2, "wire": 2, "bua": 1, "noData": 1, "valley": 0.85, "parallel": 0.85, "valleyDepthM": 15, "parallelDeg": 30,
-      "observerReachM": 6000, "landedM": 4, "alternates": 3, "detour": 1.6, "overlap": 0.6
+      "observerReachM": 6000, "landedM": 4, "alternates": 3, "detour": 1.6, "overlap": 0.6, "ad": 3,
+      "adNote": "ad: added to a cell within the other side's AD range (his AD symbols on the map, catalogue Rng.ad effective figure); E, 23 Nov 2026." 
     }
   },
 

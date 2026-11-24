@@ -2300,3 +2300,8 @@ browser cached for one bundle are not reused for another served from the same ad
 In the harness: tick **Ground Guide** in the Settings panel (bundle URL
 defaults to `/terrain-bundle`), then draw a symbol over the synthetic area around
 69.35°E 30.35°N.
+
+
+### Approach engines, review fixes (24 Nov 2026)
+
+Ground (`GroundGuideIpbCorridors.ts`, `corridors.mjs` 53 checks): slope judged along each way's own heading from the elevation (`elev` arg; a cell coded for slope alone is passable, a climb at the SLOW-GO figure three times dearer, at NO-GO impassable, diagonal steps by their components; a `steep` narrows with `slopePct`); free width measured square to the way; strips one avenue wide (Bde 5, Div 4 on open ground); two ways through one narrows merge; the turning approach's bonus 15-30 by its cost ratio; the book's day time (`rates` arg, `hoursDay`) in the rank and reasons; the guide reads the enemy's mover off his symbols in the area (`_enemyMoverIn`). Air (`GroundGuideIpbAir.ts`, `air.mjs` 33 checks): terrain rise in the 10 : 1 approach test; existing sites favoured for own LZs only; the other side's AD symbols (`hisAd`, `Rng.ad`, `air.cost.ad` 3 E) a cost on the avenues, rings on the tab's picture, `adPct` per route.

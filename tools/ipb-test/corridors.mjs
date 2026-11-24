@@ -211,6 +211,77 @@ for (const [gapM, want] of [[3000, 'avenue'], [650, 'lone'], [300, 'none']]) {
   check('onto: an objective at the edge of the area: the outer flank says there is no room for its FUP', re.ontoNotes.some((t) => /Right flank/.test(t)) && !re.onto.some((a) => a.onto === 'right'), re.ontoNotes.join('; '));
 }
 
+// 11 Review fixes (23 Nov 2026): slope along the way, width square to the way, strips, the same narrows, the turning
+// approach's rank by its going, the book's time in the rank.
+{
+  // A 60 m step across the frame at x 200-202 (20 m a cell: 67 % uphill, NO-GO) with a ramp at y 100-120 (3 m a cell,
+  // 10 %, GO): the coding says GO everywhere, the elevation says the ways must climb by the ramp.
+  const elev = new Float32Array(W * H).fill(200);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const ramp = y >= 100 && y < 120;
+    const x0 = ramp ? 190 : 200, x1 = ramp ? 210 : 203;
+    elev[y * W + x] = x < x0 ? 200 : x >= x1 ? 260 : 200 + (60 * (x - x0)) / (x1 - x0);
+  }
+  const EL = { data: elev, w: W, h: H, slowPct: 30, nogoPct: 45 };
+  const r = findCorridors({ coding: coding(), frame, mcWidthM: 500, spacingM: 2000, sectorDeg: 90, elev: EL });
+  const atStep = (a) => { for (let k = 0; k < a.line.length / 2; k++) if (Math.abs(a.line[k * 2] - 201) < 1.5) return a.line[k * 2 + 1]; return NaN; };
+  check('slope along the way: every avenue climbs the step by the ramp (y 100-120), not straight up it', r.aas.length >= 1 && r.aas.every((a) => !a.stopped && atStep(a) >= 92 && atStep(a) <= 128), r.aas.map((a) => `${a.id} y ${atStep(a).toFixed(0)}${a.stopped ? ' stopped' : ''}`).join(', '));
+  // The coding classed a band NO-GO for slope alone (the frame axis), the elevation given is flat: the ways pass it.
+  const c2 = coding(({ set }) => { for (let y = 0; y < H; y++) for (let x = 200; x < 204; x++) set(x, y, IPB.NOGO, WHY.SLOPE); });
+  const flat = { data: new Float32Array(W * H).fill(200), w: W, h: H, slowPct: 30, nogoPct: 45 };
+  const r2 = findCorridors({ coding: c2, frame, mcWidthM: 500, spacingM: 2000, sectorDeg: 90, elev: flat });
+  const r2n = findCorridors({ coding: c2, frame, mcWidthM: 500, spacingM: 2000, sectorDeg: 90 });
+  check('a band NO-GO for slope alone is passable when the elevation (flat) is given, a wall without it', r2.aas.length >= 1 && r2.aas.every((a) => !a.stopped) && r2n.aas.every((a) => a.stopped), `${r2.aas.map((a) => a.id + (a.stopped ? ' stopped' : ' through')).join(', ')} · without: ${r2n.aas.map((a) => a.id + (a.stopped ? ' stopped' : ' through')).join(', ')}`);
+  // A 25 % climb for 600 m along the way (SLOW-GO uphill): a 'steep' narrows and its share in the reasons.
+  const e3 = new Float32Array(W * H).fill(200);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) e3[y * W + x] = x < 200 ? 200 : x >= 220 ? 200 + 20 * 0.35 * 30 : 200 + (x - 200) * 0.35 * 30;
+  const r3 = findCorridors({ coding: coding(), frame, mcWidthM: 500, spacingM: 2000, sectorDeg: 90, elev: { ...flat, data: e3 } });
+  const st = r3.aas.flatMap((a) => a.narrows).filter((n) => n.kind === 'steep');
+  check("a 35 % climb for 600 m along the way: a 'steep' narrows with its slope, the climb in the reasons", st.length >= 1 && st[0].slopePct >= 30 && st[0].slopePct <= 40 && Math.abs(st[0].x - 210) <= 12 && r3.aas[0].steepPct > 3 && r3.aas[0].why.some((w) => /climbs 30 %\+/.test(w)), st[0] ? `${st[0].slopePct} % at x ${st[0].x.toFixed(0)} · steep ${r3.aas[0].steepPct.toFixed(0)} %` : 'none');
+  // Width square to the way: a 450 m gap at 45 degrees to the axis reads 640 m along the sample row; measured square to
+  // the way it is narrower than a corridor, so no corridor.
+  const diag = coding(({ set }) => { for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) if (Math.abs((y - 150) - (x - 200)) > 450 / RES / 2 / Math.SQRT2 * 1.0) set(x, y, IPB.NOGO, WHY.BUA); });
+  const rd = run(diag);
+  check('a 450 m gap at 45 degrees: no corridor (measured square to the way, not along the row)', rd.aas.length === 0, rd.aas.map((a) => `${a.id} min ${a.minWidthM} m med ${a.medianWidthM} m`).join(', ') || rd.notes.join('; '));
+  // Strips: a 14 km Bde frame on an open plain shows five Bn avenues, a 30 km Div frame four Bde ones.
+  {
+    const BW = 520, BH = 1000;
+    const big = { x0: 0, y0: 0, w: BW, h: BH, res: RES, code: new Uint8Array(BW * BH).fill(IPB.GO), why: new Uint16Array(BW * BH), waterW: new Uint16Array(BW * BH) };
+    const rb = findCorridors({ coding: big, frame: { sx: 260, sy: 990, axisDeg: 0, lengthM: 28000, widthM: 14000 }, mcWidthM: 500, spacingM: 2000, sectorDeg: 90 });
+    check('strips: a 14 km Bde frame on an open plain holds five Bn avenues', rb.aas.filter((a) => a.viable).length === 5, `${rb.aas.length} avenues`);
+    const DW = 560, DH = 820;
+    const div = { x0: 0, y0: 0, w: DW, h: DH, res: 60, code: new Uint8Array(DW * DH).fill(IPB.GO), why: new Uint16Array(DW * DH), waterW: new Uint16Array(DW * DH) };
+    const rv = findCorridors({ coding: div, frame: { sx: 280, sy: 810, axisDeg: 0, lengthM: 48000, widthM: 30000 }, mcWidthM: 1500, spacingM: 6000, sectorDeg: 90 });
+    check('strips: a 30 km Div frame on an open plain holds four Bde avenues', rv.aas.filter((a) => a.viable).length === 4, `${rv.aas.length} avenues`);
+  }
+  // The same narrows: with eight strips every way crosses the one bridge; still one avenue.
+  const river = coding(({ set }) => {
+    for (let y = 0; y < H; y++) for (let x = 200; x < 204; x++) set(x, y, IPB.NOGO, WHY.WATER, 120);
+    for (let x = 200; x < 204; x++) for (let y = 100; y < 102; y++) set(x, y, IPB.SLOW, WHY.CROSSING);
+  });
+  const rr = run(river, { strips: 8 });
+  check('eight strips over one bridge: still one avenue', rr.aas.length === 1, `${rr.aas.length} avenues · ${rr.ways.join(' | ')}`);
+  // The turning approach ranks first only while the way round is as good going: SLOW-GO all round the objective's
+  // flanks and rear puts it with the flanks (below a flank on GO ground).
+  const obj = { alongM: 8000, acrossM: 0, frontageM: 500, depthM: 0, fupM: 1100, turn: { alongM: 10000, acrossM: 0 } };
+  const slowRear = coding(({ set }) => { for (let y = 0; y < H; y++) for (let x = X(6500); x < W; x++) if (y < 120 || y > 180 || x > X(8600)) set(x, y, IPB.SLOW, WHY.VEG); });
+  const rt = findCorridors({ coding: slowRear, frame, mcWidthM: 500, spacingM: 2000, sectorDeg: 90, objective: obj });
+  const T = rt.onto.find((a) => a.onto === 'turn');
+  check('turning through SLOW-GO ground: ranked with the flanks, not first, and says why', !!T && rt.onto[0].onto !== 'turn' && T.why.some((w) => /dearer going/.test(w)), rt.onto.map((a) => a.onto).join(' > '));
+  // The book's time: with the rates each avenue carries its hours at the day rate and the reasons say so.
+  const rtime = findCorridors({ coding: coding(), frame, mcWidthM: 500, spacingM: 2000, sectorDeg: 90, rates: { goKmh: 24, slowKmh: 16 } });
+  const a0 = rtime.aas[0];
+  check("the book's time: an open 10.8 km avenue takes 27 min at 24 km/h, in the reasons", !!a0 && a0.hoursDay !== null && Math.abs(a0.hoursDay * 60 - 27) <= 2 && a0.why.some((w) => /at the book's day rates/.test(w)), a0 ? `${(a0.hoursDay * 60).toFixed(0)} min` : 'none');
+  // A flat lane (y 30-88) and a lane of 35 % climbs (up 30 cells, down 10, along x; y 92-270) parted by a NO-GO wall:
+  // the climbing avenue goes at the SLOW-GO rate three quarters of the way and takes a third as long again.
+  const lanes = coding(({ set }) => { for (let y = 88; y < 92; y++) for (let x = 0; x < W; x++) set(x, y, IPB.NOGO, WHY.BUA); });
+  const saw = new Float32Array(W * H).fill(200);
+  for (let y = 92; y < H; y++) for (let x = 0; x < W; x++) { const ph = x % 40; saw[y * W + x] = 200 + (ph < 30 ? ph * 10.5 : (40 - ph) * 31.5); }
+  const rs = findCorridors({ coding: lanes, frame, mcWidthM: 500, spacingM: 2000, sectorDeg: 90, rates: { goKmh: 24, slowKmh: 16 }, elev: { ...flat, data: saw } });
+  const goA = rs.aas.find((a) => a.steepPct < 5), slA = rs.aas.find((a) => a.steepPct > 50);
+  check("the book's time: the climbing avenue takes a third as long again and ranks below the flat one", !!goA && !!slA && slA.hoursDay > goA.hoursDay * 1.3 && goA.rank < slA.rank, goA && slA ? `${(goA.hoursDay * 60).toFixed(0)} vs ${(slA.hoursDay * 60).toFixed(0)} min · steep ${slA.steepPct.toFixed(0)} %` : rs.aas.map((a) => `${a.id} steep ${a.steepPct.toFixed(0)} %`).join(', '));
+}
+
 // 9 Cost: a Bde frame (14 x 28 km at 30 m) on synthetic ground.
 {
   const BW = 940, BH = 520;
@@ -259,10 +330,10 @@ if (!process.argv.includes('--no-real') && existsSync(resolve(bundle, 'manifest.
     const px0 = tx0 * TS, py0 = ty0 * TS;
     const t = performance.now();
     const c = codeIpb({ grid: { w: gw, h: gh, res, cls, elev }, rules: R, mover: 'armour', moveDeg: axis, month: 11, lonLat: [site.lon, site.lat], avlbSpanM: 18, season: 'coding', box: [Math.floor(bx0 - px0), Math.floor(by0 - py0), Math.ceil(bx1 - px0), Math.ceil(by1 - py0)] });
-    const r = findCorridors({ coding: c, frame: { sx: sx0 - px0 - c.x0, sy: sy0 - py0 - c.y0, axisDeg: axis, lengthM: L, widthM: fr.w }, mcWidthM: fr.mc, spacingM: fr.sp, sectorDeg: 90 });
+    const r = findCorridors({ coding: c, frame: { sx: sx0 - px0 - c.x0, sy: sy0 - py0 - c.y0, axisDeg: axis, lengthM: L, widthM: fr.w }, mcWidthM: fr.mc, spacingM: fr.sp, sectorDeg: 90, elev: { data: elev, w: gw, h: gh, slowPct: R.slowUphillPct, nogoPct: R.nogoUphillPct }, rates: { goKmh: 24, slowKmh: 16 } });
     const ms = performance.now() - t;
     const v = r.aas.filter((a) => a.viable);
-    check(`real ${site.name}: avenues found, coded + read in under 2 s`, v.length >= 1 && ms < 2000, `${Math.round(ms)} ms (coding ${Math.round(c.ms)}, corridors ${Math.round(r.ms)}) · ${v.map((a) => `${a.id} ${a.goPct.toFixed(0)} % GO, ${a.narrows.length} narrows`).join('; ')}`);
+    check(`real ${site.name}: avenues found, coded + read in under ${site.hq === 'div' ? 4 : 2} s`, v.length >= 1 && ms < (site.hq === 'div' ? 4000 : 2000), `${Math.round(ms)} ms (coding ${Math.round(c.ms)}, corridors ${Math.round(r.ms)}) · ${v.map((a) => `${a.id} ${a.goPct.toFixed(0)} % GO, ${a.narrows.length} narrows`).join('; ')}`);
   }
 } else console.log('SKIP  real frames (no terrain bundle or --no-real)');
 

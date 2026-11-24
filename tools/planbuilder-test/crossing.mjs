@@ -389,5 +389,19 @@ check('No Movement Guide reader: the geometry stands, the ground rows grey', g0.
     c ? names.map((nm) => `${nm}: ${row(fl.res.rows, nm)?.reason?.slice(0, 50)} / ${row(c.rows, nm)?.reason?.slice(0, 50)}`).join(' | ') : 'null');
 }
 
+// ── Corps bridging: the span the gap needs is longer than the division holds (Annex Q para 1) ────────────────────
+{
+  const plan2 = JSON.parse(JSON.stringify(doc.plan));
+  const m2 = plan2.crossing.bridges.list.find((b) => b.cls === 9);
+  m2.heldM = { ...(m2.heldM ?? {}), infDiv: 60 };
+  const ctx2 = { doc: { ...doc, plan: plan2 }, symbols };
+  const fl = F.fitLayout({ ...inpOf(rec('bn-cross-two-up'), H), ctx: ctx2 });
+  const br = row(fl.res.rows, 'Bridge');
+  check('Corps bridging: the 84 m set needed, the division holds 60 m: the Bridge row warns, names Corps bridging, the fix asks Corps engineers', br?.st === 'warn' && /Corps bridging, the 84 m set from Corps engineers/.test(br.reason) && (br.detail?.fix ?? []).some((x) => /Corps engineers/.test(x)), br?.reason);
+  check('...the timeline names the Corps set', fl.fit.crossing.times.some((t) => /\(Corps set\)/.test(t.label)), fl.fit.crossing.times.map((t) => t.label).join(' | '));
+  const fl0 = F.fitLayout(inpOf(rec('bn-cross-two-up'), H));
+  check('...with the division\'s 84 m held: no Corps words', !/Corps bridging/.test(row(fl0.res.rows, 'Bridge')?.reason ?? '') && !fl0.fit.crossing.times.some((t) => /Corps set/.test(t.label)));
+}
+
 console.log(`\n${n - fails} of ${n} checks passed`);
 process.exit(fails ? 1 : 0);

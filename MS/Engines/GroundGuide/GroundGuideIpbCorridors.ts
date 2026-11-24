@@ -38,7 +38,15 @@
  *      With `objective.turn` (a choke on the MSR behind the objective: a bridge, a defile, a junction), a fourth, turning
  *      approach goes round the objective, out of its ground (up to twice the FUP distance clear), to that choke to block
  *      the MSR (OoW Vol II s6: a turning movement threatens a significant objective in the defender's rear; user: a
- *      flanking attack that chokes the en MSR is encouraged). It ranks first when it is found.
+ *      flanking attack that chokes the en MSR is encouraged). It ranks first when the way round is as good going as the
+ *      flanks' (its bonus falls with its cost against the cheapest approach); dearer going ranks it with the flanks.
+ *   8. Review fixes (23 Nov 2026): with the elevation (`elev`) the slope is judged along each way's own heading, not the
+ *      frame axis (a cell the coding classed for slope alone is passable; an edge climbing the book's SLOW-GO figure is
+ *      three times dearer, the NO-GO figure impassable; a stretch of a way climbing so is a 'steep' narrows); the free
+ *      width is measured square to the way, not along the sample row (a gap oblique to the axis read wider than it is);
+ *      the strips are as wide as an avenue can be (two corridors and the spacing between), not two spacings, so a Div
+ *      frame can show more than three avenues; two ways through the same narrows are one avenue; with the book's rates
+ *      (`rates`) the day time along each avenue is in the rank (8 points an hour over the fastest) and its reasons.
  */
 
 import { IPB, WHY, type IpbCoding } from './GroundGuideIpb';
@@ -80,6 +88,14 @@ export interface IpbCorridorArgs {
     /** A choke on the MSR behind the objective (along / across as above): the turning approach blocks it. */
     turn?: { alongM: number; acrossM: number } | null;
   };
+  /**
+   * The elevation under the coding (the grid it was coded from: the coding's x0 / y0 offsets apply) and the book's
+   * uphill figures (IPB p 10: SLOW-GO 30-45 %, NO-GO 45 % or more). With it the slope is judged along each way's own
+   * heading; without it the coding's slope along the frame axis stands.
+   */
+  elev?: { data: Float32Array; w: number; h: number; slowPct: number; nogoPct: number } | null;
+  /** The book's day rates for the mover, km/h on GO and on SLOW-GO (IPB p 18): the time along each avenue, in the rank. */
+  rates?: { goKmh: number; slowKmh: number } | null;
 }
 
 /**
@@ -88,7 +104,8 @@ export interface IpbCorridorArgs {
  */
 export type IpbOntoKind = 'frontal' | 'left' | 'right' | 'turn';
 
-export type IpbNarrowsKind = 'crossing' | 'slow' | 'narrow';
+/** A crossing (bridge, ford), a SLOW-GO stretch, a gap narrower than a corridor, or a climb at the book's SLOW-GO figure or worse along the way. */
+export type IpbNarrowsKind = 'crossing' | 'slow' | 'narrow' | 'steep';
 export interface IpbNarrows {
   /** Coding cells. */
   x: number;
@@ -98,6 +115,8 @@ export interface IpbNarrows {
   /** Width of the way through, metres. */
   widthM: number;
   kind: IpbNarrowsKind;
+  /** A 'steep' narrows: the climb along the way, %. */
+  slopePct?: number;
   /** The avenue (or lone corridor) it is on. */
   on: string;
 }
@@ -135,6 +154,10 @@ export interface IpbAa {
   onePct: number;
   /** Share of GO in its band, %. */
   goPct: number;
+  /** Share of its length climbing at the book's SLOW-GO figure or worse along the way, % (0 without the elevation). */
+  steepPct: number;
+  /** Hours along it at the book's day rates (GO / SLOW-GO km/h for the mover); null without the rates. */
+  hoursDay: number | null;
   /** The width to draw it at the back, metres: its corridors side by side (two, three when open, one when lone). */
   drawWidthM: number;
   /** Median free width, and the narrowest outside the narrows, metres. */
@@ -226,6 +249,10 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
   // 1. Sample the coding (with 60 m samples: a crossing in the block wins, then any NO-GO, then half SLOW-GO).
   const kind = new Uint8Array(N);
   const lineCell = Math.max(1.5 * res, 45);
+  const EL = a.elev ?? null;
+  // The coding's reasons for a class (its flags apart): a cell classed for slope alone is passable when the elevation is
+  // given, the slope being judged along each way's own heading instead (the book's uphill is along the movement).
+  const REASONS = WHY.SLOPE | WHY.RELIEF | WHY.BUA | WHY.WATER | WHY.VEG | WHY.ROADS | WHY.MANMADE | WHY.SEASON;
   const cellKind = (x: number, y: number): number => {
     if (x < 0 || y < 0 || x >= c.w || y >= c.h) return K_NONE;
     const q = y * c.w + x;
@@ -233,6 +260,7 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
     if (code === IPB.NODATA) return K_NONE;
     if (why & WHY.CROSSING) return K_CROSS;
     if (code === IPB.GO) return K_GO;
+    if (EL && (why & REASONS) === WHY.SLOPE && code !== IPB.NA) return K_GO;
     if (code === IPB.NOGO) return K_NOGO;
     if (code === IPB.NA) return why & WHY.NA_WATER && !(why & WHY.SEASONAL_WATER) && c.waterW[q] <= lineCell ? K_LINE : K_NA;
     return K_SLOW;
@@ -261,6 +289,45 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
     }
   const restricts = (k: number): boolean => k !== K_GO && k !== K_LINE && k !== K_CROSS;
   const passes = (k: number): boolean => k !== K_NOGO && k !== K_NONE;
+  // The elevation at each sample (the mean of its fine cells), for the slope along the way.
+  const ez = new Float32Array(N).fill(NaN);
+  if (EL) {
+    const eAt = (x: number, y: number): number => {
+      const gx = x + c.x0, gy = y + c.y0;
+      return gx < 0 || gy < 0 || gx >= EL.w || gy >= EL.h ? NaN : EL.data[gy * EL.w + gx];
+    };
+    for (let i = 0; i < NR; i++)
+      for (let j = 0; j < NC; j++) {
+        let t = 0, m = 0;
+        for (let u = 0; u < f; u++)
+          for (let v = 0; v < f; v++) {
+            const [x, y] = at((i * f + u + 0.5) * res, ((j - NM) * f + v + 0.5) * res - halfW);
+            const e = eAt(Math.floor(x), Math.floor(y));
+            if (e === e) ((t += e), m++);
+          }
+        if (m) ez[i * NC + j] = t / m;
+      }
+  }
+  const slowPct = EL?.slowPct ?? 30, nogoPct = EL?.nogoPct ?? 45;
+  /**
+   * The climb from sample q0 to its neighbour q1 along the way, % (NaN without the elevation). A diagonal step is judged
+   * by the worst of its two components as well: a slope is not cheated by zigzagging up it (a 45 % slope taken at
+   * 45 degrees would read 32 %).
+   */
+  const rise = (qa: number, qb: number, d: number): number => {
+    const ea = ez[qa], eb = ez[qb];
+    return ea === ea && eb === eb && d > 0 ? ((eb - ea) / d) * 100 : NaN;
+  };
+  const climbPct = (q0: number, q1: number): number => {
+    const i0 = (q0 / NC) | 0, i1 = (q1 / NC) | 0, j0 = q0 - i0 * NC, j1 = q1 - i1 * NC;
+    const di = i1 - i0, dj = j1 - j0;
+    const direct = rise(q0, q1, Math.hypot(di, dj) * s);
+    if (!di || !dj) return direct;
+    const qa = i1 * NC + j0, qb = i0 * NC + j1;
+    let worst = direct;
+    for (const v of [rise(q0, qa, s), rise(qa, q1, s), rise(q0, qb, s), rise(qb, q1, s)]) if (v === v && !(v <= worst)) worst = v;
+    return worst;
+  };
 
   // 2. Obstacles kept: restricting patches (joined across one sample) at least a quarter of the corridor width squared.
   const block = new Uint8Array(N);
@@ -424,7 +491,15 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
         const qq = ii * NC + jj;
         if (done[qq] || cst[qq] === Infinity) continue;
         if (k >= 4 && cst[i * NC + jj] === Infinity && cst[ii * NC + j] === Infinity) continue; // no slipping between two NO-GO corners
-        const g = G[q] + (k < 4 ? 1 : Math.SQRT2) * s * 0.5 * (cq + cst[qq]);
+        // The slope along this edge (the book's uphill is along the movement): a climb at the NO-GO figure is not
+        // crossed, at the SLOW-GO figure three times dearer, as SLOW-GO ground is.
+        let em = 1;
+        if (EL) {
+          const cl = climbPct(q, qq);
+          if (cl >= nogoPct) continue;
+          if (cl >= slowPct) em = 3;
+        }
+        const g = G[q] + (k < 4 ? 1 : Math.SQRT2) * s * 0.5 * (cq + cst[qq]) * em;
         if (g < G[qq]) {
           G[qq] = g;
           P[qq] = q;
@@ -438,11 +513,16 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
   for (let j = 0; j < NC; j++) startRow.push(j);
   const { G, P } = field(cost, startRow);
 
-  // 5. The cheapest way back from each strip of the end edge (or from the farthest row reached in the strip).
-  const K = Math.max(1, Math.min(6, a.strips ?? Math.round(fr.widthM / (2 * a.spacingM))));
-  // Ways within half the spacing of one kept for most of their length are corridors of the same avenue (p 12).
+  // 5. The cheapest way back from each strip of the end edge (or from the farthest row reached in the strip). A strip is
+  // as wide as an avenue can be at most: two corridors side by side and the spacing between them (p 12), so a 30 km Div
+  // frame holds four Bde avenues, a 14 km Bde frame five Bn ones (at most eight).
+  const K = Math.max(1, Math.min(8, a.strips ?? Math.ceil(fr.widthM / (a.spacingM + 2 * mcW))));
+  // Ways within half the spacing of one kept for most of their length are corridors of the same avenue (p 12); so are
+  // two ways through the same narrows (one bridge is one avenue, whatever the ways do before and after it).
   const dil = Math.max(1, Math.round(Math.max(halfMc, a.spacingM / 2) / s));
   const taken = new Uint8Array(N);
+  const takenTight = new Uint8Array(N);
+  const tightAt = (q: number): boolean => !block[q] && runW[q] * s < mcW;
   interface Way { cells: number[]; g: number; stopped: boolean }
   const ways: Way[] = [];
   const cands: Way[] = [];
@@ -472,19 +552,30 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
   const sideKm = (w: Way): string => (((w.cells.reduce((t, q) => t + (q % NC), 0) / w.cells.length - NM + 0.5) * s - halfW) / 1000).toFixed(1);
   cands.sort((p, q) => p.g / p.cells.length - q.g / q.cells.length);
   for (const w of cands) {
-    let rep = 0;
-    for (const q of w.cells) if (taken[q]) rep++;
+    let rep = 0, shared = 0;
+    for (const q of w.cells) {
+      if (taken[q]) rep++;
+      if (takenTight[q] && tightAt(q)) shared++;
+    }
     if (rep / w.cells.length >= 0.6) {
       wayNotes.push(`way at ${sideKm(w)} km: repeats one kept (${Math.round((100 * rep) / w.cells.length)} %)`);
+      continue;
+    }
+    if (shared >= 2) {
+      wayNotes.push(`way at ${sideKm(w)} km: through the same narrows as one kept`);
       continue;
     }
     ways.push(w);
     for (const q of w.cells) {
       const i = (q / NC) | 0, j = q - i * NC;
+      const tq = tightAt(q);
       for (let di = -dil; di <= dil; di++)
         for (let dj = -dil; dj <= dil; dj++) {
           const ii = i + di, jj = j + dj;
-          if (ii >= 0 && jj >= 0 && ii < NR && jj < NC) taken[ii * NC + jj] = 1;
+          if (ii >= 0 && jj >= 0 && ii < NR && jj < NC) {
+            taken[ii * NC + jj] = 1;
+            if (tq) takenTight[ii * NC + jj] = 1;
+          }
         }
     }
   }
@@ -529,16 +620,54 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
     return { widthM: (r - l + 1) * s, kind: cross ? 'crossing' : slow > go ? 'slow' : 'narrow' };
   };
   const capM = Math.max(4 * mcW, 3 * a.spacingM);
-  interface Draft { w: Way; ii: number[]; jj: number[]; js: number[]; widthM: number[]; fit: number[]; twoPct: number; onePct: number; goPct: number; medW: number; minW: number; narrows: Array<{ i: number; j: number; k: number; widthM: number; kind: IpbNarrowsKind }>; lines: number; cover: number; sideJ: number; viable: boolean; open: boolean; score: number; why: string[]; medFit: number; tight: number }
+  const capS = Math.ceil(capM / s);
+  /**
+   * The free width square to the way at sample (i, j) with heading (hi, hj), samples: the run of ground free of the
+   * obstacles kept, walked out both ways along the perpendicular. Along the axis it is the sample row's run.
+   */
+  const perpWidth = (i: number, j: number, hi: number, hj: number): number => {
+    const q = i * NC + j;
+    if (block[q]) return 0;
+    if (Math.abs(hj) < 0.17) return runW[q]; // within 10 degrees of the axis: the row's run
+    const pi = -hj, pj = hi;
+    let n = 1;
+    for (const sg of [1, -1])
+      for (let t = 1; t <= capS; t++) {
+        const ii = Math.round(i + sg * pi * t), jj = Math.round(j + sg * pj * t);
+        if (ii < 0 || jj < 0 || ii >= NR || jj >= NC || block[ii * NC + jj]) break;
+        n++;
+      }
+    return n;
+  };
+  const fmtH = (h: number): string => {
+    const m = Math.max(1, Math.round(h * 60));
+    return m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`;
+  };
+  interface Draft { w: Way; ii: number[]; jj: number[]; js: number[]; widthM: number[]; fit: number[]; twoPct: number; onePct: number; goPct: number; steepPct: number; hours: number | null; medW: number; minW: number; narrows: Array<{ i: number; j: number; k: number; widthM: number; kind: IpbNarrowsKind; slopePct?: number }>; lines: number; cover: number; sideJ: number; viable: boolean; open: boolean; score: number; why: string[]; medFit: number; tight: number }
   const drafts: Draft[] = [];
   const notes: string[] = [];
   /** Along a way: corridors side by side, narrows, measures. `keep`: kept even when narrower than a corridor (an approach). */
   const measure = (w: Way, keep: boolean): Draft | null => {
     const ii = w.cells.map((q) => (q / NC) | 0);
     const jj = w.cells.map((q, k) => q - ii[k] * NC);
-    const widthM = w.cells.map((q) => (block[q] ? 0 : runW[q] * s));
-    const fit = widthM.map((v) => Math.min(3, Math.floor(v / mcW)));
     const n = w.cells.length;
+    // The way's heading at each sample (over two samples either side) and the free width square to it.
+    const widthM = w.cells.map((_, k) => {
+      const k0 = Math.max(0, k - 2), k1 = Math.min(n - 1, k + 2);
+      let hi = ii[k1] - ii[k0], hj = jj[k1] - jj[k0];
+      const L = Math.hypot(hi, hj) || 1;
+      hi /= L;
+      hj /= L;
+      return perpWidth(ii[k], jj[k], hi, hj) * s;
+    });
+    const fit = widthM.map((v) => Math.min(3, Math.floor(v / mcW)));
+    // The climb along the way at each sample (the worse of its steps either side), %; NaN without the elevation.
+    const climb = w.cells.map((_, k) => {
+      if (!EL || n < 2) return NaN;
+      const a0 = k > 0 ? climbPct(w.cells[k - 1], w.cells[k]) : NaN, a1 = k < n - 1 ? climbPct(w.cells[k], w.cells[k + 1]) : NaN;
+      return a0 === a0 && a1 === a1 ? Math.max(a0, a1) : a0 === a0 ? a0 : a1;
+    });
+    const steepAt = (k: number): boolean => climb[k] >= slowPct;
     const twoPct = (100 * fit.filter((v) => v >= 2).length) / n;
     const onePct = (100 * fit.filter((v) => v >= 1).length) / n;
     const viable = twoPct >= 60;
@@ -570,6 +699,37 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
       }
     }
     flush();
+    // Steep stretches: climbs at the book's SLOW-GO figure or worse along the way, each at its steepest.
+    {
+      let st: { k: number; cl: number; last: number } | null = null;
+      const end = (): void => {
+        if (!st) return;
+        narrows.push({ i: ii[st.k], j: jj[st.k], k: st.k, widthM: Math.max(s, widthM[st.k]), kind: 'steep', slopePct: Math.round(st.cl) });
+        st = null;
+      };
+      for (let k = 0; k < n; k++) {
+        if (steepAt(k)) {
+          if (st && k - st.last > joinRows) end();
+          if (!st) st = { k, cl: climb[k], last: k };
+          else if (climb[k] > st.cl) ((st.k = k), (st.cl = climb[k]));
+          st.last = k;
+        }
+      }
+      end();
+    }
+    const steepN = climb.filter((v) => v >= slowPct).length;
+    const steepPct = (100 * steepN) / n;
+    // The time along it at the book's day rates: SLOW-GO where the ground is SLOW-GO or not assessed, or climbing so.
+    let hours: number | null = null;
+    if (a.rates) {
+      let h = 0;
+      for (let k = 1; k < n; k++) {
+        const kk = kind[w.cells[k]];
+        const slow = kk === K_SLOW || kk === K_NA || steepAt(k);
+        h += (Math.hypot(ii[k] - ii[k - 1], jj[k] - jj[k - 1]) * s) / 1000 / Math.max(0.1, slow ? a.rates.slowKmh : a.rates.goKmh);
+      }
+      hours = h;
+    }
     // Water lines crossed.
     let lines = 0, prev = false;
     for (const q of w.cells) {
@@ -599,15 +759,27 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
     const sideJ = jj.reduce((t, v) => t + v, 0) / n;
     const medFit = fit.slice().sort((p, q) => p - q)[Math.floor(n / 2)];
     const tight = narrows.filter((q) => q.widthM < halfMc).length;
-    const d: Draft = { w, ii, jj, js, widthM, fit, twoPct, onePct, goPct, medW, minW, narrows, lines, cover, sideJ, viable, open: medFit >= 3, score: 0, why: [], medFit, tight };
-    d.score = 15 * cover + 0.3 * goPct + 6 * medFit - 5 * narrows.length - 6 * tight - (w.stopped ? 10 : 0);
+    const d: Draft = { w, ii, jj, js, widthM, fit, twoPct, onePct, goPct, steepPct, hours, medW, minW, narrows, lines, cover, sideJ, viable, open: medFit >= 3, score: 0, why: [], medFit, tight };
+    d.score = 15 * cover + 0.3 * goPct - 0.3 * steepPct + 6 * medFit - 5 * narrows.length - 6 * tight - (w.stopped ? 10 : 0);
     d.why = [
       w.stopped ? `stops after ${Math.round(cover * 100)} % of the area` : 'runs the whole area',
       viable ? (medFit >= 3 ? 'room for 3+ corridors' : '2 corridors side by side') : '1 corridor: lone',
       `${Math.round(goPct)} % GO`,
+      ...(steepPct >= 1 ? [`climbs ${slowPct} %+ for ${Math.round(steepPct)} % of the way`] : []),
       narrows.length ? `${narrows.length} narrows` : 'no narrows',
     ];
     return d;
+  };
+  /** The time at the book's rates into the score and the reasons: 8 points an hour over the fastest of the set. */
+  const timeRank = (set: Draft[]): void => {
+    const hs = set.map((d) => d.hours).filter((h): h is number => h !== null);
+    if (!hs.length) return;
+    const hMin = Math.min(...hs);
+    for (const d of set) {
+      if (d.hours === null) continue;
+      d.score -= 8 * (d.hours - hMin);
+      d.why.push(`${fmtH(d.hours)} at the book's day rates`);
+    }
   };
   for (const w of ways) {
     const d = measure(w, false);
@@ -616,6 +788,7 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
   // The cheaper way also counts: a share of the score from its cost against the cheapest.
   const gMin = Math.min(...drafts.map((d) => d.w.g / Math.max(1, d.w.cells.length)));
   for (const d of drafts) d.score += 25 * (gMin / Math.max(1e-6, d.w.g / Math.max(1, d.w.cells.length)));
+  timeRank(drafts);
   drafts.sort((p, q) => (p.viable === q.viable ? q.score - p.score : p.viable ? -1 : 1));
 
   // 7. Letters, corridors side by side inside each avenue, and the output.
@@ -652,7 +825,7 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
     }
     const narrows = d.narrows.map((q) => {
       const [x, y] = toCell(q.i, q.j);
-      return { x, y, alongM: (q.i + 0.5) * s, widthM: q.widthM, kind: q.kind, on: id };
+      return { x, y, alongM: (q.i + 0.5) * s, widthM: q.widthM, kind: q.kind, ...(q.slopePct !== undefined ? { slopePct: q.slopePct } : {}), on: id };
     }).sort((p, q) => p.widthM - q.widthM);
     const n = d.ii.length;
     aas.push({
@@ -672,6 +845,8 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
       twoPct: d.twoPct,
       onePct: d.onePct,
       goPct: d.goPct,
+      steepPct: d.steepPct,
+      hoursDay: d.hours,
       drawWidthM: mcW * (d.viable ? (d.open ? 3 : 2.2) : 1),
       medianWidthM: d.medW,
       minWidthM: d.minW,
@@ -775,7 +950,7 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
         targets.push({ kind: 'turn', fup: [o.turn.alongM, o.turn.acrossM], hit: [o.turn.alongM, o.turn.acrossM] });
       }
     }
-    interface OntoDraft { d: Draft; t: (typeof targets)[number]; fupQ: number; fupK: number; hitQ: number; assaultM: number; nogoPct: number; g: number }
+    interface OntoDraft { d: Draft; t: (typeof targets)[number]; fupQ: number; fupK: number; hitQ: number; assaultM: number; nogoPct: number; g: number; ratio: number }
     const ods: OntoDraft[] = [];
     for (const t of targets) {
       const fi = rowOf(t.fup[0]), fj = colOf(t.fup[1]);
@@ -808,7 +983,7 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
         // No assault: the way ends astride the MSR at the choke.
         if (cells.length < 2) continue;
         const d = measure({ cells, g: G2[best], stopped: false }, true);
-        if (d) ods.push({ d, t, fupQ: best, fupK, hitQ: best, assaultM: 0, nogoPct: 0, g: G2[best] });
+        if (d) ods.push({ d, t, fupQ: best, fupK, hitQ: best, assaultM: 0, nogoPct: 0, g: G2[best], ratio: 1 });
         continue;
       }
       // The assault: straight from the FUP to the middle of the objective's edge.
@@ -824,14 +999,19 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
       if (cells.length < 2) continue;
       const d = measure({ cells, g: G2[best], stopped: false }, true);
       if (!d) continue;
-      ods.push({ d, t, fupQ: best, fupK, hitQ: hi * NC + hj, assaultM: Math.hypot(hi - bi, hj - bj) * s, nogoPct: steps ? (100 * nogo) / steps : 0, g: G2[best] });
+      ods.push({ d, t, fupQ: best, fupK, hitQ: hi * NC + hj, assaultM: Math.hypot(hi - bi, hj - bj) * s, nogoPct: steps ? (100 * nogo) / steps : 0, g: G2[best], ratio: 1 });
     }
-    // Ranked on the going and the cost; a flank above the frontal one (user: frontal is dangerous, flanking encouraged).
+    // Ranked on the going and the cost; a flank above the frontal one (user: frontal is dangerous, flanking encouraged);
+    // the turning approach first only while the way round is as good going as the flanks' (its bonus 15-30 by its cost
+    // against the cheapest approach), else it ranks with them.
     const gm = Math.min(...ods.map((x) => x.g / Math.max(1, x.d.w.cells.length)));
     for (const x of ods) {
       const d = x.d;
-      d.score = 0.3 * d.goPct + 6 * d.medFit - 5 * d.narrows.length - 6 * d.tight + 25 * (gm / Math.max(1e-6, x.g / Math.max(1, d.w.cells.length))) + (x.t.kind === 'frontal' ? -25 : x.t.kind === 'turn' ? 30 : 15) - (x.nogoPct > 30 ? 10 : 0);
+      x.ratio = gm / Math.max(1e-6, x.g / Math.max(1, d.w.cells.length));
+      const kindPts = x.t.kind === 'frontal' ? -25 : x.t.kind === 'turn' ? 15 + 15 * x.ratio : 15;
+      d.score = 0.3 * d.goPct - 0.3 * d.steepPct + 6 * d.medFit - 5 * d.narrows.length - 6 * d.tight + 25 * x.ratio + kindPts - (x.nogoPct > 30 ? 10 : 0);
     }
+    timeRank(ods.map((x) => x.d));
     ods.sort((p, q) => q.d.score - p.d.score);
     const SMo = Math.max(2, Math.round((0.6 * mcW) / s));
     ods.forEach((x, r) => {
@@ -870,13 +1050,15 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
         twoPct: d.twoPct,
         onePct: d.onePct,
         goPct: d.goPct,
+        steepPct: d.steepPct,
+        hoursDay: d.hours,
         drawWidthM: mcW * (d.viable ? 2.2 : 1),
         medianWidthM: d.medW,
         minWidthM: d.minW,
         narrows: d.narrows
           .map((q) => {
             const [nx, ny] = toCell(q.i, q.j);
-            return { x: nx, y: ny, alongM: cum[q.k] ?? 0, widthM: q.widthM, kind: q.kind, on: id };
+            return { x: nx, y: ny, alongM: cum[q.k] ?? 0, widthM: q.widthM, kind: q.kind, ...(q.slopePct !== undefined ? { slopePct: q.slopePct } : {}), on: id };
           })
           .sort((p, q) => p.widthM - q.widthM),
         waterLines: d.lines,
@@ -884,9 +1066,11 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
         why: [
           d.viable ? (d.medFit >= 3 ? 'room for 3+ corridors' : '2 corridors side by side') : d.onePct >= 60 ? '1 corridor: tight' : 'narrower than a corridor',
           `${Math.round(d.goPct)} % GO`,
+          ...(d.steepPct >= 1 ? [`climbs ${slowPct} %+ for ${Math.round(d.steepPct)} % of the way`] : []),
           d.narrows.length ? `${d.narrows.length} narrows` : 'no narrows',
-          ...(x.t.kind === 'turn' ? ['round the Obj to block its MSR'] : [`FUP ${Math.round(fupM)} m short`]),
+          ...(x.t.kind === 'turn' ? ['round the Obj to block its MSR', x.ratio >= 0.8 ? 'the way round as good going as the flanks: first' : 'the way round dearer going: ranked with the flanks'] : [`FUP ${Math.round(fupM)} m short`]),
           ...(x.nogoPct > 0 ? [`assault ${Math.round(x.nogoPct)} % NO-GO`] : []),
+          ...(d.hours !== null ? [`${fmtH(d.hours)} at the book's day rates`] : []),
         ],
         sideM: (d.sideJ - NM + 0.5) * s - halfW,
         onto: x.t.kind,
