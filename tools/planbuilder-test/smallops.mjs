@@ -318,12 +318,12 @@ const defile = W.at(1300, 0);
   check('...every post 300-1500 m forward of the Wdr RV (no further than needed: IC p378)', posts.every((p) => fwdOf(p) >= 250 && fwdOf(p) <= 1550) && row(srows, 'Posts forward')?.st === 'pass', posts.map((p) => Math.round(fwdOf(p))).join(' / '));
   check('...a post on Test Hill (the knoll of IC p378: high ground that sees over the front)', posts.some((p) => gd(p, hill) < 250), posts.map((p) => Math.round(gd(p, hill))).join(' / '));
   check('...laid laterally with intervals: 1, 2, 3 Pl left to right, spanning the front', row(srows, 'Laterally')?.st === 'pass' && posts[0].x < posts[1].x && posts[1].x < posts[2].x, row(srows, 'Laterally')?.reason);
-  check('...his viewpoints: the points of the ground in front that see the main posn counted (those are what the posts watch)', row(srows, 'His viewpoints')?.st === 'pass' && /(\d+) of (\d+) points/.test(row(srows, 'His viewpoints')?.reason ?? ''), row(srows, 'His viewpoints')?.reason);
+  check('...his viewpoints: the points of the ground in front that see the main posn counted (those are what the posts watch)', row(srows, 'En viewpoints')?.st === 'pass' && /(\d+) of (\d+) points/.test(row(srows, 'En viewpoints')?.reason ?? ''), row(srows, 'En viewpoints')?.reason);
   check('...rows: Ground in front seen, Post ground, Withdrawal (covered way back), Time back', ['Ground in front seen', 'Post ground', 'Withdrawal', 'Time back'].every((x) => row(srows, x)), srows.map((x) => x.name).join(', '));
   check('...the Screen symbol (25342203) from the left post to the right one, its centre behind them', it(sf.raw, 'scr')?.key === '25342203' && gd(world(sf, it(sf.raw, 'scr').pts[0]), posts[0]) < 5 && gd(world(sf, it(sf.raw, 'scr').pts[2]), posts[2]) < 5 && fwdOf(world(sf, it(sf.raw, 'scr').pts[1])) < Math.min(...posts.map(fwdOf)));
   check('...confirm: withdrawal on the order of the commander who ordered it, 50 % or time up if comms break (IC p381)', sf.res.confirm.some((x) => /50 %/.test(x) && /IC p381/.test(x)));
   const sc2 = O.checkSmallOp(inpOf(sr, srv, 0), asDrawn(sf));
-  check('Check my plan, Coy screen: read as drawn, the same verdicts as built', !!sc2 && same(sc2.rows, srows, ['His viewpoints', 'Ground in front seen', 'Posts forward', 'Laterally', 'Post ground', 'Withdrawal']) && !sc2.missing.length, sc2 ? ['His viewpoints', 'Ground in front seen', 'Posts forward', 'Laterally', 'Post ground', 'Withdrawal'].map((nm) => `${nm} ${row(srows, nm)?.st}/${row(sc2.rows, nm)?.st}`).join(', ') : 'null');
+  check('Check my plan, Coy screen: read as drawn, the same verdicts as built', !!sc2 && same(sc2.rows, srows, ['En viewpoints', 'Ground in front seen', 'Posts forward', 'Laterally', 'Post ground', 'Withdrawal']) && !sc2.missing.length, sc2 ? ['En viewpoints', 'Ground in front seen', 'Posts forward', 'Laterally', 'Post ground', 'Withdrawal'].map((nm) => `${nm} ${row(srows, nm)?.st}/${row(sc2.rows, nm)?.st}`).join(', ') : 'null');
   // the ground still loading (no class anywhere yet): not a NO-GO fail, and no row passes with no posts to judge
   const loadMov = { ...g.mov(), cls: () => null, sight: () => null, takePending: () => true };
   const loadG = { ...g, cls: () => null, pending: () => true, mov: () => loadMov };
@@ -353,6 +353,8 @@ const defile = W.at(1300, 0);
   check('Night March chart on the way out: legs with grid bearings and paces, the march time, the grid named', !!nt && nt.legs.length >= 2 && nt.legs.every((l) => l.paces > 0 && l.gridDeg >= 0) && nt.marchMin > 0 && nt.grid.length > 0, nt ? `${nt.legs.length} legs, ${nt.marchMin} min, ${nt.grid}` : 'none');
   const outM = fl.fit.small.legs.filter((l) => l.way === 'Out').reduce((a, l) => a + l.distM, 0);
   check('...its length agrees with the route card\'s legs out within 10 %', !!nt && Math.abs(nt.lengthM - outM) < 0.1 * Math.max(1, nt.lengthM), nt ? `${nt.lengthM} vs ${outM}` : 'none');
+  const outNightMin = fl.fit.small.legs.filter((l) => l.way === 'Out').reduce((a, l) => a + l.minNight, 0);
+  check('...its time on the move agrees with the route card night minutes out (within 25 %); the clock with halts is longer, never shorter', !!nt && nt.moveMin > 0 && nt.marchMin >= nt.moveMin && Math.abs(nt.moveMin - outNightMin) <= 0.25 * outNightMin, nt ? `${nt.moveMin} on the move, ${nt.marchMin} with halts; card ${outNightMin}` : 'none');
   const noNm = F.fitLayout(inpOf(ptl, sp, M.bearingOf(sp, obj), { cursor: XY(obj), night: true }));
   check('...without the Night March rules no chart (the route card stands)', !noNm.fit.small?.night);
 }

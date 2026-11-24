@@ -418,6 +418,8 @@ export interface GroundGuideIpbOptions {
   air: boolean;
   /** Air avenues, LZ / DZ, AD sites and their ranges on the map. */
   mapAir: boolean;
+  /** Airspace control symbols on the map (ROZ, HIDACZ, ACA, engagement zones) and own gun-target lines read over the air avenues (FM 3-09 App B). Off: not read. */
+  airspace: boolean;
   /** Flight band of the air avenues (FM 3-04.203, T): NOE to 25 ft, contour 25-80 ft, low level 80-200 ft above the highest obstacle. */
   airBand: 'noe' | 'contour' | 'low';
   /** Landing point size class 1-6 (FM 3-21.38, T: 25 / 35 / 50 / 80 / 100 / 125 m; 4 = Mi-17 class). */
@@ -493,6 +495,8 @@ export interface IpbAirView {
   }>;
   /** The other side's AD sites read off the map (their effective range): the avenues pay to cross their rings. */
   hisAd?: Array<{ at: MercXY; rangeM: number; label: string }>;
+  /** Airspace control measures and own gun-target lines over the avenues (extended.ipb.airspace; GroundGuideIpbAirspace). */
+  airspace?: import('./GroundGuideIpbAirspace').AspResult | null;
   lzs: IpbAirZone[];
   dzs: IpbAirZone[];
   ad: Array<{ id: string; rank: number; at: MercXY; seenM: number; longM: number; flankM: number; bottom: number; kinds: Array<'long' | 'flank' | 'bottom'>; routes: string[]; why: string }>;
@@ -1655,7 +1659,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   sections: { ground: true, roads: true, buildings: true, weather: true, obstacles: true, style: 'compact', radiusKm: 3, roadDensity: true, roadDensityKm: 5, roadDensityStyle: 'rows', roadDensityLead: 'afterRain', detail: true, gStyle: 'auto', rStyle: 'auto', oStyle: 'auto', bStyle: 'auto', wStyle: 'auto' },
   speed: { enabled: true, card: 'line', light: 'day', road: 'convoy', load: 'combat', mover: 'auto', legend: true },
   scope: { enabled: true, side: 'right', tab: true, topPx: 54, extScale: 'area' },
-  extended: { keys: true, lasts: 'symbol', threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapApproaches: true, mapBetter: true, layerFire: true, layerKeyGr: true, layerApchs: false, layerAir: false, layerDecision: false, overlay: 'auto', ipb: { readFor: 'defence', apchEnd: 'objective', fupM: 1100, turn: true, mover: 'auto', season: 'coding', avlbSpanM: 18, paint: 'hatch', apchs: true, hq: 'auto', mapCorridors: true, labels: 'auto', createAs: 'attack', fire: true, mapFire: true, proforma: true, pfHead1: '', pfHead2: '', decision: true, mapDecision: true, reactionH: 0, hHour: '', air: true, mapAir: true, airBand: 'contour', lzClass: 4, lzPoints: 4, template: 'auto', mapTemplate: true, lrWeights: {} }, eye: 'auto', surface: true },
+  extended: { keys: true, lasts: 'symbol', threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapApproaches: true, mapBetter: true, layerFire: true, layerKeyGr: true, layerApchs: false, layerAir: false, layerDecision: false, overlay: 'auto', ipb: { readFor: 'defence', apchEnd: 'objective', fupM: 1100, turn: true, mover: 'auto', season: 'coding', avlbSpanM: 18, paint: 'hatch', apchs: true, hq: 'auto', mapCorridors: true, labels: 'auto', createAs: 'attack', fire: true, mapFire: true, proforma: true, pfHead1: '', pfHead2: '', decision: true, mapDecision: true, reactionH: 0, hHour: '', air: true, mapAir: true, airspace: true, airBand: 'contour', lzClass: 4, lzPoints: 4, template: 'auto', mapTemplate: true, lrWeights: {} }, eye: 'auto', surface: true },
   aor: { keys: true, scale: 'spot', layout: 'deductions', style: 'trace', orient: 'north', source: 'echelon', box: null, echelon: 'auto', leadKm: 4, corridorM: 0, profile: 'tracked' },
 };
 

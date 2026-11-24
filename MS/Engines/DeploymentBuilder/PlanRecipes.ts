@@ -82,6 +82,8 @@ export interface Recipe {
   basis: 'D' | 'O' | 'E' | 'U';
   /** OcokaDoctrine.frontage row the whole layout is held to (null: none printed, basis E). */
   frontageRow: string | null;
+  /** An attack's assault frontage row (OcokaDoctrine.frontage) when it is not the doctrine's attack.assaultRow (a Coy or Bde attack). */
+  assaultRow?: string;
   /** Row for the depth when frontageRow is null. */
   depthRow?: string;
   /** Row for the gaps between forward slots. */
@@ -248,6 +250,7 @@ export function validateRecipe(r: Recipe, ctx: ValidateCtx): RecipeIssue[] {
   if (r.frontageRow != null && !frontageRow(doc, r.frontageRow)) fail(`frontageRow "${r.frontageRow}" is not a row of OcokaDoctrine.frontage`);
   // a crossing's frontages and depths are PlanDoctrine.crossing.bridgehead (IBB S46), not an OcokaDoctrine row
   if (r.frontageRow == null && r.basis === 'D' && r.task !== 'crossing' && r.task !== 'advance' && r.task !== 'withdrawal' && r.layout !== 'canal' && !SMALL_TASKS.includes(r.task)) warn('basis D but no frontage row');
+  if (r.assaultRow && !frontageRow(doc, r.assaultRow)) fail(`assaultRow "${r.assaultRow}" is not a row of OcokaDoctrine.frontage`);
   if (r.subRow && !frontageRow(doc, r.subRow)) fail(`subRow "${r.subRow}" is not a row of OcokaDoctrine.frontage`);
   if (r.depthRow && !frontageRow(doc, r.depthRow)) fail(`depthRow "${r.depthRow}" is not a row of OcokaDoctrine.frontage`);
   for (const c of r.checks ?? []) if (!(CHECK_NAMES as readonly string[]).includes(c)) fail(`check "${c}" unknown`);

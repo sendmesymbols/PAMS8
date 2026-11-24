@@ -129,6 +129,9 @@ const bn = rec('bn-def-rev-slope'), coy = rec('coy-def-rev-slope');
   const g = ground({ ridgeY: wy(f0, front) + 600, backY: wy(f0, front) - 2600 });
   const fl = F.fitLayout({ recipe: bn, ctx, opts: {}, ground: g, anchor: { x: 0, y: 0 }, bearing: 0, threat: null, terrain: 'plains' });
   check('fitLayout, reverse slope: the crest rows join the defence rows, the crest on the fit, the FDL within MG range of it', !!fl && row(fl.res.rows, 'Crest')?.st === 'pass' && row(fl.res.rows, 'Behind the crest')?.st === 'pass' && !!fl.fit.revSlope?.crest && fl.fit.revSlope.fdlBehindM <= 457 && !!row(fl.res.rows, 'Frontage'), fl ? fl.res.rows.map((r) => `${r.name} ${r.st}`).join(', ') : 'null');
+  const fof = row(fl.res.rows, 'Fields of fire');
+  check('...Fields of fire read the reverse slope way: FDL to the crest, pass, the ground beyond named as the price; only one such row', fof?.st === 'pass' && /a reverse slope: .* from the FDL to the crest/.test(fof.reason) && /para 2 b/.test(fof.reason) && fl.res.rows.filter((r) => r.name === 'Fields of fire').length === 1, fof?.reason);
+  check('...the score counts that row, not the forward-slope one (no Fields of fire fail drags it)', fl.fit.score >= 0 && !fl.res.rows.some((r) => r.name === 'Fields of fire' && r.st === 'fail'), String(fl.fit.score));
   const crest = fl.raw.items.find((i) => i.role === 'crest');
   check('...the crest line drawn on the real crest, the OPs and FPF on it', !!crest && Math.abs(crest.pts[0].y - (front + 600)) < 60 && fl.raw.items.some((i) => i.role === 'crestOp1') && fl.raw.items.some((i) => i.role === 'fpf1'), crest ? `${Math.round(crest.pts[0].y)} vs ${front + 600}` : 'no crest');
 }

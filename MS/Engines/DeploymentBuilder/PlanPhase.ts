@@ -178,7 +178,7 @@ export function twoPhaseRecipe(r: Recipe, doc: DoctrineSet, side?: 1 | -1, coysI
   out.name = `${r.name}, two phases${coys >= 2 ? '' : ' (D Coy res)'}`;
   out.phases = 2;
   out.phase2Side = sd;
-  out.note = `${r.note ?? ''} Two phases (PlanPhase): Obj 2 ${fmtM(o2.c.y - o1.c.y)} behind Obj 1 (attack.phase2.obj2BeyondM, E); the follow-up ${coys >= 2 ? 'C and D Coys (no Bn reserve)' : 'C Coy (D Coy the reserve)'} wait in the FUP until Obj 1 is taken (IBB p204 (7)), go round its ${sideWord(sd)} flank to FUP 2 and attack Obj 2 ${lay.offDeg} degrees off his front (IBB p186); Obj 1 the firm base (p189 para 23); the mortars step up to 300 m short of Obj 1 (p176 d); the LOE beyond Obj 2.`.trim();
+  out.note = `${r.note ?? ''} Two phases (PlanPhase): Obj 2 ${fmtM(o2.c.y - o1.c.y)} behind Obj 1 (attack.phase2.obj2BeyondM, E); the follow-up ${coys >= 2 ? 'C and D Coys (no Bn reserve)' : 'C Coy (D Coy the reserve)'} wait in the FUP until Obj 1 is taken (IBB p204 (7)), go round its ${sideWord(sd)} flank to FUP 2 and attack Obj 2 ${lay.offDeg} degrees off the En front (IBB p186); Obj 1 the firm base (p189 para 23); the mortars step up to 300 m short of Obj 1 (p176 d); the LOE beyond Obj 2.`.trim();
   return out;
 }
 
@@ -248,11 +248,14 @@ export function findPhaseN(res: SolveResult, f: FitFrame, g: PlanGround, doc: Do
     }
     if (best && Number.isFinite(e0) && best.e - e0 >= gain) {
       O2 = best.c; out.obj2From = 'highGround';
-      obj2Why = `on ground ${Math.round(best.e - e0)} m higher, ${fmtM(dist(best.c, o1.c))} behind Obj ${n - 1} (his depth likely on the high ground, E): confirm by recce`;
-    } else obj2Why = `assumed ${fmtM(dist(o1.c, o2.c))} straight behind Obj ${n - 1} (his depth Coy, attack.phase2.obj2BeyondM, E): draw his depth posn on the map (a hostile symbol) and Obj 2 is laid on it`;
+      obj2Why = `on ground ${Math.round(best.e - e0)} m higher, ${fmtM(dist(best.c, o1.c))} behind Obj ${n - 1} (the En depth likely on the high ground, E): confirm by recce`;
+    } else obj2Why = `assumed ${fmtM(dist(o1.c, o2.c))} straight behind Obj ${n - 1} (the En depth Coy, attack.phase2.obj2BeyondM, E): draw the En depth posn on the map (a hostile symbol)${n === 2 ? ' or mark Obj 2 on the map' : ''}, and Obj ${n} is laid on it`;
   }
   if (dist(O2, o2.c) > 1) { out.nudges[R.cur] = P(O2.x - o2.c.x, O2.y - o2.c.y); o2 = { ...o2, c: O2 }; }
-  out.rows.push({ name: `Obj ${n}`, st: out.obj2From === 'assumed' ? 'warn' : 'pass', reason: obj2Why });
+  // a mark too near the objective before it is not taken: say so, never pass it over in silence
+  const markRefused = !!marked && out.obj2From !== 'marked';
+  if (markRefused) obj2Why = `your mark is ${fmtM(dist(marked!, o1.c))} from the centre of Obj ${n - 1}: Obj ${n} laid there would come within 200 m of Obj ${n - 1}, so it was not taken; mark it farther behind. Obj ${n} ${obj2Why}`;
+  out.rows.push({ name: `Obj ${n}`, st: out.obj2From === 'assumed' || markRefused ? 'warn' : 'pass', reason: obj2Why });
 
   // ── the side round Obj 1 ──────────────────────────────────────────────────────────────────────────────────────────
   const sight = (to: XY[]) => {
@@ -298,7 +301,7 @@ export function findPhaseN(res: SolveResult, f: FitFrame, g: PlanGround, doc: Do
   }
   out.route = simplify(legs, num(doc, 'attack.routeToleranceM', 75));
   const other = cands.find((c) => c.lay.side !== lay.side);
-  const otherWhy = other ? `; the ${sideWord(other.lay.side)} way ${other.seen !== null && best.seen !== null && other.seen > best.seen + 0.05 ? `has FUP ${n} more in view of Obj ${n} (${Math.round(other.seen * 100)} %)` : other.wayM > best.wayM + 200 ? `is longer (${fmtM(other.wayM)})` : other.axisBad > best.axisBad ? 'crosses NO-GO' : other.chokeD !== null && best.chokeD !== null && other.chokeD > best.chokeD + 200 ? 'ends further from his MSR' : 'scores lower'}` : '; the other way is NO-GO at FUP 2';
+  const otherWhy = other ? `; the ${sideWord(other.lay.side)} way ${other.seen !== null && best.seen !== null && other.seen > best.seen + 0.05 ? `has FUP ${n} more in view of Obj ${n} (${Math.round(other.seen * 100)} %)` : other.wayM > best.wayM + 200 ? `is longer (${fmtM(other.wayM)})` : other.axisBad > best.axisBad ? 'crosses NO-GO' : other.chokeD !== null && best.chokeD !== null && other.chokeD > best.chokeD + 200 ? 'ends further from the En MSR' : 'scores lower'}` : '; the other way is NO-GO at FUP 2';
   out.rows.push({ name: `Ph ${n} direction`, st: 'pass', reason: `round Obj ${n - 1}'s ${sideWord(lay.side)} flank, keeping ${num(doc, 'attack.phase2.clearObj1M', 300)} m off it, onto Obj ${n} ${lay.offDeg}° off the En front; ${fmtM(lenOf(out.route))} from ${n === 2 ? 'the FUP' : 'FUP 2'} to FUP ${n} (IBB p186: a new direction, not through the Coys on Obj ${n - 1})${otherWhy}` });
   out.rows.push(best.seen === null
     ? { name: `FUP ${n} unseen`, st: 'unchecked', reason: g.sight ? `the ground round FUP ${n} is not loaded` : 'no sight data' }

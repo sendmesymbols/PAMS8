@@ -72,14 +72,14 @@ check('attack: 1500 m beside the axis (clear of the Assy Area), its front edge 2
 // ── Arty reach without the ground ────────────────────────────────────────────────────────────────────────────────────
 const rD = S.solveRecipe(d1, ctx, {}), rT = S.solveRecipe(t1, ctx, {});
 const reachD = A.artyRows(rD.items, d1, 2500), reachT = A.artyRows(rT.items, t1, null);
-check('defence: Arty reach passes: 2.8 km behind the FDL, the guns 7.3 km beyond it, past his FUP 2.5 km out, all DF Tgts in range', reachD.length === 1 && reachD[0].st === 'pass' && /2\.8 km behind the FDL/.test(reachD[0].reason) && /7\.3 km beyond the FDL, past his FUP 2\.5 km out/.test(reachD[0].reason) && /(\d+) of \1 DF Tgts in range/.test(reachD[0].reason), reachD[0]?.reason);
+check('defence: Arty reach passes: 2.8 km behind the FDL, the guns 7.3 km beyond it, past his FUP 2.5 km out, all DF Tgts in range', reachD.length === 1 && reachD[0].st === 'pass' && /2\.8 km behind the FDL/.test(reachD[0].reason) && /7\.3 km beyond the FDL, past the En FUP 2\.5 km out/.test(reachD[0].reason) && /(\d+) of \1 DF Tgts in range/.test(reachD[0].reason), reachD[0]?.reason);
 check('attack: Arty reach passes: 2.3 km behind the FUP, the Obj and the LOE in range', reachT[0]?.st === 'pass' && /2\.3 km behind the FUP/.test(reachT[0].reason) && /the Obj and the LOE in range/.test(reachT[0].reason), reachT[0]?.reason);
 check('the gun area changes no frontage or depth row', row(rD.rows, 'Frontage')?.reason === row(S.solveRecipe(two, ctx, {}).rows, 'Frontage')?.reason && row(rD.rows, 'Depth')?.reason === row(S.solveRecipe(two, ctx, {}).rows, 'Depth')?.reason);
 check('no artillery: no rows', !A.artyRows(S.solveRecipe(two, ctx, {}).items, two, 2500).length);
 // a gun too short: the band is empty, it stands at the minimum and falls short
 const shortGun = { ...aDef, weapon: { ...aDef.weapon, planM: 4000 }, band: [2000, 1333] };
 const dS = A.withArty(two, doc, shortGun), rowS = A.artyRows(S.solveRecipe(dS, ctx, {}).items, dS, 2500)[0];
-check('a 4 km gun: the band is empty, the gun area stands at its 2 km minimum, reaches short of his FUP and of DF Tgts: warn', rowS.st === 'warn' && /short of his FUP/.test(rowS.reason) && /no band: a third of its range \(1\.3 km\) is short of the 2\.0 km/.test(rowS.reason) && !/(\d+) of \1 DF/.test(rowS.reason), rowS.reason);
+check('a 4 km gun: the band is empty, the gun area stands at its 2 km minimum, reaches short of his FUP and of DF Tgts: warn', rowS.st === 'warn' && /short of the En FUP/.test(rowS.reason) && /no band: a third of its range \(1\.3 km\) is short of the 2\.0 km/.test(rowS.reason) && !/(\d+) of \1 DF/.test(rowS.reason), rowS.reason);
 const tS = A.withArty(front, doc, { ...aAtk, weapon: { ...aAtk.weapon, planM: 2500 } }), rowTS = A.artyRows(S.solveRecipe(tS, ctx, {}).items, tS, null)[0];
 check('an attack whose Obj and LOE are out of range fails: the guns forward, or a longer gun', rowTS.st === 'fail' && /out of range/.test(rowTS.reason), rowTS.reason);
 // moved too near the front

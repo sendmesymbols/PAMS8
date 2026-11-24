@@ -773,7 +773,7 @@ export function airIpb(a: AirArgs): AirResult {
         for (const c of seen) caution.push(R.cautionWhy[c] ?? `class ${c}`);
       }
       if (ex) caution.push(blocked > 0 ? 'existing site: the bundle shows obstacles on it, check it on the ground' : 'existing site: its size and state not recorded, check it');
-      if (ex && a.enemyLz) caution.push('an existing site is obvious and likely watched: not favoured for his LZ');
+      if (ex && a.enemyLz) caution.push('an existing site is obvious and likely watched: not favoured for the En LZ');
       // The square's own elevation (the mean of its cells), for the ground rising beside it.
       let eSum = 0, eN = 0;
       for (let v = 0; v < nL; v++)
@@ -1061,7 +1061,7 @@ export function airIpb(a: AirArgs): AirResult {
     if (wireN) bits.push(`${wireN} power line${wireN > 1 ? 's' : ''} crossed`);
     if (near2.length) bits.push(`${near2.length} obstruction${near2.length > 1 ? 's' : ''} within ${R.nearM} m`);
     if (bua >= 0.1 * len) bits.push(`over BUA ${Math.round((100 * bua) / len)} %`);
-    if (adL >= 0.01 * len) bits.push(`under his AD ${Math.round((100 * adL) / len)} %`);
+    if (adL >= 0.01 * len) bits.push(`under the En AD ${Math.round((100 * adL) / len)} %`);
     return {
       id: String(i + 1),
       rank: i + 1,
@@ -1178,6 +1178,5 @@ export function airIpb(a: AirArgs): AirResult {
     });
   }
   if (hisAd.length) notes.push(`${hisAd.length} of the other side's AD site${hisAd.length > 1 ? 's' : ''} in the area (${hisAd.slice(0, 3).map((d) => `${d.label} ${(d.rangeM / 1000).toFixed(1)} km`).join(', ')}${hisAd.length > 3 ? ', ...' : ''}): the avenues pay to cross their rings.`);
-  notes.push('Air space control measures on the map (ROZ, gun-target lines) are not read yet.');
   return { band: a.band, bandM: [band.minM, band.maxM], lzSideM: lzSide, lzPoints: lzPts, routes, lzs, dzs, ad, observers: eyes.length, notes, ms: Math.round(now() - t0) };
 }

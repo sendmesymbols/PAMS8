@@ -440,10 +440,9 @@ Recipes wrap the existing engines. Nothing is rewritten.
 
 ### 9.5 Later
 
-- **Withdrawal:** intermediate position finder (far enough that the enemy must move field guns; behind an obstacle),
-  control points, embussing point 1500–2000 m back, thinning-out timetable.
+- **Withdrawal:** built 23 Nov 2026 (`bn-wdr-night`, `PlanWithdrawal.ts`; see "Included and enhanced" at the end).
 - **Cordon, picketing, convoy:** these already exist as Mov Guide cards. They would get recipe wrappers only.
-- **Div echelon:** composed from Bde recipes.
+- **Div echelon:** `div-def-two-up` built 23 Nov 2026 (Bdes as boxes; each Bde built as its own plan).
 
 ---
 
@@ -1314,3 +1313,53 @@ Left: 122 E figures, 50 of them tool settings no book prints (search steps, eye 
 - Advance report lines: within the spacing, the bigger obstacle wins; water of the same rank (permanent water, a canal) is now decided by its width on the axis (`250cda7`; `advance.mjs`).
 - Check my plan, advance: an axis read as drawn says so (it was called the least-cost way; `250cda7`); report lines read as drawn are checked against the spacing set in the Build tab (it quoted the default 1 km, E), and warn when two lie closer than that (`advance.mjs`).
 - Axis route 'no way for tracks found': the router on the real tiles (156 legs, 74.20-74.38 E, 31.49-31.54 N) found every way a flood fill over the whole 25 km grid finds; the 48 it did not route have no tracked way at all (the Ravi bed, 1.1-1.3 km of permanent water). The row now names the leg with no way (the other is laid along its way) and points to unbridged water on the axis.
+
+## Included and enhanced (23-24 Nov 2026, the user: "lets include these and enhance it")
+
+Everything on the "what is left" list, built and tested. Plan Builder texts say **En** for the enemy and **Own** for
+our side, never "his" or "he" (the user's rule, 23 Nov 2026).
+
+| Piece | What was done | Where |
+|---|---|---|
+| **Every figure backed** | Every PlanDoctrine figure carries its backing: D / R / calc by a ref (book, printed page, quote) that `verify.py` finds in the PDF; E with `decided` + `searched`; M tool settings with their reason. `recipes.mjs` fails on any unbacked, unchecked or undecided figure. Pages fixed on the way (IBB annexes cited by PDF page; IC s78, IBB s69, IC s91-93 one page lower than first cited) | `PlanDoctrine.json`, `tools/doctrine-refs/verify.py` |
+| **Reverse slope** (`bn-def-rev-slope`, `coy-def-rev-slope`) | The crest in front read on the 30 m elevation; the plan moved so the FDL is behind it within MG range (IC s78 para 3 b p 430); OPs and FPF on the crest; depth posns on the next high ground; hidden from beyond the crest; **Fields of fire read the reverse-slope way** (FDL to the crest; the ground beyond is the price, IC s78 para 2 b) and the score counts that row | `PlanRevSlope.ts` |
+| **Withdrawal by night** (`bn-wdr-night`) | Click the old Bn HQ, aim the way back, the second click is the new main posn. Rear parties, Coy RVs, Bn checkpoint and RV, EPs 1500-2000 m back (IBB p 383), the covering Pl, routes back round NO-GO and hidden from the En, the intermediate posn beyond En field artillery (17.2 km, ORBAT 105 mm IFG; IBB p 373) and behind an obstacle (IC p 482), artillery repositioned 5-6 km back (IBB p 385), the programme from last light (IBB pp 379-380). Check my plan reads it as drawn | `PlanWithdrawal.ts` |
+| Found in the app: the obstacle in front | The class grid was sampled every 60 m on one line, so a canal one 30 m cell wide could be stepped over, and the mapped canals were never read. Now 15 m steps on three lines across the posn, plus the 1:50k canal and river lines crossing the way back (a canal counts when recorded 10 m wide or more), named with its width | `PlanWithdrawal.ts` |
+| **Coy Attk** (`coy-attk-*`) | The Bn layouts with Pls: two Pls up, the third the reserve, the MG Sec the base of fire, 60 mm mortars; Obj a Pl locality | Recipes |
+| **Bde Def / Div Def** (`bde-def-two-up`, `div-def-two-up`) | Bns (Bdes) as boxes, two up and one in depth; frontage and depth rows from OoW Vol I Annexes B-D; the reserve's time to its C Pen posns against IBB p 279 (Bde 2-3 h, Div 4-6 h) | Recipes, `PlanSolve.ts` |
+| **Bde Attk** (`bde-attk-two-up`) | Two Bns up from a brigaded FUP on 1100-1500 m (GSP 1947 s19 p 86) | Recipe |
+| **Three phases** | Phases chip 3 and P cycling 1-2-3: Obj 3 behind Obj 2, FUP 3 round the other flank, SL 3, the phase 3 axis, the Coys (A, B from Obj 1, or D Coy when C alone took Obj 2), the mortars' second step-up; H3 timed from Obj 2 falling | `PlanPhase.ts` `threePhaseRecipe`, `findPhaseN` |
+| **Obj 2 marked** | An Obj 2 marker the user drops on the map (chip in the Phases row); Obj 2 is laid there and the row says so | `PlanBuildTab.ts`, `PlanPhase.ts` |
+| **Tank Sqn harbour** | A Sqn harbour 2 km behind FUP (Tks) (E) and its move up at the tank rate in the H-hour sum, before the FUP is left | `PlanTanks.ts` |
+| **FUP (Tks) vs En ATGM** | When the ORBAT gives the En unit's ATGM range, FUP (Tks) is checked against it with a 300 m margin (E); with no range the Tank FUP row's IBB p 214 band stands alone | `PlanTanks.ts` `tankFupVsEnAtgm` |
+| **Corps bridging** | A span longer than the division holds (Annex Q para 1: 84 m) says Corps bridging, the set from Corps engineers, asked for early; "(Corps set)" on the timeline | `PlanCrossing.ts` |
+| **Patrol night chart** | The patrol's way out as a Night March chart (legs, grid bearings, paces, march time) when the Night March rules are loaded | `PlanSmallOps.ts` (`NightMarchRead`) |
+| ORBAT gaps | 747 child links without a unit id across the own files were checked: they are sub-elements (Coy HQ, Pl HQ, LAD ...), not missing units; only 4 match a unit name exactly. Nothing to fill without the books | `MS/Data/Orbat` |
+| Load Plan pin | The load path passes `pinned / xPct / yPct` to `loadSymbolFromJSON`, which calls `_applyLoadedPin`: handled in code. **Not checked in the app** | `SerializationEngine` |
+| Found on the way | Tank timing run twice doubled the harbour step (now replaced, `planbuilder-fixes`); the Plains reason said "no high ground" beside a found crest (now "no mountain relief, 400 m rise within 5 km") | `PlanTanks.ts`, `PlanFit.ts` |
+
+Checks: `phase2.mjs` 103, `tanks.mjs` 97, `smallops.mjs` 113, `withdrawal.mjs` 29, `revslope.mjs` 22, `crossing.mjs` 78,
+`planbuilder-fixes/run.mjs` 18, the rest of the Plan Builder suites passing; `verify.py`: all references found.
+
+Checked in the app (24 Nov 2026):
+- **Withdrawal** east of Lahore, aimed west: score 100; intermediate posn 18.8 km back (beyond the En 105 mm IFG's 17.2 km), water 3.4 km in front of it, new main posn 23.0 km; placed, 11 rows pass. Aimed only 17 km back it warns honestly (the intermediate posn 15.1 km back, inside En gun range).
+- **Reverse slope** on the Pabbi Hills, the threat to the south: a crest 460 m in front, 48 m above; FDL 457 m behind it; Fields of fire, FPF, Hidden (0 % seen from 1.5 km beyond) and Crest held pass; no high ground behind for the depth Coys (warn). On flat ground it says no crest within 1.5 km (fail).
+- **Bde Def** east of Lahore: 10.5 km frontage, 6.0 km depth, reserve 51 min to its C Pen posns. Approaches covered stayed grey (no tracked approach found for an En Div's corridor here), which is honest but worth a look on other ground.
+- The rest, checked 24 Nov 2026 east of Lahore (the user: "check the rest in the app too"):
+  - **Coy Attk** (right flank): score 92, placed 14 symbols. Found: the Bn layout's FUP sat 1.5 km from the smaller Pl Obj and the FUP finder only pushed a FUP out, never in, so it skipped every place and said "the ground round the FUP is not loaded". It now pulls a far FUP in to the middle of 1.0-1.2 km (IBB p201) and names the pull, also in its warning. The assault frontage was judged on the Bn row: attack recipes now carry their own `assaultRow` (Company / Brigade night attack rows).
+  - **Bde Attk**: score 76, the assault frontage on the Brigade row (GSP p 86). It has only the frontal layout, so Form of attack warns (flank layouts for a Bde not built).
+  - **Three phases**: the Phases chip 3 fell back to one phase (an early return let only exactly 2 through); fixed. Obj 3, FUP 3 and the phase 3 axis laid; H3 32 min after Obj 2 falls. Phases, the P and R keys and the Obj 2 row are now offered for a Bn attack only (the phase recipes name C and D Coys). The assumed Obj 3 row said "Obj 2 is laid on it"; fixed.
+  - **Obj 2 marker** (chip and a real map click): Obj 2 laid where marked, phase 2 re-timed. Found: a mark whose Obj 2 would come within 200 m of Obj 1 was dropped in silence and the row still invited a mark; the row now says the mark was not taken and why.
+  - **Tank Sqn harbour**: the harbour slot and its move (H+12, 2.0 km, 7 min) before the Sqn leaves FUP (Tks) at H+29. **FUP (Tks) vs En ATGM never shows with today's data**: the En unit tables list "ATGM" with no type (en Inf Bn: 8 x ATGM) and no En unit carries an ATGM range, though weapons.json holds Milan 2.0 km, Konkurs 4.0 km by day and Nag 4-6 km. The tab now falls back from an En Coy to its parent Bn's ATGMs; which type to assume is the user's decision (Konkurs at 4 km would fail every IBB p 214 2.5-3 km tank FUP).
+  - **Div Def**: 27 km frontage, 10.5 km depth, reserve 129 min against IBB p 279's 4-6 h. Found: Moves in time failed the Depth Bde (118 min against the En 15 min from 5 km out) while Reserve reach passed it; a Bde or Div reserve moves on a decision point, so its C Pen move is no longer in the trigger table. Mutual support judged a 5 km gap between Bdes on MG reach: a Bde's gaps are now judged on its Bns' 81 mm mortars (3.7 km, E), a Div's left to the Div artillery (grey). Approaches covered still fails when the main approach runs through the gap between the forward Bdes: it counts the forward Bdes only, not the depth Bde behind the gap (left as it is, to discuss).
+  - **Patrol night chart**: 5 legs, 3.7 km, Indian grid; its 154 min was the clock with the Night March halts beside the route card's 2 h 00 on the move: the chart now gives both (139 min on the move, 154 with halts), and "inside the En thermal sights from 0 m" reads "the whole way".
+  - Checks added: `attack.mjs` 51 (Coy FUP pull-in, Company / Brigade assault rows), `phase2.mjs` 104 (mark too near), `solve.mjs` 718 (formation mutual support), `smallops.mjs` 114 (moving time against the route card).
+
+**En / Own wording pass (24 Nov 2026, the user: "Yes, do it"):** every "his / he / him" in the Plan Builder's shown
+texts (string literals in `MS/Engines/DeploymentBuilder/Plan*.ts`, recipe notes, PlanDoctrine notes, sources and
+decisions) now says "the En" (or "its" / "the En's" where English needs it); short labels and row names read "En Mf",
+"En mines", "En viewpoints", "En comes ↑". Code, comments, test names and book quotes (words inside quote marks, and
+every `refs[].quote`) are untouched. Found on the way: an earlier pass had changed the IBB p 373 quote in
+`withdrawal.intermediateMinM.src` ("move En field artillery before the En can"); restored to the book ("move his
+field artillery before he can"). Out of scope and left as they are: the Ground Guide's and Aprc's own texts ("under his
+AD", "His mover taken as armour"), which are other engines.

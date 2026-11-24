@@ -200,7 +200,7 @@ function outlineDef(): AprcPart[] {
     {
       id: 'rev', title: 'REVIEW OF SIT',
       groups: [{ id: 'rev', title: null, paras: [
-        yours('rev.en', 'En Forces', ['His forces opposite, his likely aim, when']),
+        yours('rev.en', 'En Forces', ['En forces opposite, their likely aim, when']),
         yours('rev.own', 'Own Forces', ['The higher formation, its layout, units left and right, the reserve']),
         yours('rev.air', 'Air Sit'),
       ] }],
@@ -351,7 +351,7 @@ function outlineAttk(): AprcPart[] {
     {
       id: 'rev', title: 'REVIEW OF THE SIT',
       groups: [{ id: 'rev', title: null, paras: [
-        yoursA('rev.en', 'En', 1, ['Discuss two up', 'Hostilities between __ and __', 'Loc / intentions: where the en is presently conc and what he is expected to do', 'Any aspect of heliborne']),
+        yoursA('rev.en', 'En', 1, ['Discuss two up', 'Hostilities between __ and __', 'Loc / intentions: where the en is presently conc and what the En is expected to do', 'Any aspect of heliborne']),
         yoursA('rev.own', 'Own', 1, ['Discuss two up', 'Task of own Bde and what the comd wants to do', 'Depl of neighbouring Bns', 'Any other detail given by the Bde comd']),
         yoursA('rev.air', 'Air', 1, ['All aspects of air, both own and en']),
       ] }],
@@ -416,7 +416,7 @@ function outlineAttk(): AprcPart[] {
           headOnly('en', 'En Sit', [
             headOnly('en.opts', 'Options Aval to En', [
               headOnly('en.opt1', 'Option 1 (Against AP-1)', [
-                yoursA('en.opt1.disp', 'Sec Disposns', 6, ['Depl Pl / Pl plus size force in his AOR: Sec / Sec plus in area __, Sec in area __ and Sec in area __ / depth']),
+                yoursA('en.opt1.disp', 'Sec Disposns', 6, ['Depl Pl / Pl plus size force in the En AOR: Sec / Sec plus in area __, Sec in area __ and Sec in area __ / depth']),
                 yoursA('en.opt1.bias', 'Bias of Def / A Tk Def', 6, ['Lt / Rt and centre']),
                 yoursA('en.opt1.killing', 'Killing Areas', 6, ['Primary killing area from incl __ to incl __', 'Secondary killing area from incl __ to incl __']),
                 yoursA('en.opt1.catk', 'C Attk Obj in Order of Pri', 7),
@@ -424,7 +424,7 @@ function outlineAttk(): AprcPart[] {
                 yoursA('en.opt1.surv', 'Surv / Obsn Plan', 7, ['SP in area __', 'LP in area __', 'Arty obsr __', 'Mor obsr __']),
                 yoursA('en.opt1.df', 'DF Plan', 7, ['Mk __, __ and __ as DFs and __ as DF (SOS)']),
                 headOnly('en.opt1.an', 'Analysis', [
-                  yoursA('en.opt1.adv', 'Advantages', 7, ['Eff covers all the apchs', 'Def is compact and caters for all-round def', 'All loc held in str', 'Forces the attacker to phase his attk', 'Good F of F and obsn', 'Rd / Tr __ eff dominated', 'Readjustment possible once the dir of attk is known', 'Def based on natural obs', 'Easy route of wdr / rft', 'Flanks protected']),
+                  yoursA('en.opt1.adv', 'Advantages', 7, ['Eff covers all the apchs', 'Def is compact and caters for all-round def', 'All loc held in str', 'Forces the attacker to phase its attk', 'Good F of F and obsn', 'Rd / Tr __ eff dominated', 'Readjustment possible once the dir of attk is known', 'Def based on natural obs', 'Easy route of wdr / rft', 'Flanks protected']),
                   yoursA('en.opt1.dis', 'Disadvantages', 7, ['Objs well defined and engaged easily', 'Capture of __ (MITG) unhinges the entire posn', 'Depth is weak', 'Most expected layout of def', 'Route of wdr / rft can be cut']),
                 ]),
               ]),
@@ -433,27 +433,27 @@ function outlineAttk(): AprcPart[] {
             yoursA('en.caps', 'En Caps', 7, ['Local adjustment', 'Local C attk', 'Reinforcement', 'Spoiling attk', 'Use of NVDs', 'Use of arty', 'Use of air', 'Obs laying cap', 'Conduct of BHL', 'Emp of screens and surv elms']),
             headOnly('en.ded', 'Deductions', [
               headOnly('en.ded.basic', 'Basic Deductions', [
-                yoursA('en.ded.obj', 'Pri of Obj / Imp Tac Grs', 8, ['Keeping in view his cap, pattern of depl and disposn on all imp tac grs: the pri from Gr and Weather stands cfm, or as changed']),
-                yoursA('en.ded.apch', 'Pri of Apchs / Dir of Attk', 8, ['His depl vis-a-vis his cap and options: the pri from Gr and Weather stands cfm, or the apch he covers best discarded']),
-                yoursA('en.ded.aps', 'Attk Possibilities', 8, ['Against his options: the APs from Gr and Weather stand cfm']),
+                yoursA('en.ded.obj', 'Pri of Obj / Imp Tac Grs', 8, ['Keeping in view the En cap, pattern of depl and disposn on all imp tac grs: the pri from Gr and Weather stands cfm, or as changed']),
+                yoursA('en.ded.apch', 'Pri of Apchs / Dir of Attk', 8, ['The En depl vis-a-vis its cap and options: the pri from Gr and Weather stands cfm, or the apch the En covers best discarded']),
+                yoursA('en.ded.aps', 'Attk Possibilities', 8, ['Against the En options: the APs from Gr and Weather stand cfm']),
                 headOnly('en.ded.ap1', 'AP-1 (Cfm / Modified)', [
-                  yoursA('en.ded.ap1.dir', 'Dir / Phases', 8, ['Cfm: capture of these objs renders his def unbal and opens the main Rd', 'Modified: his killing gr, swift reactions or wdr / rft cap: discard the apch, attk from __']),
-                  yoursA('en.ded.ap1.depl', 'Depl Areas', '8-9', ['FUP: covered from his fire / flanking', 'FAA: central to both dirs of attk', 'BOF: engages him eff, irrespective of the dir of attk']),
-                  yoursA('en.ded.ap1.reorg', 'Reorg / DF Plan', 9, ['His cap to launch a C attk and assy his forces in these areas']),
-                  yoursA('en.ded.ap1.block', 'Blocking Posn', 9, ['His cap to wdr / rft the area within __ mins: tks for the blocking posn instead of CS / fire sp']),
+                  yoursA('en.ded.ap1.dir', 'Dir / Phases', 8, ['Cfm: capture of these objs renders the En def unbal and opens the main Rd', 'Modified: the En killing gr, swift reactions or wdr / rft cap: discard the apch, attk from __']),
+                  yoursA('en.ded.ap1.depl', 'Depl Areas', '8-9', ['FUP: covered from the En fire / flanking', 'FAA: central to both dirs of attk', 'BOF: engages the En eff, irrespective of the dir of attk']),
+                  yoursA('en.ded.ap1.reorg', 'Reorg / DF Plan', 9, ['The En cap to launch a C attk and assy its forces in these areas']),
+                  yoursA('en.ded.ap1.block', 'Blocking Posn', 9, ['The En cap to wdr / rft the area within __ mins: tks for the blocking posn instead of CS / fire sp']),
                 ]),
               ]),
               headOnly('en.ded.common', 'Common Deductions', [
                 yoursA('en.ded.c.spoil', 'Spoiling Attk', 9, ['Secure the FUP with a Pl / Pl minus before occupying it', 'An altn FUP 300-400 yds away', 'Smk screen from the FAA onwards', 'Mov the tks at the last possible time']),
-                yoursA('en.ded.c.armr', 'Use of Armr', 9, ['His posns well prep, covered and strongly held: armr in fire sp']),
+                yoursA('en.ded.c.armr', 'Use of Armr', 9, ['The En posns well prep, covered and strongly held: armr in fire sp']),
                 yoursA('en.ded.c.air', 'Air Superiority', 9, ['All mov in the hrs of darkness', 'Strict Tr discipline', 'Strict cam and clt', 'Attk at ni']),
-                yoursA('en.ded.c.nvd', 'En Use of NVDs', 9, ['Max cover afforded by gr after mov from the FUP', 'Covering fire of arty / BOF to keep his head down', 'Max use of smk']),
+                yoursA('en.ded.c.nvd', 'En Use of NVDs', 9, ['Max cover afforded by gr after mov from the FUP', 'Covering fire of arty / BOF to keep the En head down', 'Max use of smk']),
                 yoursA('en.ded.c.readj', 'Readjustment of the En', '9-10', ['Eff use of arty on fwd and depth loc', 'Conc vol of fire from the BOF', 'Air burst']),
-                yoursA('en.ded.c.pnr', 'Use of Aslt Pnr / Engr', 10, ['His mine fd and wire obs all round: safe lanes for the F ech and the subsequent op']),
-                yoursA('en.ded.c.catk', 'Local C Attk', 10, ['Quick reorg / consolidation', 'Launching Phase 2 ASP', 'Early depl of surv elms / tk hunting parties ahead of the obj', 'F ech ASP: disposal / evac of cas, replenishment of ammo', 'DF and DF (SOS) to beat back his C attk / assy']),
-                yoursA('en.ded.c.phases', 'Phases of Attk', 10, ['Size of obj, his disposn and pattern of depl: phases cfm']),
-                yoursA('en.ded.c.arty', 'Use of Arty', 10, ['Soften up well prep defs with prep bombardment', 'Engage his ptls / LPs before the mov into the FUP']),
-                yoursA('en.ded.c.engrs', 'Emp of Engrs', 10, ['Well prep defs, concrete bunkers, wire and mines: almt of engr elms to the aslt Pls', 'Lanes in his mine fd for the F ech up to the tgt']),
+                yoursA('en.ded.c.pnr', 'Use of Aslt Pnr / Engr', 10, ['The En mine fd and wire obs all round: safe lanes for the F ech and the subsequent op']),
+                yoursA('en.ded.c.catk', 'Local C Attk', 10, ['Quick reorg / consolidation', 'Launching Phase 2 ASP', 'Early depl of surv elms / tk hunting parties ahead of the obj', 'F ech ASP: disposal / evac of cas, replenishment of ammo', 'DF and DF (SOS) to beat back the En C attk / assy']),
+                yoursA('en.ded.c.phases', 'Phases of Attk', 10, ['Size of obj, the En disposn and pattern of depl: phases cfm']),
+                yoursA('en.ded.c.arty', 'Use of Arty', 10, ['Soften up well prep defs with prep bombardment', 'Engage the En ptls / LPs before the mov into the FUP']),
+                yoursA('en.ded.c.engrs', 'Emp of Engrs', 10, ['Well prep defs, concrete bunkers, wire and mines: almt of engr elms to the aslt Pls', 'Lanes in the En mine fd for the F ech up to the tgt']),
               ]),
             ]),
           ]),
@@ -463,13 +463,13 @@ function outlineAttk(): AprcPart[] {
             para('own.tasks', 'Assessment of Tasks', { draft: '', table: { head: TASK_HEAD_ATTK, rows: taskRowsAttk() }, prompts: ['AP-1: tps for each task and phase', MA(11)] }),
             headOnly('own.ded', 'Deductions', [
               headOnly('own.ded.basic', 'Basic Deductions', [
-                yoursA('own.ded.obj', 'Pri of Most Imp Tac Gr', 11, ['Resources vis-a-vis suitability of emp, imp of ITGs in his overall def plan and the cap to aloc sufficient tps for their capture: the pri stands cfm']),
+                yoursA('own.ded.obj', 'Pri of Most Imp Tac Gr', 11, ['Resources vis-a-vis suitability of emp, imp of ITGs in the En overall def plan and the cap to aloc sufficient tps for their capture: the pri stands cfm']),
                 yoursA('own.ded.apch', 'Pri of Apchs', '11-12', ['Resources, own cap and optimum use of the resources altd: the pri stands cfm']),
                 yoursA('own.ded.aps', 'Attk Possibilities', 12, ['Resources aval for the capture of different objs: the APs stand cfm or as modified in En Sit']),
                 yoursA('own.ded.addl', 'Req of Addl Resources / Tps', 12, ['As per the assessment of tasks I req __ inf Sec, __ aslt pnr / engr Sec and __ armr Tp, where I have __: ask for addl resources from the Bn comd; if not provided, the almt of tps to task as per existing resources']),
               ]),
               headOnly('own.ded.common', 'Common Deductions', [
-                yoursA('own.ded.c.hold', 'Asst / Coord with Holding Tps', 13, ['Activity all over the front and feint attk (if nec) from the opposite dir', 'Asst in estb of BOF', 'Info about his def, obs, lanes and gaps through the mine fd', 'Passage through lanes', 'Guidance arrangement', 'Protection of flanks']),
+                yoursA('own.ded.c.hold', 'Asst / Coord with Holding Tps', 13, ['Activity all over the front and feint attk (if nec) from the opposite dir', 'Asst in estb of BOF', 'Info about the En def, obs, lanes and gaps through the mine fd', 'Passage through lanes', 'Guidance arrangement', 'Protection of flanks']),
                 yoursA('own.ded.c.bs', 'Emp of BS / RRs', 13, ['Initially as part of BOF at area __', 'Subsequently for str of my reorg in area __']),
                 yoursA('own.ded.c.df', 'DF Plan', 13, ['A fd Bty aval in DS: exec my DF plan during reorg as deduced from Gr and Weather']),
                 yoursA('own.ded.c.fwdwpn', 'Arrangements to Carry Fwd Wpns for BOF', 13),
@@ -511,18 +511,18 @@ function outlineAttk(): AprcPart[] {
     {
       id: 'crs', title: 'COURSES',
       groups: [{ id: 'crs', title: null, paras: [
-        yoursA('crs.a', 'Course A', '15-16', ['To capture / clear area __ with a Coy / Coy plus force using __ apch, keeping tks in CS / fire sp role, commencing the op at __ hrs in __ phases', 'Phase 1: capturing area __ and __ with a Pl and Pl / Pl plus using tks in CS / fire sp, FUP in area __ and BOF in area __, completing the phase in 45-60 mins', 'Phase 2: capturing __ with a Pl / Pl minus using tks in CS / fire sp, FUP in area __, BOF in area __, A hr at __, completing in 30-45 mins', 'Initial reorg of Phase 1 facing __; final reorg facing __ along __; BS and RRs in the BOF, then in area __ during the reorg to beat back his C attk', 'Rd / Tr __ as route for the F ech; DFs and DF (SOS) during the reorg; Coy HQ and Tac HQ in area __', 'If time is aval: loc of altn FUP / BOF, the blocking posn if tks are not in CS / fire sp, FAA, use of aslt pnr, feint attk']),
+        yoursA('crs.a', 'Course A', '15-16', ['To capture / clear area __ with a Coy / Coy plus force using __ apch, keeping tks in CS / fire sp role, commencing the op at __ hrs in __ phases', 'Phase 1: capturing area __ and __ with a Pl and Pl / Pl plus using tks in CS / fire sp, FUP in area __ and BOF in area __, completing the phase in 45-60 mins', 'Phase 2: capturing __ with a Pl / Pl minus using tks in CS / fire sp, FUP in area __, BOF in area __, A hr at __, completing in 30-45 mins', 'Initial reorg of Phase 1 facing __; final reorg facing __ along __; BS and RRs in the BOF, then in area __ during the reorg to beat back the En C attk', 'Rd / Tr __ as route for the F ech; DFs and DF (SOS) during the reorg; Coy HQ and Tac HQ in area __', 'If time is aval: loc of altn FUP / BOF, the blocking posn if tks are not in CS / fire sp, FAA, use of aslt pnr, feint attk']),
         headOnly('crs.react', 'En Reactions and Own Ctr Actions', [
           headOnly('crs.react.conc', 'During Mov from Conc Area / Assy A', [
             yoursA('crs.react.conc.air', 'Air Attk, Recce Msns and Aerial Recce', 16, ['Air alarm scheme during my mov at __ hrs from conc A to Assy A / FAA', 'Dispersion in Assy A and conc A', 'Cam and clt of the highest std', 'Tr discipline', 'Lt discipline']),
             yoursA('crs.react.conc.arty', 'Use of Long Range Arty', 16, ['Good cam and clt', 'Con dispersion', 'Tr discipline', 'Coord with own arty for CB']),
           ]),
-          yoursA('crs.react.fup', 'During Mov from Assy A / FAA to FUP', 16, ['His speculative arty fire where there is no cover: well-dispersed mov in area __', 'Strict Tr discipline', 'Tks / vehs mov at the last possible time', 'HF to cover the tk noises']),
-          yoursA('crs.react.occ', 'Occupation of FUP', 17, ['His DFs and spoiling attk by his SP loc at __: FUP protection by the depth Pl at the appropriate time', 'Strict Lt discipline, min possible Lts in the FUP', 'Mov steadily to the FUP, silent occupation under the cover of arty fire', 'Strict wrls silence', 'Smk with HE through the FOO / MFC', 'Spoiling attk: adv H or mov to the altn FUP in area __', 'Eff CB to silence his guns']),
+          yoursA('crs.react.fup', 'During Mov from Assy A / FAA to FUP', 16, ['The En speculative arty fire where there is no cover: well-dispersed mov in area __', 'Strict Tr discipline', 'Tks / vehs mov at the last possible time', 'HF to cover the tk noises']),
+          yoursA('crs.react.occ', 'Occupation of FUP', 17, ['The En DFs and spoiling attk by its SP loc at __: FUP protection by the depth Pl at the appropriate time', 'Strict Lt discipline, min possible Lts in the FUP', 'Mov steadily to the FUP, silent occupation under the cover of arty fire', 'Strict wrls silence', 'Smk with HE through the FOO / MFC', 'Spoiling attk: adv H or mov to the altn FUP in area __', 'Eff CB to silence the En guns']),
           headOnly('crs.react.ph1', 'Phase 1', [
-            yoursA('crs.react.ph1.readj', 'Readjustment of Posn by En', 17, ['Subj him to conc arty fire through my FSP already prep']),
-            yoursA('crs.react.ph1.wpns', 'En Use of SA / A Tk Wpns', 17, ['Neutralise his wpn emplacements by covering fire till the aslt line, then the fire base at __ when the arty fire is lifted', 'Smk shells with HE to deny his obsn']),
-            yoursA('crs.react.ph1.catk', 'Local C Attk by the En', 17, ['Subj his depth loc to arty fire through my FOO / MFC', 'Quick initial reorg; launch Phase 2 at __ with speed; engage __ and __ already mk as DFs']),
+            yoursA('crs.react.ph1.readj', 'Readjustment of Posn by En', 17, ['Subj the En to conc arty fire through my FSP already prep']),
+            yoursA('crs.react.ph1.wpns', 'En Use of SA / A Tk Wpns', 17, ['Neutralise the En wpn emplacements by covering fire till the aslt line, then the fire base at __ when the arty fire is lifted', 'Smk shells with HE to deny the En obsn']),
+            yoursA('crs.react.ph1.catk', 'Local C Attk by the En', 17, ['Subj the En depth loc to arty fire through my FOO / MFC', 'Quick initial reorg; launch Phase 2 at __ with speed; engage __ and __ already mk as DFs']),
           ]),
           headOnly('crs.react.ph2', 'Phase 2', [
             yoursA('crs.react.ph2.catk', 'Local C Attk by En Res', 17, ['Quick completion of Phase 2 by __ hrs', 'F ech on the tgt ASP', 'Speedy reorg of Phase 2 by __ hrs', 'Quick readjustment of DF / DF (SOS)']),

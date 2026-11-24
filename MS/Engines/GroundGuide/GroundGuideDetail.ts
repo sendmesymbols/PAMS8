@@ -653,7 +653,7 @@ export class GroundGuideDetail {
       const who = el('span', 'ms-ggd-who');
       who.setAttribute('role', 'group');
       who.setAttribute('aria-label', 'Whose options (X)');
-      who.title = "Whose options the IPB reading shows: the en's Apchs at you, your fire on them, his air and attack template; or your Apchs at him, his fire on them, your air, his defence template. X does the same.";
+      who.title = "Whose options the IPB reading shows: the en's Apchs at you, your fire on them, the En air and attack template; or your Apchs at the En, its fire on them, your air, its defence template. X does the same.";
       who.append(el('span', 'ms-ggd-k', 'X'));
       const btn = (r: 'defence' | 'attack', text: string): void => {
         const b = el('button', undefined, text) as HTMLButtonElement;
@@ -714,16 +714,14 @@ export class GroundGuideDetail {
       btn('Q Labels', now.labels, 'Q: the labels on the Ext View map on or off', () => mp.labels());
       keys.append(sw);
     }
+    // Only the keys the card shows nowhere else: each tab carries its own key (G R O T B C, 1-5, K), the page line its
+    // next-page key and the × the close; D, Esc and the rest are in the Legend's key list (K).
     const rows: Array<[string, string]> = [
-      ['D', 'open / close'],
-      ['G R O T B C', 'tabs, again for the next page, with Shift back'],
-      ...(ext ? ([[EXT_TABS.map((t) => EXT_TAB_KEY[t]).join(' '), 'Ext tabs, again for the next page']] as Array<[string, string]>) : []),
-      ['K', 'legend'],
       ['F', !ext ? 'Ext View' : this._kept ? 'close Ext View (kept on)' : 'close Ext View'],
       ...(ext && !this._kept ? ([['⇧F', 'keep it on']] as Array<[string, string]>) : []),
       ...(ext ? ([['[ ]', 'turn the threat'], ['J', 'better Posn']] as Array<[string, string]>) : []),
       ['V', 'Gr Scope'],
-      ['Esc', 'close'],
+      ['K', 'all keys'],
     ];
     for (const [k, t] of rows) {
       for (const kk of k.split(' ')) keys.append(el('span', 'ms-ggd-k', kk));
@@ -1392,10 +1390,14 @@ export class GroundGuideDetail {
     const after: Element[] = [];
     for (let n = list.nextElementSibling; n; n = n.nextElementSibling) after.push(n);
     for (const a of after) a.remove();
+    // A list led by a `data-split-head` row (the weather's mission name) carries that row again in each piece, so a
+    // continued row still says what it belongs to; the head never goes alone.
+    const head = list.firstElementChild?.hasAttribute('data-split-head') ? list.firstElementChild : null;
+    const min = head ? 2 : 1;
     const out: HTMLElement[] = [t];
     let cur = t;
     let curList = list;
-    while (cur.offsetHeight > h && curList.childElementCount > 1) {
+    while (cur.offsetHeight > h && curList.childElementCount > min) {
       const next = t.cloneNode(false) as HTMLElement;
       const c2 = cap.cloneNode(true) as HTMLElement;
       if (!c2.querySelector('.ms-ggd-cont')) c2.append(el('span', 'ms-ggd-cont', ' continued'));
@@ -1407,9 +1409,10 @@ export class GroundGuideDetail {
         host = wc;
       }
       const nl = curList.cloneNode(false) as HTMLElement;
+      if (head) nl.append(head.cloneNode(true));
       host.append(nl);
       cur.after(next);
-      while (cur.offsetHeight > h && curList.childElementCount > 1) nl.prepend(curList.lastElementChild!);
+      while (cur.offsetHeight > h && curList.childElementCount > min) nl.insertBefore(curList.lastElementChild!, head ? (nl.children[1] ?? null) : nl.firstChild);
       out.push(next);
       cur = next;
       curList = nl;
@@ -1495,7 +1498,8 @@ export class GroundGuideDetail {
     const key = TAB_KEY_OF[this._tab];
     const more = this._page + 1 < this._pages;
     const next = el('span');
-    next.append(el('b', undefined, `Page ${this._page + 1} of ${this._pages}`), ' ', el('span', 'ms-ggd-k', key), more ? 'next page' : 'back to page 1', ' Shift + ', el('span', 'ms-ggd-k', key), 'back');
+    next.append(el('b', undefined, `Page ${this._page + 1} of ${this._pages}`), ' ', el('span', 'ms-ggd-k', key), more ? 'next' : 'page 1');
+    p.title = `${key}: ${more ? 'next page' : 'back to page 1'} · Shift+${key}: back`;
     p.replaceChildren(dots, next);
   }
 
@@ -1813,7 +1817,7 @@ export class GroundGuideDetail {
       legendKeyRow('Q', 'Labels', 'The labels on the Ext View map off, and back on (Ext View)'),
       legendKeyRow('J', 'Better Posn', 'Places the symbol at the better Posn the map shows (Ext View)'),
       legendKeyRow('Y', 'Apchs End', "Onto the Obj (its frontage by echelon: frontal, Lt and Rt flanking from an FUP), through the area (the book's avenues) or both; Shift+Y back; also the switch in the key bar (Ext View)"),
-      legendKeyRow('X', 'Whose Options', "The en's options against you (his Apchs, your fire on them, his air, his template), or yours against the threat; also the switch at the left of the key bar at the foot of this card (Ext View)"),
+      legendKeyRow('X', 'Whose Options', "The en's options against you (the En Apchs, your fire on them, its air, its template), or yours against the threat; also the switch at the left of the key bar at the foot of this card (Ext View)"),
       legendKeyRow('[', 'Threat', '[ and ] turn the threat 15° (Shift 45°); drag the yellow marker to make it a place (Ext View)'),
       legendKeyRow('V', 'Gr Scope', 'Shows or hides the side rail: the map round the symbol with range rings and the GROTBC layers (with F, the Ext View)'),
       legendKeyRow('Esc', 'Close', 'Closes this card; a second Esc cancels the draw'),

@@ -225,7 +225,7 @@ export function decide(a: DecArgs): DecResult {
     const c = perAa.get(n.aa) ?? 0;
     if (c >= 2) continue;
     perAa.set(n.aa, c + 1);
-    tais.push({ id: '', n: 0, nai: n.id, aa: n.aa, alongM: n.alongM, why: n.kind === 'crossing' ? `the crossing (${Math.round(n.widthM ?? 0)} m): denied, he needs bridging` : `narrows ${Math.round(n.widthM ?? 0)} m, under a corridor's width: blocked, he cannot pass deployed`, earliestH: n.earliestH, latestH: n.latestH });
+    tais.push({ id: '', n: 0, nai: n.id, aa: n.aa, alongM: n.alongM, why: n.kind === 'crossing' ? `the crossing (${Math.round(n.widthM ?? 0)} m): denied, the En needs bridging` : `narrows ${Math.round(n.widthM ?? 0)} m, under a corridor's width: blocked, the En cannot pass deployed`, earliestH: n.earliestH, latestH: n.latestH });
   }
   tais.sort((p, q) => p.earliestH - q.earliestH);
   tais.forEach((t, i) => {
@@ -284,14 +284,14 @@ export function decide(a: DecArgs): DecResult {
     const likely = (a.coa.templateAa && viable.find((x) => x.id === a.coa!.templateAa)) ?? viable.find((x) => x.main) ?? viable[0];
     if (likely) {
       const fire = a.coa.fire ?? {};
-      const whyL = [a.coa.templateAa === likely.id ? 'his doctrinal template is laid along it' : 'the best going of the avenues read', `${likely.id} through the area ${hPlus(prof(likely.id)?.endH[0] ?? 0)} at the earliest`];
+      const whyL = [a.coa.templateAa === likely.id ? 'the En doctrinal template is laid along it' : 'the best going of the avenues read', `${likely.id} through the area ${hPlus(prof(likely.id)?.endH[0] ?? 0)} at the earliest`];
       if (fire[likely.id] !== undefined) whyL.push(`${Math.round(fire[likely.id])} % of it under your fire`);
       const rest = viable.filter((x) => x.id !== likely.id);
       const fastest = rest.length ? Math.min(...rest.map((x) => prof(x.id)?.endH[0] ?? Infinity)) : Infinity;
       const scored = rest.map((x) => {
         let s = 0;
         const why: string[] = [];
-        if (a.coa!.turnAa === x.id) ((s += 3), why.push('his turning approach: onto your MSR, round your front'));
+        if (a.coa!.turnAa === x.id) ((s += 3), why.push('the En turning approach: onto your MSR, round your front'));
         const f = fire[x.id];
         if (f !== undefined) {
           if (f < (fire[likely.id] ?? 100)) ((s += 2), why.push(`less of it under your fire than COA 1 (${Math.round(f)} % against ${Math.round(fire[likely.id] ?? 100)} %)`));

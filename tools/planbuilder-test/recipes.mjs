@@ -71,7 +71,7 @@ check('PlanDoctrine: every book reference was found on its page (tools/doctrine-
 const undecided = figs.filter(([, f]) => f.basis === 'E' && !f.decided).map(([p]) => p);
 check('PlanDoctrine: no figure is left an open proposal (each E records its decision and search)', undecided.length === 0, undecided.join(', '));
 check('PlanDoctrine: bases are the codes the file declares', figs.every(([, f]) => f.basis in doc.plan.basisCodes), [...new Set(figs.filter(([, f]) => !(f.basis in doc.plan.basisCodes)).map(([, f]) => f.basis))].join(', '));
-check('PlanDoctrine: own figures do not rest on the Foxland (enemy) rows of IC s113-114 unless the figure is the enemy\'s or says so', !figs.some(([p, f]) => /IC s113/.test(f.src ?? '') && !/Foxland|enemy|his /i.test(f.src ?? '') && !p.startsWith('enemy.')), figs.filter(([p, f]) => /IC s113/.test(f.src ?? '') && !/Foxland|enemy|his /i.test(f.src ?? '') && !p.startsWith('enemy.')).map(([p]) => p).join(', '));
+check('PlanDoctrine: own figures do not rest on the Foxland (enemy) rows of IC s113-114 unless the figure is the enemy\'s or says so', !figs.some(([p, f]) => /IC s113/.test(f.src ?? '') && !/Foxland|enemy|his |\bEn\b/i.test(f.src ?? '') && !p.startsWith('enemy.')), figs.filter(([p, f]) => /IC s113/.test(f.src ?? '') && !/Foxland|enemy|his |\bEn\b/i.test(f.src ?? '') && !p.startsWith('enemy.')).map(([p]) => p).join(', '));
 for (const k of ['frontage', 'fieldOfFire', 'standoffRows']) {
   const from = doc.plan[k]?.from?.replace(/^OcokaDoctrine\./, '');
   check(`PlanDoctrine: ${k} points at OcokaDoctrine.${from}`, !!from && doc.ocoka[from] != null);

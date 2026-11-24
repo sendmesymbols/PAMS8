@@ -347,6 +347,25 @@ export class GroundGuideIpbApchMap {
         const h = 320 * k0;
         line([[b[0] - ux * h - uy * h * 0.6, b[1] - uy * h + ux * h * 0.6], b, [b[0] - ux * h + uy * h * 0.6, b[1] - uy * h - ux * h * 0.6]], ac, 1, r.rank === 1 ? 2.8 : 2);
       }
+      // Airspace: own gun-target lines (dotted, the range colour) with a mark where an avenue crosses one; a word on each
+      // zone symbol an avenue runs through (the zones themselves are the user's symbols).
+      const sp = av.airspace;
+      if (sp) {
+        for (const g of sp.gtls) {
+          line([g.from, g.to], RANGE, 0.85, 1.4, 'dot');
+          if (labels) tag(along([g.from, g.to], 0.5), `${g.id}${all ? ` · ${g.gun} → ${g.target}` : ''}`, RANGE, '#3a3010', 0, true, 6);
+          for (const c of g.crossings) tag(c.at, `✕ ${g.id}`, RANGE, '#3a3010', 0, false, 2);
+          if (all) for (const c of g.near) tag(c.at, `near ${g.id} · ${dist(c.distM)}`, RANGE, '#3a3010', 0, true, 7);
+        }
+        if (labels) {
+          for (const z of sp.zones) {
+            if (!z.routes.length) continue;
+            const cx = z.ring.reduce((s0, p) => s0 + p[0], 0) / z.ring.length, cy = z.ring.reduce((s0, p) => s0 + p[1], 0) / z.ring.length;
+            const word = z.effect === 'restricted' ? 'restricted' : z.effect === 'threat' ? 'opposing AD' : z.effect === 'coordinate' ? 'clearance' : z.effect === 'safe' ? 'safe' : z.effect === 'ownAd' ? 'own AD' : 'other side';
+            tag([cx, cy], `${z.label}: ${word} · Air ${z.routes.map((q) => `${q.id} ${q.pct} %`).join(', ')}`, z.effect === 'restricted' || z.effect === 'threat' ? [255, 138, 141] : GREY, '#2a3038', 0, true, 5);
+          }
+        }
+      }
       for (const z of [...av.lzs, ...av.dzs]) {
         const ring = path([...z.ring, z.ring[0]]);
         if (ring.length >= 4) gs.push(new Graphic({ geometry: new Polygon({ rings: [ring], spatialReference: sr }), symbol: new SimpleFillSymbol({ color: [...ac, z.rank === 1 ? 0.22 : 0.12], outline: new SimpleLineSymbol({ color: [...ac, 1], width: z.rank === 1 ? 2.2 : 1.6, style: z.kind === 'dz' ? 'dash' : 'solid' }) }) }));

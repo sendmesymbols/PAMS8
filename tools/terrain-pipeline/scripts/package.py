@@ -38,6 +38,7 @@ PRODUCT_SOURCES = {
     "admin": ["ncgdb"], "boundaries": ["ncgdb"], "sheets": ["ncgdb"], "routes": ["ncgdb"],
     "climate": ["worldclim"],
     "visibility": ["gsod"],
+    "wind": ["era5_wind"],
     "population": ["worldpop", "worldpop_agesex", "worldpop_density", "worldpop_pwd"],
     "network": ["osm_network", "ncgdb", "heigit_planet_roads"],
     "settlements": CLASS_SOURCES + ["worldpop", "worldpop_agesex", "openbuildings", "ghsl_height", "ghsl_smod",
@@ -94,6 +95,7 @@ SHARING_NOTE = [
     "    bundle that goes to another party (package.py --visibility <a folder that does not exist>) and out of any",
     "    commercial service.",
     "  - WorldClim, layer climate/: research and related use; check its terms before passing it on.",
+    "  - ERA5 (Copernicus) via WeatherBench 2, layer wind/: CC BY 4.0, may be passed on with the attribution.",
     "  - OpenStreetMap-derived pixels and features: ODbL, attribution and share-alike.",
     "  - HeiGIT Planet road surface / width / passability (the `pad` byte of network/edges.bin and the last array of",
     "    network/gg tiles): non-commercial use only; it contains PlanetScope derivatives, so redistribution is subject",
@@ -165,7 +167,7 @@ AUX_LAYERS = {
 
 def grotbc_block(bundle: Path, vector: Path, climate: Path | None = None, network: Path | None = None,
                  settlements: Path | None = None, population: Path | None = None,
-                 visibility: Path | None = None) -> dict | None:
+                 visibility: Path | None = None, wind: Path | None = None) -> dict | None:
     """Copy the v2 vector files into the bundle and describe the v2 layers; None for a v1 bundle. Every layer and
     file names its `sources` (ids in manifest.sources)."""
     layers = {k: dict(v, path=k) for k, v in AUX_LAYERS.items() if (bundle / k).is_dir()}
@@ -190,6 +192,11 @@ def grotbc_block(bundle: Path, vector: Path, climate: Path | None = None, networ
                 shutil.copyfile(visibility / name, bundle / "visibility" / name)
             out["visibility"] = {"index": "visibility/visibility.json", "data": "visibility/visibility.bin",
                                  "sources": PRODUCT_SOURCES["visibility"]}
+        if wind is not None and (wind / "wind.json").exists():
+            (bundle / "wind").mkdir(exist_ok=True)
+            for name in ("wind.json", "wind.bin"):
+                shutil.copyfile(wind / name, bundle / "wind" / name)
+            out["wind"] = {"index": "wind/wind.json", "data": "wind/wind.bin", "sources": PRODUCT_SOURCES["wind"]}
         if population is not None and (population / "population.json").exists():
             (bundle / "population").mkdir(exist_ok=True)
             for name in ("population.json", "population.bin"):
@@ -262,6 +269,8 @@ def main() -> int:
     ap.add_argument("--climate", type=Path, default=Path("work/climate"), help="climate.json / climate.bin (climate.py)")
     ap.add_argument("--visibility", type=Path, default=Path("work/visibility"),
                     help="visibility.json / visibility.bin (visibility.py; the OCOKA view by month)")
+    ap.add_argument("--wind", type=Path, default=Path("work/wind"),
+                    help="wind.json / wind.bin (wind.py; ERA5 wind climatology by month and hour)")
     ap.add_argument("--population", type=Path, default=Path("work/population"),
                     help="population.json / population.bin (population.py)")
     ap.add_argument("--grotbc-vector", type=Path, default=Path("work/grotbc/vector"),
@@ -298,7 +307,7 @@ def main() -> int:
         "restricted": bool(ncgdb),
     }
     v2 = grotbc_block(args.bundle, args.grotbc_vector, args.climate, args.network, args.settlements, args.population,
-                      args.visibility)
+                      args.visibility, args.wind)
     if v2:
         manifest["dataVersion"] = 2
         manifest["layers"].update({k: k for k in v2["layers"]})

@@ -193,7 +193,7 @@ for (const r of [front, right, left]) for (const mode of ['close', 'fire']) {
   check('...faster than the reserve Coy on foot to the same posn (tank rate 24 km/h against 5)', !!rR && rT.min < rR.min && rR.route?.mounted !== true, `${rT?.min} against ${rR?.min} min`);
   check('...in the trigger table and the Moves in time row (two more moves than without the Sqn: the C Pen posn and the secondary approach\'s Sup posn)', f1.whatIf.triggers.length === fitD(two, defG()).whatIf.triggers.length + 2 && /moves in time/.test(row(f1.res.rows, 'Moves in time')?.reason ?? ''), `${f1.whatIf.triggers.length}`);
   const hr = row(f1.res.rows, 'Tank harbour');
-  check('the Tank harbour row on the ground: tracks go, hidden from his start, guns count as AT at 2.5 km (E)', hr?.st === 'pass' && /A Sqn: tracks go, hidden from his start/.test(hr.reason) && /count as AT at 2\.5 km/.test(hr.reason), hr?.reason);
+  check('the Tank harbour row on the ground: tracks go, hidden from his start, guns count as AT at 2.5 km (E)', hr?.st === 'pass' && /A Sqn: tracks go, hidden from where the En starts/.test(hr.reason) && /count as AT at 2\.5 km/.test(hr.reason), hr?.reason);
   const f2 = fitD(d2, defG());
   check('two Sqns: both go to the C Pen posn, one row names both harbours', !!trg(f2, 'tk-cpen-tkSqn') && !!trg(f2, 'tk-cpen-tkSqn2') && /A Sqn: .*B Sqn:/.test(row(f2.res.rows, 'Tank harbour')?.reason ?? ''), row(f2.res.rows, 'Tank harbour')?.reason);
   // NO-GO for tracks at the harbour, and a harbour in his view
@@ -204,7 +204,7 @@ for (const r of [front, right, left]) for (const mode of ['close', 'fire']) {
   const hb = row(fitD(d1, gBad).res.rows, 'Tank harbour');
   check('a harbour on NO-GO for tracks fails: move it by hand', hb?.st === 'fail' && /NO-GO for tracks/.test(hb.reason), hb?.reason);
   const hs = row(fitD(d1, defG({ sight: () => 0.9 })).res.rows, 'Tank harbour');
-  check('a harbour in his view warns: hull down or move it', hs?.st === 'warn' && /likely in his view/.test(hs.reason), hs?.reason);
+  check('a harbour in his view warns: hull down or move it', hs?.st === 'warn' && /likely in the En's view/.test(hs.reason), hs?.reason);
   // a layout with no reserve: the Sqn alone is the C Pen force
   const f3 = fitD(d3, defG());
   check('a 3-Coy three up (no reserve): the Sqn alone is the C Pen force, and there is a C Pen posn for it', !!trg(f3, 'tk-cpen-tkSqn') && !trg(f3, 'cpen-main') && !!f3.whatIf.cpen);

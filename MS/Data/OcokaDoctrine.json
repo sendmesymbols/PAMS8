@@ -173,7 +173,7 @@
       { "unit": "Battalion, two companies up", "frontageM": 4500, "depthM": [3000, 4000], "src": "IBB Annex U App 6, p481" },
       { "unit": "Battalion, three companies up", "frontageM": 6500, "depthM": [2500, 3000], "src": "IBB Annex U App 6, p481" },
       { "unit": "Battalion along an anti-tank ditch", "frontageM": [2750, 4115], "frontageXM": [3000, 4500], "depthM": [1850, 2757], "depthXM": [2000, 3000], "companyM": 1200, "gapM": 450, "gapXM": 500, "maskPositionM": [900, 1500], "src": "IBB Annex V App 9, p485" },
-      { "unit": "Battalion, normal terrain", "frontageM": 3000, "depthM": 2000, "src": "IC s113 p 658 (the Foxland infantry battalion, the enemy: his capabilities, not own doctrine)" },
+      { "unit": "Battalion, normal terrain", "frontageM": 3000, "depthM": 2000, "src": "IC s113 p 658 (the Foxland infantry battalion, the enemy: its capabilities, not own doctrine)" },
       { "unit": "Battalion, obstacle-oriented defence", "frontageM": 6000, "depthM": 3000, "src": "IC s113 p 658 (the Foxland battalion, the enemy)" },
       { "unit": "Mountain infantry battalion, defence", "frontageM": [6000, 8000], "src": "IC s113 p 658 (the Foxland mountain battalion, the enemy: 6000-8000 m on dominating heights; no own mountain Bn frontage is printed in MW, so this stands in and says so)" },
       { "unit": "Battalion, set-piece attack in plains", "frontageM": 400, "depthM": [1000, 1500], "src": "IC s113 p 663 (the Foxland battalion, the enemy: 400 m wide, 1000-1500 m deep)" },

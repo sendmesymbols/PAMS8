@@ -85,7 +85,7 @@ export function formsOfManoeuvre(a: FormArgs): FormsResult {
     if (!ap) reasons.push('no approach onto it');
     if (f.nogoPct > R.flankNogoMaxPct) reasons.push(`${Math.round(f.nogoPct)} % NO-GO beside it`);
     if (f.obstacle) reasons.push('an obstacle beside it');
-    if (f.enemyWithinM !== null && f.enemyWithinM < R.flankEnemyMinM) reasons.push(`another of his localities ${Math.round(f.enemyWithinM)} m off it`);
+    if (f.enemyWithinM !== null && f.enemyWithinM < R.flankEnemyMinM) reasons.push(`another of the En localities ${Math.round(f.enemyWithinM)} m off it`);
     if (reasons.length) return { assailable: false, why: `${side} flank tied: ${reasons.join(', ')}` };
     return { assailable: true, why: `${side} flank open: ${Math.round(100 - f.nogoPct)} % usable ground beside it, no obstacle, no other locality within ${R.flankEnemyMinM} m, approach ${ap!.id} onto it` };
   };
@@ -96,43 +96,43 @@ export function formsOfManoeuvre(a: FormArgs): FormsResult {
   const unwatched = a.apchs.filter((x) => x.onto !== 'frontal' && x.fire && x.fire.seenPct <= R.unwatchedMaxPct);
   const notes: string[] = [];
   const opts: FormOption[] = [];
-  const fix = frontal ? `${frontal.id} (frontal) fixes his front` : 'a fixing attack on his front (no frontal approach read)';
+  const fix = frontal ? `${frontal.id} (frontal) fixes the En front` : 'a fixing attack on the En front (no frontal approach read)';
 
   opts.push({
     id: 'turning', label: 'Turning movement', rank: 0, feasible: !!turn && !!a.turnLabel, main: turn?.id ?? null, aux: frontal?.id ?? null,
-    why: turn && a.turnLabel ? [`${turn.id} goes round him to ${a.turnLabel}: a threat deep in his rear forces him to divert (OoW Vol II s6)`, `needs relative mobility on the flank it rounds${open ? '' : ' (no flank read as open: harder)'}`, fix, 'user: a flanking attack that chokes the en MSR is encouraged'] : ['no MSR choke reached behind the objective'],
+    why: turn && a.turnLabel ? [`${turn.id} goes round the En to ${a.turnLabel}: a threat deep in the En rear forces the En to divert (OoW Vol II s6)`, `needs relative mobility on the flank it rounds${open ? '' : ' (no flank read as open: harder)'}`, fix, 'user: a flanking attack that chokes the en MSR is encouraged'] : ['no MSR choke reached behind the objective'],
     src: 'OoW Vol II s6; user',
   });
   opts.push({
     id: 'double', label: 'Double envelopment', rank: 0, feasible: open === 2 && adequate !== false, main: open === 2 ? `${left!.id} + ${right!.id}` : null, aux: frontal?.id ?? null,
-    why: open === 2 ? [adequate === null ? 'both flanks open; the force must be adequate (his echelon unknown)' : adequate ? 'both flanks open and the force adequate' : 'both flanks open but the force is below his echelon', 'needs precise co-ordination; enables total destruction (OoW Vol II s6)', fix] : [`${open === 1 ? 'one flank open only' : 'no flank open'}`],
+    why: open === 2 ? [adequate === null ? 'both flanks open; the force must be adequate (the En echelon unknown)' : adequate ? 'both flanks open and the force adequate' : 'both flanks open but the force is below the En echelon', 'needs precise co-ordination; enables total destruction (OoW Vol II s6)', fix] : [`${open === 1 ? 'one flank open only' : 'no flank open'}`],
     src: 'OoW Vol II s6',
   });
   const envFlank = L.assailable && Rt.assailable ? best([left, right]) : L.assailable ? left : Rt.assailable ? right : undefined;
   opts.push({
     id: 'envelopment', label: 'Envelopment', rank: 0, feasible: open >= 1 && !!envFlank, main: envFlank?.id ?? null, aux: frontal?.id ?? null,
-    why: envFlank ? [`main strength onto the ${envFlank.onto} flank by ${envFlank.id} (${Math.round(envFlank.goPct)} % GO${envFlank.fire ? `, ${Math.round(envFlank.fire.coveredPct)} % under his fire` : ''})`, `an auxiliary manoeuvre draws him first: ${fix}`, ...(a.mountain ? ['mountains: envelopment with frontal fixation preferred (MW p 79)'] : [])] : ['no assailable flank: create inner flanks after a penetration (OoW Vol II s6)'],
+    why: envFlank ? [`main strength onto the ${envFlank.onto} flank by ${envFlank.id} (${Math.round(envFlank.goPct)} % GO${envFlank.fire ? `, ${Math.round(envFlank.fire.coveredPct)} % under the En fire` : ''})`, `an auxiliary manoeuvre draws the En first: ${fix}`, ...(a.mountain ? ['mountains: envelopment with frontal fixation preferred (MW p 79)'] : [])] : ['no assailable flank: create inner flanks after a penetration (OoW Vol II s6)'],
     src: 'OoW Vol II s6; MW p 79',
   });
   opts.push({
     id: 'vertical', label: 'Vertical envelopment', rank: 0, feasible: a.lzBehind > 0, main: null, aux: frontal?.id ?? null,
-    why: a.lzBehind > 0 ? [`${a.lzBehind} LZ${a.lzBehind > 1 ? 's' : ''} behind him (tab 4): by air into his rear and flanks (OoW Vol II s6)`, 'needs the lift and air cover'] : ['no LZ behind him read (tab 4)'],
+    why: a.lzBehind > 0 ? [`${a.lzBehind} LZ${a.lzBehind > 1 ? 's' : ''} behind the En (tab 4): by air into the En rear and flanks (OoW Vol II s6)`, 'needs the lift and air cover'] : ['no LZ behind the En read (tab 4)'],
     src: 'OoW Vol II s6',
   });
   const inf = a.mover === 'dismounted' ? best(unwatched) : undefined;
   opts.push({
     id: 'infiltration', label: 'Infiltration', rank: 0, feasible: !!inf, main: inf?.id ?? null, aux: null,
-    why: inf ? [`${inf.id} he may watch only ${Math.round(inf.fire!.seenPct)} % of the way: through facilitating terrain (OoW Vol II s11)`, 'by night, on foot; needs detailed terrain and routes'] : a.mover !== 'dismounted' ? ['on foot only'] : ['no way onto him he may not watch'],
+    why: inf ? [`${inf.id} the En may watch only ${Math.round(inf.fire!.seenPct)} % of the way: through facilitating terrain (OoW Vol II s11)`, 'by night, on foot; needs detailed terrain and routes'] : a.mover !== 'dismounted' ? ['on foot only'] : ['no way onto the En that it may not watch'],
     src: 'OoW Vol II s11',
   });
   opts.push({
     id: 'penetration', label: 'Penetration', rank: 0, feasible: true, main: frontal?.id ?? null, aux: null,
-    why: [open ? 'a flank is open: envelopment first' : 'no assailable flank: a wedge through his front at its weakest point (OoW Vol II s6: the most commonly applied form)', 'needs preponderance, above all in firepower; must lead to break-out and the inner flanks', 'enabled by an auxiliary manoeuvre, surprise and deception'],
+    why: [open ? 'a flank is open: envelopment first' : 'no assailable flank: a wedge through the En front at its weakest point (OoW Vol II s6: the most commonly applied form)', 'needs preponderance, above all in firepower; must lead to break-out and the inner flanks', 'enabled by an auxiliary manoeuvre, surprise and deception'],
     src: 'OoW Vol II s6',
   });
   opts.push({
     id: 'frontal', label: 'Frontal attack', rank: 0, feasible: !!frontal, main: frontal?.id ?? null, aux: null,
-    why: ['for reference: dangerous, a small chance of success (user); only if unavoidable, at night or in poor visibility (MW p 79)', 'the most fire from him (tab 1)'],
+    why: ['for reference: dangerous, a small chance of success (user); only if unavoidable, at night or in poor visibility (MW p 79)', 'the most fire from the En (tab 1)'],
     src: 'user; MW p 79',
   });
   // Rank: turning (when it reaches the choke), double, envelopment, vertical, infiltration, penetration, frontal;

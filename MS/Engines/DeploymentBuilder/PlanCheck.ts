@@ -775,7 +775,7 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
     const rs = slots.find((x) => x.kind === 'res');
     const rc = rs ? reserveMovesCheck(whatIfRes, rs.label) : null;
     if (rs && rc) rs.checks.push(rc);
-    if (axes.length) rows.push({ name: 'Drawn en axes', st: 'pass', reason: `${axes.length} enemy axes read as his approaches (${axes.map((a) => a.label || a.name).join(', ')})` });
+    if (axes.length) rows.push({ name: 'Drawn en axes', st: 'pass', reason: `${axes.length} enemy axes read as the En approaches (${axes.map((a) => a.label || a.name).join(', ')})` });
   } else {
     for (const s of slots) s.checks.push({ name: 'Ground', st: 'unchecked', reason: frame ? 'needs terrain data' : 'the front is not known' });
     for (const n of ['Approaches covered', 'Fields of fire', 'Flanks', 'Exposure']) rows.push({ name: n, st: 'unchecked', reason: opts.ground ? 'the front is not known: mark the threat' : 'needs terrain data' });
@@ -807,7 +807,7 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
   const assumptions = [
     'Read as drawn: nothing was moved.',
     mp.threat.from === 'marker' ? 'The threat is where it was marked.' : `The threat is read from ${mp.threat.why}.`,
-    'Frontages from IBB Annex U / IC s113 / OOW1; the en force from his echelon (about three of the level below each level up, E).',
+    'Frontages from IBB Annex U / IC s113 / OOW1; the en force from the En echelon (about three of the level below each level up, E).',
   ];
   const unclear = [...mp.unclear];
   if (terrain.source === 'assumed') unclear.push(`Ground taken as plains (${terrain.why}): set it if the plan stands on an obstacle, desert or mountains, which allow wider frontages`);
@@ -931,7 +931,7 @@ function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Chec
       const tanks = own.some((s) => isUnit(s) && isArmour(s) && m(dist(s.pts[0], centroid(fupOk.pts))) < 1500);
       // 1 m either way: a plan laid at exactly 1000 m reads 999.99 m back through Web Mercator
       const okInf = d >= fupBand[0] - 1 && d <= fupBand[1] + 1, okTank = tanks && d >= tankBand[0] - 1 && d <= tankBand[1] + 1;
-      gr.push({ name: 'FUP from the Obj', st: okInf || okTank ? 'pass' : 'warn', reason: `${fmtM(d)} to the Obj's near edge; IBB p201 wants ${fmtM(fupBand[0])}-${fmtM(fupBand[1])}${tanks ? `, tanks ${fmtM(tankBand[0])}-${fmtM(tankBand[1])} (IBB p214)` : ''}${d < fupBand[0] - 1 ? ': inside his NVD and small-arms reach' : d > (tanks ? tankBand[1] : fupBand[1]) ? ': a long approach in the open from the FUP' : ''}` });
+      gr.push({ name: 'FUP from the Obj', st: okInf || okTank ? 'pass' : 'warn', reason: `${fmtM(d)} to the Obj's near edge; IBB p201 wants ${fmtM(fupBand[0])}-${fmtM(fupBand[1])}${tanks ? `, tanks ${fmtM(tankBand[0])}-${fmtM(tankBand[1])} (IBB p214)` : ''}${d < fupBand[0] - 1 ? ': inside the En NVD and small-arms reach' : d > (tanks ? tankBand[1] : fupBand[1]) ? ': a long approach in the open from the FUP' : ''}` });
     } else gr.push({ name: 'FUP from the Obj', st: 'warn', reason: fupOk ? 'no Obj to measure to' : 'no FUP drawn within 4 km of the axis tail' });
     if (tankAxis) {
       // the tanks cross no SL of their own and need no BOF: they are timed to the infantry's (IBB p187)

@@ -134,5 +134,24 @@ const frameFor = (res) => ({ anchor: { x: 0, y: 0 }, bearing: 0, k: 1, pivot: it
   check('...the new main posn not drawn: named as missing', Wd.checkWithdrawal(inp, noNew)?.missing.includes('New Main Posn (Bn)'));
 }
 
+// ── the obstacle in front of the intermediate posn: a canal one 30 m cell wide; a mapped canal the grid does not show ─
+{
+  const res = S.solveRecipe(wdr, ctx);
+  const f = frameFor(res);
+  const ipY = centre(item(res, 'intPosn').pts).y - f.pivot.y;
+  // a drain one class cell (30 m) wide, 5 km in front of the intermediate posn: the old 60 m step could step over it
+  const g1 = ground();
+  const thin = { ...g1, cls: (x, y) => (Math.abs(y - (ipY - 5000)) < 15 ? 21 : g1.cls(x, y)) };
+  check('a drain one 30 m cell wide 5 km in front: found (15 m steps), Behind an obstacle passes', row(Wd.findWithdrawal(res, f, thin, doc, {}).rows, 'Behind an obstacle')?.st === 'pass', row(Wd.findWithdrawal(res, f, thin, doc, {}).rows, 'Behind an obstacle')?.reason);
+  // the mapped lines: a 76 m link canal 6 km in front that the class grid does not show, and a 4 m distributary nearer
+  const lineAt = (y, n, w) => ({ kind: 'canal', xy: [[-8000, y], [8000, y + 300]], attrs: { n, w } });
+  const withLines = (ls) => ({ ...ground(), mov: () => ({ lines: () => ls }) });
+  const link = Wd.findWithdrawal(res, f, withLines([lineAt(ipY - 6000, 'Test Link Canal', 76.2), lineAt(ipY - 2000, 'Test Disty', 3.7)]), doc, {});
+  const rL = row(link.rows, 'Behind an obstacle');
+  check('...a 76 m link canal on the 1:50k lines, not in the class grid: passes and names it with its width; the 4 m distributary does not count', rL?.st === 'pass' && /Test Link Canal \(76 m wide\)/.test(rL.reason) && !/Disty/.test(rL.reason), rL?.reason);
+  const disty = Wd.findWithdrawal(res, f, withLines([lineAt(ipY - 2000, 'Test Disty', 3.7)]), doc, {});
+  check('...only a 4 m distributary between: still warns', row(disty.rows, 'Behind an obstacle')?.st === 'warn', row(disty.rows, 'Behind an obstacle')?.reason);
+}
+
 console.log(`\n${n - fails} of ${n} checks passed`);
 process.exit(fails ? 1 : 0);

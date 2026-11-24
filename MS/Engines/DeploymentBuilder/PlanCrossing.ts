@@ -453,7 +453,7 @@ function readCrossing(c: Ctx): Read {
       const trip = cl50.tripMin * Math.max(1, gapW / 30), first = cl50.buildMin[li] + trip / 2, all = cl50.buildMin[li] + sqn * trip;
       times.push({ label: 'First tank across (Cl 50 raft)', atMin: first }, { label: 'A tank Sqn across', atMin: all });
       rows.push({ name: 'Tanks across', st: 'warn', reason: `no Class 50 bridge with ${holder === 'infDiv' ? 'an infantry division' : 'the division'} (Annex Q para 1): ${cl50.label}, built ${cl50.buildMin[li]} min ${LIGHT_WORD[light]}, ${Math.round(trip)} min a round trip: the first tank ${hRel(first)}, a Sqn of ${sqn} ${hRel(all)}`,
-        detail: { head: `Tanks by raft: a Sqn by ${hRel(all)}`, items: [`${cl50.label}: one tank a trip, ${Math.round(trip)} min round over ${Math.round(wHi)} m`, `${hp.label}: the armoured division holds ${hp.heldM?.armdDiv ?? 84} m, Corps ${hp.heldM?.corps ?? 252} m (Annex Q para 1)`], why: 'The bridgehead holds his counter-attack without tanks until they are across (IC s71 para 17: AT weapons across early, mines laid on arrival).', whyShort: 'no Class 50 bridge held', fix: ['The armoured division\'s or Corps\' hollow plate bridge', 'AT mines and RRs across with the assault (IC s71 para 17 p366)', 'More rafts'] } });
+        detail: { head: `Tanks by raft: a Sqn by ${hRel(all)}`, items: [`${cl50.label}: one tank a trip, ${Math.round(trip)} min round over ${Math.round(wHi)} m`, `${hp.label}: the armoured division holds ${hp.heldM?.armdDiv ?? 84} m, Corps ${hp.heldM?.corps ?? 252} m (Annex Q para 1)`], why: 'The bridgehead holds the En counter-attack without tanks until they are across (IC s71 para 17: AT weapons across early, mines laid on arrival).', whyShort: 'no Class 50 bridge held', fix: ['The armoured division\'s or Corps\' hollow plate bridge', 'AT mines and RRs across with the assault (IC s71 para 17 p366)', 'More rafts'] } });
     }
   }
   // the engineers grouped to the crossing (ORBAT): their own bridging across the gap (SO's Hbk pp 427-432)
@@ -471,7 +471,7 @@ function readCrossing(c: Ctx): Read {
   if (mfSlot?.shape?.rect && recipe.slots.some((s) => s.sym === '25340200')) {
     const hrs = (doctrineAt(doc, 'crossing.breach.hours') as any) ?? { none: [4, 5, 6] };
     const n = Math.ceil(Number(mfSlot.shape.rect.hM) / one(doc, 'crossing.breach.laneM', 108));
-    times.push({ label: 'Vehicle lanes through his minefield (begun at H)', atMin: hrs.none[li] * 60 + (n - 1) * 100 });
+    times.push({ label: 'Vehicle lanes through the En minefield (begun at H)', atMin: hrs.none[li] * 60 + (n - 1) * 100 });
     // the engineers' TAMs: one a lane, a lane to each assault crossing place (SO's Hbk p 451)
     const lanes = Math.max(1, items.filter((i) => i.key === '25271300').length);
     const tb = eg ? tamBreach(eg, lanes, Number(mfSlot.shape.rect.hM), hrs.none[li]) : null;
@@ -498,7 +498,7 @@ function readCrossing(c: Ctx): Read {
   // the breach: his minefield in front of a defended obstacle (IBB S47 para 6; Annex Q para 4)
   const mf = fig(doc, 'crossing.enemyMinefieldM', [900, 1000]), laneM = one(doc, 'crossing.breach.laneM', 108);
   const breachH = (doctrineAt(doc, 'crossing.breach.hours') as any)?.none?.[li] ?? 6;
-  confirm.push(`His minefield (IBB S47 para 6: ${mf[0]}-${mf[1]} m deep): one engineer Pl a ${laneM} m of lane, ${breachH} h ${LIGHT_WORD[light]} (Annex Q para 4): lanes begun before H`);
+  confirm.push(`The En minefield (IBB S47 para 6: ${mf[0]}-${mf[1]} m deep): one engineer Pl a ${laneM} m of lane, ${breachH} h ${LIGHT_WORD[light]} (Annex Q para 4): lanes begun before H`);
 
   // ── rows: the ground ──
   rows.push(...crossingGeometryRows(items, recipe, doc, range, num, 0, light));
@@ -513,14 +513,14 @@ function readCrossing(c: Ctx): Read {
   const bhRow = rows.find((x) => x.name === 'Bridgehead');
   if (bhRow && bhItem && bhDepths.length) {
     const d0 = Math.max(...bhItem.pts.map((p) => p.y)), dMax = Math.max(...bhDepths);
-    if (dMax > d0 + 1) bhRow.reason += `; reaches out to ${fmtM(dMax)} where his observers stand (up to ${fmtM(maxDepth)})`;
+    if (dMax > d0 + 1) bhRow.reason += `; reaches out to ${fmtM(dMax)} where the En observers stand (up to ${fmtM(maxDepth)})`;
   }
   if (placeRows.length) rows.push({ name: 'Crossing places', st: 'pass', reason: placeRows.map((r, i) => `${i + 1}: ${r}`).join('; ') });
   if (bridgeRows.length) rows.push({ name: 'Bridge site', st: 'pass', reason: bridgeRows.join('; ') });
   if (bridges.length) rows.push(worstApproach <= 0.2 && worstStrip < 60 ? { name: 'Approaches and exits', st: 'pass', reason: `tracks to the water and beyond the far bank: ${Math.round(worstApproach * 100)} % NO-GO within 800 m` }
-    : { name: 'Approaches and exits', st: 'warn', reason: `${worstStrip >= 60 ? `a NO-GO strip ${Math.round(worstStrip)} m wide by the bank, ` : ''}${Math.round(worstApproach * 100)} % NO-GO for tracks within 800 m of the bridge site`, detail: { head: 'Tracks in or out blocked', why: 'Marsh, water or close country beside the bridge site: vehicles bog or queue under his fire.', fix: ['Track-way or matting to the bridge (Corps engineers: 891 m, Annex Q para 1)', 'Another bridge site with firm going'] } });
+    : { name: 'Approaches and exits', st: 'warn', reason: `${worstStrip >= 60 ? `a NO-GO strip ${Math.round(worstStrip)} m wide by the bank, ` : ''}${Math.round(worstApproach * 100)} % NO-GO for tracks within 800 m of the bridge site`, detail: { head: 'Tracks in or out blocked', why: 'Marsh, water or close country beside the bridge site: vehicles bog or queue under the En fire.', fix: ['Track-way or matting to the bridge (Corps engineers: 891 m, Annex Q para 1)', 'Another bridge site with firm going'] } });
   const near = r.crossings.filter((q) => groundDist([q.x, q.y], r.at) <= 5000).slice(0, 4);
-  if (near.length) rows.push({ name: 'Crossings near', st: 'pass', reason: near.map((q) => `${q.label}${q.name ? ` ${q.name}` : ''}${q.load ? ` (${q.load})` : ''} ${fmtM(q.distM)} ${q.dir}`).join('; ') + ': a party to seize a bridge intact, or his to blow' });
+  if (near.length) rows.push({ name: 'Crossings near', st: 'pass', reason: near.map((q) => `${q.label}${q.name ? ` ${q.name}` : ''}${q.load ? ` (${q.load})` : ''} ${fmtM(q.distM)} ${q.dir}`).join('; ') + ': a party to seize a bridge intact before the En blows it' });
   const seenAssy: string[] = [];
   const crest = Array.from({ length: Math.max(2, Math.round((xMax - xMin) / 500)) }, (_, i) => O.world(xMin + i * 500, farEdge + 50));
   for (const it of items.filter((i) => /^assy|^vwa/.test(i.role))) {
@@ -528,7 +528,7 @@ function readCrossing(c: Ctx): Read {
     const w = W({ x: cx, y: cy });
     if (crest.some((o) => (mov.sight(o[0], o[1], eye, w[0], w[1], 3) ?? 0) >= 0.5)) seenAssy.push(it.label || it.role);
   }
-  rows.push(seenAssy.length ? { name: 'Assy areas', st: 'warn', reason: `the far bank may see ${seenAssy.join(', ')}`, detail: { head: `${seenAssy.join(', ')}: seen from the far bank`, why: 'Open ground on the home side faces his bank: troops and boats gathering there are found before H.', fix: ['Move them back into cover (trees, villages, dead ground)', 'Occupy them by night only; the boats come forward at the last moment (boat off-loading point, IC s71 para 7 d)'] } }
+  rows.push(seenAssy.length ? { name: 'Assy areas', st: 'warn', reason: `the far bank may see ${seenAssy.join(', ')}`, detail: { head: `${seenAssy.join(', ')}: seen from the far bank`, why: 'Open ground on the home side faces the En bank: troops and boats gathering there are found before H.', fix: ['Move them back into cover (trees, villages, dead ground)', 'Occupy them by night only; the boats come forward at the last moment (boat off-loading point, IC s71 para 7 d)'] } }
     : { name: 'Assy areas', st: 'pass', reason: 'hidden from the far bank' });
   if (pendingSight) rows.push({ name: 'Observed fire', st: 'unchecked', reason: 'the ground on the far side is still loading' });
   else if (!obs.length) rows.push({ name: 'Observed fire', st: 'pass', reason: `no ground within ${fmtM(maxM)} of the far bank sees the crossing places (banks or folds hide them: a chance on 30 m elevation)` });
@@ -537,10 +537,10 @@ function readCrossing(c: Ctx): Read {
     const near2 = beyond.length ? Math.min(...beyond.map((o) => o.d)) : 0, far2 = beyond.length ? Math.max(...beyond.map((o) => o.d)) : 0;
     rows.push(!beyond.length ? { name: 'Observed fire', st: 'pass', reason: `${obs.length} places on the far side see the crossing places: all inside the bridgehead, taken as its objectives (IBB S46 para 24 c p240)` }
       : { name: 'Observed fire', st: 'warn', reason: `${obs.length} places on the far side see the crossing places: ${take} inside the bridgehead, ${inFront.length} in front of it, ${onFlank.length} on its flanks (${fmtM(near2)}-${fmtM(far2)} from the bund)`,
-        detail: { head: `${beyond.length} observers outside the bridgehead`, items: [`${take} taken inside it`, ...(inFront.length ? [`${inFront.length} in front, deeper than the BH line`] : []), ...(onFlank.length ? [`${onFlank.length} on the flanks, wider than the bridgehead`] : []), `${fmtM(near2)} to ${fmtM(far2)} from the far bund`], why: 'His posns there overlook the obstacle and direct his artillery onto the crossing places (IBB S46 para 24 c p240).', whyShort: 'his OPs overlook the crossings', fix: [...(recipe.echelon === '18' && !four && inFront.some((o) => o.d <= 2500) ? ['Four battalions: the brigade phase reaches 2.5 km (IBB S46 para 23 p239; Compare)'] : []), ...(onFlank.length ? ['Smoke and fire on the flanks; widen the bridgehead as it expands sideways (IBB S46 para 22)'] : []), 'Smoke and counter-battery fire on them from H', 'Cross where the far side cannot see (another site, Bridge site search)'] } });
+        detail: { head: `${beyond.length} observers outside the bridgehead`, items: [`${take} taken inside it`, ...(inFront.length ? [`${inFront.length} in front, deeper than the BH line`] : []), ...(onFlank.length ? [`${onFlank.length} on the flanks, wider than the bridgehead`] : []), `${fmtM(near2)} to ${fmtM(far2)} from the far bund`], why: 'The En posns there overlook the obstacle and direct the En artillery onto the crossing places (IBB S46 para 24 c p240).', whyShort: 'the En OPs overlook the crossings', fix: [...(recipe.echelon === '18' && !four && inFront.some((o) => o.d <= 2500) ? ['Four battalions: the brigade phase reaches 2.5 km (IBB S46 para 23 p239; Compare)'] : []), ...(onFlank.length ? ['Smoke and fire on the flanks; widen the bridgehead as it expands sideways (IBB S46 para 22)'] : []), 'Smoke and counter-battery fire on them from H', 'Cross where the far side cannot see (another site, Bridge site search)'] } });
   }
   for (const x of r.recce.slice(0, 6)) confirm.push(x);
-  if (bridges.some((b2) => /on the Bridge|on the bridge/i.test(b2.why))) confirm.push('The existing bridge: its class and whether he has prepared it for demolition; a party to seize it intact');
+  if (bridges.some((b2) => /on the Bridge|on the bridge/i.test(b2.why))) confirm.push('The existing bridge: its class and whether the En has prepared it for demolition; a party to seize it intact');
 
   const fails = rows.filter((x) => x.st === 'fail').length, warns = rows.filter((x) => x.st === 'warn').length;
   const score = Math.max(0, Math.min(100, Math.round(100 - 25 * fails - 6 * warns - beyond.length * 0.5)));
@@ -570,7 +570,7 @@ export interface CanalPrep {
 }
 
 /**
- * A canal defence (recipe layout `canal`: IC s85 pp 449-458, IBB S57 Fig 34) laid along the canal the click is on: the
+ * A canal defence (recipe layout `canal`: IC s85 pp 449-458, IBB S60-62 pp 328-339 and Annex V p 483) laid along the canal the click is on: the
  * posns' seeds moved (nudges) and the shape slots re-laid so their distance from the water is the recipe's, measured
  * from each bank's crest; the defence engine (PlanFit) then fits and checks it as any defence (his approaches cross
  * the canal only at its bridges and fords). Adds the canal's rows: the obstacle, which bank is higher (the bulk on the
@@ -633,24 +633,24 @@ export function canalPrep(inp: FitLayoutInput): CanalPrep | null {
   const rows: Check[] = [];
   const confirm: string[] = [];
   const nm = r.name ? `${r.name} (${r.typeLabel}${r.annex ? `, Annex P ${r.annex}` : ''})` : `${r.typeLabel}${r.annex ? ` (Annex P ${r.annex})` : ''}`;
-  rows.push({ name: 'Canal', st: r.width.src === 'none' ? 'warn' : 'pass', reason: `${nm}: ${figWord(r.width, 'm')} wide, ${figWord(r.depth, 'm')} deep; home bank ${figWord(r.home.aboveLand, 'm')} above the land, his bank ${figWord(r.far.aboveLand, 'm')}${r.shape ? `; ${r.shape === 'sunk' ? 'in-cut (a link canal, IC s85 para 3 a)' : r.shape === 'raised' ? 'in-filled (an irrigation canal, para 3 b)' : 'level'}` : ''}` });
+  rows.push({ name: 'Canal', st: r.width.src === 'none' ? 'warn' : 'pass', reason: `${nm}: ${figWord(r.width, 'm')} wide, ${figWord(r.depth, 'm')} deep; home bank ${figWord(r.home.aboveLand, 'm')} above the land, the En bank ${figWord(r.far.aboveLand, 'm')}${r.shape ? `; ${r.shape === 'sunk' ? 'in-cut (a link canal, IC s85 para 3 a)' : r.shape === 'raised' ? 'in-filled (an irrigation canal, para 3 b)' : 'level'}` : ''}` });
   // which bank is higher: only a difference beyond both figures' ranges counts (estimates carry their error)
   const hLo = worst(r.home.aboveLand, 'lo'), hHi = worst(r.home.aboveLand, 'hi'), fLo = worst(r.far.aboveLand, 'lo'), fHi = worst(r.far.aboveLand, 'hi');
   const hl = r.home.aboveLand.v ?? hLo, fh = r.far.aboveLand.v ?? fHi;
   if (hLo === null || fHi === null || hl === null || fh === null) rows.push({ name: 'Higher bank', st: 'unchecked', reason: 'the bank heights are not recorded here: which bank is higher decides where the bulk goes (IC s85 para 10 b)' });
-  else if (fLo !== null && hHi !== null && fLo > hHi + 0.5) rows.push({ name: 'Higher bank', st: 'warn', reason: `his bank ${figWord(r.far.aboveLand, 'm')} above the land, ours ${figWord(r.home.aboveLand, 'm')}: his is higher`, detail: { head: 'His bank is higher', why: 'Fire from the lower bank plunges and observation over his side is restricted (IC s85 para 3 d (7) p452); the bulk goes on the higher bank (para 10 b).', whyShort: 'plunging fire, observation restricted', fix: ['Raise the home bank 1-2 m astride his approaches (IC s85 para 3 c)', 'Site forward elements on his bank, their fall back planned (para 10 b)', 'OPs on his bank and on high ground behind'] } });
-  else if (!(hLo > fHi + 0.5)) rows.push({ name: 'Higher bank', st: 'warn', reason: `banks equal within what the data tells (ours ${figWord(r.home.aboveLand, 'm')}, his ${figWord(r.far.aboveLand, 'm')} above the land): IC s85 para 10 b puts the bulk on the far bank when they are equal`, detail: { head: 'Banks of equal height', why: 'With equal banks observation to the front and flanks is restricted (para 3 d (7)); the pamphlet puts the bulk on the far bank (para 10 b).', fix: ['The commander decides forward, behind or astride (para 10 b): forward Coys on the far bank, falling back behind the canal', 'Raise the home bank 1-2 m astride his approaches (para 3 c)'] } });
-  else rows.push({ name: 'Higher bank', st: 'pass', reason: `ours ${hl} m above the land, his ${fh} m: the bulk on the higher (home) bank (IC s85 para 10 b)` });
+  else if (fLo !== null && hHi !== null && fLo > hHi + 0.5) rows.push({ name: 'Higher bank', st: 'warn', reason: `the En bank ${figWord(r.far.aboveLand, 'm')} above the land, ours ${figWord(r.home.aboveLand, 'm')}: the En's is higher`, detail: { head: 'En bank is higher', why: 'Fire from the lower bank plunges and observation over the En side is restricted (IC s85 para 3 d (7) p452); the bulk goes on the higher bank (para 10 b).', whyShort: 'plunging fire, observation restricted', fix: ['Raise the home bank 1-2 m astride the En approaches (IC s85 para 3 c)', 'Site forward elements on the En bank, their fall back planned (para 10 b)', 'OPs on the En bank and on high ground behind'] } });
+  else if (!(hLo > fHi + 0.5)) rows.push({ name: 'Higher bank', st: 'warn', reason: `banks equal within what the data tells (ours ${figWord(r.home.aboveLand, 'm')}, the En's ${figWord(r.far.aboveLand, 'm')} above the land): IC s85 para 10 b puts the bulk on the far bank when they are equal`, detail: { head: 'Banks of equal height', why: 'With equal banks observation to the front and flanks is restricted (para 3 d (7)); the pamphlet puts the bulk on the far bank (para 10 b).', fix: ['The commander decides forward, behind or astride (para 10 b): forward Coys on the far bank, falling back behind the canal', 'Raise the home bank 1-2 m astride the En approaches (para 3 c)'] } });
+  else rows.push({ name: 'Higher bank', st: 'pass', reason: `ours ${hl} m above the land, the En's ${fh} m: the bulk on the higher (home) bank (IC s85 para 10 b)` });
   const halfFront = Math.max(...base.items.filter((i) => recipe.slots.find((s) => s.role === i.role)?.kind === 'fwd').flatMap((i) => i.pts.map((p) => Math.abs(p.x - xC))), 1000) + 500;
   const inSector = r.crossings.filter((q) => Math.abs(q.alongM) <= halfFront);
   for (const q of inSector) confirm.push(`${q.label}${q.name ? ` ${q.name}` : ''}${q.load ? ` (${q.load})` : ''}, ${fmtM(q.distM)} ${q.dir}: a strong point on it or prepared for demolition; the guard and the order to blow`);
-  rows.push(inSector.length ? { name: 'Bridges in sector', st: 'warn', reason: `${inSector.length} on the canal in front of the Bn: ${inSector.slice(0, 3).map((q) => `${q.label}${q.name ? ` ${q.name}` : ''}${q.load ? ` (${q.load})` : ''} ${fmtM(q.distM)} ${q.dir}`).join('; ')}`, detail: { head: `${inSector.length} crossings in the sector`, items: inSector.slice(0, 5).map((q) => `${q.label}${q.name ? ` ${q.name}` : ''}${q.load ? ` ${q.load}` : ''}: ${fmtM(q.distM)} ${q.dir}`), why: 'His approaches cross the canal here first (IC s85 para 3 d (9): Class 9/12 on tracks, 40/70 on main roads).', fix: ['A strong point on each, sited to cover it by fire', 'Each prepared for demolition, with its guard and the order to blow', 'Mines on his side of each (para 17 a)'] } }
-    : { name: 'Bridges in sector', st: 'pass', reason: 'no bridge or ford on the canal in front of the Bn (his approaches must make their own crossing)' });
+  rows.push(inSector.length ? { name: 'Bridges in sector', st: 'warn', reason: `${inSector.length} on the canal in front of the Bn: ${inSector.slice(0, 3).map((q) => `${q.label}${q.name ? ` ${q.name}` : ''}${q.load ? ` (${q.load})` : ''} ${fmtM(q.distM)} ${q.dir}`).join('; ')}`, detail: { head: `${inSector.length} crossings in the sector`, items: inSector.slice(0, 5).map((q) => `${q.label}${q.name ? ` ${q.name}` : ''}${q.load ? ` ${q.load}` : ''}: ${fmtM(q.distM)} ${q.dir}`), why: 'The En approaches cross the canal here first (IC s85 para 3 d (9): Class 9/12 on tracks, 40/70 on main roads).', fix: ['A strong point on each, sited to cover it by fire', 'Each prepared for demolition, with its guard and the order to blow', 'Mines on the En side of each (para 17 a)'] } }
+    : { name: 'Bridges in sector', st: 'pass', reason: 'no bridge or ford on the canal in front of the Bn (the En approaches must make their own crossing)' });
   const marshFar = r.far.marshM, marshHome = r.home.marshM;
-  if (marshFar + marshHome > 0) rows.push({ name: 'Marsh', st: marshHome > marshFar ? 'warn' : 'pass', reason: `${Math.round(marshFar)} m of marsh on his side, ${Math.round(marshHome)} m on ours (IC s85 para 3 d (6): marshy approaches and exits)${marshHome > marshFar ? ': it hampers our own counter-attack routes more than his' : ': his approaches and exits bog'}` });
+  if (marshFar + marshHome > 0) rows.push({ name: 'Marsh', st: marshHome > marshFar ? 'warn' : 'pass', reason: `${Math.round(marshFar)} m of marsh on the En side, ${Math.round(marshHome)} m on ours (IC s85 para 3 d (6): marshy approaches and exits)${marshHome > marshFar ? ': it hampers our own counter-attack routes more than the En routes' : ': the En approaches and exits bog'}` });
   const layer = one(doc, 'crossing.bridgeLayerMaxM', 24), wLo = worst(r.width, 'lo');
   if (wLo !== null) rows.push(wLo > layer ? { name: 'Obstacle value', st: 'pass', reason: `${Math.round(wLo)} m: wider than bridge-layer tanks span in a rush (${layer} m, IBB S47 para 5 p242; ditches of 24 m or more are effective AT obstacles: IC s85 para 4 l)` }
-    : { name: 'Obstacle value', st: 'warn', reason: `${Math.round(wLo)} m: bridge-layer tanks can span it in a rush (${layer} m)`, detail: { head: `Only ${Math.round(wLo)} m wide`, why: 'Narrower than the gap his bridge-layer tanks close (IBB S47 para 5 p242).', fix: ['Widen or deepen it; mines on his side and in it', 'AT weapons sited to cover it (IC s85 para 16)'] } });
+    : { name: 'Obstacle value', st: 'warn', reason: `${Math.round(wLo)} m: bridge-layer tanks can span it in a rush (${layer} m)`, detail: { head: `Only ${Math.round(wLo)} m wide`, why: 'Narrower than the gap the En bridge-layer tanks close (IBB S47 para 5 p242).', fix: ['Widen or deepen it; mines on the En side and in it', 'AT weapons sited to cover it (IC s85 para 16)'] } });
   confirm.push('Liaison with the Irrigation Department before digging into the banks (IC s85 para 18 a)', 'The forward elements\' fall back across the canal: routes and timings (IC s85 para 10 b)');
   const lineOut = path.filter((p) => Math.abs(chainOf(O.path, p) - O.s0) <= halfX + 200);
   return {
@@ -694,7 +694,7 @@ export function withMinefield(r: Recipe, doc: DoctrineSet): Recipe {
     const x = (s.shape!.base![0][0] + s.shape!.base![1][0]) / 2;
     slots.push({ role: `lane${s.role[0].toUpperCase()}${s.role.slice(1)}`, kind: 'line', sym: '25340200', label: '', order: 2, shape: { base: [[x - 15, 45 + D + 20], [x + 15, 45 + D + 20]], ctrl: [x, 45] } });
   }
-  return { ...r, id: `${r.id}-mf`, name: `${r.name}, his minefield`, slots, note: `${r.note ?? ''} His minefield assumed (IBB S47 para 6 p243: ${mf[0]}-${mf[1]} m deep, wire by the water): the home side drawn back behind it, a Breach lane through it to each assault crossing place (Annex Q para 4).` };
+  return { ...r, id: `${r.id}-mf`, name: `${r.name}, the En minefield`, slots, note: `${r.note ?? ''} The En minefield assumed (IBB S47 para 6 p243: ${mf[0]}-${mf[1]} m deep, wire by the water): the home side drawn back behind it, a Breach lane through it to each assault crossing place (Annex Q para 4).` };
 }
 
 // ── one layout fitted at one spot ────────────────────────────────────────────────────────────────────────────────────

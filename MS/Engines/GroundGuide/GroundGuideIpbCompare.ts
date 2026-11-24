@@ -77,7 +77,7 @@ export function compareLeftRight(a: CmpArgs): CmpResult {
   const factors = a.factors.map((f) => ({ ...f, w: Math.max(0, Math.min(3, a.weights?.[f.id] ?? f.weight)) }));
   const by = (k: CmpApch['onto']): CmpApch | undefined => a.apchs.find((x) => x.onto === k);
   const turn = by('turn');
-  const fireWord = (s: 'c' | 's' | 'd' | 'o' | null): string => (s === 'c' ? 'under his fire' : s === 's' ? 'screened from him' : s === 'd' ? 'in dead ground to him' : s === 'o' ? 'out of his range' : 'his fire not read');
+  const fireWord = (s: 'c' | 's' | 'd' | 'o' | null): string => (s === 'c' ? 'under the En fire' : s === 's' ? 'screened from the En' : s === 'd' ? 'in dead ground to the En' : s === 'o' ? 'out of the En range' : 'the En fire not read');
   const cellsFor = (p: CmpApch | undefined, side: 'left' | 'right' | 'frontal'): Record<string, CmpCell> => {
     const c: Record<string, CmpCell> = {};
     if (!p) return c;
@@ -85,7 +85,7 @@ export function compareLeftRight(a: CmpArgs): CmpResult {
       switch (f.id) {
         case 'msr': {
           // The turning approach reaches the MSR choke: the side it swings round credits it; frontal never.
-          if (side === 'frontal') c[f.id] = { v: 0, reason: 'a frontal attack does not reach his MSR (user: flanking that chokes the en MSR is encouraged)' };
+          if (side === 'frontal') c[f.id] = { v: 0, reason: 'a frontal attack does not reach the En MSR (user: flanking that chokes the en MSR is encouraged)' };
           else if (!turn || a.chokeSideM === null) c[f.id] = { v: 0.5, reason: turn ? 'the choke is on the axis: either side may reach it' : 'no MSR choke reached behind the Obj', unread: !turn };
           else {
             const same = (turn.sideM < 0) === (side === 'left');
@@ -94,7 +94,7 @@ export function compareLeftRight(a: CmpArgs): CmpResult {
           break;
         }
         case 'fupCover':
-          c[f.id] = p.fire ? { v: p.fire.atFup === 'c' ? 0 : p.fire.atFup === 'o' ? 0.6 : p.fire.atFup ? 1 : 0.5, reason: `the FUP ${km(a.fupM)} short is ${fireWord(p.fire.atFup)}`, unread: !p.fire.atFup } : { v: 0.5, reason: 'his fire not read', unread: true };
+          c[f.id] = p.fire ? { v: p.fire.atFup === 'c' ? 0 : p.fire.atFup === 'o' ? 0.6 : p.fire.atFup ? 1 : 0.5, reason: `the FUP ${km(a.fupM)} short is ${fireWord(p.fire.atFup)}`, unread: !p.fire.atFup } : { v: 0.5, reason: 'the En fire not read', unread: true };
           break;
         case 'fupObstacles':
           c[f.id] = { v: 1 - clamp01(p.assaultNogoPct / 100) * 0.8 - Math.min(0.2, p.narrows * 0.1), reason: `${p.assaultNogoPct ? `${pc(p.assaultNogoPct)} of the assault is NO-GO` : 'the assault is clear'}${p.narrows ? `; ${p.narrows} narrows on the way` : ''}` };
@@ -103,7 +103,7 @@ export function compareLeftRight(a: CmpArgs): CmpResult {
           c[f.id] = { v: clamp01(1 - (p.assaultM - a.fupM) / Math.max(500, a.fupM)), reason: `assault ${km(p.assaultM)} from the FUP${Math.abs(p.assaultM - a.fupM) < 50 ? ' (the FUP distance set)' : ''}` };
           break;
         case 'route':
-          c[f.id] = p.fire ? { v: clamp01(1 - p.fire.coveredPct / 100), reason: `${pc(p.fire.coveredPct)} of the way to the FUP under his fire${p.narrows ? `, ${p.narrows} narrows` : ''}` } : { v: 0.5, reason: 'his fire not read', unread: true };
+          c[f.id] = p.fire ? { v: clamp01(1 - p.fire.coveredPct / 100), reason: `${pc(p.fire.coveredPct)} of the way to the FUP under the En fire${p.narrows ? `, ${p.narrows} narrows` : ''}` } : { v: 0.5, reason: 'the En fire not read', unread: true };
           break;
         case 'fireBase':
           c[f.id] = { v: 0.5, reason: 'no fire base sited in the Ext View (the Intelligent Deployment tab sites the BOF)', unread: true };
@@ -112,7 +112,7 @@ export function compareLeftRight(a: CmpArgs): CmpResult {
           c[f.id] = { v: clamp01(p.goPct / 100), reason: `${pc(p.goPct)} GO along it, ${km(p.lengthM)}` };
           break;
         case 'surprise':
-          c[f.id] = p.fire ? { v: clamp01(1 - p.fire.seenPct / 100), reason: `${pc(100 - p.fire.seenPct)} of the way may be unwatched by him` } : { v: 0.5, reason: 'his watch not read', unread: true };
+          c[f.id] = p.fire ? { v: clamp01(1 - p.fire.seenPct / 100), reason: `${pc(100 - p.fire.seenPct)} of the way may be unwatched by the En` } : { v: 0.5, reason: 'the En watch not read', unread: true };
           break;
         default:
           c[f.id] = { v: 0.5, reason: 'you judge', unread: true };

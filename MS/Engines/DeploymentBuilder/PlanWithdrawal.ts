@@ -153,11 +153,39 @@ export function findWithdrawal(res: SolveResult, f: FitFrame, g: PlanGround, doc
       : { name: 'Intermediate posn', st: 'warn', reason: `${fmtM(back)} behind the old posn: inside the reach of En field artillery (${artySrc}); IBB s74 para 4 e p 373 wants the En to at least move En guns first`,
         detail: { head: `Intermediate posn ${fmtM(back)} back, En guns reach ${fmtM(arty)}`, why: 'The En guns in their present areas range it: no delay is forced on the En while the En attacks it.', fix: [`Put it ${fmtM(arty)} or more back`, 'Or make it a delaying posn for the covering troops only'] } });
     // an obstacle between: water across the way, from the old posn to the intermediate posn
+    // the class grid sampled every 15 m (a canal or drain is one or two 30 m cells) on three lines across the posn's width,
+    // then the mapped canals and rivers (the 1:50k lines) crossing the way back: the nearest to the intermediate posn counts
+    const ipW = Math.max(...ip.pts.map((p) => p.x)) - Math.min(...ip.pts.map((p) => p.x));
     let water: number | null = null;
-    for (let y = frontY + 300; y < c.y - 400; y += 60) { const k = clsAt(P(c.x, y)); if (k !== null && WATER.has(k)) { water = y; break; } }
+    for (const dx of [0, -ipW / 3, ipW / 3]) {
+      for (let y = c.y - 400; y > frontY + 300; y -= 15) { const k = clsAt(P(c.x + dx, y)); if (k !== null && WATER.has(k)) { if (water === null || y > water) water = y; break; } }
+    }
+    let named: { y: number; name: string; wM: number | null } | null = null;
+    const mov = (g.mov?.() ?? null) as unknown as { lines?: (x: number, y: number, r: number, kinds: Set<string>) => { kind: string; xy: [number, number][]; attrs?: Record<string, unknown> }[] } | null;
+    if (mov?.lines) {
+      const a = P(c.x, frontY + 300), b = P(c.x, c.y - 400);
+      const mid = W(P(c.x, (a.y + b.y) / 2));
+      const len = (b.y - a.y) * f.k;
+      for (const l of mov.lines(mid.x, mid.y, len / 2 + 200, new Set(['canal', 'river'])) ?? []) {
+        const pts = l.xy.map((q) => toLocal(f, { x: q[0], y: q[1] }));
+        for (let i = 1; i < pts.length; i++) {
+          const p0 = pts[i - 1], p1 = pts[i];
+          if ((p0.x - c.x) * (p1.x - c.x) > 0 || p0.x === p1.x) continue;
+          const y = p0.y + ((c.x - p0.x) / (p1.x - p0.x)) * (p1.y - p0.y);
+          if (y <= a.y || y >= b.y) continue;
+          const wRaw = Number(l.attrs?.w);
+          const wM = Number.isFinite(wRaw) && wRaw > 0 ? wRaw : null;
+          // a mapped line counts when it is a river, or a canal recorded 10 m wide or more (a narrower or unrecorded one only by the class grid)
+          if (l.kind !== 'river' && (wM === null || wM < 10)) continue;
+          if (!named || y > named.y) named = { y, name: String(l.attrs?.n ?? (l.kind === 'river' ? 'a river' : 'a canal')), wM };
+        }
+      }
+    }
     const known = clsAt(P(c.x, (frontY + c.y) / 2)) !== null;
+    const obstY = named && (water === null || named.y >= water - 200) ? named.y : water;
+    const obstWord = named && obstY === named.y ? `${named.name}${named.wM ? ` (${Math.round(named.wM)} m wide)` : ''}` : 'water';
     out.rows.push(!known ? { name: 'Behind an obstacle', st: 'unchecked', reason: 'the ground between is still loading' }
-      : water !== null ? { name: 'Behind an obstacle', st: 'pass', reason: `water ${fmtM(c.y - water)} in front of the intermediate posn (IC s91 para 3 e p 482: behind a natural obstacle, if available)` }
+      : obstY !== null ? { name: 'Behind an obstacle', st: 'pass', reason: `${obstWord} ${fmtM(c.y - obstY)} in front of the intermediate posn (IC s91 para 3 e p 482: behind a natural obstacle, if available)` }
         : { name: 'Behind an obstacle', st: 'warn', reason: 'no water between the old posn and the intermediate posn (IC s91 para 3 e p 482: behind a natural obstacle, if available)', detail: { head: 'No obstacle in front of it', why: 'Without an obstacle the En closes on the intermediate posn without pause; it is held by a Coy group with less depth than a normal posn (IBB p 373 d).', fix: ['Move it behind the nearest canal, river or ditch', 'Demolitions and mines on the roads in front (IC s93 para 3 p 490)'] } });
     const clean = num(doc, 'withdrawal.cleanBreakMinM', 2000);
     const nm = item('newMain');

@@ -229,17 +229,89 @@
       "basis": "E", "note": "My weights for the least-cost air avenue on a 150 m grid (length 1 per cell).",
       "cellM": 150, "seen": 4, "obstruction": 2, "wire": 2, "bua": 1, "noData": 1, "valley": 0.85, "parallel": 0.85, "valleyDepthM": 15, "parallelDeg": 30,
       "observerReachM": 6000, "landedM": 4, "alternates": 3, "detour": 1.6, "overlap": 0.6, "ad": 3,
-      "adNote": "ad: added to a cell within the other side's AD range (his AD symbols on the map, catalogue Rng.ad effective figure); E, 23 Nov 2026." 
+      "adNote": "ad: added to a cell within the other side's AD range (its AD symbols on the map, catalogue Rng.ad effective figure); E, 23 Nov 2026." 
     }
   },
 
+  "airspace": {
+    "basis": "U",
+    "note": "Airspace control measures and gun-target lines over the air avenues (tab 4; 2026-11-24). Read from the 2525D airspace symbols and own gun symbols on the map; nothing is filled from the terrain.",
+    "roz": {
+      "basis": "U",
+      "src": "FM 3-09 (2024) B-92, p B-27",
+      "refs": [{ "book": "FM 3-09 (2024)", "page": "B-27", "quote": "airspace reserved for specific activities in which the operations of one or more airspace users is restricted", "role": "rule" }],
+      "text": "Typical uses: restrict air operations over artillery launch and target areas, UAS launch and recovery areas, areas the area air defense commander identifies as weapon free."
+    },
+    "aca": {
+      "basis": "U",
+      "src": "FM 3-09 (2024) B-27 p B-9, B-28 p B-9, B-84 p B-26",
+      "refs": [
+        { "book": "FM 3-09 (2024)", "page": "B-9", "quote": "three-dimensional block of airspace in a target area, established by the appropriate commander, in which friendly aircraft are reasonably safe from friendly surface fires", "role": "rule" },
+        { "book": "FM 3-09 (2024)", "page": "B-9", "quote": "aircraft and surface joint fires may be separated by time or distance (lateral, altitude, or a combination of the two)", "role": "rule" }
+      ],
+      "text": "An informal ACA separates aircraft and surface fires by time or distance; approved at Bn or higher; no figure given."
+    },
+    "hidacz": {
+      "basis": "U",
+      "src": "JP 3-52 (HIDACZ definition); not on disk, the fetch failed on 2026-11-24",
+      "text": "Airspace of defined dimensions in which there is a concentrated employment of numerous and varied weapons and airspace users (wording to confirm against JP 3-52).",
+      "unverified": true
+    },
+    "engagementZones": {
+      "basis": "U",
+      "src": "JP 3-01 (WEZ, FEZ, JEZ, MEZ, LOMEZ, HIMEZ, SHORADEZ); not on disk, the fetch failed on 2026-11-24",
+      "text": "Airspace of defined dimensions within which the responsibility for engagement of air threats rests with a particular weapon system (wording to confirm against JP 3-01).",
+      "unverified": true
+    },
+    "effects": {
+      "basis": "E",
+      "decided": "For the side that flies: its own ROZ / UA ROZ / A2A ROZ are restricted (route round or have it opened), its HIDACZ needs clearance, its ACA is safe from its own surface fires, its engagement zones are its AD's (fly the routes and times the weapons-control status allows). The other side's engagement zones are a threat like its AD sites; its ROZ / HIDACZ / ACA do not bind the flight and only show where its guns, UAS and aircraft work.",
+      "searched": "FM 3-09 (2024) App B sections on FSCMs and ACMs (pp B-9, B-26, B-27); the joint definitions could not be fetched."
+    },
+    "symbols": {
+      "basis": "D",
+      "src": "MIL-STD-2525D airspace control measure codes in Symbols.json",
+      "table": {
+        "25171000": { "kind": "roz", "label": "ROZ" },
+        "25251001": { "kind": "roz", "label": "ROZ" },
+        "25171100": { "kind": "rozA2a", "label": "A2A ROZ" },
+        "25171200": { "kind": "rozUa", "label": "UA ROZ" },
+        "25170900": { "kind": "hidacz", "label": "HIDACZ" },
+        "25251002": { "kind": "aca", "label": "ACA" },
+        "25171300": { "kind": "wez", "label": "WEZ" },
+        "25171400": { "kind": "fez", "label": "FEZ" },
+        "25171500": { "kind": "jez", "label": "JEZ" },
+        "25171600": { "kind": "mez", "label": "MEZ" },
+        "25171700": { "kind": "lomez", "label": "LOMEZ" },
+        "25171800": { "kind": "himez", "label": "HIMEZ" },
+        "25171900": { "kind": "shoradez", "label": "SHORADEZ" }
+      }
+    },
+    "gtl": {
+      "basis": "U",
+      "src": "FM 3-09 (2024) B-60, p B-20; max ordinate 3-102",
+      "refs": [
+        { "book": "FM 3-09 (2024)", "page": "B-20", "quote": "A PAA is a base upon which to establish future gun-target lines for lateral deconfliction and areas for rotary-, fixed-wing, and tilt rotor aircraft to avoid, depending on high- or lowangle artillery fires", "role": "rule" },
+        { "book": "FM 3-09 (2024)", "page": "3-28", "quote": "max ordinate for artillery, mortar, rocket, and missile systems", "role": "context" }
+      ],
+      "guns": "Own PAA symbols (25240501 / 25240502, centroid) and own artillery, mortar and rocket unit symbols with a catalogue indirect range (Symbols.json Rng.ind).",
+      "targets": "Own attack: the objective and the En Posns within range. The En attack: the TAIs on the En avenues (tab 5) and the Threat marker.",
+      "paaRangeM": 14596,
+      "paaMinM": 1500,
+      "paaNote": "A PAA symbol carries no gun: its range is taken as the 155 mm howitzer's (IBB p 120, as Symbols.json 10130300), min 1,500 m (E).",
+      "nearM": 500,
+      "nearNote": "E: an avenue within 500 m of a gun-target line is named near it. A margin to look at, not a separation figure: the book sets separation with the ALO (lateral, altitude or time) and gives none. Searched FM 3-09 (2024) App B, ATP 3-09.23, ATP 3-09.50, ATP 3-09.70; JFIRE (ATP 3-09.32) is not on disk.",
+      "maxLines": 16,
+      "sampleM": 50
+    }
+  },
   "rates": {
     "basis": "D", "src": "IPB p 18",
     "footKmh": { "go": [4, 3.2], "slow": [2.4, 1.6], "nogo": [1.0, [0.1, 0.5]] },
     "vehicleKmh": { "go": [24, 24], "slow": [16, 8], "nogo": [1.0, [0.1, 0.5]] },
     "note": "Day, night. Vehicles at night: GO with lights or passive, SLOW-GO blacked out.",
     "footByTerrain": { "basis": "D", "src": "IBB p 18", "plains": [4, 3], "desertFirm": [3, 2.5], "desertLoose": [2.5, 2], "mountainDescent": [3, 2], "mountainAscent": [2, 1] },
-    "mountain": {"basis": "D", "src": "MW p 81", "dayKmh": 3, "nightKmh": [0.5, 1], "addMinPer300mAscent": [30, 60], "addMinPer600mDescent": [30, 60], "groundDistance": "map distance + 1/3", "refs": [{"book": "MW", "page": "81", "quote": "30 to 60 minutes for every 300 metres of ascent", "role": "rule"}], "appliedTo": "The Decision tab's times on foot: each avenue's ascent (the grid's 30 m elevation every 100 m along it) adds 30 min per 300 m at his earliest and 60 at his latest, wherever the ground is (on the plains the rise is a few metres and costs nothing); descents not charged (E: the book's descent figure is for 600 m, rare on an avenue). Vehicles pay nothing: the book's figure is for men on foot. The same figure the Intelligent Deployment tab's own moves pay (PlanDoctrine terrain.kinds.mountain.ascentMinPer300m 45, its midpoint)."}
+    "mountain": {"basis": "D", "src": "MW p 81", "dayKmh": 3, "nightKmh": [0.5, 1], "addMinPer300mAscent": [30, 60], "addMinPer600mDescent": [30, 60], "groundDistance": "map distance + 1/3", "refs": [{"book": "MW", "page": "81", "quote": "30 to 60 minutes for every 300 metres of ascent", "role": "rule"}], "appliedTo": "The Decision tab's times on foot: each avenue's ascent (the grid's 30 m elevation every 100 m along it) adds 30 min per 300 m at the En's earliest and 60 at the En's latest, wherever the ground is (on the plains the rise is a few metres and costs nothing); descents not charged (E: the book's descent figure is for 600 m, rare on an avenue). Vehicles pay nothing: the book's figure is for men on foot. The same figure the Intelligent Deployment tab's own moves pay (PlanDoctrine terrain.kinds.mountain.ascentMinPer300m 45, its midpoint)."}
   },
 
   "decisionPoints": {
@@ -249,7 +321,7 @@
     "coa": {
       "basis": "E", "src": "ATP 2-01.3 paras 6-7 to 6-13 (situation templates: COAs ranked most likely to least likely, and the most dangerous), 6-20 (NAIs where activity shows which COA; an NAI may be a point, a line or an area)",
       "refs": [{ "book": "ATP", "page": "6-7", "quote": "most likely", "role": "rule" }, { "book": "ATP", "page": "6-20", "quote": "named area of interest", "role": "rule" }],
-      "decided": "COA 1 most likely = the avenue his doctrinal template is laid along, else the best going; COA 2 most dangerous = of the others, the one onto your MSR (his turning approach, +3), less under your fire than COA 1 (+2), the fastest through the area (+1). The indicator NAI of a COA is the first NAI on its avenue. An entry NAI is drawn as a line across the avenue as wide as it is there (at most 1.5 spacings); crossings and narrows stay point NAIs.",
+      "decided": "COA 1 most likely = the avenue the En doctrinal template is laid along, else the best going; COA 2 most dangerous = of the others, the one onto your MSR (the En turning approach, +3), less under your fire than COA 1 (+2), the fastest through the area (+1). The indicator NAI of a COA is the first NAI on its avenue. An entry NAI is drawn as a line across the avenue as wide as it is there (at most 1.5 spacings); crossings and narrows stay point NAIs.",
       "searched": "C&SC IPB book pp 23-30 (event template, DPs; no most-dangerous rule), ATP 2-01.3 ch 6, OoW Vol I s2 (guard every approach in strength by its capacity): no book scores 'most dangerous'."
     },
     "areaOfInterest": { "basis": "D", "src": "OOW2 pp 5-6", "tactical": { "influenceKm": 30, "interestDays": 2, "interestKm": 100 }, "operational": { "influenceKm": [30, 80], "interestDays": 3, "interestKm": [100, 250] } }
@@ -269,7 +341,7 @@
       { "id": "surprise", "label": "Surprise", "weight": 1, "basis": "D", "src": "OOW2 s6" }
     ],
     "weightsNote": { "basis": "E", "note": "Default weights are my proposal; the user sets them 0-3 (extended.ipb.lrWeights, the chips in tab 3's Left or Right tile)." },
-    "reading": { "basis": "E", "decided": "How the Extended View scores each factor 0-1 (GroundGuideIpbCompare.ts): msr = the turning approach to the MSR choke goes round this side (1) or the other (0.25), frontal 0; fupCover = his fire at the FUP (under fire 0, out of range 0.6, screened or dead 1); fupObstacles = 1 - 0.8 x NO-GO share of the assault - 0.1 a narrows; fupDistance = the assault against the FUP distance set; route = 1 - share of the way under his fire; fireBase = not read here (0.5, the Intelligent Deployment tab sites the BOF); going = GO share; surprise = share of the way he may not watch. A factor not read scores 0.5 both sides and never decides; left and right within 3 points are level.", "searched": "IC s15.12 b (the factors, no scoring), IC s15.12 c (time and space), OoW Vol II s6 (surprise); no book scores them." },
+    "reading": { "basis": "E", "decided": "How the Extended View scores each factor 0-1 (GroundGuideIpbCompare.ts): msr = the turning approach to the MSR choke goes round this side (1) or the other (0.25), frontal 0; fupCover = the En fire at the FUP (under fire 0, out of range 0.6, screened or dead 1); fupObstacles = 1 - 0.8 x NO-GO share of the assault - 0.1 a narrows; fupDistance = the assault against the FUP distance set; route = 1 - share of the way under the En fire; fireBase = not read here (0.5, the Intelligent Deployment tab sites the BOF); going = GO share; surprise = share of the way the En may not watch. A factor not read scores 0.5 both sides and never decides; left and right within 3 points are level.", "searched": "IC s15.12 b (the factors, no scoring), IC s15.12 c (time and space), OoW Vol II s6 (surprise); no book scores them." },
     "timeAndSpace": { "basis": "D", "src": "IC s15.12 c", "unforeseenMin": [5, 10], "inFupMin": 2 }
   },
 
@@ -288,7 +360,7 @@
     ],
     "reading": {
       "basis": "E",
-      "decided": "The Extended View's assailable flank test (GroundGuideIpbForms.ts): a band `bandM` wide beside each flank of the objective, one FUP distance deep each way along the axis, read off the IPB coding; the flank is assailable when its NO-GO share is at most flankNogoMaxPct, no man-made obstacle lies in the band, no other locality of his (template elements, en symbols) lies within flankEnemyMinM of it, and an approach onto that flank exists. Infiltration: an approach he may watch no more than unwatchedMaxPct of, on foot. Double envelopment: both flanks and own echelon not below his. Ranking: turning when it reaches the MSR choke (user), double, envelopment, vertical (LZs behind him, tab 4), infiltration, penetration, frontal.",
+      "decided": "The Extended View's assailable flank test (GroundGuideIpbForms.ts): a band `bandM` wide beside each flank of the objective, one FUP distance deep each way along the axis, read off the IPB coding; the flank is assailable when its NO-GO share is at most flankNogoMaxPct, no man-made obstacle lies in the band, no other locality of the En's (template elements, en symbols) lies within flankEnemyMinM of it, and an approach onto that flank exists. Infiltration: an approach the En may watch no more than unwatchedMaxPct of, on foot. Double envelopment: both flanks and own echelon not below the En's. Ranking: turning when it reaches the MSR choke (user), double, envelopment, vertical (LZs behind the En, tab 4), infiltration, penetration, frontal.",
       "searched": "OoW Vol II s6 pp 19-21 (the forms and the assailable flank, no measure of it), MW p 79, DW pp 39-42, ATP 2-01.3 4-10 (key terrain), IBB S35; no book measures an assailable flank.",
       "bandM": { "value": 1500, "basis": "E", "note": "A Coy frontage beside the flank: the ground an enveloping Coy needs." },
       "flankNogoMaxPct": { "value": 30, "basis": "E" },

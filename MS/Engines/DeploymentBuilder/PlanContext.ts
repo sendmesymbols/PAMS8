@@ -126,7 +126,7 @@ export function forceRow(doc: DoctrineSet, task: 'defence' | 'attack', ownEch: s
   const enName = names.enName ? `en ${names.enName}, ${typeLabel}` : `en ${echelonLabel(doc, en.echelon)} (${typeLabel})`;
   const from = en.source === 'symbols' ? ', read from the enemy symbols' : en.source === 'plan' ? ', as the plan was built for' : en.source === 'default' ? `, assumed one level ${task === 'attack' ? 'down' : 'up'}: set it in step 2` : '';
   const vs = names.ownName ? ` against the ${names.ownName}` : '';
-  const armour = en.type === 'armd' && names.enName ? '; his tanks count only as Sqns here: they weigh more (E)' : '';
+  const armour = en.type === 'armd' && names.enName ? '; the En tanks count only as Sqns here: they weigh more (E)' : '';
   if (!o || !e) return { name: 'En force', st: 'unchecked', reason: `${enName}${from}: the plan's own echelon is not known` };
   if (task === 'attack') {
     const r = o / e;

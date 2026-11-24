@@ -428,8 +428,8 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
         const d = dist(fg.pts[0], rv.pts[0]), b = band('smallOps.ambush.rvM', [750, 900]);
         rows.push({ name: 'RV', st: d >= b[0] - 50 && d <= b[1] + 50 ? 'pass' : 'warn', reason: `${fmtM(d)} back from the fire group (wants ${b[0]}-${b[1]} m, R)` });
       }
-      grey([['Target held', 'NO-GO beside the Rd: his vehicles cannot leave the KZ'], ['Hidden from behind', 'a bend or crest hides the KZ from his vehicles 300 m behind'], ['KZ in view', 'the fire group sees the whole KZ from cover'], ['Withdrawal', 'covered ground back to the RV'], ['Reinforcements', 'no post or police within 3 km'], ['Village', 'no village within 1 km']]);
-      conf.push('The KZ: a stretch his vehicles cannot leave (a defile, cutting, embankment or canal beside the Rd)');
+      grey([['Target held', 'NO-GO beside the Rd: the En vehicles cannot leave the KZ'], ['Hidden from behind', 'a bend or crest hides the KZ from the En vehicles 300 m behind'], ['KZ in view', 'the fire group sees the whole KZ from cover'], ['Withdrawal', 'covered ground back to the RV'], ['Reinforcements', 'no post or police within 3 km'], ['Village', 'no village within 1 km']]);
+      conf.push('The KZ: a stretch the En vehicles cannot leave (a defile, cutting, embankment or canal beside the Rd)');
       conf.push('The fire group: in cover, sees the whole KZ; arcs fixed (a V: the two legs never fire into each other)');
       conf.push('Stop groups: each sees the Rd beyond its end of the KZ; the signal to open fire');
       conf.push('The withdrawal to the RV: covered, walked by day');
@@ -466,8 +466,8 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     rows.push(...crossingGeometryRows(items, recipe, doc, range, num));
     for (const [n, why] of [['Obstacle', 'its type (IBB Annex P), width, depth, current and banks'], ['Crossing means', 'boats, rafts and the bridge timed on its width (IBB Annex Q)'], ['Observed fire', 'the ground on the far side that sees the crossing places (IBB S46 para 24 p240)'], ['Bridge site', 'the narrowest, lowest-banked place near the planned site, tracks in and out'], ['Approaches and exits', 'the going for tanks to the water and beyond the far bank']] as const) rows.push({ name: n, st: 'unchecked', reason: `${NT}: ${why}` });
     // IC s71 para 5 p362 / IBB S46 para 6: what the recce must find
-    conf.push('His defences and mines on both sides of the obstacle', 'The obstacle: width, depth, current and bed; banks, their height and slope; islands, fords, weirs and sand banks',
-      'Subsidiary obstacles, ditches or fences', 'Approaches to and exits from the water for wheels and tracks', 'Crossing places for boats and rafts; the bridge site', 'Concentration area out of his artillery range (IC s71 para 7 a)');
+    conf.push('The En defences and mines on both sides of the obstacle', 'The obstacle: width, depth, current and bed; banks, their height and slope; islands, fords, weirs and sand banks',
+      'Subsidiary obstacles, ditches or fences', 'Approaches to and exits from the water for wheels and tracks', 'Crossing places for boats and rafts; the bridge site', 'Concentration area out of the En artillery range (IC s71 para 7 a)');
   } else if (recipe.task === 'advance') {
     // an advance to contact: its own rows (PlanAdvance.advanceRows); the ground ones grey until it is fitted
     const e = ext(allPts.length ? allPts : [P(0, 0)]);
@@ -500,11 +500,11 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     const dRow = row ?? (recipe.depthRow ? frontageRow(doc, recipe.depthRow) : null);
     const fr = row ? range(row.frontageM) : null;
     const canal = recipe.layout === 'canal';
-    // a canal defence: its frontage and depth from IC s85 para 11 and IBB S57 Fig 34 (PlanDoctrine.canal)
+    // a canal defence: its frontage and depth from IBB S61 p 333 with Annex V p 483 / App 8 p 484 (PlanDoctrine.canal)
     if (canal) {
-      const maxF = num(doctrineAt(doc, 'canal.bnThreeUpMaxM'), 5000), dep = num(doctrineAt(doc, 'canal.depthM'), 3000);
-      rows.push({ name: 'Frontage', st: frontageM <= maxF + 1 ? 'pass' : 'fail', reason: `${fmtM(frontageM)} held on the obstacle; a Bn may cover up to ${fmtM(maxF)} (IC s85 para 11 p456; two up on about 4.5 km, IBB S57 Fig 34 p317)` });
-      rows.push({ name: 'Depth', st: depthM >= dep * 0.8 ? 'pass' : 'warn', reason: `${fmtM(depthM)} from the obstacle back; Fig 34 shows about ${fmtM(dep)}: depth at Coy and Bn level at all costs (IC s85 para 12 p456)` });
+      const maxF = num(doctrineAt(doc, 'canal.bnThreeUpMaxM'), 4115), dep = resolveRange(doc, doctrineAt(doc, 'canal.depthM')) ?? [1830, 2750];
+      rows.push({ name: 'Frontage', st: frontageM <= maxF + 1 ? 'pass' : 'fail', reason: `${fmtM(frontageM)} held on the obstacle; a Bn three Coys up may cover up to ${fmtM(maxF)} (IBB S61 para 6 p 333, Annex V p 483; IC s85 para 11 p 455 prints 5 km)` });
+      rows.push({ name: 'Depth', st: depthM >= dep[0] - 1 ? 'pass' : 'warn', reason: `${fmtM(depthM)} from the obstacle back; Annex V draws ${fmtM(dep[0])}-${fmtM(dep[1])}: greater depth than normal, retained at Bn level at all costs (IBB S61 para 7 p 333)` });
     } else rows.push(fr
       ? { name: 'Frontage', st: frontageM <= fr[1] + 1 ? 'pass' : 'fail', reason: `${fmtM(frontageM)} held; the row allows ${fmtM(fr[1])} (${recipe.frontageRow})` }
       : { name: 'Frontage', st: 'warn', reason: `${fmtM(frontageM)}; no doctrine row for this layout (E)` });
@@ -522,7 +522,13 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
         ? { name: 'Gaps', st: gmax <= sub.gapM * 1.1 + 1 ? 'pass' : 'warn', reason: `widest ${fmtM(gmax)}; the row gives ${fmtM(sub.gapM)}. Close it with mines, fire and patrols` }
         : { name: 'Gaps', st: 'pass', reason: `widest ${fmtM(gmax)} (no gap printed for this row)` });
       const ms = num(doctrineAt(doc, 'checkBands.mutualSupportGapMaxM'), 914);
-      rows.push({ name: 'Mutual support', st: gmax <= ms ? 'pass' : 'warn', reason: `widest gap ${fmtM(gmax)}; both neighbours' MGs sweep up to ${fmtM(ms)} (E)` });
+      // a formation's gaps are covered by fire heavier than MGs: a Bde's by its Bns' 81 mm mortars from both sides, a
+      // Div's by its artillery and the depth Bde (no book gap figure for either: E); a Bn's and Coy's by the MGs
+      if (recipe.echelon === '18') {
+        const mor = num(doctrineAt(doc, 'attack.morRangeM'), 3749);
+        rows.push({ name: 'Mutual support', st: gmax <= mor ? 'pass' : 'warn', reason: `widest gap between Bns ${fmtM(gmax)}; the Bns' 81 mm mortars on both sides reach ${fmtM(mor)} (ORBAT), MGs only ${fmtM(ms)}: the gap is covered by mortar fire, mines and patrols (E: no book figure for a gap between Bns)` });
+      } else if (recipe.echelon === '21') rows.push({ name: 'Mutual support', st: 'unchecked', reason: `widest gap between Bdes ${fmtM(gmax)}: covered by the Div artillery, mines, patrols and the depth Bde, not by the Bdes' own weapons; the guns' reach is not measured here (site the gun areas on each Bde plan)` });
+      else rows.push({ name: 'Mutual support', st: gmax <= ms ? 'pass' : 'warn', reason: `widest gap ${fmtM(gmax)}; both neighbours' MGs sweep up to ${fmtM(ms)} (E)` });
     } else rows.push({ name: 'Gaps', st: 'pass', reason: 'one posn forward' });
     const away = fp.filter((b) => kindOf(b.role) === 'round' && b.c.y < -1);
     rows.push({ name: 'Facing the threat', st: away.length ? 'warn' : 'pass', reason: away.length ? `${away.length} posn${away.length > 1 ? 's face' : ' faces'} away from the threat (all round)` : 'the forward posns face the threat' });
@@ -577,7 +583,7 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     }
     if (axis?.base) {
       const w = dist(axis.base.start, axis.base.end);
-      const row = frontageRow(doc, String(doctrineAt(doc, 'attack.assaultRow') ?? ''));
+      const row = frontageRow(doc, recipe.assaultRow ?? String(doctrineAt(doc, 'attack.assaultRow') ?? ''));
       const fr = row ? range(row.frontageM) : null;
       rows.push({ name: 'Assault frontage', st: fr && w <= fr[1] + 1 ? 'pass' : 'warn', reason: `${fmtM(w)} wide; ${row ? `${row.unit}: ${fmtM(fr![1])} (${row.src})` : 'no row'}` });
     }
@@ -621,7 +627,7 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
       const F2 = P(fup2.pts.reduce((a, p) => a + p.x, 0) / fup2.pts.length, fup2.pts.reduce((a, p) => a + p.y, 0) / fup2.pts.length);
       const aslt = items.filter((i) => i.role === 'asltL' || i.role === 'asltR').map((i) => i.label).join(', ');
       const side = F2.x >= c1.x ? 'right' : 'left';
-      rows.push({ name: 'Phases', st: 'pass', reason: `Ph 1 ${aslt || 'the assault Coys'} onto Obj 1; Ph 2 ${fus.map((i) => i.label).join(', ') || 'the follow-up Coys'} from FUP 2 round Obj 1's ${side} flank onto Obj 2, from a new direction (IBB p178: objectives and phases; p186: against his flank, not through the Coys on Obj 1)${res ? `; ${res.label} the Bn reserve (p186 h(3): commit only what the task needs)` : ''}` });
+      rows.push({ name: 'Phases', st: 'pass', reason: `Ph 1 ${aslt || 'the assault Coys'} onto Obj 1; Ph 2 ${fus.map((i) => i.label).join(', ') || 'the follow-up Coys'} from FUP 2 round Obj 1's ${side} flank onto Obj 2, from a new direction (IBB p178: objectives and phases; p186: against the En flank, not through the Coys on Obj 1)${res ? `; ${res.label} the Bn reserve (p186 h(3): commit only what the task needs)` : ''}` });
       const band = range(doctrineAt(doc, 'attack.phase2.fup2FromObj2M')) ?? [600, 1200];
       const g2 = gapTo(e2, F2);
       rows.push({ name: 'FUP 2 from Obj 2', st: g2 >= band[0] - 1 && g2 <= band[1] + 1 ? 'pass' : 'warn', reason: `${fmtM(g2)} to Obj 2's near edge (wants ${fmtM(band[0])}-${fmtM(band[1])}, E: beyond the last fire lift, no further out than the FUP)` });
@@ -635,7 +641,7 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
       let off = Math.abs(((Math.atan2(c2.y - c1.y, c2.x - c1.x) - Math.atan2(a2.y - a1.y, a2.x - a1.x)) * 180) / Math.PI) % 360; if (off > 180) off = 360 - off;
       const minDeg = num(doctrineAt(doc, 'attack.bofFlankMinDeg'), 30);
       rows.push({ name: 'Ph 2 fire base', st: d12 <= reach && off >= minDeg ? 'pass' : 'warn', reason: `Obj 1, held as the firm base (IBB p189 para 23), ${fmtM(d12)} from Obj 2 (106 mm RR reaches ${fmtM(reach)}), firing ${Math.round(off)}° across the phase 2 axis (wants ${minDeg}° or more)` });
-      conf.push('Obj 2: his depth posn where the plan puts it (by recce or air photo)');
+      conf.push('Obj 2: the En depth posn where the plan puts it (by recce or air photo)');
       conf.push('The follow-up Coys\' way round Obj 1 to FUP 2, walked or seen');
     }
     // tanks (PlanTanks): FUP (Tks) out of his ATGMs' reach, their role; who leads needs his fields of fire (the ground)
@@ -646,12 +652,12 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
       const c = P(tkFup.pts.reduce((a, p) => a + p.x, 0) / tkFup.pts.length, tkFup.pts.reduce((a, p) => a + p.y, 0) / tkFup.pts.length);
       const g = Math.min(gapTo(c), ...tkFup.pts.map(gapTo));
       const band = range(doctrineAt(doc, 'attack.tankFupFromObjM')) ?? [2500, 3000];
-      rows.push({ name: 'Tank FUP', st: g >= band[0] - 1 && g <= band[1] + 1 ? 'pass' : 'warn', reason: `${fmtM(g)} from the Obj's near edge; IBB p214 wants ${fmtM(band[0])}-${fmtM(band[1])}: out of his ATGMs' reach (1.5-3.5 km), no common FUP with the infantry` });
+      rows.push({ name: 'Tank FUP', st: g >= band[0] - 1 && g <= band[1] + 1 ? 'pass' : 'warn', reason: `${fmtM(g)} from the Obj's near edge; IBB p214 wants ${fmtM(band[0])}-${fmtM(band[1])}: out of the En ATGMs' reach (1.5-3.5 km), no common FUP with the infantry` });
       rows.push({ name: 'Tanks', st: 'pass', reason: recipe.tanks === 'close'
         ? 'Close sp (armour heavy): A Sqn less a troop from FUP (Tks) on its own axis converging on the Obj, reaching the infantry\'s assault line with them and rushing the Obj (IBB pp 186-187); a troop covering by observed fire from the BOF\'s flank (p188 c)'
         : 'Fire sp (infantry heavy): A Sqn from FUP (Tks) to fire posns by the BOF, there as the infantry come as close to the Obj, shooting them on (IBB p214 option a)' });
-      rows.push({ name: 'Who leads', st: 'unchecked', reason: `${NT}: his fields of fire along the approach (IBB S35 pp 145-146: open, the tanks; 400-500 m or less, the infantry; 100-200 m, a troop at most)` });
-      conf.push('FUP (Tks): out of his ATGMs\' reach and hidden, tracks in and out (recce)');
+      rows.push({ name: 'Who leads', st: 'unchecked', reason: `${NT}: the En fields of fire along the approach (IBB S35 pp 145-146: open, the tanks; 400-500 m or less, the infantry; 100-200 m, a troop at most)` });
+      conf.push('FUP (Tks): out of the En ATGMs\' reach and hidden, tracks in and out (recce)');
     }
     if (!res && fus.length) {
       const bofCoy = at('bofCoy');
@@ -659,8 +665,8 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
       // counter-attack (IC s105 para 21 b: tanks help break up his counter-attack in the reorganization; E)
       const tk = recipe.tanks ? (recipe.tankSqn ? `the tank Sqn (${recipe.tankSqn.tanks} tanks)` : 'the tank Sqn') : null;
       rows.push(tk
-        ? { name: 'Reserve', st: 'pass', reason: `no infantry reserve: the assault Coys on Obj 1, ${fus.map((i) => i.label).join(', ')} on Obj 2${bofCoy ? `, ${bofCoy.label} at the BOF` : ''}; ${tk}, its part in phase 1 done, rallies behind Obj 1 as the Bn's reserve for phase 2 and against his counter-attack (IC s105 para 21 b; E): tell Bde all the same (IBB p186 i)` }
-        : { name: 'Reserve', st: 'warn', reason: `no Bn reserve: the assault Coys on Obj 1, ${fus.map((i) => i.label).join(', ')} on Obj 2${bofCoy ? `, ${bofCoy.label} at the BOF` : ''}: tell Bde (IBB p186 i); Obj 1 holds as the firm base against his counter-attack (p189 para 23)${recipe.task === 'attack' ? '; or take tanks (Tanks row): the Sqn becomes the reserve after phase 1' : ''}` });
+        ? { name: 'Reserve', st: 'pass', reason: `no infantry reserve: the assault Coys on Obj 1, ${fus.map((i) => i.label).join(', ')} on Obj 2${bofCoy ? `, ${bofCoy.label} at the BOF` : ''}; ${tk}, its part in phase 1 done, rallies behind Obj 1 as the Bn's reserve for phase 2 and against the En counter-attack (IC s105 para 21 b; E): tell Bde all the same (IBB p186 i)` }
+        : { name: 'Reserve', st: 'warn', reason: `no Bn reserve: the assault Coys on Obj 1, ${fus.map((i) => i.label).join(', ')} on Obj 2${bofCoy ? `, ${bofCoy.label} at the BOF` : ''}: tell Bde (IBB p186 i); Obj 1 holds as the firm base against the En counter-attack (p189 para 23)${recipe.task === 'attack' ? '; or take tanks (Tanks row): the Sqn becomes the reserve after phase 1' : ''}` });
     }
     for (const [n, why] of [['FUP unseen', 'the FUP hidden from the enemy'], ['SL a linear feature', 'a linear feature square to the axis, not behind an obstacle'], ['Approach going', 'the going from the SL to the Obj, dry and wet'], ['Approaches covered', 'the enemy\'s counter-attack approaches onto the Obj']] as const) {
       rows.push({ name: n, st: 'unchecked', reason: `${NT}: ${why}` });
@@ -671,7 +677,7 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
 
   const assumptions = isSmall ? [
     'Laid by the rule\'s spacing on open, flat ground: the terrain was not read.',
-    recipe.task === 'ambush' ? 'The road runs straight along the aim; he comes from where the plan is aimed.'
+    recipe.task === 'ambush' ? 'The road runs straight along the aim; the En comes from where the plan is aimed.'
       : recipe.task === 'patrol' ? 'The Obj is where the plan is aimed (the second click); straight routes out and in.'
         : 'The NAI is where the plan is aimed (the second click); the OPs on the own side of it.',
   ] : recipe.task === 'advance' ? [
@@ -769,9 +775,9 @@ export function breachRow(recipe: Recipe, doc: DoctrineSet, light: 'day' | 'moon
   const need = (resolveRange(doc, doctrineAt(doc, 'crossing.lanesH')) ?? [3, 3.5])[1] * 60;
   const hh = (m: number) => `${Math.floor(m / 60)} h ${String(Math.round(m % 60)).padStart(2, '0')}`;
   const word = light === 'day' ? 'by day' : light === 'moon' ? 'by moonlight' : 'on a dark night';
-  const reason = `${lanes} lane${lanes > 1 ? 's' : ''} through his minefield ${D} m deep (IBB S47 para 6): ${n} engineer Pls a lane, one a 108 m (Annex Q para 4); ${hrs.none[li]} h for the first ${word}, the next Pl every 100 min: a lane in about ${hh(total)} (baby viper ${hh(viper)}); the vehicle lanes are needed by H+${need / 60} h (IBB Fig 21)`;
+  const reason = `${lanes} lane${lanes > 1 ? 's' : ''} through the En minefield ${D} m deep (IBB S47 para 6): ${n} engineer Pls a lane, one a 108 m (Annex Q para 4); ${hrs.none[li]} h for the first ${word}, the next Pl every 100 min: a lane in about ${hh(total)} (baby viper ${hh(viper)}); the vehicle lanes are needed by H+${need / 60} h (IBB Fig 21)`;
   return total <= need ? { name: 'Breach', st: 'pass', reason }
-    : { name: 'Breach', st: 'warn', reason, detail: { head: `A lane takes ${hh(total)}`, items: [`${n} Pls in turn, ${hrs.none[li]} h the first, the next every 100 min (my reading of Annex Q para 4 c, E)`, `with baby viper ${hh(viper)}`], why: 'Each 108 m of his minefield takes an engineer platoon hours, the next only 100 min behind: 900-1000 m of mines does not go in one night with the bridge as well (IBB S47 para 9 c).', whyShort: `${n} Pls a lane, ${hh(total)}`, fix: ['Breach before H, covertly, from the night before', 'Baby viper: the next Pl every 40 min (Annex Q para 4)', 'Trawl tanks: 910 m in about 3.5 h in trials (Annex Q para 5)', 'The assault goes through in file on foot (IC s70 para 4b p356); vehicle lanes after'] } };
+    : { name: 'Breach', st: 'warn', reason, detail: { head: `A lane takes ${hh(total)}`, items: [`${n} Pls in turn, ${hrs.none[li]} h the first, the next every 100 min (my reading of Annex Q para 4 c, E)`, `with baby viper ${hh(viper)}`], why: 'Each 108 m of the En minefield takes an engineer platoon hours, the next only 100 min behind: 900-1000 m of mines does not go in one night with the bridge as well (IBB S47 para 9 c).', whyShort: `${n} Pls a lane, ${hh(total)}`, fix: ['Breach before H, covertly, from the night before', 'Baby viper: the next Pl every 40 min (Annex Q para 4)', 'Trawl tanks: 910 m in about 3.5 h in trials (Annex Q para 5)', 'The assault goes through in file on foot (IC s70 para 4b p356); vehicle lanes after'] } };
 }
 
 // ── to a Plan document (what the Deployment Mgr places) ──────────────────────────────────────────────────────────

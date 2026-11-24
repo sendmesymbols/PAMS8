@@ -186,7 +186,7 @@ const O1 = Ph.boxOf(it(b0, 'obj').pts), O2 = Ph.boxOf(it(b0, 'obj2').pts);
   const fl = F.fitLayout(inpOf(two(front), g));
   const ends = (sd) => dist(centre(Ph.layPhase2(O1, O2, centre(it(b0, 'fup').pts), sd, 60, doc).loePts), bridge);
   const nearSide = ends(1) < ends(-1) ? 1 : -1;
-  check('Side: equal ground, the way whose LOE ends nearer his MSR bridge (it comes from the other side of Obj 2)', fl.fit.attack.phase2.side === nearSide && fl.fit.attack.choke?.kind === 'bridge' && /further from his MSR/.test(row(fl.res.rows, 'Ph 2 direction')?.reason ?? ''), `${row(fl.res.rows, 'Ph 2 direction')?.reason}`);
+  check('Side: equal ground, the way whose LOE ends nearer his MSR bridge (it comes from the other side of Obj 2)', fl.fit.attack.phase2.side === nearSide && fl.fit.attack.choke?.kind === 'bridge' && /further from the En MSR/.test(row(fl.res.rows, 'Ph 2 direction')?.reason ?? ''), `${row(fl.res.rows, 'Ph 2 direction')?.reason}`);
   check('...his MSR is sought behind Obj 2, not Obj 1', fl.fit.attack.choke && fl.fit.attack.choke.at.y > Ph.boxOf(it(fl.raw, 'obj2').pts).c.y);
 }
 {
@@ -269,6 +269,12 @@ const O1 = Ph.boxOf(it(b0, 'obj').pts), O2 = Ph.boxOf(it(b0, 'obj2').pts);
   const flm = F.fitLayout(inpOf(t2, flatG, { obj2At: mark }));
   const o2m = Ph.boxOf(it(flm.raw, 'obj2').pts);
   check('Obj 2 marked on the map: Obj 2 laid where it was marked (800 m aside), the row says so', flm.fit.attack.phase2.obj2From === 'marked' && Math.abs(o2m.c.x - (o2b.c.x + 800)) < 30 && /where you marked it/.test(row(flm.res.rows, 'Obj 2')?.reason), `${Math.round(o2m.c.x - o2b.c.x)} m: ${row(flm.res.rows, 'Obj 2')?.reason}`);
+  // a mark just behind Obj 1's edge: Obj 2 there would come within 200 m of it: not taken, and the row says why
+  const o1b = Ph.boxOf(it(fl2.raw, 'obj').pts);
+  const near = F.toWorld(fl2.frame, { x: o1b.c.x, y: o1b.c.y + o1b.h / 2 + 150 });
+  const fln = F.fitLayout(inpOf(t2, flatG, { obj2At: near }));
+  const rN = row(fln.res.rows, 'Obj 2');
+  check('...a mark too near Obj 1: not taken, the Obj 2 row warns and says the mark was not taken (never silent)', fln.fit.attack.phase2.obj2From !== 'marked' && rN?.st === 'warn' && /your mark is [0-9.]+ k?m from the centre of Obj 1.* so it was not taken; mark it farther behind/.test(rN.reason), rN?.reason);
 }
 
 console.log(`\n${n - fails} of ${n} checks passed${fails ? `, ${fails} FAILED` : ''}`);

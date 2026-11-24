@@ -110,6 +110,7 @@ import { formsOfManoeuvre } from './GroundGuideIpbForms';
 import { pfKey, proforma, type PfGroupIn, type PfMeasures, type PfSign } from './GroundGuideIpbProforma';
 import { GroundGuideIpbApchMap } from './GroundGuideIpbApchMap';
 import { airIpb, airRulesFrom, type AirExisting, type AirLine, type AirLz, type AirObstruction } from './GroundGuideIpbAir';
+import { airspaceRead, airspaceRulesFrom, type AspGunIn, type AspTargetIn, type AspZoneIn } from './GroundGuideIpbAirspace';
 import { layTemplate, pickTemplate, templatesFrom, tplRulesFrom, type TplAa, type TplMover } from './GroundGuideIpbTemplate';
 import IPB_DOCTRINE from '../../Data/IpbDoctrine.json';
 import IPB_TEMPLATES from '../../Data/IpbTemplates.json';
@@ -458,6 +459,7 @@ export default class GroundGuide {
   private _creator: ((items: any[], label: string, removeIds: string[]) => any[]) | null = null;
   private _ipbMade: Record<'coo' | 'corridors' | 'apchs' | 'event' | 'dst' | 'air' | 'template', string[]> = { coo: [], corridors: [], apchs: [], event: [], dst: [], air: [], template: [] };
   private _airRules = airRulesFrom(IPB_DOCTRINE);
+  private _aspRules = airspaceRulesFrom(IPB_DOCTRINE);
   /** The air reading ran while feature tiles were still loading: run it again when they arrive. */
   private _airFeaturesPending = false;
   /** The turning approach wanted an MSR whose road tiles were still on their way: read the avenues again when they come. */
@@ -1125,6 +1127,7 @@ export default class GroundGuide {
         num('extended.ipb.reactionH', ip.reactionH, 0, 12, (n) => (next.extended.ipb.reactionH = n));
         flag('extended.ipb.air', ip.air, (b) => (next.extended.ipb.air = b));
         flag('extended.ipb.mapAir', ip.mapAir, (b) => (next.extended.ipb.mapAir = b));
+        flag('extended.ipb.airspace', ip.airspace, (b) => (next.extended.ipb.airspace = b));
         pick('extended.ipb.airBand', ip.airBand, ['noe', 'contour', 'low'] as const, (x) => (next.extended.ipb.airBand = x));
         num('extended.ipb.lzClass', ip.lzClass, 1, 6, (n) => (next.extended.ipb.lzClass = Math.round(n)));
         num('extended.ipb.lzPoints', ip.lzPoints, 1, 12, (n) => (next.extended.ipb.lzPoints = Math.round(n)));
@@ -2018,7 +2021,7 @@ export default class GroundGuide {
         return al >= 0 && al <= lengthM && Math.abs(ac) <= F.w / 2;
       });
       if (em) ((mover = em.mover), (moverNote = em.note));
-      else moverNote = 'His mover taken as armour: no en symbol in the area read (extended.ipb.mover sets it)';
+      else moverNote = 'The En mover taken as armour: no en symbol in the area read (extended.ipb.mover sets it)';
     }
     const obj = ip.apchEnd === 'through' || thr.allRound ? null : this._apchObjective(at, sidc, side, toFrame, lengthM, F.w, mcWidthM, k, over.objectiveAt ?? null, over.objectiveLabel);
     // Obstacles drawn on the map inside the area (minefields, ditches, wire; lanes through them): part of the coding.
@@ -2064,7 +2067,7 @@ export default class GroundGuide {
     }
     if (!n) return null;
     const mover: IpbMover = count.armour >= n / 3 ? 'armour' : count.mech >= n / 3 ? 'mech' : 'dismounted';
-    return { mover, note: `His mover ${mover}: from ${n} en symbol${n > 1 ? 's' : ''} in the area read (${count.armour} armour, ${count.mech} mech, ${count.dismounted} dismounted)` };
+    return { mover, note: `En mover ${mover}: from ${n} en symbol${n > 1 ? 's' : ''} in the area read (${count.armour} armour, ${count.mech} mech, ${count.dismounted} dismounted)` };
   }
 
   /**
@@ -2468,7 +2471,7 @@ export default class GroundGuide {
     // How each approach comes onto the objective, in the reader's words: the en's onto your flanks, yours onto his.
     const ontoLabel = (k: 'frontal' | 'left' | 'right' | 'turn'): string =>
       k === 'turn'
-        ? fr.side === 'own' ? 'Turning: block his MSR' : 'Turning: onto your MSR'
+        ? fr.side === 'own' ? 'Turning: block the En MSR' : 'Turning: onto your MSR'
         : fr.side === 'own' ? (k === 'frontal' ? 'Frontal' : k === 'left' ? 'Lt flanking' : 'Rt flanking') : k === 'frontal' ? 'Frontal onto you' : k === 'left' ? 'onto your Rt flank' : 'onto your Lt flank';
     const book = r.aas.map((a) => toView(a, a.viable && a.id === firstViable));
     const onto = r.onto.map((a, i) => {
@@ -3012,6 +3015,83 @@ export default class GroundGuide {
    * none), and, for own Posns, the symbol being placed. At most 16, nearest the area's middle first.
    */
   /** One side's AD symbols in and round an area, with the catalogue's effective range against aircraft (`Rng.ad`). */
+  /**
+   * The airspace control symbols on the map and own gun-target lines over the air avenues (FM 3-09 App B; tab 4). Zones:
+   * polygons with a 2525D airspace code (IpbDoctrine airspace.symbols), whose side is their standard identity. Guns: own
+   * PAA polygons (range taken as the 155 mm howitzer's) and own artillery / mortar / rocket points with a catalogue
+   * indirect range. Targets: own flight: the objective and his Posns; his flight: the TAIs read in tab 5 and the Threat marker.
+   */
+  private _ipbAirspaceFor(v: IpbApchView): NonNullable<IpbAirView['airspace']> {
+    const av = v.air!;
+    const R = this._aspRules;
+    const k = Math.cosh(v.anchor[1] / 6378137);
+    const xs = v.frame.map((p) => p[0]), ys = v.frame.map((p) => p[1]);
+    const pad = 2000 * k;
+    const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
+    const inBox = (p: MercXY): boolean => p[0] >= x0 && p[0] <= x1 && p[1] >= y0 && p[1] <= y1;
+    const zones: AspZoneIn[] = [], guns: AspGunIn[] = [];
+    const paaKeys = new Set(['25240501', '25240502']);
+    const counts: Record<string, number> = {};
+    for (const g of this._placedGraphics()) {
+      const t = g.geometry?.type;
+      const s = normaliseSidc(graphicSidc(g));
+      const ck = s ? catalogKey(s) : null;
+      if (!ck) continue;
+      const own = sideOf(s) !== 'hostile';
+      if (t === 'polygon' && R.symbols[ck]) {
+        const ring = toMercatorShape(g.geometry)?.parts?.[0] as MercXY[] | undefined;
+        if (!ring || ring.length < 3 || !ring.some(inBox)) continue;
+        const sym = R.symbols[ck];
+        counts[sym.label] = (counts[sym.label] ?? 0) + 1;
+        const de = g.attributes?.drawEssentials;
+        const name = String(de?.AMPLIFIER?.UNIQUE_DESIG ?? de?.uniqueDesignation ?? g.attributes?.amplifier?.UNIQUE_DESIG ?? '').trim();
+        zones.push({ id: String(g.attributes?.id ?? `${sym.label} ${counts[sym.label]}`), key: ck, label: name ? `${sym.label} ${name}` : `${sym.label} ${counts[sym.label]}`, side: own ? 'own' : 'enemy', ring: ring.map((p) => [p[0], p[1]] as MercXY) });
+      } else if (paaKeys.has(ck) && own) {
+        // The PAA symbols sit on the map as a point (their centre) with the box in CTRL_PTS; a polygon when loaded as one.
+        let c: MercXY | null = null;
+        if (t === 'polygon') {
+          const ring = toMercatorShape(g.geometry)?.parts?.[0] as MercXY[] | undefined;
+          if (ring && ring.length >= 3) c = [ring.reduce((s0, p) => s0 + p[0], 0) / ring.length, ring.reduce((s0, p) => s0 + p[1], 0) / ring.length];
+        } else {
+          const at = toMercatorShape(g.geometry)?.parts?.[0]?.[0];
+          if (at) c = [at[0], at[1]];
+        }
+        if (!c || !inBox(c)) continue;
+        counts.PAA = (counts.PAA ?? 0) + 1;
+        guns.push({ id: `paa-${counts.PAA}`, label: `PAA ${counts.PAA}`, at: c, minM: R.gtl.paaMinM, maxM: R.gtl.paaRangeM, kind: 'paa' });
+      } else if (t === 'point' && own && s && s.length === 20) {
+        const set = s.substring(4, 6);
+        if (set !== '10' && set !== '15') continue;
+        const found = this._rangeLookup(ck);
+        const ind = (found?.rng as any)?.ind;
+        if (!Array.isArray(ind)) continue;
+        const at = toMercatorShape(g.geometry)?.parts[0]?.[0];
+        if (!at || !inBox(at)) continue;
+        const maxM = Number(ind[1]) || Number(ind[2]) || 0;
+        if (!maxM) continue;
+        guns.push({ id: `gun-${guns.length + 1}`, label: found?.name ?? g.attributes?.drawEssentials?.SYM_NAME ?? 'Guns', at: [at[0], at[1]], minM: Number(ind[0]) || 0, maxM, kind: 'unit' });
+      }
+    }
+    const targets: AspTargetIn[] = [];
+    if (v.side === 'own') {
+      if (v.objective) targets.push({ id: 'obj', label: v.objective.source === 'threat' ? 'Threat' : 'Obj', at: v.objective.at, kind: 'objective' });
+      for (const p of this._ipbPosns(v, 'enemy').slice(0, 6)) targets.push({ id: `posn-${targets.length}`, label: p.label, at: p.at, kind: 'posn' });
+    } else {
+      for (const t of v.decision?.tais ?? []) targets.push({ id: t.id, label: t.id, at: t.at, kind: 'tai' });
+      const tAt = this._threatMerc();
+      if (tAt) targets.push({ id: 'threat', label: 'Threat', at: tAt, kind: 'threat' });
+    }
+    return airspaceRead({
+      side: v.side,
+      k,
+      routes: av.routes.map((r) => ({ id: r.id, rank: r.rank, to: r.to, line: r.line, lengthM: r.lengthM })),
+      zones: zones.slice(0, 40),
+      guns: guns.slice(0, 12),
+      targets,
+      rules: R,
+    });
+  }
+
   private _ipbAdSites(v: IpbApchView, side: 'own' | 'enemy'): Array<{ at: MercXY; rangeM: number; label: string }> {
     const want = side === 'own' ? ['2', '3'] : ['5', '6'];
     const k = Math.cosh(v.anchor[1] / 6378137);
@@ -3242,7 +3322,7 @@ export default class GroundGuide {
     const defender: 'own' | 'enemy' = v.side === 'enemy' ? 'own' : 'enemy';
     const posns = this._ipbPosns(v, defender);
     const tAt = this._opts.extended.threat === 'point' ? this._threatMerc() : null;
-    const key = `${a.key}|${posns.map((p) => `${Math.round(p.at[0])},${Math.round(p.at[1])},${p.effM}`).join(';')}|${ip.fire}${ip.proforma}${ip.decision}|${ip.reactionH}|${ip.hHour}|${ip.air}${ip.airBand}${ip.lzClass}${ip.lzPoints}|${ip.template}|${tAt ? `${Math.round(tAt[0] / 100)},${Math.round(tAt[1] / 100)}` : ''}`;
+    const key = `${a.key}|${posns.map((p) => `${Math.round(p.at[0])},${Math.round(p.at[1])},${p.effM}`).join(';')}|${ip.fire}${ip.proforma}${ip.decision}|${ip.reactionH}|${ip.hHour}|${ip.air}${ip.airBand}${ip.lzClass}${ip.lzPoints}${ip.airspace}|${ip.template}|${tAt ? `${Math.round(tAt[0] / 100)},${Math.round(tAt[1] / 100)}` : ''}`;
     if (key === this._fireKey) return;
     this._fireKey = key;
     if (this._pfArea !== a.key) {
@@ -3256,6 +3336,7 @@ export default class GroundGuide {
     v.decision = ip.decision ? this._ipbDecisionFor(a) : undefined;
     v.wx = this._ipbWxFor(v);
     v.air = ip.air ? this._ipbAirFor(a) : undefined;
+    if (v.air && ip.airspace) v.air.airspace = this._ipbAirspaceFor(v);
     v.template = ip.template !== 'off' ? this._ipbTemplateFor(a) : undefined;
     v.compare = this._ipbCompareFor(v, fire);
     v.forms = this._ipbFormsFor(a, v, fire);
@@ -6951,7 +7032,7 @@ export default class GroundGuide {
   toggleReadFor(to?: 'defence' | 'attack'): 'defence' | 'attack' {
     const next = to ?? (this._opts.extended.ipb.readFor === 'defence' ? 'attack' : 'defence');
     this.setReadFor(next);
-    const msg = next === 'defence' ? "En's options against you: his Apchs, your fire on them. X for yours." : "Your options against the threat: your Apchs, his fire on them. X for the en's.";
+    const msg = next === 'defence' ? "En's options against you: the En Apchs, your fire on them. X for yours." : "Your options against the threat: your Apchs, the En fire on them. X for the en's.";
     this._notice(this._whoseNotice(), msg);
     return next;
   }
@@ -7150,7 +7231,7 @@ export default class GroundGuide {
     const d = this._opts.extended.ipb.readFor === 'defence';
     return {
       mode: d ? "En's options against you" : 'Your options against the threat',
-      text: d ? 'His Apchs at you (red), your fire on them, his air, his attack template.' : 'Your Apchs at him (blue), his fire on them, your air, his defence template.',
+      text: d ? 'The En Apchs at you (red), your fire on them, its air, its attack template.' : 'Your Apchs at the En (blue), its fire on them, your air, its defence template.',
       keys: [
         ['X', d ? 'your options' : "the en's options"],
         ['3', 'Apchs'],

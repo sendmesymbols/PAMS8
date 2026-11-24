@@ -161,7 +161,7 @@ export function defTankRows(items: { role: string; label: string; pts: XY[] }[],
     }
     const st: CheckState = cls === null ? 'unchecked' : bad ? 'fail' : seen !== null && seen >= 0.5 ? 'warn' : 'pass';
     if (st === 'fail') worst = 'fail'; else if (st === 'warn' && worst !== 'fail') worst = 'warn'; else if (st === 'unchecked' && worst === 'pass') worst = 'unchecked';
-    parts.push(`${q.label}: ${cls === null ? 'ground not loaded' : bad ? 'NO-GO for tracks (move it by hand)' : 'tracks go'}${seen === null ? '' : seen >= 0.5 ? `, ${Math.round(seen * 100)} % likely in his view: hull down or move it` : ', hidden from his start'}`);
+    parts.push(`${q.label}: ${cls === null ? 'ground not loaded' : bad ? 'NO-GO for tracks (move it by hand)' : 'tracks go'}${seen === null ? '' : seen >= 0.5 ? `, ${Math.round(seen * 100)} % likely in the En's view: hull down or move it` : ', hidden from where the En starts'}`);
   }
   return [{ name: 'Tank harbour', st: worst, reason: `${what}: ${parts.join('; ')}; ${guns}` }];
 }
@@ -218,7 +218,7 @@ export function findTankSpots(res: SolveResult, f: FitFrame, g: PlanGround, doc:
   const gapF = boxGap(o1, F1);
   out.rows.push(!best
     ? { name: 'Tank FUP', st: 'warn', reason: `no ground 2.5-3 km out where tracks go: FUP (Tks) left ${fmtM(gapF)} out, recce one` }
-    : { name: 'Tank FUP', st: best.seen === null ? 'unchecked' : best.seen < 0.5 && !best.nogo ? 'pass' : 'warn', reason: `${fmtM(gapF)} from the Obj (IBB p214: ${fmtM(band[0])}-${fmtM(band[1])}, outside his ATGMs' reach; no common FUP with the infantry), ${best.seen === null ? 'its view from the Obj not read' : best.seen < 0.5 ? 'likely hidden from the Obj' : `${Math.round(best.seen * 100)} % likely seen from the Obj: hull down or smoke (IBB p215)`}${best.nogo ? ', part of it NO-GO for tracks' : ''}` });
+    : { name: 'Tank FUP', st: best.seen === null ? 'unchecked' : best.seen < 0.5 && !best.nogo ? 'pass' : 'warn', reason: `${fmtM(gapF)} from the Obj (IBB p214: ${fmtM(band[0])}-${fmtM(band[1])}, outside the En ATGMs' reach; no common FUP with the infantry), ${best.seen === null ? 'its view from the Obj not read' : best.seen < 0.5 ? 'likely hidden from the Obj' : `${Math.round(best.seen * 100)} % likely seen from the Obj: hull down or smoke (IBB p215)`}${best.nogo ? ', part of it NO-GO for tracks' : ''}` });
   // ── Fire sp: the fire posns follow the BOF; the Sqn's way to them on tracks ──
   const bof = item('bof'), fire = item('tkFire');
   if (mode === 'fire' && bof && fire) {
@@ -247,10 +247,10 @@ export function findTankSpots(res: SolveResult, f: FitFrame, g: PlanGround, doc:
   const fm = out.fieldM;
   const lead = fm === null ? null : fm > open ? 'tanks' : fm > close ? 'infantry' : 'troop';
   const st: CheckState = lead === null ? 'unchecked' : lead === 'troop' && mode === 'close' ? 'warn' : 'pass';
-  const field = fm === null ? '' : fm >= 1500 ? 'his fields of fire along the approach run 1.5 km or more' : `his fields of fire along the approach end ${fmtM(fm)} out`;
+  const field = fm === null ? '' : fm >= 1500 ? 'the En fields of fire along the approach run 1.5 km or more' : `the En fields of fire along the approach end ${fmtM(fm)} out`;
   out.rows.push({
     name: 'Who leads', st,
-    reason: lead === null ? 'his fields of fire along the approach not read (no sight data)'
+    reason: lead === null ? 'the En fields of fire along the approach not read (no sight data)'
       : lead === 'tanks' ? `${field}: open tank country, the tanks may lead (IBB S35 p145)${mode === 'fire' ? '; Close sp would use them so' : ''}`
       : lead === 'infantry' ? `${field} (${open} m or less): the infantry leads, the tanks behind them (IBB S35 p145)`
       : `${field} (${close} m or less): very close country, the infantry leads with a troop of tanks at most, the Sqn less a troop behind (IBB S35 p146)${mode === 'close' ? ': Close sp is a risk here' : ''}`,

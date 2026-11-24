@@ -13,7 +13,7 @@
   "needs": {
     "terrain": false
   },
-  "note": "Plan metres from the KZ centre (the click), y toward where the enemy comes from (the aim). KZ 150 m along the road (E, MovementDoctrine ambush.kzM), the fire group 60 m beside it in cover (30-120 m), stop groups 100 m beyond each end, the RV 800 m back (R: 750-900 m). V: high ground on both sides; a leg each side, opening toward him, arcs fixed so they do not fire into each other. With the terrain the layout is laid on the road the click is on, the side and the RV from the ground (MovementGuidePlans.ambushSiteAt), and checked: the vehicles cannot leave the road, hidden from the vehicles 300 m behind, covered withdrawal, no post or police within 3 km, no village within 1 km.",
+  "note": "Plan metres from the KZ centre (the click), y toward where the enemy comes from (the aim). KZ 150 m along the road (E, MovementDoctrine ambush.kzM), the fire group 60 m beside it in cover (30-120 m), stop groups 100 m beyond each end, the RV 800 m back (R: 750-900 m). V: high ground on both sides; a leg each side, opening toward the En, arcs fixed so they do not fire into each other. With the terrain the layout is laid on the road the click is on, the side and the RV from the ground (MovementGuidePlans.ambushSiteAt), and checked: the vehicles cannot leave the road, hidden from the vehicles 300 m behind, covered withdrawal, no post or police within 3 km, no village within 1 km.",
   "pivot": "kzTgt",
   "slots": [
     {

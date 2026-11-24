@@ -25,7 +25,7 @@ import { hash, lines, numberOf, shown, tableOf, type AprcCopy, type AprcDoc, typ
 export type AprcDeckKind = 'full' | 'decision' | 'sand';
 export const APRC_DECKS: Array<{ kind: AprcDeckKind; label: string; note: string }> = [
   { kind: 'full', label: 'Full brief', note: 'a slide or more for each paragraph with words' },
-  { kind: 'decision', label: 'Decision brief', note: 'aim, apchs, deductions, his options, relative str, courses, plan, confirm' },
+  { kind: 'decision', label: 'Decision brief', note: 'aim, apchs, deductions, En options, relative str, courses, plan, confirm' },
   { kind: 'sand', label: 'Sand model', note: 'orientation order: gen description, apchs, ITGs, obs, cover, lines of def' },
 ];
 

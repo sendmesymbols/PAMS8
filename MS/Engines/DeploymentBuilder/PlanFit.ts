@@ -240,6 +240,8 @@ export interface FitInput {
   terrain?: TerrainSpec | null;
   /** Check my plan: read the posns where they are drawn, never slide them. */
   checkOnly?: boolean;
+  /** Rows a layout's own reader writes in place of the fit's (a reverse slope's Fields of fire): the score reads these first. */
+  rowsOver?: Check[];
   /** A drawn enemy FUP (world), used instead of the likely one. */
   enFup?: XY | null;
 }
@@ -448,7 +450,7 @@ export function fitPlan(inp: FitInput): FitResult {
     const lab = (r: string) => boxes.find((b) => b.role === r)?.label ?? r;
     const cap = (a: FitApproach) => (!en ? '' : a.full ? `, takes an en ${echelonLabel(doc, en.echelon)}` : a.carries ? `, narrow: an en ${echelonLabel(doc, a.carries)} at most` : ', narrower than a Coy corridor (single file through a gap)');
     out.rows.push({ name: 'Approaches covered', st, reason: out.approaches.map((a) => `${a.id}${a.main ? ' (main)' : ''} ${a.coveredBy.length ? `under fire from ${a.coveredBy.map(lab).join(', ')}` : `NOT under direct fire within ${fmtM(reach)}`}${cap(a)}, ${Math.round(a.goPct)} % GO, narrowest ${fmtM(narrowOf(a) ?? a.minWidthM)}`).join('; ') + (en ? ` (${moverWord} going; an en ${echelonLabel(doc, en.echelon)} attacks on ${fmtM(corridor)} corridors, IPB p 7)` : '') + (out.fromAssumed ? ' (enemy start assumed along the front)' : '') });
-    if (en && !out.approaches.some((a) => a.full)) out.rows.push({ name: 'Approach capacity', st: 'pass', reason: `no approach here is ${fmtM(corridor)} wide at its narrowest: an en ${echelonLabel(doc, en.echelon)} must come on a narrower front or file through the chokepoints, where fire and obstacles hurt him most` });
+    if (en && !out.approaches.some((a) => a.full)) out.rows.push({ name: 'Approach capacity', st: 'pass', reason: `no approach here is ${fmtM(corridor)} wide at its narrowest: an en ${echelonLabel(doc, en.echelon)} must come on a narrower front or file through the chokepoints, where fire and obstacles hurt the En most` });
     // killing ground: on the main approach, 400-1000 m ahead of the FDL, inside the forward posns' reach
     const main = out.approaches.find((a) => a.main) ?? out.approaches[0];
     let best: { p: XY; score: number } | null = null;
@@ -478,7 +480,7 @@ export function fitPlan(inp: FitInput): FitResult {
     }
     out.enFup = fp;
     const what = inp.enFup ? 'The drawn en FUP' : `The likely en FUP on ${mainA?.id ?? 'the main approach'}`;
-    if (!fp) out.rows.push({ name: 'En FUP', st: 'unchecked', reason: mainA ? `the main approach does not run ${fmtM(band[0])}-${fmtM(band[1])} out from the FDL here: find his FUP on the ground` : 'needs the approaches' });
+    if (!fp) out.rows.push({ name: 'En FUP', st: 'unchecked', reason: mainA ? `the main approach does not run ${fmtM(band[0])}-${fmtM(band[1])} out from the FDL here: find the En FUP on the ground` : 'needs the approaches' });
     else if (!sight) out.rows.push({ name: 'En FUP', st: 'unchecked', reason: 'no sight data in the bundle' });
     else {
       const seenBy = fwdBoxes.filter((b) => { const p = sight(boxPt(b, 0, b.h / 2), fp!, 2, 2); return p !== null && p >= 0.5; }).map((b) => b.label);
@@ -580,7 +582,7 @@ export function fitPlan(inp: FitInput): FitResult {
   out.warns = all.filter((c) => c.st === 'warn').length;
   const W = (doctrineAt(doc, 'scoreWeights') ?? {}) as Record<string, number>;
   const v = (st?: CheckState) => (st === 'pass' ? 1 : st === 'fail' ? 0 : 0.5);
-  const row = (n: string) => [...out.rows, ...res.rows].find((r) => r.name === n)?.st;   // the fit's answer first
+  const row = (n: string) => [...(inp.rowsOver ?? []), ...out.rows, ...res.rows].find((r) => r.name === n)?.st;   // a layout's own reader, then the fit's answer
   const groundAvg = boxes.length ? boxes.reduce((a, b) => a + v(out.slots[b.role]?.[0]?.st), 0) / boxes.length : 0.5;
   out.score = Math.round(100 * (
     (W.approaches ?? 0.25) * v(row('Approaches covered')) +
@@ -753,7 +755,8 @@ export function detectTerrain(g: PlanGround, f: FitFrame, res: SolveResult, reci
   if (n >= 20 && sand / n >= (Number(de.share) || 0.5)) return { kind: 'desert', source: 'auto', why: `${Math.round((100 * sand) / n)} % of the ground within ${fmtM(dw)} is bare, sand or dunes` };
   // no class sample read yet (elevation alone cannot tell plains from an obstacle or desert): not known, never a Pass
   if (!known) return null;
-  return { kind: 'plains', source: 'auto', why: 'no high ground, obstacle in front or desert found round it' };
+  const mtw = at('terrain.detect.mountain');
+  return { kind: 'plains', source: 'auto', why: `no mountain relief (${Number(mtw.riseM) || 400} m rise within ${fmtM(Number(mtw.withinM) || 5000)}), obstacle in front or desert found round it` };
 }
 
 /**
@@ -1001,7 +1004,7 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   const enemy: EnemySpec | null = inp.enemy && inp.enemy.source === 'default' && terrain.kind === 'mountain' && recipe.task !== 'attack' && typeof mtnType === 'string'
     ? { ...inp.enemy, type: mtnType as EnemySpec['type'] }
     : inp.enemy ?? null;
-  const fit = fitPlan({ res: fitBase, recipe, doc: ctx.doc, frame, ground, threat: recipe.task === 'attack' ? null : inp.threat ?? null, enemy: recipe.task === 'attack' ? null : enemy, terrain });
+  const fit = fitPlan({ res: fitBase, recipe, doc: ctx.doc, frame, ground, threat: recipe.task === 'attack' ? null : inp.threat ?? null, enemy: recipe.task === 'attack' ? null : enemy, terrain, rowsOver: rs?.rows });
   fit.paths = paths;
   if (find) fit.nudges = addNudges(fit.nudges, find.nudges);
   if (rs) { fit.nudges = addNudges(fit.nudges, rs.nudges); fit.revSlope = { crest: rs.crest, fdlBehindM: rs.fdlBehindM, crestRiseM: rs.crestRiseM }; }

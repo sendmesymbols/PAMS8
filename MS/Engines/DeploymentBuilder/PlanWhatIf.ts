@@ -102,6 +102,8 @@ export function routeOnFoot(g: PlanGround, f: FitFrame, doc: DoctrineSet, a: XY,
   // the ground's foot rates (IPB p 18 plains; IBB p 18 desert; MW p 81 mountains, + time per 300 m of climb)
   const { go, slow } = mounted ? { go: num(doc, 'moves.tankKmh.go', 24), slow: num(doc, 'moves.tankKmh.slow', 16) } : footKmh(doc, kind);
   const climbMin = !mounted && kind === 'mountain' ? num(doc, 'terrain.kinds.mountain.ascentMinPer300m', 45) / 300 : 0;
+  // and per 600 m of descent (MW p 48, p 81 pdf 82, p 309); the En's times are left without it (his earliest arrival)
+  const descMin = !mounted && kind === 'mountain' ? num(doc, 'terrain.kinds.mountain.descentMinPer600m', 45) / 600 : 0;
   const settle = num(doc, 'cpen.settleMin', 5);
   const detourMax = num(doc, 'moves.detourMaxM', 1500);
   /**
@@ -110,7 +112,7 @@ export function routeOnFoot(g: PlanGround, f: FitFrame, doc: DoctrineSet, a: XY,
    * at a bend (a river bank, a cliff edge) counts as SLOW-GO, not as a crossing.
    */
   const walk = (pts: XY[], found = false) => {
-    let goM = 0, slowM = 0, blocked = false, known = 0, n = 0, climbM = 0, lastE = NaN;
+    let goM = 0, slowM = 0, blocked = false, known = 0, n = 0, climbM = 0, descM = 0, lastE = NaN;
     if (found) for (const p of pts) { const w = toWorld(f, p); const c = g.cls(w.x, w.y); if (c !== null && foot.nogo.has(c)) blocked = true; }
     for (let i = 1; i < pts.length; i++) {
       const L = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
@@ -119,7 +121,7 @@ export function routeOnFoot(g: PlanGround, f: FitFrame, doc: DoctrineSet, a: XY,
         const t = (s + 0.5) / steps;
         const w = toWorld(f, P(pts[i - 1].x + (pts[i].x - pts[i - 1].x) * t, pts[i - 1].y + (pts[i].y - pts[i - 1].y) * t));
         const c = g.cls(w.x, w.y);
-        if (climbMin) { const e = g.elev(w.x, w.y); if (Number.isFinite(e)) { if (Number.isFinite(lastE) && e > lastE) climbM += e - lastE; lastE = e; } }
+        if (climbMin) { const e = g.elev(w.x, w.y); if (Number.isFinite(e)) { if (Number.isFinite(lastE)) { if (e > lastE) climbM += e - lastE; else descM += lastE - e; } lastE = e; } }
         n++;
         const d = L / steps;
         if (c === null) { goM += d; continue; }
@@ -129,9 +131,9 @@ export function routeOnFoot(g: PlanGround, f: FitFrame, doc: DoctrineSet, a: XY,
         else goM += d;
       }
     }
-    return { goM, slowM, blocked, known: n ? known / n : 0, climbM };
+    return { goM, slowM, blocked, known: n ? known / n : 0, climbM, descM };
   };
-  const minutes = (w: { goM: number; slowM: number; climbM: number }) => (((w.goM / 1000) / go + (w.slowM / 1000) / slow) * 60 + w.climbM * climbMin) * (shelled ? num(doc, 'moves.underFireFactor', 1.5) : 1) + settle;
+  const minutes = (w: { goM: number; slowM: number; climbM: number; descM: number }) => (((w.goM / 1000) / go + (w.slowM / 1000) / slow) * 60 + w.climbM * climbMin + w.descM * descMin) * (shelled ? num(doc, 'moves.underFireFactor', 1.5) : 1) + settle;
   let pts = [a, b];
   let w = walk(pts);
   let detour = false;
@@ -399,7 +401,10 @@ export function whatIf(fl: FittedLayout, ground: PlanGround, doc: DoctrineSet, t
     if (cp && bd < 400) {
       out.cpen = cp;
       const enemy = enemyMinutesTo(f, doc, main.path, main.goPct, cp, en, kind, eOpts(main));
-      if (resSlot) {
+      // a Bde or Div reserve is committed at a decision point hours ahead (IBB p 279: Bde 2-3 h, Div 4-6 h), not when the
+      // En crosses the start line: its time is judged in Reserve reach, never against the En's clock from 5 km out
+      const formation = fl.recipe.echelon === '18' || fl.recipe.echelon === '21';
+      if (resSlot && !formation) {
         const r = routeOnFoot(ground, f, doc, resSlot.centre, cp, from, false, kind, !!fl.unit?.mounted);
         const v = verdict(doc, r.min, enemy, r.blocked, mover);
         out.triggers.push({
@@ -422,7 +427,7 @@ export function whatIf(fl: FittedLayout, ground: PlanGround, doc: DoctrineSet, t
     } else {
       // the main approach does not run through the plan's depth: say so
       const none = (who: string, id: string): Trigger => ({ id, trigger: `Penetration on ${main.id} (main)`, who, from: who, to: 'C Pen posn', route: null, min: null, enemyMin: null, st: 'unchecked', reason: 'the main approach does not run through the plan\'s depth here: site the C Pen posn on the ground', coveredBy: '' });
-      if (resSlot) out.triggers.push(none(resSlot.label, 'cpen-main'));
+      if (resSlot && !(fl.recipe.echelon === '18' || fl.recipe.echelon === '21')) out.triggers.push(none(resSlot.label, 'cpen-main'));
       for (const q of sqns) out.triggers.push(none(q.label, `tk-cpen-${q.role}`));
     }
   }

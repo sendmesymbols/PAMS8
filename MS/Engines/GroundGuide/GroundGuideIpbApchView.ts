@@ -75,11 +75,17 @@ table.ms-gia-pf tr.ms-tot td{border-top:1px solid rgba(255,255,255,.2);border-bo
 .ms-sg.ms-m{color:#ffb0b3;border-color:rgba(255,90,96,.6)}
 .ms-sg.ms-u{color:#9aa3ad}
 .ms-sg.ms-mine{border-style:solid;background:rgba(255,255,255,.08)}
-.ms-gia-wx{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:3px 8px;align-items:center;font:400 12px/1.3 ${FONT};color:#e6eaee}
-.ms-gia-wxm>b{font-weight:650;color:#f1f3f6}
-.ms-gia-wxm>span{color:#9aa3ad}
-.ms-gia-wxv{color:#c3cbd3;text-align:right;white-space:nowrap;font-size:11.5px}
-.ms-gia-wxs{padding:1px 7px;border-radius:8px;font:700 11px/1.4 ${FONT};color:#fff;text-align:center;min-width:44px}
+.ms-gia-wx{display:flex;flex-direction:column;font:400 12px/1.35 ${FONT};color:#e6eaee}
+.ms-gia-wxg{display:grid;grid-template-columns:minmax(6.5em,max-content) minmax(0,1fr) auto;gap:3px 10px;align-items:center;padding:5px 0}
+.ms-gia-wxg:first-child{padding-top:0}
+.ms-gia-wxg+.ms-gia-wxg{border-top:1px solid rgba(255,255,255,.1)}
+.ms-gia-wxh{grid-column:1/-1;font-weight:650;color:#f1f3f6}
+.ms-gia-wxr{display:contents}
+.ms-gia-wxe{color:#9aa3ad}
+.ms-gia-wxv{color:#c3cbd3}
+.ms-gia-wxo>.ms-gia-wxe{grid-column:1/3}
+.ms-gia-wxs{justify-self:end;padding:1px 7px;border-radius:8px;font:700 12px/1.4 ${FONT};color:#fff;text-align:center;min-width:44px}
+.ms-gia-wx>.ms-gx-note{margin-top:4px}
 table.ms-gia-dt{border-collapse:collapse;width:100%;font:400 12px/1.3 ${FONT};color:#e6eaee}
 table.ms-gia-dt th{font-weight:650;color:#c3cbd3;text-align:left;padding:2px 4px;border-bottom:1px solid rgba(255,255,255,.16)}
 table.ms-gia-dt td{padding:3px 4px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}
@@ -324,7 +330,7 @@ function aaCards(v: IpbApchView): HTMLElement {
     card.append(h, el('div', 'ms-gia-t', aaLine(v, a)));
     const chips = el('div', 'ms-gia-chips');
     const chip = (text: string, ok: boolean | null) => chips.append(el('span', `ms-gia-chip${ok === true ? ' ms-ok' : ok === false ? ' ms-no' : ''}`, text));
-    if (a.onto) chip(a.onto === 'frontal' ? (v.side === 'own' ? 'frontal: dangerous' : 'frontal: most of your fire') : a.onto === 'turn' ? (v.side === 'own' ? 'turning: blocks his MSR' : 'turning: cuts your MSR') : 'from a flank', a.onto !== 'frontal');
+    if (a.onto) chip(a.onto === 'frontal' ? (v.side === 'own' ? 'frontal: dangerous' : 'frontal: most of your fire') : a.onto === 'turn' ? (v.side === 'own' ? 'turning: blocks the En MSR' : 'turning: cuts your MSR') : 'from a flank', a.onto !== 'frontal');
     else chip(a.stopped ? `stops ${pc(a.coverPct)} in` : 'runs the whole area', !a.stopped);
     chip(`median ${km(a.medianWidthM)} wide`, a.medianWidthM >= 2 * v.mcWidthM);
     chip(a.narrows.length ? `${a.narrows.length} narrows` : 'no narrows', a.narrows.length === 0);
@@ -444,7 +450,7 @@ function formsTile(v: IpbApchView): HTMLElement {
     list.append(name, body);
   }
   const fl = el('div', 'ms-gx-note', `${f.flanks.left.why}. ${f.flanks.right.why}.`);
-  return tile(`Forms of Manoeuvre · ${f.lead ? f.options.find((o) => o.id === f.lead)!.label : 'none read'}`, fl, list, note(`${f.notes.join(' ')} The assailable flank test: usable ground beside it, no obstacle, no other locality of his, a way onto it off his front (OoW Vol II s6; the thresholds a proposal). The ranking is a decision: turning first when it reaches his MSR (your rule), then envelopment, vertical, infiltration, penetration; frontal for reference.`));
+  return tile(`Forms of Manoeuvre · ${f.lead ? f.options.find((o) => o.id === f.lead)!.label : 'none read'}`, fl, list, note(`${f.notes.join(' ')} The assailable flank test: usable ground beside it, no obstacle, no other locality of the En's, a way onto it off the En front (OoW Vol II s6; the thresholds a proposal). The ranking is a decision: turning first when it reaches the En MSR (your rule), then envelopment, vertical, infiltration, penetration; frontal for reference.`));
 }
 
 /** Copy as Text: the forms of manoeuvre. */
@@ -775,21 +781,56 @@ export function wxTile(v: IpbApchView | null | undefined, use: 'fire' | 'mnvr' |
   const re = use === 'fire' ? /weapon positioning|Fire Sp|Int \(/ : use === 'air' ? /^Airborne$|^Avn|^AD$/ : /Mnvr - mob|NBC/;
   const rows = w.rows.filter((r) => re.test(r.mission));
   if (!rows.length) return null;
+  type Row = (typeof rows)[number];
+  const chip = (s: Row['status'], title: string): HTMLElement => {
+    const c = el('span', 'ms-gia-wxs', WX_WORD[s]);
+    c.style.background = WX_COL[s];
+    if (s === 'marg') c.style.color = '#14181d';
+    c.title = title;
+    return c;
+  };
+  const up = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+  // One block a mission (the mission named once, not on every row), its elements under it: a block moves whole when
+  // the tile is split over columns, so a row's name, value and chip never part. What the bundle cannot code (n.a.)
+  // and what Met must give share one line each, the elements named; the figures stay on the hover.
+  const byMission = new Map<string, Row[]>();
+  for (const r of rows) byMission.set(r.mission, [...(byMission.get(r.mission) ?? []), r]);
   const g = el('div', 'ms-gia-wx');
-  for (const r of rows) {
-    const m = el('div', 'ms-gia-wxm');
-    m.append(el('b', undefined, r.mission.replace(/^Mnvr - /, '').replace(/^Fire Sp /, 'Fire Sp ')), el('span', undefined, ` · ${r.element}`));
-    m.title = `GO ${r.go} · marginal ${r.marginal}`;
-    const chip = el('span', 'ms-gia-wxs', WX_WORD[r.status]);
-    chip.style.background = WX_COL[r.status];
-    if (r.status === 'marg') chip.style.color = '#14181d';
-    g.append(m, el('span', 'ms-gia-wxv', r.value), chip);
+  for (const [mission, rs] of byMission) {
+    const grp = el('div', 'ms-gia-wxg');
+    const head = el('div', 'ms-gia-wxh', up(mission.replace(/^Mnvr - /, '').replace(/^mob, /, '').replace(/^weapon positioning \((.+)\)$/, '$1')));
+    head.title = mission;
+    head.setAttribute('data-split-head', ''); // repeated over each piece when the Detail splits the block
+    grp.append(head);
+    for (const r of rs.filter((x) => x.status !== 'na' && x.status !== 'met')) {
+      const tip = `${up(r.element)}: GO ${r.go} · marginal ${r.marginal}`;
+      const name = el('span', 'ms-gia-wxe', up(r.element));
+      const val = el('span', 'ms-gia-wxv', r.value);
+      name.title = val.title = tip;
+      const row = el('div', 'ms-gia-wxr');
+      row.append(name, val, chip(r.status, tip));
+      grp.append(row);
+    }
+    for (const s of ['na', 'met'] as const) {
+      const left = rs.filter((x) => x.status === s);
+      if (!left.length) continue;
+      const tip = left.map((x) => `${up(x.element)}: ${x.value} (GO ${x.go} · marginal ${x.marginal})`).join('\n');
+      const names = el('span', 'ms-gia-wxe', up(left.map((x) => x.element).join(', ')));
+      names.title = tip;
+      const row = el('div', 'ms-gia-wxr ms-gia-wxo');
+      row.append(names, chip(s, s === 'met' ? `Get from Met.\n${tip}` : `Not in the terrain data.\n${tip}`));
+      grp.append(row);
+    }
+    g.append(grp);
   }
-  return tile(
-    `Wx for ${use === 'fire' ? 'Fire' : use === 'air' ? 'Air' : 'Mnvr'} · ${MONTH[w.month - 1]}`,
-    g,
-    note(`Annex A (book pp 19-20) from the month's means: visibility from the nearest stations${w.stationKm != null ? ` (${Math.round(w.stationKm)} km off${w.stationKm > 100 ? ': a guess' : ''})` : ''}, temperature and wind from WorldClim. Daily means, not the hour. Ceiling, cloud, humidity and stability: get from Met.`),
-  );
+  const src = `Annex A (book pp 19-20) from the month's means: visibility from the nearest stations${w.stationKm != null ? ` (${Math.round(w.stationKm)} km off${w.stationKm > 100 ? ': a guess' : ''})` : ''}, temperature and wind from WorldClim. Daily means, not the hour. Ceiling, cloud, humidity and stability: get from Met.`;
+  // The source note goes in the list, after the last block, so a split never leaves it alone in a column of its own.
+  const n = note(`Month's means, not the hour · Annex A pp 19-20${w.stationKm != null ? ` · stations ${Math.round(w.stationKm)} km off${w.stationKm > 100 ? ' (a guess)' : ''}` : ''}`);
+  n.title = src;
+  g.append(n);
+  const sec = tile(`Wx for ${use === 'fire' ? 'Fire' : use === 'air' ? 'Air' : 'Mnvr'} · ${MONTH[w.month - 1]}`, g);
+  (sec.firstElementChild as HTMLElement).title = src;
+  return sec;
 }
 
 // ── decision (tab 5) ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -963,7 +1004,7 @@ export function decisionTiles(o: GroundGuideOcoka): HTMLElement[] {
       for (const c of dv.coas) {
         list.append(el('div', undefined, `${c.id} · ${c.kind === 'likely' ? 'most likely' : 'most dangerous'}`), el('div', undefined, `Apch ${c.aa}, through the area ${hPlus(c.endH[0])} (latest ${hPlus(c.endH[1])}): ${c.why.join('; ')}.${c.indicatorNai ? ` ${c.indicatorNai} confirms it.` : ''}`));
       }
-      out.push(tile(`Courses of Action · ${dv.coas.map((c) => `${c.id} ${c.aa}`).join(', ')}`, list, note('The most likely COA is his template along the best going; the most dangerous the one that hurts you most: onto your MSR, least under your fire, fastest through (ATP 2-01.3 6-7..6-13; the choice a proposal). The NAIs say which he has chosen (6-20). Plan against the most likely, guard against the most dangerous.')));
+      out.push(tile(`Courses of Action · ${dv.coas.map((c) => `${c.id} ${c.aa}`).join(', ')}`, list, note('The most likely COA is the En template along the best going; the most dangerous the one that hurts you most: onto your MSR, least under your fire, fastest through (ATP 2-01.3 6-7..6-13; the choice a proposal). The NAIs say which the En has chosen (6-20). Plan against the most likely, guard against the most dangerous.')));
     }
     out.push(tile('Decision Support · In the Area', decisionPicture(o, v, dv), note('A star beyond the area is placed on the way in from the Threat marker (or at the edge) with its distance.')));
     const dec = table(['DP', 'When · where', 'Decision (yours)'], dv.dps.map((d) => [d.id, `${clock(dv, d.earliestH)} · ${whereDp(d)}`, d.decision]));
@@ -971,7 +1012,7 @@ export function decisionTiles(o: GroundGuideOcoka): HTMLElement[] {
     const dt = tile('Decisions', dv.dps.length ? dec : note(dv.notes[0] ?? 'No decision point.'), note(`A DP is where and when a decision falls due: ${dpLead(dv)} before a TAI${dv.catk ? `, and the counter-attack ${dv.catk.min} min before the depth localities (OoW Vol I p 54)` : ''}. The decision is the commander's.`));
     dt.classList.add('ms-ggd-brk');
     out.push(dt);
-    const em = tile('Event Matrix', table(['NAI', 'Apch · what shows', 'Confirms', 'Earliest', 'Latest'], dv.nais.map((n) => [`${n.n}${n.tai ? ` · ${n.tai}` : ''}${n.line ? ' (line)' : ''}`, `${n.aa}: ${n.shows}${n.widthM ? ` (${Math.round(n.widthM)} m)` : ''}`, n.coas?.length ? n.coas.join(', ') : '—', hPlus(n.earliestH), hPlus(n.latestH)])), note('NAIs sit where the enemy will show himself (book pp 23-28); an entry NAI is a line across the avenue (ATP 2-01.3 6-20). Confirms: the COA activity there points to.'));
+    const em = tile('Event Matrix', table(['NAI', 'Apch · what shows', 'Confirms', 'Earliest', 'Latest'], dv.nais.map((n) => [`${n.n}${n.tai ? ` · ${n.tai}` : ''}${n.line ? ' (line)' : ''}`, `${n.aa}: ${n.shows}${n.widthM ? ` (${Math.round(n.widthM)} m)` : ''}`, n.coas?.length ? n.coas.join(', ') : '—', hPlus(n.earliestH), hPlus(n.latestH)])), note('NAIs sit where the enemy will show itself (book pp 23-28); an entry NAI is a line across the avenue (ATP 2-01.3 6-20). Confirms: the COA activity there points to.'));
     em.classList.add('ms-ggd-brk');
     out.push(em);
   }
@@ -981,7 +1022,7 @@ export function decisionTiles(o: GroundGuideOcoka): HTMLElement[] {
     ...(dv.rates.climbMinPer300
       ? ([['Climb', `${dv.rates.climbMinPer300[0]}-${dv.rates.climbMinPer300[1]} min per 300 m of ascent on foot, earliest / latest (MW p 81)${dv.rates.climbM && Object.keys(dv.rates.climbM).length ? `: ${Object.entries(dv.rates.climbM).map(([id, m]) => `${id} climbs ${Math.round(m)} m`).join(', ')}` : ''}`]] as Array<[string, string]>)
       : []),
-    ['From', dv.fromThreat ? 'The Threat marker\'s place: the way in at GO' : "The area's edge (the threat is only a direction): drag the Threat marker to the en's assembly area for times from his start"],
+    ['From', dv.fromThreat ? 'The Threat marker\'s place: the way in at GO' : "The area's edge (the threat is only a direction): drag the Threat marker to the en's assembly area for times from the En's start"],
     ['DP lead', dpLead(dv)],
   ];
   for (const n of dv.notes) rows.push(['Note', n]);

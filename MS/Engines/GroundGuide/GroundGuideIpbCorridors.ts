@@ -32,8 +32,9 @@
  *      second field is laid from where the mover sets out (a place, else the start edge) with the objective and the ground
  *      round it out to almost the FUP distance kept out, and three ways are traced: frontal (to an FUP that far in front
  *      of the front edge), left and right flank (to an FUP that far off each flank, level with the objective's middle),
- *      each then a straight assault to the middle of that edge (IBB pp 173-174: FUP 1,000-1,200 m short, start line
- *      square to the objective; axes converging on it). Flanks rank above frontal (user: frontal attack is dangerous, a
+ *      each then a straight assault to the middle of that edge (IBB p 201: FUP not less than 1,000-1,200 m from the
+ *      objective, out of night-sight range; p 203: 1,000 to 1,200 m in plains, less in broken ground and BUAs; pp 173-174:
+ *      start line at right angles to the line of advance), the axes converging on it. Flanks rank above frontal (user: frontal attack is dangerous, a
  *      flanking attack is encouraged; OoW Vol II s6). Their distances run along the way from where it sets out.
  *      With `objective.turn` (a choke on the MSR behind the objective: a bridge, a defile, a junction), a fourth, turning
  *      approach goes round the objective, out of its ground (up to twice the FUP distance clear), to that choke to block

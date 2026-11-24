@@ -108,5 +108,16 @@ check('Bn Attk: axis arrow carries BASE_LN_PTS 400 m wide', !!axis?.base && Math
 check('Bn Attk: LOE is the 2525D LOA (25140900)', atk.items.find((i) => i.role === 'loe')?.key === '25140900');
 check('Bn Attk: FUP unseen is not checked', row(atk, 'FUP unseen')?.st === 'unchecked');
 
+// formations: a Bde's gaps covered by its Bns' mortars, a Div's by its artillery (not the MGs' 914 m)
+{
+  const rj = (id) => json(`MS/Data/Deployments/Recipes/${id}.json`);
+  const bde = S.solveRecipe(rj('bde-def-two-up'), ctx), div = S.solveRecipe(rj('div-def-two-up'), ctx);
+  const mb = row(bde, 'Mutual support'), md = row(div, 'Mutual support');
+  check('Bde Def: Mutual support judged on the Bns\' 81 mm mortars (1.5 km gap inside 3.7 km): pass, MGs named as too short', mb?.st === 'pass' && /81 mm mortars/.test(mb.reason) && /MGs only/.test(mb.reason), mb?.reason);
+  check('Div Def: Mutual support between Bdes left to the Div artillery (grey, never an MG verdict)', md?.st === 'unchecked' && /Div artillery/.test(md.reason) && !/MGs sweep/.test(md.reason), md?.reason);
+  const bn = S.solveRecipe(rj('bn-def-two-up'), ctx);
+  check('...a Bn keeps the MG test', /MGs sweep/.test(row(bn, 'Mutual support')?.reason ?? ''), row(bn, 'Mutual support')?.reason);
+}
+
 console.log(`\n${recipes.length} recipes, ${n} checks, ${fails} failed`);
 process.exit(fails ? 1 : 0);

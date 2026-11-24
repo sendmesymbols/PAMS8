@@ -1730,8 +1730,22 @@ over landing areas (D, OoW Vol I pp 61-63, MW p 258), the cost weights (E).
   the other side's; one undo step, made again replaces.
 - **Settings**: `air`, `mapAir`, `airBand` (`noe` 0-8 m, `contour` 8-24 m default, `low` 24-61 m above obstacles), `lzClass`
   (1-6), `lzPoints` (1-12). API `guide.ipbAir()`.
-- **Not read yet**: air space control measures on the map (ROZ, gun-target lines), wind (both approach directions are
-  listed), the enemy's air defence from map symbols.
+- **Airspace measures and gun-target lines** (`extended.ipb.airspace`, on; added 2026-11-24; pure engine
+  `GroundGuideIpbAirspace.ts`, `airspaceRead`, `node tools/ipb-test/airspace.mjs` 31 checks): the 2525D airspace control
+  symbols on the map (ROZ 25171000 / 25251001, UA ROZ 25171200, A2A ROZ 25171100, HIDACZ 25170900, ACA 25251002, WEZ / FEZ /
+  JEZ / MEZ / LOMEZ / HIMEZ / SHORADEZ 25171300-25171900; `IpbDoctrine airspace.symbols`) read over each air avenue: the
+  share inside, and what each means for the side that flies (`airspace.effects`, E on FM 3-09 2024 App B): its own ROZ is
+  restricted (reserved for artillery launch and target areas, UAS, weapon-free zones; B-92 p B-27), its HIDACZ needs
+  clearance (JP 3-52, not on disk), its ACA is safe from its own surface fires (B-27 p B-9), its engagement zones are its
+  AD's; the other side's engagement zones are a threat like his AD sites, his ROZ / HIDACZ / ACA bind nobody and show where
+  his guns and UAS work. Gun-target lines from own PAA symbols (range taken as the 155 mm howitzer's, IBB p 120) and own
+  artillery / mortar / rocket symbols with a catalogue `Rng.ind` to the targets own fire falls on (own attack: the Obj and
+  his Posns in range; his attack: the TAIs of tab 5 and the Threat marker; nearest 16 pairs), each avenue that crosses one
+  flagged with the crossing point and its distance from the guns (FM 3-09 B-60 p B-20: the PAA is the base for GTLs and
+  areas for aircraft to avoid; separation lateral / altitude / time with the ALO, B-28, no figure), within 500 m named near
+  it (E). Tab 4 tile (per avenue, zones, GTLs, notes), rail row, Copy as Text; on the map the GTLs dotted in the range
+  colour with a ✕ mark at each crossing and a word on each zone an avenue runs through. Nothing is filled from the terrain.
+- **Not read yet**: wind (both approach directions are listed).
 
 Cost: 50-350 ms per area (one eye or none: about 120 ms; the Threat marker as an eye with a Bde area: 355 ms), with the
 fire, once per area or Posn change; nothing while F is off. Checks: `node tools/ipb-test/air.mjs` (29: an LZ on a plain,

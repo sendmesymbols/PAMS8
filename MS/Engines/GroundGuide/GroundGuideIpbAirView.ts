@@ -304,6 +304,11 @@ export function airTiles(o: GroundGuideOcoka): HTMLElement[] {
     at.classList.add('ms-ggd-brk');
     out.push(at);
   }
+  const asp = airspaceTile(av);
+  if (asp) {
+    asp.classList.add('ms-ggd-brk');
+    out.push(asp);
+  }
   const wx = wxTile(v, 'air');
   if (wx) out.push(wx);
   const rows: Array<[string, string]> = [
@@ -329,6 +334,55 @@ export function airTiles(o: GroundGuideOcoka): HTMLElement[] {
   return out;
 }
 
+// ── airspace control measures and gun-target lines (FM 3-09 App B) ───────────────────────────────────────────────────
+
+const EFFECT_WORD: Record<string, string> = { restricted: 'Restricted', coordinate: 'Clearance needed', safe: 'Safe from own fires', ownAd: 'Own AD zone', threat: 'Threat', his: 'Other side\'s measure' };
+
+function airspaceTile(av: IpbAirView): HTMLElement | null {
+  const sp = av.airspace;
+  if (!sp) return null;
+  const routes = el('div', 'ms-gx-list');
+  for (const r of sp.routes) routes.append(el('div', undefined, `Air ${r.id}`), el('div', undefined, r.text));
+  if (!sp.routes.length) routes.append(el('div', undefined, 'Air'), el('div', undefined, 'no air avenue to read against'));
+  const t = tile(`Airspace Measures and Gun-Target Lines · ${sp.zones.length} zone${sp.zones.length === 1 ? '' : 's'}, ${sp.gtls.length} GTL`, routes);
+  if (sp.zones.length) {
+    const zl = el('div', 'ms-gx-list');
+    for (const z of sp.zones) zl.append(el('div', undefined, `${z.label} (${z.side === 'own' ? 'own' : 'en'})`), el('div', undefined, `${EFFECT_WORD[z.effect] ?? z.effect}: ${z.why}${z.routes.length ? `. ${z.routes.map((q) => `Air ${q.id} ${q.pct} % inside`).join(', ')}` : '. No avenue inside'} (${z.src}).`));
+    t.append(el('div', 'ms-ggb-cap ms-ggd-cap', 'Zones on the Map'), zl);
+  }
+  if (sp.gtls.length) {
+    const gl = el('div', 'ms-gx-list');
+    for (const g of sp.gtls) gl.append(el('div', undefined, g.id), el('div', undefined, `${g.gun} → ${g.target}, ${km(g.lengthM)}${g.crossings.length ? `; crossed by ${g.crossings.map((c) => `Air ${c.route} (${km(c.fromGunM)} from the guns)`).join(', ')}` : ''}${g.near.length ? `; Air ${g.near.map((c) => `${c.route} within ${km(c.distM)}`).join(', ')}` : ''}${!g.crossings.length && !g.near.length ? '; no avenue across it' : ''}.`));
+    t.append(el('div', 'ms-ggb-cap ms-ggd-cap', `Gun-Target Lines · own guns ${sp.guns}, targets ${sp.targets}`), gl);
+  }
+  for (const n of sp.notes) t.append(note(n));
+  t.append(note('Read from the symbols drawn: ROZ, HIDACZ, ACA and engagement zones (what each means for the side that flies, FM 3-09 App B; joint definitions to confirm), own PAA / artillery symbols to the targets own fire falls on (FM 3-09 B-60). Nothing is filled from the terrain.'));
+  return t;
+}
+
+export function airspaceScopeRow(av: IpbAirView): { icon: 'avenue' | 'choke' | 'obs'; bold: string; rest: string } | null {
+  const sp = av.airspace;
+  if (!sp) return null;
+  const r = sp.routes.find((x) => x.gtlCrossings.length || x.pct.restricted || x.pct.threat) ?? null;
+  if (!r) return sp.zones.length || sp.gtls.length ? { icon: 'obs', bold: 'Airspace clear', rest: `${sp.zones.length} zone${sp.zones.length === 1 ? '' : 's'}, ${sp.gtls.length} GTL` } : null;
+  const bits: string[] = [];
+  if (r.gtlCrossings.length) bits.push(`crosses ${r.gtlCrossings.join(', ')}`);
+  if (r.pct.restricted) bits.push(`${r.pct.restricted} % restricted`);
+  if (r.pct.threat) bits.push(`${r.pct.threat} % in the En AD zone`);
+  return { icon: 'obs', bold: `Air ${r.id} ${bits[0]}`, rest: bits.slice(1).join(', ') };
+}
+
+export function airspaceText(av: IpbAirView): string[] {
+  const sp = av.airspace;
+  if (!sp) return [];
+  const L: string[] = [`  Airspace measures and gun-target lines (FM 3-09 App B): ${sp.zones.length} zone${sp.zones.length === 1 ? '' : 's'} on the map, ${sp.gtls.length} GTL from ${sp.guns} own gun${sp.guns === 1 ? '' : 's'}.`];
+  for (const r of sp.routes) L.push(`    Air ${r.id}: ${r.text}.`);
+  for (const z of sp.zones) L.push(`    ${z.label} (${z.side === 'own' ? 'own' : 'en'}): ${EFFECT_WORD[z.effect] ?? z.effect}, ${z.why} (${z.src}).`);
+  for (const g of sp.gtls) L.push(`    ${g.id}: ${g.gun} → ${g.target}, ${km(g.lengthM)}${g.crossings.length ? `; crossed by Air ${g.crossings.map((c) => `${c.route} ${km(c.fromGunM)} from the guns`).join(', ')}` : ''}.`);
+  for (const n of sp.notes) L.push(`    ${n}`);
+  return L;
+}
+
 // ── rail, text ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export function airScopeRows(o: GroundGuideOcoka): Array<{ icon: 'avenue' | 'choke' | 'obs'; bold: string; rest: string }> {
@@ -339,6 +393,8 @@ export function airScopeRows(o: GroundGuideOcoka): Array<{ icon: 'avenue' | 'cho
   out.push(r ? { icon: 'avenue', bold: `Air ${r.id} → ${r.to}`, rest: `${km(r.lengthM)}${av.observers ? ` · ${pc(r.seenPct)} in view` : ''}` } : { icon: 'avenue', bold: 'No Air Apch', rest: av.notes[0] ?? '' });
   const ad = av.ad[0];
   if (ad) out.push({ icon: 'obs', bold: `${ad.id} sees ${km(ad.seenM)}`, rest: ad.kinds.map((k) => (k === 'long' ? 'long-range' : k)).join(', ') || 'of the air Apchs' });
+  const asp = airspaceScopeRow(av);
+  if (asp) out.push(asp);
   return out;
 }
 
@@ -349,6 +405,7 @@ export function airText(o: GroundGuideOcoka): string[] {
   for (const r of av.routes) L.push(`  Air ${r.id} to ${r.to}: ${r.why}.`);
   for (const z of [...av.lzs, ...av.dzs]) L.push(`  ${z.id}: ${z.why}${z.caution.length ? `; ${z.caution.join('; ')}` : ''}${z.op ? `; OP ${km(z.op.distM)} off, ${z.op.riseM >= 0 ? `${z.op.riseM} m higher` : `${-z.op.riseM} m lower`}` : ''}.`);
   for (const a of av.ad) L.push(`  ${a.id}: ${a.why}.`);
+  L.push(...airspaceText(av));
   for (const n of av.notes) L.push(`  ${n}`);
   L.push('  Flight heights, LZ sizes and AD reach are public US figures: confirm with Army Aviation and AD.');
   return L;

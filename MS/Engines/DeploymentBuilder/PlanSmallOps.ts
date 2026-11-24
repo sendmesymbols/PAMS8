@@ -58,7 +58,7 @@ export interface SmallReading {
    * tool and the attack's march): legs with grid bearings, paces and night minutes, the march time, the stretches inside
    * the En night and thermal sights, the chart's cautions. Read only when the Night March rules are given.
    */
-  night?: { legs: { i: number; bearingDeg: number; gridDeg: number; distM: number; paces: number; min: number; sight: string }[]; grid: string; lengthM: number; paces: number; marchMin: number; thermalAtM: number | null; nightAtM: number | null; checks: string[] };
+  night?: { legs: { i: number; bearingDeg: number; gridDeg: number; distM: number; paces: number; min: number; sight: string }[]; grid: string; lengthM: number; paces: number; marchMin: number; moveMin: number; thermalAtM: number | null; nightAtM: number | null; checks: string[] };
   /** Patrol: the route card, leg by leg (out and back), for the Check step and Copy as Text. `bearingDeg` is true (the
    *  line drawn); `gridDeg` is the grid bearing in `grid` (the 1:50k sheets' grid, else UTM), and mils and magnetic
    *  (grid - GMA) are worked from it. */
@@ -304,7 +304,7 @@ export function solveSmall(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = {
 
 // ── ambush ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-const MOVER_WORD: Record<Mover, string> = { wheeled: 'his vehicles', tracked: 'his tanks', dismounted: 'his men on foot' };
+const MOVER_WORD: Record<Mover, string> = { wheeled: 'the En vehicles', tracked: 'the En tanks', dismounted: 'the En on foot' };
 const SHAPE_WORD: Record<AmbushShape, string> = { line: 'line', L: 'L', V: 'V' };
 const SHAPE_WHY: Record<AmbushShape, string> = { line: 'a straight stretch without high ground on both sides', L: 'a bend or crest within 200 m', V: 'high ground on both sides of the Rd' };
 
@@ -466,14 +466,14 @@ function readAmbush(c: Ctx): SmallRead {
   // rows
   const rows: Check[] = [];
   const word = (c2: number | null) => (c2 === null ? 'NO-GO' : mov.classLabel(c2));
-  const upWord = (m: number) => `${fmtM(Math.abs(m))} ${m < 0 ? 'up the Rd (toward him)' : 'down the Rd'}`;
+  const upWord = (m: number) => `${fmtM(Math.abs(m))} ${m < 0 ? 'up the Rd (toward the En)' : 'down the Rd'}`;
   const betterFix = better[0] ? [`A site ${upWord(better[0].alongM)} scores ${better[0].score} (here ${site.score}): J while placing moves the KZ to it (the blue ring; Shift+J back)`] : [];
   if (!rd) {
     rows.push({ name: 'Road', st: 'fail', reason: `no Rd or track within ${snapM} m of the click: laid across country along the aim`,
-      detail: { head: `No Rd or track within ${snapM} m`, why: 'An ambush on vehicles needs the road they use; the bundle has none near the click (a track may be missing from the map).', whyShort: 'no Rd near the click', fix: ['Click on the road or track he will use', 'A track missing from the map: recce it and lay the ambush by hand'] } });
+      detail: { head: `No Rd or track within ${snapM} m`, why: 'An ambush on vehicles needs the road they use; the bundle has none near the click (a track may be missing from the map).', whyShort: 'no Rd near the click', fix: ['Click on the road or track the En will use', 'A track missing from the map: recce it and lay the ambush by hand'] } });
   } else {
     const cls = st.cls !== null ? mov.classLabel(st.cls) : 'Rd';
-    rows.push({ name: 'Road', st: rd.snapM <= onRoadM ? 'pass' : 'warn', reason: `KZ on ${rd.name ? `${rd.name} (${cls})` : `the ${cls}`}${rd.snapM > onRoadM ? `, ${fmtM(rd.snapM)} from the click` : ''}; read ${fmtM(chain)} toward him and ${fmtM(r.lengthM - chain)} beyond` });
+    rows.push({ name: 'Road', st: rd.snapM <= onRoadM ? 'pass' : 'warn', reason: `KZ on ${rd.name ? `${rd.name} (${cls})` : `the ${cls}`}${rd.snapM > onRoadM ? `, ${fmtM(rd.snapM)} from the click` : ''}; read ${fmtM(chain)} toward the En and ${fmtM(r.lengthM - chain)} beyond` });
   }
   const mw = MOVER_WORD[mover];
   if (site.exits === 'both') rows.push({ name: 'Target held', st: 'pass', reason: `defile: ${mw} cannot leave the Rd (${word(st.leftWhy)} L, ${word(st.rightWhy)} R)` });
@@ -487,7 +487,7 @@ function readAmbush(c: Ctx): SmallRead {
   const hid = site.parts[1];
   rows.push(hid?.ok ? { name: 'Hidden from behind', st: 'pass', reason: hid.what }
     : { name: 'Hidden from behind', st: 'warn', reason: hid?.what ?? `seen from ${A.followM} m back`,
-      detail: { head: `Seen from ${A.followM} m back`, why: 'The vehicles behind the KZ see the ambush spring and can stop, deploy or go round.', whyShort: 'his column behind sees it', fix: [...betterFix, 'Site the KZ just past a bend or over a crest', 'Stop 1 cuts off the vehicles behind (a mine or an obstacle on the Rd)'] } });
+      detail: { head: `Seen from ${A.followM} m back`, why: 'The vehicles behind the KZ see the ambush spring and can stop, deploy or go round.', whyShort: 'the En column behind sees it', fix: [...betterFix, 'Site the KZ just past a bend or over a crest', 'Stop 1 cuts off the vehicles behind (a mine or an obstacle on the Rd)'] } });
   const coverAt = L.side === 'L' ? st.coverL : st.coverR, rise = Math.max(st.riseL, st.riseR);
   if (dr) {
     // drawn: how far back from the road the fire line lies (cover 30-120 m out: MovementDoctrine ambush, E)
@@ -515,9 +515,9 @@ function readAmbush(c: Ctx): SmallRead {
   /** His QRF's time to the KZ from a post `km` away (smallOps.ambush.qrfKmh / qrfTurnOutMin; 30 km/h and 5 min: E). */
   const qrfMin = (km: number) => Math.round((km / one(doc, 'smallOps.ambush.qrfKmh', 30)) * 60 + one(doc, 'smallOps.ambush.qrfTurnOutMin', 5));
   rows.push(reinf === null ? { name: 'Reinforcements', st: 'pass', reason: `no post or Police within ${A.reinforcementKm} km` }
-    : { name: 'Reinforcements', st: 'warn', reason: `a post or Police ${reinf.toFixed(1)} km away`, detail: { head: `Post / Police ${reinf.toFixed(1)} km away`, why: `His quick reaction force can be on the KZ in about ${qrfMin(reinf)} min (${one(doc, 'smallOps.ambush.qrfKmh', 30)} km/h and ${one(doc, 'smallOps.ambush.qrfTurnOutMin', 5)} min to turn out: E).`, whyShort: `QRF in ~${qrfMin(reinf)} min`, fix: ['Keep the action short: spring, kill, go', 'A stop on his road in from the post', ...betterFix] } });
+    : { name: 'Reinforcements', st: 'warn', reason: `a post or Police ${reinf.toFixed(1)} km away`, detail: { head: `Post / Police ${reinf.toFixed(1)} km away`, why: `The En quick reaction force can be on the KZ in about ${qrfMin(reinf)} min (${one(doc, 'smallOps.ambush.qrfKmh', 30)} km/h and ${one(doc, 'smallOps.ambush.qrfTurnOutMin', 5)} min to turn out: E).`, whyShort: `QRF in ~${qrfMin(reinf)} min`, fix: ['Keep the action short: spring, kill, go', 'A stop on the En road in from the post', ...betterFix] } });
   const villages = st.places.filter((p) => p.distM <= A.villageKm * 1000);
-  rows.push(villages.length ? { name: 'Village', st: 'warn', reason: `${villages.map((v) => v.name ?? 'a village').slice(0, 2).join(', ')} within ${A.villageKm} km`, detail: { head: `${villages.map((v) => v.name ?? 'a village').slice(0, 2).join(', ')} within ${A.villageKm} km`, why: 'People round the KZ: warning to him before it springs, and civilians in the arcs.', fix: ['Fix the arcs clear of the village', 'Move the KZ further from it', ...betterFix] } }
+  rows.push(villages.length ? { name: 'Village', st: 'warn', reason: `${villages.map((v) => v.name ?? 'a village').slice(0, 2).join(', ')} within ${A.villageKm} km`, detail: { head: `${villages.map((v) => v.name ?? 'a village').slice(0, 2).join(', ')} within ${A.villageKm} km`, why: 'People round the KZ: warning to the En before it springs, and civilians in the arcs.', fix: ['Fix the arcs clear of the village', 'Move the KZ further from it', ...betterFix] } }
     : { name: 'Village', st: 'pass', reason: `no village within ${A.villageKm} km` });
   const gs = site.groundShape;
   rows.push(gs === shape ? { name: 'Layout', st: 'pass', reason: `${SHAPE_WORD[shape]}: the ground suits it (${SHAPE_WHY[gs]})` }
@@ -533,10 +533,10 @@ function readAmbush(c: Ctx): SmallRead {
     const items = outlying.map((o) => `${o.label}: ${upWord(o.site.chainM - site.chainM)}, site ${o.site.score} / 100, sees ${o.seenPct} % of its stretch${o.found ? '' : ' (no likely site in its band: laid at the middle of it)'}`);
     const weak = outlying.filter((o) => o.site.score < minScore || o.seenPct < seenWarn || !o.found);
     const missing = !dr ? (['up', 'down'] as const).filter((w) => !outlying.some((o) => o.up === (w === 'up'))) : [];
-    rows.push(missing.length ? { name: 'Outlying', st: 'warn', reason: `no Rd read ${missing.map((w) => (w === 'up' ? 'up toward him' : 'down beyond the KZ')).join(' or ')} for an outlying ambush`, detail: { head: 'An outlying ambush not sited', items, why: 'The area ambush closes each way in and out of the central site (IC s44 p 152); the Rd read stops short.', fix: ['Lay it by hand on that way in or out', 'Click the central KZ nearer the middle of the stretch'] } }
+    rows.push(missing.length ? { name: 'Outlying', st: 'warn', reason: `no Rd read ${missing.map((w) => (w === 'up' ? 'up toward the En' : 'down beyond the KZ')).join(' or ')} for an outlying ambush`, detail: { head: 'An outlying ambush not sited', items, why: 'The area ambush closes each way in and out of the central site (IC s44 p 152); the Rd read stops short.', fix: ['Lay it by hand on that way in or out', 'Click the central KZ nearer the middle of the stretch'] } }
       : !want ? { name: 'Outlying', st: 'unchecked', reason: 'no outlying ambush drawn' }
         : { name: 'Outlying', st: weak.length ? 'warn' : 'pass', reason: items.join('; '),
-          detail: weak.length ? { head: `${weak.map((o) => o.label).join(', ')}: a weak site`, items, why: 'Each outlying ambush is a point ambush of its own (IC s44 p 152): it wants the same defile or bend, cover and the stretch in view.', fix: ['Move it along its band to a better stretch (walk the Rd)', 'Mines or an obstacle to hold him at it', 'Side tracks into the area: an outlying ambush on each (recce)'] } : undefined });
+          detail: weak.length ? { head: `${weak.map((o) => o.label).join(', ')}: a weak site`, items, why: 'Each outlying ambush is a point ambush of its own (IC s44 p 152): it wants the same defile or bend, cover and the stretch in view.', fix: ['Move it along its band to a better stretch (walk the Rd)', 'Mines or an obstacle to hold the En at it', 'Side tracks into the area: an outlying ambush on each (recce)'] } : undefined });
   }
 
   const confirm = [
@@ -630,7 +630,7 @@ function readPatrol(c: Ctx): SmallRead {
     const straight = groundDist(start, objC), ratio = out.lengthM / Math.max(1, straight);
     const rOut = `${fmtM(out.lengthM)} in ${out.legs.length} legs (${ratio.toFixed(1)} times the ${fmtM(straight)} straight): ${fmtMin(out.minDay)} by day, ${fmtMin(out.minNight)} by night`;
     rows.push(ratio <= 2 ? { name: 'Route out', st: 'pass', reason: rOut }
-      : { name: 'Route out', st: 'warn', reason: rOut, detail: { head: `${ratio.toFixed(1)} times the straight line`, items: [`${fmtM(out.lengthM)} on foot against ${fmtM(straight)} straight`], why: 'The way goes round what a patrol avoids: villages, roads and tracks, skylines, NO-GO and ground the Obj may see.', whyShort: 'round villages, roads, his view', fix: ['Accept a Rd or village crossing by night, in one bound (move the SP)', 'Aim at the Obj from another side', 'A nearer SP, or a lying-up place on the way'] } });
+      : { name: 'Route out', st: 'warn', reason: rOut, detail: { head: `${ratio.toFixed(1)} times the straight line`, items: [`${fmtM(out.lengthM)} on foot against ${fmtM(straight)} straight`], why: 'The way goes round what a patrol avoids: villages, roads and tracks, skylines, NO-GO and ground the Obj may see.', whyShort: 'round villages, roads, what the En sees', fix: ['Accept a Rd or village crossing by night, in one bound (move the SP)', 'Aim at the Obj from another side', 'A nearer SP, or a lying-up place on the way'] } });
     const featured = out.legs.filter((l) => l.endFeature).length;
     const boundB = fig(doc, 'smallOps.patrol.boundM', [550, 750]);
     rows.push({ name: 'Bounds', st: out.legs.length <= 1 || featured * 2 >= out.legs.length ? 'pass' : 'warn',
@@ -639,7 +639,7 @@ function readPatrol(c: Ctx): SmallRead {
   }
   if (out && routes.back && back) {
     const same = sharedShare(backP!, outP!, Math.max(60, R.patrol.separateM / 2));
-    rows.push(same > 0.5 ? { name: 'Route in', st: 'warn', reason: `${Math.round(same * 100)} % of the way back runs along the way out`, detail: { head: 'Back the way it went', why: 'The ground leaves no other way; he can lay an ambush on the route the patrol used.', fix: ['Aim at the Obj from a little to one side: another way may open', 'Come back by day, or by another SP'] } }
+    rows.push(same > 0.5 ? { name: 'Route in', st: 'warn', reason: `${Math.round(same * 100)} % of the way back runs along the way out`, detail: { head: 'Back the way it went', why: 'The ground leaves no other way; the En can lay an ambush on the route the patrol used.', fix: ['Aim at the Obj from a little to one side: another way may open', 'Come back by day, or by another SP'] } }
       : { name: 'Route in', st: 'pass', reason: `a different way back: ${fmtM(back.lengthM)}, ${fmtMin(back.minNight)} by night (${Math.round(same * 100)} % along the way out)` });
   } else if (out) rows.push({ name: 'Route in', st: 'warn', reason: 'no second way back found: back the way it went' });
   if (out) {
@@ -692,7 +692,7 @@ function readPatrol(c: Ctx): SmallRead {
     try {
       const kind = inp.terrain && inp.terrain !== 'auto' ? inp.terrain : 'plains';
       const ch = nightMarchChart({ path: outP, objective: outP[outP.length - 1], echelon: 'platoon', gmaDeg: inp.gmaDeg ?? null, hHourMin: null, terrainKind: kind === 'obstacle' ? 'plains' : kind, probe: mov as unknown as PlProbe, patrolRules: inp.plRules ?? plRulesFrom(null), foot, speeds, classLabel: (k) => mov.classLabel(k) }, inp.nmRules);
-      nightChart = { legs: ch.legs.map((l) => ({ i: l.i, bearingDeg: deg360(l.bearingDeg), gridDeg: deg360(l.gridDeg), distM: Math.round(l.distM), paces: l.paces, min: l.minNight, sight: l.sight })), grid: ch.grid.name, lengthM: Math.round(ch.lengthM), paces: ch.paces, marchMin: ch.timing.marchMin, thermalAtM: ch.sights?.thermal.enterAtM ?? null, nightAtM: ch.sights?.night.enterAtM ?? null, checks: ch.checks.filter((c) => c.tone !== 'ok').slice(0, 4).map((c) => c.text) };
+      nightChart = { legs: ch.legs.map((l) => ({ i: l.i, bearingDeg: deg360(l.bearingDeg), gridDeg: deg360(l.gridDeg), distM: Math.round(l.distM), paces: l.paces, min: l.minNight, sight: l.sight })), grid: ch.grid.name, lengthM: Math.round(ch.lengthM), paces: ch.paces, marchMin: ch.timing.marchMin, moveMin: ch.timing.moveMin, thermalAtM: ch.sights?.thermal.enterAtM ?? null, nightAtM: ch.sights?.night.enterAtM ?? null, checks: ch.checks.filter((c) => c.tone !== 'ok').slice(0, 4).map((c) => c.text) };
     } catch { nightChart = undefined; }
   }
   const marks: SmallReading['marks'] = [];
@@ -977,17 +977,17 @@ function readScreen(c: Ctx): SmallRead {
   const uPct = Math.round((100 * union.filter(Boolean).length) / samples.length);
   const postWord = (o: Cand, i: number) => `${label(i)}: ${fmtM(ahead(o.p))} forward, ${fmtM(Math.abs(across(o.p)))} ${across(o.p) < 0 ? 'left' : 'right'}${o.name ? ` (${o.name})` : ''}, sees ${Math.round(o.pct * 100)} %, ${Math.abs(o.rise) < 1 ? 'level with' : o.rise > 0 ? `${Math.round(o.rise)} m above` : `${Math.round(-o.rise)} m below`} the ground in front${o.cover ? ', in cover' : ', in the open'}`;
   if (!dr && chosen.length < n) rows.push(loading ? { name: 'Posts sited', st: 'unchecked', reason: `${chosen.length} of ${n} posts sited so far: the ground is still loading` } : { name: 'Posts sited', st: 'fail', reason: `${chosen.length} of ${n} posts found ${fmtM(fwd[0])}-${fmtM(fwd[1])} forward across ${fmtM(front)}`, detail: { head: `${chosen.length} of ${n} posts sited`, why: 'NO-GO on foot fills the ground in front of the main posn.', fix: ['Aim the screen at another stretch of the front', 'Fewer posts: a Pl screen'] } });
-  rows.push(loading ? { name: 'His viewpoints', st: 'unchecked', reason: 'the ground is still loading' }
-    : overlook.length ? { name: 'His viewpoints', st: 'pass', reason: `${overlook.length} of ${all.length} points of the ground in front see the main posn: the screen watches those` }
-      : { name: 'His viewpoints', st: 'warn', reason: 'none of the ground in front sees the main posn (30 m elevation): the screen gives early warning only', detail: { head: 'No ground in front sees the main posn', why: 'Folds or what stands on the ground hide the main posn from the area aimed at; the screen still warns and delays.', fix: ['Aim at the ground nearer the main posn', 'Walk it: the map misses walls, crops and trees'] } });
+  rows.push(loading ? { name: 'En viewpoints', st: 'unchecked', reason: 'the ground is still loading' }
+    : overlook.length ? { name: 'En viewpoints', st: 'pass', reason: `${overlook.length} of ${all.length} points of the ground in front see the main posn: the screen watches those` }
+      : { name: 'En viewpoints', st: 'warn', reason: 'none of the ground in front sees the main posn (30 m elevation): the screen gives early warning only', detail: { head: 'No ground in front sees the main posn', why: 'Folds or what stands on the ground hide the main posn from the area aimed at; the screen still warns and delays.', fix: ['Aim at the ground nearer the main posn', 'Walk it: the map misses walls, crops and trees'] } });
   rows.push(loading ? { name: 'Ground in front seen', st: 'unchecked', reason: 'the ground is still loading' }
-    : { name: 'Ground in front seen', st: uPct >= sWarn ? 'pass' : uPct >= sFail ? 'warn' : 'fail', reason: `the posts see ${uPct} % of ${overlook.length ? 'the ground he would watch you from' : 'the ground in front'} (wants ${sWarn} %, E)`,
+    : { name: 'Ground in front seen', st: uPct >= sWarn ? 'pass' : uPct >= sFail ? 'warn' : 'fail', reason: `the posts see ${uPct} % of ${overlook.length ? 'the ground the En would watch you from' : 'the ground in front'} (wants ${sWarn} %, E)`,
       detail: { head: `${uPct} % in view`, items: chosen.map(postWord), why: uPct >= sWarn ? undefined : 'Folds, trees or buildings hide parts of it from the posts (a chance on 30 m elevation).', whyShort: uPct >= sWarn ? undefined : 'folds, trees or buildings in the way', fix: uPct >= sWarn ? undefined : ['A post on higher ground or a rooftop', 'A standing patrol or LP in the ground not seen (the red dots)', 'Mines in front and on the flanks of the screen (IC p380)'] } });
   const anyPost = chosen.length > 0;
   const far = chosen.map((o, i) => ({ o, i, f: ahead(o.p) })).filter((x) => x.f > fwd[1] + 50);
   const near = chosen.map((o, i) => ({ o, i, f: ahead(o.p) })).filter((x) => x.f < fwd[0] - 50);
-  if (anyPost) rows.push(far.length ? { name: 'Posts forward', st: 'warn', reason: `${far.map((x) => `${label(x.i)} ${fmtM(x.f)}`).join(', ')} forward (wants ${fmtM(fwd[0])}-${fmtM(fwd[1])}, E)`, detail: { head: 'Further forward than needed', why: 'A screen goes only as far forward as is necessary to deny him observation of the main posn (IC p378); further out it is cut off and its way back is long.', fix: ['Pull the post back to ground nearer the main posn', 'A standing patrol out there instead'] } }
-    : near.length ? { name: 'Posts forward', st: 'warn', reason: `${near.map((x) => `${label(x.i)} ${fmtM(x.f)}`).join(', ')} forward (wants ${fmtM(fwd[0])} or more, E)`, detail: { head: 'Too close to the main posn', why: 'His fire on the screen falls on the main posn too, and the screen does not keep his recce off it.', fix: ['Push the post forward onto the ground he would watch from'] } }
+  if (anyPost) rows.push(far.length ? { name: 'Posts forward', st: 'warn', reason: `${far.map((x) => `${label(x.i)} ${fmtM(x.f)}`).join(', ')} forward (wants ${fmtM(fwd[0])}-${fmtM(fwd[1])}, E)`, detail: { head: 'Further forward than needed', why: 'A screen goes only as far forward as is necessary to deny the En observation of the main posn (IC p378); further out it is cut off and its way back is long.', fix: ['Pull the post back to ground nearer the main posn', 'A standing patrol out there instead'] } }
+    : near.length ? { name: 'Posts forward', st: 'warn', reason: `${near.map((x) => `${label(x.i)} ${fmtM(x.f)}`).join(', ')} forward (wants ${fmtM(fwd[0])} or more, E)`, detail: { head: 'Too close to the main posn', why: 'The En fire on the screen falls on the main posn too, and the screen does not keep the En recce off it.', fix: ['Push the post forward onto the ground the En would watch from'] } }
       : { name: 'Posts forward', st: 'pass', reason: chosen.length ? `${chosen.map((o, i) => `${label(i)} ${fmtM(ahead(o.p))}`).join(', ')} forward (IC p378: no further than needed)` : 'no posts' });
   if (chosen.length > 1) {
     const span = across(chosen[chosen.length - 1].p) - across(chosen[0].p);
@@ -1004,8 +1004,8 @@ function readScreen(c: Ctx): SmallRead {
   const noRoute = routes.map((r, i) => (r.out ? -1 : i)).filter((i) => i >= 0);
   const seenRt = routes.map((r, i) => ({ i, seen: r.met.seen })).filter((x) => routes[x.i].out && x.seen > routeSeen);
   if (anyPost) rows.push(noRoute.length ? { name: 'Withdrawal', st: dr ? 'unchecked' : 'fail', reason: dr ? `no way back drawn from ${noRoute.map((i) => label(i)).join(', ')}` : `no way back on foot from ${noRoute.map((i) => label(i)).join(', ')}`, detail: { head: 'No way back', why: 'NO-GO on foot between the post and the main posn.', fix: ['Move the post', 'Move the RV'] } }
-    : seenRt.length ? { name: 'Withdrawal', st: 'warn', reason: `${seenRt.map((x) => `${label(x.i)} ${x.seen} %`).join(', ')} of the way back in his view (wants ${routeSeen} % or less, E)`, detail: { head: 'Way back in view', why: 'The withdrawal is along a covered route (IC p381); open ground facing him on the way back costs the screen as it leaves.', fix: ['Bend the way back into the dead ground', 'Smoke and covering fire from the main posn for the withdrawal', 'Withdraw by night'] } }
-      : { name: 'Withdrawal', st: 'pass', reason: `each way back ${routeSeen} % or less in his view (covered: IC p381)` });
+    : seenRt.length ? { name: 'Withdrawal', st: 'warn', reason: `${seenRt.map((x) => `${label(x.i)} ${x.seen} %`).join(', ')} of the way back in the En's view (wants ${routeSeen} % or less, E)`, detail: { head: 'Way back in view', why: 'The withdrawal is along a covered route (IC p381); open ground facing the En on the way back costs the screen as it leaves.', fix: ['Bend the way back into the dead ground', 'Smoke and covering fire from the main posn for the withdrawal', 'Withdraw by night'] } }
+      : { name: 'Withdrawal', st: 'pass', reason: `each way back ${routeSeen} % or less in the En's view (covered: IC p381)` });
   const times = cards.map((cd, i) => (cd ? `${label(i)} ${fmtM(cd.lengthM)}, ${fmtMin(cd.minDay)} by day / ${fmtMin(cd.minNight)} by night` : null)).filter(Boolean) as string[];
   if (times.length) rows.push({ name: 'Time back', st: 'pass', reason: times.join('; ') });
   const confirm = [
@@ -1059,7 +1059,7 @@ export function fitSmallOp(inp: FitLayoutInput): FittedLayout | null {
   const res: SolveResult = {
     ...raw, mode: read ? 'terrain' : 'geometry', rows, slots: [],
     confirm: read ? [...read.confirm, ...base.confirm.filter((x) => !read.confirm.includes(x))] : base.confirm,
-    assumptions: read ? [`Fitted to the ground: ${fit.data}.`, ...(recipe.task === 'patrol' && !inp.threat ? ['No threat marked: the Obj is taken as where he watches from.'] : [])] : base.assumptions,
+    assumptions: read ? [`Fitted to the ground: ${fit.data}.`, ...(recipe.task === 'patrol' && !inp.threat ? ['No threat marked: the Obj is taken as where the En watches from.'] : [])] : base.assumptions,
   };
   return { recipe, res, raw, fit, frame, anchor: inp.anchor, bearing: inp.bearing, manual: {}, terrain: null, enemy: null, unit: null };
 }

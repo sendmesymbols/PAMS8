@@ -825,8 +825,8 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     group: 'Extended View (F)',
     type: 'enum',
     options: [
-      { value: 'defence', label: "En's options vs you: his Apchs toward the Posn, your fire on them, his air and attack template" },
-      { value: 'attack', label: 'Your options vs the threat: your Apchs toward it, his fire on them, your air, his defence template' },
+      { value: 'defence', label: "En's options vs you: the En Apchs toward the Posn, your fire on them, its air and attack template" },
+      { value: 'attack', label: 'Your options vs the threat: your Apchs toward it, its fire on them, your air, its defence template' },
     ],
     help: "X with the Ext View on, or the switch in the Ground Detail's key bar, turns it over. Slope rules are uphill along the direction of movement (IPB pp 10-11): the enemy's coming from the threat marker, or yours moving toward it.",
     keywords: ['extended', 'ipb', 'defence', 'attack', 'direction', 'uphill', 'whose options', 'own options', 'enemy options', 'read for'],
@@ -860,7 +860,7 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     label: 'IPB: turning approach to the MSR choke',
     group: 'Extended View (F)',
     type: 'boolean',
-    help: "With the Apchs onto the Obj, a fourth one goes round the Obj, clear of its ground, to a choke on the MSR behind it (a bridge or ford, a defile, a junction with another metalled road; 0.5-8 km behind, 1.5-5 km preferred) to block it, ranked first (OoW Vol II s6 turning movement; IBB S35: block well in the en rear). In the en's options it is his way round you onto your MSR. The MSR comes from the bundle's road network; without one, a bridge of the coding behind the Obj.",
+    help: "With the Apchs onto the Obj, a fourth one goes round the Obj, clear of its ground, to a choke on the MSR behind it (a bridge or ford, a defile, a junction with another metalled road; 0.5-8 km behind, 1.5-5 km preferred) to block it, ranked first (OoW Vol II s6 turning movement; IBB S35: block well in the en rear). In the en's options it is the En's way round you onto your MSR. The MSR comes from the bundle's road network; without one, a bridge of the coding behind the Obj.",
     keywords: ['turning', 'msr', 'choke', 'block', 'bridge', 'defile', 'junction', 'rear', 'envelopment'],
   },
   {
@@ -1057,6 +1057,14 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     type: 'boolean',
     help: 'Air avenues as dashed flight lines, LZ / DZ squares, AD sites with their range, OPs over the enemy\'s LZs, masts and towers. Off to declutter.',
     keywords: ['extended', 'ipb', 'air', 'map', 'declutter'],
+  },
+  {
+    path: ['groundGuide', 'extended', 'ipb', 'airspace'],
+    label: 'IPB air: airspace measures and gun-target lines',
+    group: 'Extended View (F)',
+    type: 'boolean',
+    help: 'Reads the ROZ, HIDACZ, ACA and engagement-zone symbols on the map over each air avenue (what each means for the side that flies, FM 3-09 App B) and draws own gun-target lines from PAA / artillery symbols to the targets, flagging the avenues that cross them.',
+    keywords: ['extended', 'ipb', 'air', 'airspace', 'roz', 'hidacz', 'aca', 'gun-target line', 'gtl', 'engagement zone'],
   },
   {
     path: ['groundGuide', 'extended', 'ipb', 'airBand'],

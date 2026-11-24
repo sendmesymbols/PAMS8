@@ -219,6 +219,24 @@ sources:
     fetched_by: scripts/fetch_gsod.py        # stations from isd-history.csv, 2016-2025, written to work/raw/gsod/<year>/ (404 = the station did not report that year)
     sha256: 7b2e381088e375844227b0bc7b5601d13477e64320d532621e6d3a9d9f8ee95e   # aggregate over the 1795 files (see work/raw/checksums.json); fetched 2026-11-10, 121.1 MB
 
+  # ERA5 10 m wind (added 2026-11-24): the wind's usual direction, steadiness and day / night turn by month, for the
+  # Ground Guide's W line and the IPB air (LZ approach into the wind, DZ drift) and NBC (downwind) readings. WorldClim
+  # gives the mean speed only. Read from Google's WeatherBench 2 copy of the ERA5 climatology (no account needed); the
+  # Copernicus CDS monthly-by-hour product is the same data at the source (needs a CDS account and key).
+  - id: era5_wind
+    name: ERA5 10 m wind climatology 1990-2019, 0.25 degree, 00 / 06 / 12 / 18 UTC (WeatherBench 2 hourly climatology)
+    version: "WeatherBench 2 era5-hourly-climatology/1990-2019_6h_1440x721.zarr (u10, v10, 10 m wind speed)"
+    dataDate: "1990-2019 normal (ERA5 reanalysis; a 61-day window round each day of the year)"
+    released: "WeatherBench 2 (Rasp et al. 2024); read 2026-11-24"
+    licence: "ERA5: Copernicus Climate Change Service, CC BY 4.0 (C3S licence for ERA5 on the CDS)"        # verify
+    attribution: "Hersbach, H. et al., 2020. The ERA5 global reanalysis. Q. J. R. Meteorol. Soc. 146: 1999-2049 (Copernicus Climate Change Service). Climatology: Rasp, S. et al., 2024. WeatherBench 2. J. Adv. Model. Earth Syst. 16"
+    landing: https://weatherbench2.readthedocs.io/en/latest/data-guide.html        # verify
+    files:
+      - name: "{var}/{hour_chunk}.{day_chunk}.0.0"
+        url: https://storage.googleapis.com/weatherbench2/datasets/era5-hourly-climatology/1990-2019_6h_1440x721.zarr/{var}/{hour_chunk}.{day_chunk}.0.0      # zarr chunk, 3 hours x 3 days x globe, blosc/lz4, ~28 MB
+    fetched_by: scripts/fetch_era5_wind.py        # one chunk of days per month (round the 15th), both hour chunks, u / v / speed: 72 chunks, cut to the aoi
+    sha256: PENDING   # aggregate over work/raw/era5_wind/chunks.json, written after the fetch
+
   # WorldPop (updated 2026-11-04, population count at 100 m since 2026-11-05). Owner's rule: where WorldPop offers two
   # choices take the LATEST and the COARSER one, so 2026 (the current year; 2027-2030 are projections) and 1 km. The
   # owner chose 100 m for the population count itself (2026-11-05): settlements and villages need it. Age groups stay

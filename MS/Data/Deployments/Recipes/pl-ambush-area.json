@@ -13,7 +13,7 @@
   "needs": {
     "terrain": false
   },
-  "note": "IC s44 pp 152-153, Fig 16 (R): an area ambush, not laid by less than a Pl, when the target cannot be taken in one killing zone: a central ambush site (laid as the line ambush) and outlying ambushes on his ways into and out of it, here one up the Rd toward him and one down it, 400-1200 m from the central KZ (E). Each outlying ambush is a point ambush of its own (a Sec): sited at the best stretch in its band and read for the KZ in view. The Pl Comd stays at the central KZ until it is sprung; the outlying ambushes then stop anyone getting in or out. RV 750-900 m back (IC p153).",
+  "note": "IC s44 pp 152-153, Fig 16 (R): an area ambush, not laid by less than a Pl, when the target cannot be taken in one killing zone: a central ambush site (laid as the line ambush) and outlying ambushes on the En's ways into and out of it, here one up the Rd toward the En and one down it, 400-1200 m from the central KZ (E). Each outlying ambush is a point ambush of its own (a Sec): sited at the best stretch in its band and read for the KZ in view. The Pl Comd stays at the central KZ until it is sprung; the outlying ambushes then stop anyone getting in or out. RV 750-900 m back (IC p153).",
   "pivot": "kzTgt",
   "slots": [
     {

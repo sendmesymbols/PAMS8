@@ -1,13 +1,13 @@
 /**
- * PlanRevSlope -- a reverse slope defence laid on the ground (IC s78 pp 430-432; IBB s69 pp 358-360).
+ * PlanRevSlope -- a reverse slope defence laid on the ground (IC s78 pp 429-431; IBB s69 pp 357-359).
  *
  * The rule as written: the posns sit on the part of the feature masked by a crest from En direct fire and ground
  * observation; a successful reverse slope defence depends on control of the crest by fire or by occupation; the forward
- * platoons are within effective small arms range of the crest (IC p 431 b); observation and protective elements (two men
- * to a rifle section, from the depth platoon) on or just forward of the topographical crest (p 431 a); the depth platoon
- * on the crest of the next high ground to the rear within supporting range (p 431 b); anti-tank weapons in the depth
- * platoon area (p 432 b); final protective fires along the crest, or nearer the FDLs when these are as much as 500 m
- * behind it (p 432 d).
+ * platoons are within effective small arms range of the crest (IC p 430 b); observation and protective elements (two men
+ * to a rifle section, from the depth platoon) on or just forward of the topographical crest (p 430 a); the depth platoon
+ * on the crest of the next high ground to the rear within supporting range (p 430 b); anti-tank weapons in the depth
+ * platoon area (p 431 b); final protective fires along the crest, or nearer the FDLs when these are as much as 500 m
+ * behind it (p 431 d).
  *
  * Pure: plan metres (x across, y toward the enemy) through the FitFrame onto the ground (PlanGround: 30 m elevation,
  * going, sight). The finder reads the crest in front of the forward posns, moves the whole plan so the FDL lies behind
@@ -103,14 +103,14 @@ export function findReverseSlope(res: SolveResult, f: FitFrame, g: PlanGround, d
   const found = crests.filter((c) => c.c);
   if (found.length < 2 || !boxes.some((b) => crests.find((c) => c.x === b.c.x)?.c)) {
     out.rows.push({ name: 'Crest', st: 'fail', reason: `no crest within ${fmtM(ahead)} in front of the forward posns (ground rising ${gain} m and falling beyond it)`,
-      detail: { head: 'No crest in front', why: 'A reverse slope defence is organised on the part of a feature masked by a crest from En direct fire and ground observation (IC s78 para 1 p 430); flat ground has none.', fix: ['Take a forward-slope layout (two up) here', 'Move the plan behind a ridge, bund or dune line'] } });
+      detail: { head: 'No crest in front', why: 'A reverse slope defence is organised on the part of a feature masked by a crest from En direct fire and ground observation (IC s78 para 1 p 429); flat ground has none.', fix: ['Take a forward-slope layout (two up) here', 'Move the plan behind a ridge, bund or dune line'] } });
     return out;
   }
   const yCrest = found.reduce((a, c) => a + c.c!.y, 0) / found.length;
   const rise = found.reduce((a, c) => a + c.c!.rise, 0) / found.length;
   out.crest = crests.map((c) => P(c.x, c.c ? c.c.y : yCrest));
   out.crestRiseM = Math.round(rise);
-  // the whole plan moves so the FDL lies behind the crest, as near as the band allows (within MG range: IC p 431 b)
+  // the whole plan moves so the FDL lies behind the crest, as near as the band allows (within MG range: IC p 430 b)
   const want = Math.min(behind[1], Math.max(behind[0], yCrest - front));
   const dy = (yCrest - want) - front;
   if (Math.abs(dy) > 10) for (const it of res.items) if (!/^(crest|crestOp|fpf|lp|stdPtl|dfTgt)/.test(it.role)) out.nudges[it.role] = P(0, dy);
@@ -119,11 +119,17 @@ export function findReverseSlope(res: SolveResult, f: FitFrame, g: PlanGround, d
   const mg = behind[1];
   out.rows.push({ name: 'Crest', st: 'pass', reason: `a crest ${fmtM(yCrest - front - dy)} in front, ${Math.round(rise)} m above the forward posns (30 m elevation)` });
   out.rows.push(fdlBehind <= mg + 1 && fdlBehind >= behind[0] - 1
-    ? { name: 'Behind the crest', st: 'pass', reason: `the FDL ${fmtM(fdlBehind)} behind the crest: within effective small arms range of it (${fmtM(mg)}, MG1A3) (IC s78 para 3 b p 431)` }
-    : { name: 'Behind the crest', st: 'warn', reason: `the FDL ${fmtM(fdlBehind)} behind the crest; the forward platoons must be within effective small arms range of it (${fmtM(mg)}) (IC p 431)`,
-      detail: { head: `FDL ${fmtM(fdlBehind)} behind the crest`, why: fdlBehind > mg ? 'Beyond MG range the crest cannot be swept by fire from the posns: the En takes it and attacks downhill (IC p 431 disadvantages).' : 'Too close to the crest the posns are seen over it.', fix: fdlBehind > mg ? ['Move the posns up toward the crest', 'Hold the crest by occupation at night (IBB p 359 a (2))'] : ['Move the posns back down the slope'] } });
-  if (fdlBehind > fdlWarn) out.rows.push({ name: 'FPF', st: 'warn', reason: `the FDL is ${fmtM(fdlBehind)} behind the crest: with as much as ${fmtM(fdlWarn)} the FPF goes nearer the FDLs than the crest, targets on both sides of it (IC s78 para 4 d p 432)` });
-  else out.rows.push({ name: 'FPF', st: 'pass', reason: 'final protective fires along the topographical crest, to deny it to the En (IC s78 para 4 d p 432)' });
+    ? { name: 'Behind the crest', st: 'pass', reason: `the FDL ${fmtM(fdlBehind)} behind the crest: within effective small arms range of it (${fmtM(mg)}, MG1A3) (IC s78 para 3 b p 430)` }
+    : { name: 'Behind the crest', st: 'warn', reason: `the FDL ${fmtM(fdlBehind)} behind the crest; the forward platoons must be within effective small arms range of it (${fmtM(mg)}) (IC s78 para 3 b p 430)`,
+      detail: { head: `FDL ${fmtM(fdlBehind)} behind the crest`, why: fdlBehind > mg ? 'Beyond MG range the crest cannot be swept by fire from the posns: the En takes it and attacks downhill (IC s78 para 2 b).' : 'Too close to the crest the posns are seen over it.', fix: fdlBehind > mg ? ['Move the posns up toward the crest', 'Hold the crest by occupation at night (IBB s69 para 3 a (2) p 358)'] : ['Move the posns back down the slope'] } });
+  // fields of fire on a reverse slope run from the FDL to the crest: the short range is the price of being hidden
+  // (IC s78 para 2 b: the restricted range of direct fire weapons), the ground beyond is watched and fired on by OPs and DF
+  out.rows.push(fdlBehind <= mg + 1
+    ? { name: 'Fields of fire', st: 'pass', reason: `a reverse slope: ${fmtM(fdlBehind)} from the FDL to the crest, swept by the MG arcs as the En crosses it (IC s78 para 4 a p 431); the ground beyond the crest is the price of being hidden (para 2 b: restricted range of direct fire weapons), watched by the OPs on the crest and under DF on the forward slope` }
+    : { name: 'Fields of fire', st: 'warn', reason: `a reverse slope: ${fmtM(fdlBehind)} from the FDL to the crest, beyond effective small arms range (${fmtM(mg)}): the crest cannot be swept (IC s78 para 3 b p 430)`,
+      detail: { head: `${fmtM(fdlBehind)} to the crest`, why: 'The fields of fire on a reverse slope end at the crest; beyond MG range the En crosses it unhit and attacks downhill.', fix: ['Move the posns up toward the crest', 'Hold the crest by occupation at night (IBB s69 para 3 a (2) p 358)'] } });
+  if (fdlBehind > fdlWarn) out.rows.push({ name: 'FPF', st: 'warn', reason: `the FDL is ${fmtM(fdlBehind)} behind the crest: with as much as ${fmtM(fdlWarn)} the FPF goes nearer the FDLs than the crest, targets on both sides of it (IC s78 para 4 d p 431)` });
+  else out.rows.push({ name: 'FPF', st: 'pass', reason: 'final protective fires along the topographical crest, to deny it to the En (IC s78 para 4 d p 431)' });
   // hidden from the En side: seen from 1500 m beyond the crest at the En observer's eye
   if (g.sight) {
     const hisEye = num(doc, 'revSlope.hisEyeM', 2), tall = num(doc, 'revSlope.posnTallM', 1.7), maxSeen = num(doc, 'revSlope.seenMaxPct', 20);
@@ -147,8 +153,8 @@ export function findReverseSlope(res: SolveResult, f: FitFrame, g: PlanGround, d
     const hg = highGroundBehind(back, gain);
     if (hg) {
       out.nudges[d.role] = P(0, (out.nudges[d.role]?.y ?? 0) + (hg.y - (c.y + dy)));
-      out.rows.push({ name: `${d.label} on high ground`, st: 'pass', reason: `moved ${fmtM(Math.abs(hg.y - (c.y + dy)))} back onto the next high ground, ${Math.round(hg.rise)} m higher: the depth posn there supports the forward platoons and sites the anti-tank weapons (IC s78 paras 3 b, 4 b pp 431-432)` });
-    } else out.rows.push({ name: `${d.label} on high ground`, st: 'warn', reason: `no high ground within ${fmtM(num(doc, 'revSlope.depthSearchBackM', 1200))} behind for the depth posn (IC p 431: desirable on the crest of the next high ground to the rear)` });
+      out.rows.push({ name: `${d.label} on high ground`, st: 'pass', reason: `moved ${fmtM(Math.abs(hg.y - (c.y + dy)))} back onto the next high ground, ${Math.round(hg.rise)} m higher: the depth posn there supports the forward platoons and sites the anti-tank weapons (IC s78 paras 3 b, 4 b pp 430-431)` });
+    } else out.rows.push({ name: `${d.label} on high ground`, st: 'warn', reason: `no high ground within ${fmtM(num(doc, 'revSlope.depthSearchBackM', 1200))} behind for the depth posn (IC s78 para 3 b p 430: desirable on the crest of the next high ground to the rear)` });
   }
   // the crest line, the OPs and the FPF targets on it
   const left = Math.min(...boxes.map((b) => b.e.x0)), right = Math.max(...boxes.map((b) => b.e.x1));
@@ -159,7 +165,7 @@ export function findReverseSlope(res: SolveResult, f: FitFrame, g: PlanGround, d
     out.geom[`crestOp${i + 1}`] = { pts: [P(b.c.x, cy + 20)], label: 'OP' };
     out.geom[`fpf${i + 1}`] = { pts: [P(b.c.x, fdlBehind > fdlWarn ? b.c.y + dy + (b.e.y1 - b.e.y0) / 2 + 150 : cy)] };
   });
-  out.rows.push({ name: 'Crest held', st: 'pass', reason: `${boxes.length} OP${boxes.length > 1 ? 's' : ''} on the crest by day (two men to a section, from the depth platoon, with the FOO); the crest occupied in strength by night (IC p 431 a; IBB p 359 a)` });
-  out.confirm.push('The crest: OPs and protective patrols by day with the FOO / MFC; held in strength by infantry at night (IBB s69 para 3 a p 359)', 'Dummy posns on the forward slope for deception (IC s78 para 2 a p 431)', 'Anti-tank weapons in the depth posn area with fields of fire onto the crest (IC s78 para 4 b p 432)', 'MG arcs between the FDLs and the crest, surprise fire as the En crosses it (IC s78 para 4 a p 432)');
+  out.rows.push({ name: 'Crest held', st: 'pass', reason: `${boxes.length} OP${boxes.length > 1 ? 's' : ''} on the crest by day (two men to a section, from the depth platoon, with the FOO); the crest occupied in strength by night (IC s78 para 3 a p 430; IBB s69 para 3 a p 358)` });
+  out.confirm.push('The crest: OPs and protective patrols by day with the FOO / MFC; held in strength by infantry at night (IBB s69 para 3 a p 358)', 'Dummy posns on the forward slope for deception (IC s78 para 2 a)', 'Anti-tank weapons in the depth posn area with fields of fire onto the crest (IC s78 para 4 b p 431)', 'MG arcs between the FDLs and the crest, surprise fire as the En crosses it (IC s78 para 4 a p 431)');
   return out;
 }

@@ -79,7 +79,7 @@
     }
   },
   "enemy": {
-    "note": "Who attacks (Phase 5 and the fit): the enemy's echelon and type. The echelon sets how wide an approach must be to carry him and the force ratio; the type sets which going his approaches use, how fast he comes and where his FUP lies.",
+    "note": "Who attacks (Phase 5 and the fit): the enemy's echelon and type. The echelon sets how wide an approach must be to carry the En and the force ratio; the type sets which going its approaches use, how fast it comes and where its FUP lies.",
     "levels": {
       "14": { "label": "Pl", "strength": 0.33 },
       "15": { "label": "Coy", "strength": 1 },
@@ -133,7 +133,7 @@
       "22": 6000,
       "basis": "D",
       "src": "IPB pp 7, 12, 16 (IpbDoctrine.corridors.widthM: Coy 500, Bn 1500, Bde 3000, Div 6000 m). An echelon attacks on the mobility corridors of the level below it; a viable avenue holds at least two.",
-      "note": "Nearest in the books (19 Nov 2026), not applied: IC s114 p 684, his night-attack frontages: Bn 400 m, Coy 200 m ('could be as less as 60 metres'), Pl 75 m: attack frontages, not approach corridors.",
+      "note": "Nearest in the books (19 Nov 2026), not applied: IC s114 p 684, the En night-attack frontages: Bn 400 m, Coy 200 m ('could be as less as 60 metres'), Pl 75 m: attack frontages, not approach corridors.",
       "refs": [
         {
           "book": "IPB",
@@ -261,7 +261,7 @@
     "defaultType": {
       "value": "mech",
       "basis": "D",
-      "note": "His attack in the plains with armour in support: mechanised. Plains, obstacle and desert: an armour-supported attack (the en attacks in the Bn Def and Demo 2 samples have armour). Mountains: inf (MW pp 238-239, armour confined to roads; MW pp 79, 82, most attacks by infantry at night).",
+      "note": "The En attack in the plains with armour in support: mechanised. Plains, obstacle and desert: an armour-supported attack (the en attacks in the Bn Def and Demo 2 samples have armour). Mountains: inf (MW pp 238-239, armour confined to roads; MW pp 79, 82, most attacks by infantry at night).",
       "src": "IC s114 p 663 (the Foxland Bn): 'Is capable of launching a set piece phased attack from a secured firm base with armour in close support/fire support role'",
       "refs": [
         {
@@ -341,7 +341,7 @@
         "tieInM": { "doctrine": "checkBands.fieldOfFireToObstacleM" },
         "firstLayout": "three-up",
         "footKmh": { "go": 4, "slow": 2.4, "src": "IPB p 18" },
-        "src": "GSP 1947 Inf Div in Battle s26 p 119 (a Bde on a ditch cum bund up to 8000-10000 m; a Div not more than two divisional approaches); IC s84.6b (a Coy's frontage is not extended: the Bn's grows by its gaps); IBB Annex V App 9 p485 (a Bn along an anti-tank ditch, three up on the higher bank); Demo 2 (Bdes three up on the obstacle, basis O). IC s113 p 658 gives the Foxland (enemy) Bn 6000 x 3000 m and Div 60-80 km on an obstacle: his figures, not used for own except where said.",
+        "src": "GSP 1947 Inf Div in Battle s26 p 119 (a Bde on a ditch cum bund up to 8000-10000 m; a Div not more than two divisional approaches); IC s84.6b (a Coy's frontage is not extended: the Bn's grows by its gaps); IBB Annex V App 9 p485 (a Bn along an anti-tank ditch, three up on the higher bank); Demo 2 (Bdes three up on the obstacle, basis O). IC s113 p 658 gives the Foxland (enemy) Bn 6000 x 3000 m and Div 60-80 km on an obstacle: the En figures, not used for own except where said.",
         "refs": [
           {
             "book": "GSP",
@@ -424,7 +424,7 @@
         "label": "Mountains",
         "basis": "D",
         "bnFrontageRow": "Mountain infantry battalion, defence",
-        "firstLayout": "all-round",
+        "firstLayout": "three-up",
         "holdHeights": {
           "aboveApchM": {
             "value": 30,
@@ -469,23 +469,51 @@
         },
         "ascentMinPer300m": {
           "value": [30, 60],
-          "src": "MW p 81 (Day 3 kilometres per hour; Night 0.5 to 1); the 30-60 min per 300 m of ascent is the march-planning allowance (MW p 81 context; Naismith-type correction, basis calc from the printed night rate halving)",
+          "src": "MW p 48 para b(2), p 81 para 7 c(3) (pdf 82, no printed number) and Annex E p 309: add 30-60 min for each 300 m of ascent, by altitude, soil and weather, to the time for marching the map distance at 3 km/h",
+          "refs": [
+            {
+              "book": "MW",
+              "page": "48",
+              "quote": "Add 30 - 60 minutes for each 300 metres of ascent",
+              "role": "rule"
+            },
+            {
+              "book": "MW",
+              "page": "pdf 82",
+              "quote": "For ascending of every 300 metres, 30-60 minutes additional time",
+              "role": "rule"
+            },
+            {
+              "book": "MW",
+              "page": "309",
+              "quote": "additional time of 30-60 minutes for each 300 metres ascent or 600 metres descent",
+              "role": "context"
+            }
+          ],
+          "basis": "D",
+          "note": "Printed three times in MW (re-read 24 Nov 2026; the 23 Nov entry had it as E, 'not printed')."
+        },
+        "descentMinPer600m": {
+          "value": [30, 60],
+          "src": "MW p 48 para b(2), p 81 para 7 c(4) (pdf 82) and Annex E p 309: add 30-60 min for each 600 m of descent",
           "refs": [
             {
               "book": "MW",
               "page": "pdf 82",
-              "quote": "3 kilometres per hour",
-              "role": "context",
-              "checked": { "status": "ok", "pdfPage": 82, "on": "2026-11-23", "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf" }
+              "quote": "For a descend of every 600 metres, 30-60 minutes additional time be calculated",
+              "role": "rule"
+            },
+            {
+              "book": "MW",
+              "page": "48",
+              "quote": "or 600 metres of descent to the time required",
+              "role": "rule"
             }
           ],
-          "basis": "E",
-          "decided": "2026-11-23",
-          "searched": "MW pp 80-82 (day 3 km/h, night 0.5-1 km/h; no minutes-per-climb figure printed)",
-          "note": "The time added per 300 m of climb: not printed; 30-60 min is the usual mountain allowance, consistent with MW p 81 halving the rate at night."
+          "basis": "D"
         },
         "enemyType": "inf",
-        "src": "MW pp 147-179 (hold the dominating features astride and on the flanks of the main axis). The frontage row 'Mountain infantry battalion, defence' (6000-8000 m) is the Foxland mountain Bn's (IC s113 p 658): no own mountain Bn frontage is printed in MW, so his stands in and the row says so.",
+        "src": "MW pp 147-179 (hold the dominating features astride and on the flanks of the main axis). The frontage row 'Mountain infantry battalion, defence' (6000-8000 m) is the Foxland mountain Bn's (IC s113 p 658): no own mountain Bn frontage is printed in MW, so the En's stands in and the row says so. OOW1 p 72 reads both ways in one place ('large gaps between the defences and large frontages', then 'the frontages would be comparatively narrow'): kept as the user's decision (Doctrine_Review.md R106). First layout three up, not a Bn ring: MW p 151, the resources may not permit an all round occupation; prepare for every vulnerable direction and occupy by the direction of attack (all round trenches in each locality); MW p 198, Bns on the LoC 3-4 Coys up.",
         "refs": [
           {
             "book": "MW",
@@ -493,6 +521,18 @@
             "quote": "occupying dominating features astride it and on its flanks",
             "role": "rule",
             "checked": { "status": "ok", "pdfPage": 143, "on": "2026-11-23", "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf" }
+          },
+          {
+            "book": "MW",
+            "page": "151",
+            "quote": "The resources may not permit occupation of position in an all round defence",
+            "role": "rule"
+          },
+          {
+            "book": "OOW1",
+            "page": "72",
+            "quote": "However, the frontages would be comparatively narrow",
+            "role": "context"
           }
         ]
       }
@@ -616,7 +656,7 @@
       "21": {
         "value": [20000, 36000],
         "basis": "calc",
-        "src": "OoW I Annex C p 104 (an Inf Div holding two independent axes, a Bde of 10-12 km on each: 20-24 km, about 16 km between them) and Annex D p 105 (three axes on an extended frontage, 10-12 km each: 30-36 km), \"only a guideline\". IC s113 p 658 (20-30 km) is the Indian Div's compact sector: his figure, not used.",
+        "src": "OoW I Annex C p 104 (an Inf Div holding two independent axes, a Bde of 10-12 km on each: 20-24 km, about 16 km between them) and Annex D p 105 (three axes on an extended frontage, 10-12 km each: 30-36 km), \"only a guideline\". IC s113 p 658 (20-30 km) is the Indian Div's compact sector: the En figure, not used.",
         "refs": [
           {
             "book": "OOW1",
@@ -1025,24 +1065,22 @@
       "basis": "D",
       "src": "IBB p340 (s63.2)",
       "canalM": {
-        "value": [900, 1500],
-        "basis": "E",
-        "src": "IBB Annex V App 9 p485",
-        "decided": "2026-11-23",
-        "searched": "IBB Annex V App 9 p 485 (the mask posns are drawn, no distance printed); IC s85 para 28 p 462 (300-500 m by day)",
-        "note": "On a canal the mask posns are drawn well ahead of the bund in IBB Annex V App 9 p 485 (about 900-1500 m scaled off the drawing, which is not to scale); no figure is printed.",
+        "value": [300, 500],
+        "basis": "D",
+        "src": "IBB S63 para 2 b p 340 (mask posns 300-500 m ahead by day); on a canal they stand ahead of the obstacle (S61 p 332), drawn at the canal in Annex V p 483 and App 8 p 484",
+        "note": "No separate canal figure is printed, so the general 300-500 m applies. The 900-1500 m of 23 Nov 2026 was scaled off App 9 p 485, which is the AT-ditch layout and not to scale; withdrawn 24 Nov 2026.",
         "refs": [
           {
             "book": "IBB",
-            "page": "pdf 502",
+            "page": "340",
+            "quote": "weapons are placed approximately 300-500 metres ahead",
+            "role": "rule"
+          },
+          {
+            "book": "IBB",
+            "page": "pdf 500",
             "quote": "MASK POSN",
-            "role": "context",
-            "checked": {
-              "status": "ok",
-              "pdfPage": 502,
-              "on": "2026-11-23",
-              "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf"
-            }
+            "role": "context"
           }
         ]
       },
@@ -1405,7 +1443,7 @@
     "margin": {
       "warnBelow": 2,
       "basis": "E",
-      "note": "Pass when the enemy needs at least twice the own move time to reach the place; warn when he needs more than the move but less than twice; fail when he gets there first."
+      "note": "Pass when the enemy needs at least twice the own move time to reach the place; warn when the En needs more than the move but less than twice; fail when the En gets there first."
     },
     "enemyAssaultMinPer100m": {
       "value": 2,
@@ -1501,7 +1539,7 @@
     "armourInDefence": {
       "value": [
         "recce, covering troops, advance posns",
-        "destroy his armour by offensive action, lending weight to the AT layout",
+        "destroy the En armour by offensive action, lending weight to the AT layout",
         "nucleus of the counter-attack force",
         "part of a strong point",
         "supplement the AT defence"
@@ -1822,7 +1860,7 @@
     "buildUpMaxH": {
       "value": 2,
       "basis": "U",
-      "note": "Confirmed by the user 19 Nov 2026. The longest the Bn may take to be complete on the LZ after its first wave lands, before he can react in strength."
+      "note": "Confirmed by the user 19 Nov 2026. The longest the Bn may take to be complete on the LZ after its first wave lands, before the En can react in strength."
     },
     "cargoHel": {
       "value": "bell-412",
@@ -1945,7 +1983,7 @@
     "assaultRow": {
       "value": "Battalion, night attack in plains (half a brigade two up)",
       "basis": "calc",
-      "src": "GSP 1947 Inf Div in Battle s19 para 12 d p 86: 'A brigade attacking at night in the plains with two battalions up occupies a frontage of 1100-1500 metres in attack when attacking from a brigaded FUP'; half for one Bn: 550-750 m (the OcokaDoctrine row). IC s113 p 663 (400 m wide, 1000-1500 m deep) is the Foxland Bn's set-piece attack: his figure, no longer used for own.",
+      "src": "GSP 1947 Inf Div in Battle s19 para 12 d p 86: 'A brigade attacking at night in the plains with two battalions up occupies a frontage of 1100-1500 metres in attack when attacking from a brigaded FUP'; half for one Bn: 550-750 m (the OcokaDoctrine row). IC s113 p 663 (400 m wide, 1000-1500 m deep) is the Foxland Bn's set-piece attack: the En figure, no longer used for own.",
       "refs": [
         {
           "book": "GSP",
@@ -1995,10 +2033,10 @@
     "loeBeyondObjM": {
       "value": 600,
       "basis": "E",
-      "note": "Limit of exploitation about 600 m beyond the objective's far edge, inside the Bn mortars' cover. Nearest in the books (19 Nov 2026), not applied: IC s113 p 664, the Foxland Bn exploits 'up to 500 metres in depth' (his doctrine); own: the LOE is laid down by the Bde Comd (IC p 684-685).",
+      "note": "Limit of exploitation about 600 m beyond the objective's far edge, inside the Bn mortars' cover. Nearest in the books (19 Nov 2026), not applied: IC s113 p 664, the Foxland Bn exploits 'up to 500 metres in depth' (the En doctrine); own: the LOE is laid down by the Bde Comd (IC p 684-685).",
       "decided": "2026-11-23",
       "searched": "IC, IBB, OoW I and II, MW, DW, GSP 1947 Inf Div in Battle, Amplification of Military Terms, SO's Hbk 2019 Secs 1, 2, 4, 6, 13 (19 and 23 Nov 2026): not printed for this quantity",
-      "src": "Limit of exploitation about 600 m beyond the objective's far edge, inside the Bn mortars' cover. Nearest in the books (19 Nov 2026), not applied: IC s113 p 664, the Foxland Bn exploits 'up to 500 metres in depth' (his doctrine); own: the LOE is laid down by the Bde Comd (IC p 684-685)."
+      "src": "Limit of exploitation about 600 m beyond the objective's far edge, inside the Bn mortars' cover. Nearest in the books (19 Nov 2026), not applied: IC s113 p 664, the Foxland Bn exploits 'up to 500 metres in depth' (the En doctrine); own: the LOE is laid down by the Bde Comd (IC p 684-685)."
     },
     "reserveToObjMin": {
       "value": 60,
@@ -2012,7 +2050,7 @@
       "basis": "U",
       "src": "User, 14 Nov 2026; MW p 79 (frontal only if unavoidable, then at night or under smoke); OOW2 s6 paras 12-14 (envelopment: strength against weakness, an auxiliary manoeuvre fixes, the main strength on the flank)",
       "frontal": "Frontal attack is dangerous with small chance of success: only if unavoidable, then at night or under smoke",
-      "flank": "Flanking, the main strength onto his flank while the BOF fixes his front; one that chokes his MSR is encouraged",
+      "flank": "Flanking, the main strength onto the En flank while the BOF fixes its front; one that chokes its MSR is encouraged",
       "refs": [
         {
           "book": "MW",
@@ -2026,10 +2064,10 @@
     "flankDeg": {
       "value": 60,
       "basis": "E",
-      "note": "A flank attack comes onto the Obj this far off the line he faces (the frontal recipe's assault group turned about the Obj). Nearest in the books (19 Nov 2026), not applied: IC p 289-290, the Pl flank-attack drill turns 90 degrees onto the objective (a night navigation drill, a Pl).",
+      "note": "A flank attack comes onto the Obj this far off the line the En faces (the frontal recipe's assault group turned about the Obj). Nearest in the books (19 Nov 2026), not applied: IC p 289-290, the Pl flank-attack drill turns 90 degrees onto the objective (a night navigation drill, a Pl).",
       "decided": "2026-11-23",
-      "searched": "OoW II s6 paras 12-14 (envelopment onto his flank; no angle printed); user 14 Nov 2026: flanking before frontal",
-      "src": "A flank attack comes onto the Obj this far off the line he faces (the frontal recipe's assault group turned about the Obj). Nearest in the books (19 Nov 2026), not applied: IC p 289-290, the Pl flank-attack drill turns 90 degrees onto the objective (a night navigation drill, a Pl)."
+      "searched": "OoW II s6 paras 12-14 (envelopment onto the En flank; no angle printed); user 14 Nov 2026: flanking before frontal",
+      "src": "A flank attack comes onto the Obj this far off the line the En faces (the frontal recipe's assault group turned about the Obj). Nearest in the books (19 Nov 2026), not applied: IC p 289-290, the Pl flank-attack drill turns 90 degrees onto the objective (a night navigation drill, a Pl)."
     },
     "assyFromObjM": {
       "value": [1600, 8000],
@@ -2071,7 +2109,7 @@
     "assyPreferM": {
       "value": 4000,
       "basis": "E",
-      "src": "NightMarchDoctrine sights.thermalM (his thermal sights 3-4 km)",
+      "src": "NightMarchDoctrine sights.thermalM (the En thermal sights 3-4 km)",
       "note": "The Assy Area further back than this where hidden ground allows. In the books (19 Nov 2026), not applied: IBB p 180 (PDF 197), the Assy Area 'Normally be located one to five miles from the enemy position' (a band, 1.6-8 km, not a preferred minimum); IC s114 p 683, the Foxland Assy Area '2 to 3 kilometres from troops in contact'; IC p 307 'beyond the effective range of enemy field artillery'.",
       "decided": "2026-11-23",
       "searched": "IBB p 180 (1-5 miles from the enemy: a band, no preferred figure); NightMarchDoctrine (thermal sights 4 km)"
@@ -2111,10 +2149,10 @@
     "assaultMinPer100m": {
       "value": 4,
       "basis": "E",
-      "note": "The assault's pace from the SL behind the fire plan, 100 m in 4 min (OCOKA_Roadmap ch. 8, against prepared defences): to confirm. Nearest in the books (19 Nov 2026), not applied: IC s114 p 684, his deliberate attack 'may not be faster than 100 metres in 4 minutes' (his doctrine; 2 min against hasty defence).",
+      "note": "The assault's pace from the SL behind the fire plan, 100 m in 4 min (OCOKA_Roadmap ch. 8, against prepared defences): to confirm. Nearest in the books (19 Nov 2026), not applied: IC s114 p 684, the En deliberate attack 'may not be faster than 100 metres in 4 minutes' (the En doctrine; 2 min against hasty defence).",
       "decided": "2026-11-23",
-      "searched": "IC s114 para 35k p 684 gives the Foxland rate (100 m in 4 min against prepared defences, 2 against hasty); own books print no assault pace: his taken for own (OCOKA_Roadmap ch 8)",
-      "src": "The assault's pace from the SL behind the fire plan, 100 m in 4 min (OCOKA_Roadmap ch. 8, against prepared defences): to confirm. Nearest in the books (19 Nov 2026), not applied: IC s114 p 684, his deliberate attack 'may not be faster than 100 metres in 4 minutes' (his doctrine; 2 min against hasty defence).",
+      "searched": "IC s114 para 35k p 684 gives the Foxland rate (100 m in 4 min against prepared defences, 2 against hasty); own books print no assault pace: the En's taken for own (OCOKA_Roadmap ch 8)",
+      "src": "The assault's pace from the SL behind the fire plan, 100 m in 4 min (OCOKA_Roadmap ch. 8, against prepared defences): to confirm. Nearest in the books (19 Nov 2026), not applied: IC s114 p 684, the En deliberate attack 'may not be faster than 100 metres in 4 minutes' (the En doctrine; 2 min against hasty defence).",
       "refs": [
         {
           "book": "IC",
@@ -2129,9 +2167,9 @@
       "plains": 3,
       "obstacle": 3,
       "desert": 2.5,
-      "mountain": 1,
+      "mountain": [0.5, 1],
       "basis": "D",
-      "src": "IBB p 18 march table by night (NightMarchDoctrine speed)",
+      "src": "IBB p 18 march table by night (NightMarchDoctrine speed); mountains MW p 81 para 7 c(2) (pdf 82): night 0.5 to 1 km/h by the nature of the terrain (IBB p 18 prints 1 km/h for an ascent by night: the top of MW's range); read as the range's middle",
       "refs": [
         {
           "book": "IBB",
@@ -2144,6 +2182,12 @@
             "on": "2026-11-23",
             "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf"
           }
+        },
+        {
+          "book": "MW",
+          "page": "pdf 82",
+          "quote": "Night. 0.5 to 1 kilometre per hour",
+          "role": "rule"
         }
       ]
     },
@@ -2183,9 +2227,9 @@
         "note": "Searched every 30 m (the bundle grid): a bridge is a cell or two wide.",
         "src": "Searched every 30 m (the bundle grid): a bridge is a cell or two wide."
       },
-      "note": "His MSR behind the Obj: a bridge on it first, else a metalled road, between 300 m and 3 km beyond the Obj; the layout whose LOE ends nearest it chokes it.",
+      "note": "The En MSR behind the Obj: a bridge on it first, else a metalled road, between 300 m and 3 km beyond the Obj; the layout whose LOE ends nearest it chokes it.",
       "decided": "2026-11-23",
-      "searched": "User, 14 Nov 2026: a flanking attack that chokes the en MSR is encouraged; OoW II s6 (turning movements onto his rear)",
+      "searched": "User, 14 Nov 2026: a flanking attack that chokes the en MSR is encouraged; OoW II s6 (turning movements onto the En rear)",
       "fullM": {
         "value": 1000,
         "basis": "E",
@@ -2216,7 +2260,7 @@
     },
     "tanks": {
       "basis": "D",
-      "src": "IBB S44 para 16 a pp 213-216 (night attack: his ATGMs reach 1500-3500 m and stand 500-1000 m deep, so the tank FUP is 2500-3000 m out and a common FUP with the infantry is no longer feasible; tanks in the fire support role, option a: to the base of fire as the assaulting infantry come as close to the Obj, option b: 1500-3000 m out in open country; night firing range 800 m with NVD, 1600 m effective with registration; hull down and covered approaches; tank noise; tanks within the infantry's protection against tank-hunting parties); S42 pp 181, 186-188 (separate FUPs; the same or converging axes, all converging on the Obj, arriving together; the leading troops shoot the infantry on, then rush the Obj from the infantry's assault line 150/250 m out, arriving just before or with them; the rear troops cover them by observed fire, on the flanks in close country); S35 para 7 b pp 144-146 (open tank country: the tanks lead; fields of fire and observation 400-500 m or less: the infantry leads; 100-200 m or less: the infantry, a troop of tanks at most, the Sqn less a troop following)",
+      "src": "IBB S44 para 16 a pp 213-216 (night attack: the En ATGMs reach 1500-3500 m and stand 500-1000 m deep, so the tank FUP is 2500-3000 m out and a common FUP with the infantry is no longer feasible; tanks in the fire support role, option a: to the base of fire as the assaulting infantry come as close to the Obj, option b: 1500-3000 m out in open country; night firing range 800 m with NVD, 1600 m effective with registration; hull down and covered approaches; tank noise; tanks within the infantry's protection against tank-hunting parties); S42 pp 181, 186-188 (separate FUPs; the same or converging axes, all converging on the Obj, arriving together; the leading troops shoot the infantry on, then rush the Obj from the infantry's assault line 150/250 m out, arriving just before or with them; the rear troops cover them by observed fire, on the flanks in close country); S35 para 7 b pp 144-146 (open tank country: the tanks lead; fields of fire and observation 400-500 m or less: the infantry leads; 100-200 m or less: the infantry, a troop of tanks at most, the Sqn less a troop following)",
       "note": "None: no tanks with the Bn. Fire sp (infantry heavy): the Sqn waits at FUP (Tks), moves to fire positions by the BOF to arrive as the infantry come as close, and shoots them on. Close sp (armour heavy): the Sqn less a troop from FUP (Tks) on its own axis converging on the Obj, timed to reach the infantry's assault line with them and rush the Obj; a troop covers from a flank.",
       "fupAsideM": {
         "value": 300,
@@ -2427,14 +2471,14 @@
     "counter": {
       "basis": "E",
       "src": "IBB p189 paras 22-23 (each Obj organised at once against counter-attack: supporting weapons to pre-designated places, DF adjusted, patrols and OPs out), p191 para 25 (tanks cover likely enemy tank approaches)",
-      "note": "His counter-attack onto the last objective, read for the reorganisation: his ways in from his depth and how much of each the objective sees.",
+      "note": "The En counter-attack onto the last objective, read for the reorganisation: its ways in from its depth and how much of each the objective sees.",
       "fromM": {
         "value": 4000,
         "basis": "E",
-        "note": "His counter-attack force waits in his depth: its ways in are sought from this far beyond the last objective, straight behind and 45 degrees either way.",
+        "note": "The En counter-attack force waits in its depth: its ways in are sought from this far beyond the last objective, straight behind and 45 degrees either way.",
         "decided": "2026-11-23",
         "searched": "IC, IBB, OoW I and II, MW, DW, GSP 1947 Inf Div in Battle, Amplification of Military Terms, SO's Hbk 2019 Secs 1, 2, 4, 6, 13 (19 and 23 Nov 2026): not printed for this quantity",
-        "src": "His counter-attack force waits in his depth: its ways in are sought from this far beyond the last objective, straight behind and 45 degrees either way."
+        "src": "The En counter-attack force waits in its depth: its ways in are sought from this far beyond the last objective, straight behind and 45 degrees either way."
       },
       "widthM": {
         "value": 500,
@@ -2485,10 +2529,10 @@
       "deadRunM": {
         "value": 100,
         "basis": "E",
-        "note": "An unseen stretch this long on a way in (400-1200 m out) is dead ground he can close through: an LP and DF there (IBB p189 d, j).",
+        "note": "An unseen stretch this long on a way in (400-1200 m out) is dead ground the En can close through: an LP and DF there (IBB p189 d, j).",
         "decided": "2026-11-23",
         "searched": "IC, IBB, OoW I and II, MW, DW, GSP 1947 Inf Div in Battle, Amplification of Military Terms, SO's Hbk 2019 Secs 1, 2, 4, 6, 13 (19 and 23 Nov 2026): not printed for this quantity",
-        "src": "An unseen stretch this long on a way in (400-1200 m out) is dead ground he can close through: an LP and DF there (IBB p189 d, j)."
+        "src": "An unseen stretch this long on a way in (400-1200 m out) is dead ground the En can close through: an LP and DF there (IBB p189 d, j)."
       },
       "dfOutM": {
         "value": 550,
@@ -2510,35 +2554,35 @@
     },
     "phase2": {
       "basis": "D",
-      "src": "IBB s39 p176 c (impetus: the follow-up Coys attack at once when the phase 1 Obj falls; delay gives him time to counter-attack or reorganise), s40 p178 para 6 (objectives and phases, assault and follow-up Coys, a movement and fire plan for each phase), p186 h (follow-up Coys against his flank or rear from a new direction, not passed through the sub-units on the Obj; to exploit success, not to redeem failure; the Bn commits only what the task needs, and tells Bde when all its Coys are committed), p188 para 19, p189 para 23 (each Obj organised at once against counter-attack and as a firm base for the next), p176 d (supporting weapons moved forward as the attack goes on)",
+      "src": "IBB s39 p176 c (impetus: the follow-up Coys attack at once when the phase 1 Obj falls; delay gives the En time to counter-attack or reorganise), s40 p178 para 6 (objectives and phases, assault and follow-up Coys, a movement and fire plan for each phase), p186 h (follow-up Coys against the En flank or rear from a new direction, not passed through the sub-units on the Obj; to exploit success, not to redeem failure; the Bn commits only what the task needs, and tells Bde when all its Coys are committed), p188 para 19, p189 para 23 (each Obj organised at once against counter-attack and as a firm base for the next), p176 d (supporting weapons moved forward as the attack goes on)",
       "note": "Phase 1 is the layout as it stands (frontal, right or left flank) onto Obj 1. The follow-up Coys wait in the FUP, go round Obj 1 once it is taken, form up again at FUP 2 and attack Obj 2 onto its flank; Obj 1 is the firm base that fires for phase 2; the mortars step up to the FUP.",
       "coys": {
         "value": 2,
         "basis": "M",
-        "note": "The default; the user switches it in the Task step (Ph 2 by) or with R while placing. 2: C and D Coys follow up onto Obj 2 (his depth Coy locality) and no Bn reserve is left: tell Bde (IBB p186 i). 1: C Coy alone, D Coy kept as the Bn reserve (IBB p186 h(3): commit only what the task needs). Either way the BOF is the Spt Coy's weapons (MG, 106 mm RR).",
+        "note": "The default; the user switches it in the Task step (Ph 2 by) or with R while placing. 2: C and D Coys follow up onto Obj 2 (the En depth Coy locality) and no Bn reserve is left: tell Bde (IBB p186 i). 1: C Coy alone, D Coy kept as the Bn reserve (IBB p186 h(3): commit only what the task needs). Either way the BOF is the Spt Coy's weapons (MG, 106 mm RR).",
         "src": "The default the user switches (Ph 2 by chips, R while placing): a setting, not a rule."
       },
       "obj2BeyondM": {
         "value": 1500,
         "basis": "E",
-        "note": "Obj 2's centre this far behind Obj 1's when nothing better is known: his depth Coy (a Bn two up is 3-4 km deep, IBB Annex U App 6 p481).",
+        "note": "Obj 2's centre this far behind Obj 1's when nothing better is known: the En depth Coy (a Bn two up is 3-4 km deep, IBB Annex U App 6 p481).",
         "decided": "2026-11-23",
-        "searched": "IBB Annex U App 6 p 481 (a Bn two up 3000-4000 m deep: his depth Coy about half way), IBB p 186 (follow-up Coys onto his flank or rear)",
-        "src": "Obj 2's centre this far behind Obj 1's when nothing better is known: his depth Coy (a Bn two up is 3-4 km deep, IBB Annex U App 6 p481)."
+        "searched": "IBB Annex U App 6 p 481 (a Bn two up 3000-4000 m deep: the En depth Coy about half way), IBB p 186 (follow-up Coys onto the En flank or rear)",
+        "src": "Obj 2's centre this far behind Obj 1's when nothing better is known: the En depth Coy (a Bn two up is 3-4 km deep, IBB Annex U App 6 p481)."
       },
       "obj2SearchM": {
         "value": [900, 2500],
         "basis": "M",
-        "note": "A hostile unit or posn drawn this far behind Obj 1's centre, within 45 degrees of straight behind, becomes Obj 2; else the highest ground in that band if it stands fit.highGround.gainM higher (his depth on the high ground).",
-        "src": "A hostile unit or posn drawn this far behind Obj 1's centre, within 45 degrees of straight behind, becomes Obj 2; else the highest ground in that band if it stands fit.highGround.gainM higher (his depth on the high ground)."
+        "note": "A hostile unit or posn drawn this far behind Obj 1's centre, within 45 degrees of straight behind, becomes Obj 2; else the highest ground in that band if it stands fit.highGround.gainM higher (the En depth on the high ground).",
+        "src": "A hostile unit or posn drawn this far behind Obj 1's centre, within 45 degrees of straight behind, becomes Obj 2; else the highest ground in that band if it stands fit.highGround.gainM higher (the En depth on the high ground)."
       },
       "offDeg": {
         "value": 60,
         "basis": "E",
-        "note": "Phase 2 comes onto Obj 2 this far off the line he faces (a new direction, onto his flank, IBB p186; the same angle as attack.flankDeg). Tried 15 degrees either way on the ground.",
+        "note": "Phase 2 comes onto Obj 2 this far off the line the En faces (a new direction, onto the En flank, IBB p186; the same angle as attack.flankDeg). Tried 15 degrees either way on the ground.",
         "decided": "2026-11-23",
-        "searched": "IBB p 186 h (a new direction, his flank or rear; no angle printed)",
-        "src": "Phase 2 comes onto Obj 2 this far off the line he faces (a new direction, onto his flank, IBB p186; the same angle as attack.flankDeg). Tried 15 degrees either way on the ground."
+        "searched": "IBB p 186 h (a new direction, the En flank or rear; no angle printed)",
+        "src": "Phase 2 comes onto Obj 2 this far off the line the En faces (a new direction, onto the En flank, IBB p186; the same angle as attack.flankDeg). Tried 15 degrees either way on the ground."
       },
       "fup2FromObj2M": {
         "value": [1000, 1200],
@@ -2641,10 +2685,10 @@
       "maxGapMin": {
         "value": 60,
         "basis": "E",
-        "note": "From Obj 1 taken to H2 (crossing SL 2): any longer gives him time to counter-attack or man his depth (IBB p176 c).",
+        "note": "From Obj 1 taken to H2 (crossing SL 2): any longer gives the En time to counter-attack or man its depth (IBB p176 c).",
         "decided": "2026-11-23",
         "searched": "IBB s39 p 176 c (impetus: at once when the phase 1 Obj falls; no minutes printed)",
-        "src": "From Obj 1 taken to H2 (crossing SL 2): any longer gives him time to counter-attack or man his depth (IBB p176 c)."
+        "src": "From Obj 1 taken to H2 (crossing SL 2): any longer gives the En time to counter-attack or man its depth (IBB p176 c)."
       },
       "refs": [
         {
@@ -2815,7 +2859,7 @@
     "note": "Phase 8: ambush, patrol and recce in the Intelligent Deployment, laid over the Movement Guide (ambushSites, planPatrol: MovementDoctrine.json) and the Platoon Guide (patrolCard: PlatoonDoctrine.json). Their rules are R (OCOKA_Roadmap.md ch 6: IC / IBB, page to be cited); the figures here are what the Plan Builder adds: how near the click must be to a road, the bands its checks use, the default distances. Mine (E) unless marked.",
     "ambush": {
       "basis": "R",
-      "src": "IC s44 pp 146-158 (R): the site restricts his manoeuvre (a defile, a road with hills one side and a drop the other), the main target out of sight of those not to be ambushed (a bend, a spur), good lines of withdrawal, away from his reinforcements (p 149); line, L or V layout (pp 156-158); the RV 750-900 m back (p 153). Layout figures as MovementDoctrine.json ambush (kzM 150, stopM 100, followM 300: E).",
+      "src": "IC s44 pp 146-158 (R): the site restricts the En manoeuvre (a defile, a road with hills one side and a drop the other), the main target out of sight of those not to be ambushed (a bend, a spur), good lines of withdrawal, away from the En reinforcements (p 149); line, L or V layout (pp 156-158); the RV 750-900 m back (p 153). Layout figures as MovementDoctrine.json ambush (kzM 150, stopM 100, followM 300: E).",
       "rvM": {
         "value": [750, 900],
         "basis": "R",
@@ -2846,8 +2890,8 @@
       "upM": {
         "value": 1500,
         "basis": "M",
-        "note": "How far up the road (toward where he comes from) the route is read: his column behind the KZ and better sites.",
-        "src": "How far up the road (toward where he comes from) the route is read: his column behind the KZ and better sites."
+        "note": "How far up the road (toward where the En comes from) the route is read: the En column behind the KZ and better sites.",
+        "src": "How far up the road (toward where the En comes from) the route is read: the En column behind the KZ and better sites."
       },
       "downM": {
         "value": 800,
@@ -2898,10 +2942,10 @@
       "outlyingM": {
         "value": [400, 1200],
         "basis": "E",
-        "note": "Area ambush (IC s44 p 152, Fig 16: R): each outlying ambush this far up or down the Rd from the central KZ, beyond the central site's stops and short of his reaction.",
+        "note": "Area ambush (IC s44 p 152, Fig 16: R): each outlying ambush this far up or down the Rd from the central KZ, beyond the central site's stops and short of the En reaction.",
         "decided": "2026-11-23",
-        "searched": "IC s44 para 11 b p 152 and Fig 16 (outlying ambushes on his ways in and out of the central site; no distance printed)",
-        "src": "Area ambush (IC s44 p 152, Fig 16: R): each outlying ambush this far up or down the Rd from the central KZ, beyond the central site's stops and short of his reaction."
+        "searched": "IC s44 para 11 b p 152 and Fig 16 (outlying ambushes on the En's ways in and out of the central site; no distance printed)",
+        "src": "Area ambush (IC s44 p 152, Fig 16: R): each outlying ambush this far up or down the Rd from the central KZ, beyond the central site's stops and short of the En reaction."
       },
       "outlyingKzM": {
         "value": 80,
@@ -3038,8 +3082,8 @@
       "opBandM": {
         "value": [600, 2500],
         "basis": "M",
-        "note": "OPs this far from the NAI's centre: out of his small arms, within binocular identification.",
-        "src": "OPs this far from the NAI's centre: out of his small arms, within binocular identification."
+        "note": "OPs this far from the NAI's centre: out of the En small arms, within binocular identification.",
+        "src": "OPs this far from the NAI's centre: out of the En small arms, within binocular identification."
       },
       "opBestM": { "value": [1000, 2000], "basis": "M", "src": "a method setting of the search, not a military rule" },
       "opSpreadDeg": {
@@ -3081,7 +3125,7 @@
     },
     "screen": {
       "basis": "R",
-      "src": "IC s73 pp 377-381, Screens: Coy / Pl / Sec outposts laid laterally with intervals in front or on the exposed flanks of the main posn; only as far forward as is necessary to deny him observation and recce of the main posn and its obstacles; on his likely approaches, on defensible ground with clear observation and covered routes of withdrawal (p 378); strength by the frontage screened, the time, the threat and the ground (p 379); mines in front and on the flanks (p 380); sections not split, alternative fire trenches (p 380); withdrawal along a covered route on the order of the commander who ordered it, or on 50 % casualties / the time up if comms break (p 381). Figures below E unless marked.",
+      "src": "IC s73 pp 377-381, Screens: Coy / Pl / Sec outposts laid laterally with intervals in front or on the exposed flanks of the main posn; only as far forward as is necessary to deny the En observation and recce of the main posn and its obstacles; on its likely approaches, on defensible ground with clear observation and covered routes of withdrawal (p 378); strength by the frontage screened, the time, the threat and the ground (p 379); mines in front and on the flanks (p 380); sections not split, alternative fire trenches (p 380); withdrawal along a covered route on the order of the commander who ordered it, or on 50 % casualties / the time up if comms break (p 381). Figures below E unless marked.",
       "frontM": {
         "value": [3000, 5000],
         "basis": "D",
@@ -3131,8 +3175,8 @@
       "watchDepthM": {
         "value": 1000,
         "basis": "M",
-        "note": "The depth of the ground in front read (where he would watch the main posn from).",
-        "src": "The depth of the ground in front read (where he would watch the main posn from)."
+        "note": "The depth of the ground in front read (where the En would watch the main posn from).",
+        "src": "The depth of the ground in front read (where the En would watch the main posn from)."
       },
       "postsApartM": {
         "value": 400,
@@ -3159,20 +3203,20 @@
         "note": "A Recce Sqn's AFV Tp as a post: the commander's eye in the cupola, hull down (no figure in the books read).",
         "src": "A Recce Sqn's AFV Tp as a post: the commander's eye in the cupola, hull down (no figure in the books read)."
       },
-      "hisEyeM": { "value": 2, "basis": "M", "note": "His observer in the ground in front.", "src": "His observer in the ground in front." },
+      "hisEyeM": { "value": 2, "basis": "M", "note": "The En observer in the ground in front.", "src": "The En observer in the ground in front." },
       "mainTallM": {
         "value": 2,
         "basis": "M",
-        "note": "What he looks for in the main posn (trenches, wire, vehicles).",
-        "src": "What he looks for in the main posn (trenches, wire, vehicles)."
+        "note": "What the En looks for in the main posn (trenches, wire, vehicles).",
+        "src": "What the En looks for in the main posn (trenches, wire, vehicles)."
       },
       "seenPct": {
         "value": [40, 70],
         "basis": "M",
-        "note": "Share of the ground he would watch from that the posts see: under the first fails, under the second warns.",
-        "src": "Share of the ground he would watch from that the posts see: under the first fails, under the second warns."
+        "note": "Share of the ground the En would watch from that the posts see: under the first fails, under the second warns.",
+        "src": "Share of the ground the En would watch from that the posts see: under the first fails, under the second warns."
       },
-      "routeSeenPct": { "value": 30, "basis": "M", "note": "A way back more in his view than this warns.", "src": "A way back more in his view than this warns." },
+      "routeSeenPct": { "value": 30, "basis": "M", "note": "A way back more in the En's view than this warns.", "src": "A way back more in the En's view than this warns." },
       "postKinds": {
         "value": ["peak", "hill", "knoll", "trig_station", "watch_tower"],
         "basis": "M",
@@ -3547,7 +3591,7 @@
     },
     "observe": {
       "basis": "E",
-      "src": "IBB S46 para 24 p240; IC s71 para 13 p365: primary objectives are the positions from which he puts aimed small arms fire onto the crossing places; secondary objectives those that overlook the obstacle and direct his artillery onto them.",
+      "src": "IBB S46 para 24 p240; IC s71 para 13 p365: primary objectives are the positions from which the En puts aimed small arms fire onto the crossing places; secondary objectives those that overlook the obstacle and direct the En artillery onto them.",
       "smallArmsM": {
         "value": 600,
         "basis": "E",
@@ -3556,10 +3600,10 @@
         "searched": "IC s71 para 13 p 365 (aimed small arms fire onto the crossing places; no range printed); ORBAT weapons.json rifle / LMG effective ranges 400-600 m",
         "src": "Aimed small arms fire onto the crossing places: these posns are taken in phase 1."
       },
-      "eyeM": { "value": 2, "basis": "M", "note": "His observer.", "src": "His observer." },
+      "eyeM": { "value": 2, "basis": "M", "note": "The En observer.", "src": "The En observer." },
       "targetM": { "value": 1, "basis": "M", "note": "Men in a boat at the water line.", "src": "Men in a boat at the water line." },
-      "maxM": { "value": 3000, "basis": "M", "note": "How far out his observers are looked for.", "src": "How far out his observers are looked for." },
-      "stepM": { "value": 250, "basis": "M", "note": "The grid his observers are looked for on.", "src": "The grid his observers are looked for on." },
+      "maxM": { "value": 3000, "basis": "M", "note": "How far out the En observers are looked for.", "src": "How far out the En observers are looked for." },
+      "stepM": { "value": 250, "basis": "M", "note": "The grid the En observers are looked for on.", "src": "The grid the En observers are looked for on." },
       "decided": "2026-11-23",
       "searched": "IBB S46 para 24 p 240 and IC s71 para 13 p 365 (the first objectives are the posns that put aimed small arms fire on the crossing; no distance printed)"
     },
@@ -3966,19 +4010,31 @@
     }
   },
   "canal": {
-    "note": "Defence on a canal or ditch (the mirror of the crossing): IC s85 pp 449-458 and IBB S57 paras 25-26 pp 316-318, Fig 34. Laid along the obstacle by PlanCrossing.canalPrep, checked by the defence engine (approaches cross it only at its bridges and fords).",
+    "note": "Defence on a canal or ditch (the mirror of the crossing): IC s85 pp 449-458 and IBB S60-62 pp 328-339 with Annex V p 483 (canal, higher home bank), App 8 p 484 (higher far bank or banks of equal height), App 9 p 485 (AT ditch). Laid along the obstacle by PlanCrossing.canalPrep, checked by the defence engine (approaches cross it only at its bridges and fords). (IBB S57 Fig 34 pp 316-318, cited here until 24 Nov 2026, is a counter penetration example, not the canal defence.)",
     "basis": "D",
     "bnThreeUpMaxM": {
-      "value": 5000,
+      "value": 4115,
       "basis": "D",
-      "src": "IC s85 para 11 p 455",
-      "note": "A battalion with three companies up may cover up to 5000 m.",
+      "src": "IBB S61 para 6 p 333 and Annex V p 483 / App 8 p 484: a Bn three Coys up on a canal covers up to 4115 m (4500 yd); IC s85 para 11 p 455 prints up to 5000 m",
+      "note": "The two books differ (IBB 4115 m, IC 5000 m). The stricter, IBB's (the Bn's own book, and printed on the canal annex), is used; IC's 5000 m is kept beside it (decided 24 Nov 2026, Doctrine_Review.md R100).",
       "refs": [
+        {
+          "book": "IBB",
+          "page": "333",
+          "quote": "battalion with three companies up, it may cover upto 4115 metres (4500 yards)",
+          "role": "rule"
+        },
+        {
+          "book": "IBB",
+          "page": "pdf 500",
+          "quote": "INFANTRY BATIALION IN DEFENCE ALONG A CANAL WITH HIGHER HOME BANK",
+          "role": "context"
+        },
         {
           "book": "IC",
           "page": "455",
           "quote": "A battalion with three companies up it may cover up to 5000 metres",
-          "role": "rule",
+          "role": "context",
           "checked": { "status": "ok", "pdfPage": 455, "on": "2026-11-23", "how": "pdftotext of Material/IC.pdf" }
         }
       ]
@@ -3998,55 +4054,37 @@
       ]
     },
     "bnTwoUpFrontM": {
-      "value": 4500,
+      "value": 3750,
       "basis": "E",
-      "src": "IBB S57 Fig 34 p317",
-      "note": "A Bn two up on a canal holds about 4500 m: scaled off IBB Fig 34 p 317 (not to scale), inside IBB p 277's 3,000-5,000 m.",
-      "decided": "2026-11-23",
-      "searched": "IBB S57 Fig 34 p 317 (a Bn two up on an obstacle, drawn not to scale: about 4500 m scaled off it; IBB p 277: a Bn 3,000-5,000 m)",
+      "src": "The recipe's A and B Coys 2250 m apart on the bank (about 3750 m held)",
+      "note": "No two-up frontage on a canal is printed. Annex V p 483 and App 8 p 484 draw a Bn THREE Coys up on 2750-4115 m (x = yards: 3000-4500 yd), so a Bn two up holds less than 4115 m. The 4500 m of 23 Nov 2026 (scaled off S57 Fig 34, a counter penetration example) exceeded the book's three-up maximum and is withdrawn.",
+      "decided": "2026-11-24",
+      "searched": "IBB S60-62 pp 328-339, Annex V p 483, App 8 p 484, App 9 p 485 (frontages drawn three Coys up only); IC s85 pp 449-458 (Bn three up to 5000 m, Coy three up 1500-2000 m)",
       "refs": [
         {
           "book": "IBB",
-          "page": "317",
-          "quote": "FIGURE 34",
-          "role": "context",
-          "checked": {
-            "status": "ok",
-            "pdfPage": 17,
-            "on": "2026-11-23",
-            "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf"
-          }
-        },
-        {
-          "book": "IBB",
-          "page": "277",
-          "quote": "Bn: 3,000 - 5,000 m",
-          "role": "context",
-          "checked": {
-            "status": "ok",
-            "pdfPage": 294,
-            "on": "2026-11-23",
-            "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf"
-          }
+          "page": "333",
+          "quote": "Suggested frontages for battalion and below are given in the Annex V",
+          "role": "context"
         }
       ]
     },
     "depthM": {
-      "value": 3000,
+      "value": [1830, 2750],
       "basis": "D",
-      "src": "IBB S57 Fig 34 p317",
+      "src": "IBB Annex V p 483 and App 8 p 484: depth 1830-2750 m (2000-3000 yd), a label in the drawing (read off the rendered page 24 Nov 2026; not in the text layer); S61 para 7 p 333: greater depth than in a normal deployment, depth at Bn level retained at all costs. A plan passes from the drawing's 1830 m.",
       "refs": [
         {
           "book": "IBB",
-          "page": "317",
-          "quote": "3000m",
-          "role": "rule",
-          "checked": {
-            "status": "ok",
-            "pdfPage": 334,
-            "on": "2026-11-23",
-            "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf"
-          }
+          "page": "333",
+          "quote": "Greater depth than in normal deployment is required",
+          "role": "rule"
+        },
+        {
+          "book": "IBB",
+          "page": "333",
+          "quote": "Retaining depth at battalion level at all costs",
+          "role": "context"
         }
       ]
     },
@@ -4076,16 +4114,16 @@
     "mfFarDepthM": {
       "value": 200,
       "basis": "E",
-      "note": "The minefield on the far side (IC s85 para 17 a p457: ideally on both sides; on the home side only in the gaps). Nearest in the books (19 Nov 2026), not applied: IC s70 p 354, the ENEMY's minefield before his water obstacle 'of generally 600 metres to 900 metres depth'; own canal defence (IC s85 p 456-457) gives no depth.",
+      "note": "The minefield on the far side (IC s85 para 17 a p457: ideally on both sides; on the home side only in the gaps). Nearest in the books (19 Nov 2026), not applied: IC s70 p 354, the ENEMY's minefield before the En water obstacle 'of generally 600 metres to 900 metres depth'; own canal defence (IC s85 p 456-457) gives no depth.",
       "decided": "2026-11-23",
       "searched": "IC s85 para 17 a p 457 (minefields ideally on both sides; no far-side depth printed)",
-      "src": "The minefield on the far side (IC s85 para 17 a p457: ideally on both sides; on the home side only in the gaps). Nearest in the books (19 Nov 2026), not applied: IC s70 p 354, the ENEMY's minefield before his water obstacle 'of generally 600 metres to 900 metres depth'; own canal defence (IC s85 p 456-457) gives no depth."
+      "src": "The minefield on the far side (IC s85 para 17 a p457: ideally on both sides; on the home side only in the gaps). Nearest in the books (19 Nov 2026), not applied: IC s70 p 354, the ENEMY's minefield before the En water obstacle 'of generally 600 metres to 900 metres depth'; own canal defence (IC s85 p 456-457) gives no depth."
     },
     "homeRaiseM": {
       "value": [1, 2],
       "basis": "D",
       "src": "IC s85 para 3 c p 450: home banks are further raised by 1-2 metres mainly astride the major enemy approaches",
-      "note": "Home banks near the border raised 1-2 m astride the major enemy approaches for observation and fields of fire.",
+      "note": "Home banks near the border raised 1-2 m astride the major enemy approaches for observation and fields of fire. IBB S60 para 3 c p 329 prints 1-1.2 m (3-4 ft) for the same raise: the books differ, IBB's figure lies inside IC's range.",
       "refs": [
         {
           "book": "IC",
@@ -4093,6 +4131,12 @@
           "quote": "home banks are further raised by 1-2 metres",
           "role": "rule",
           "checked": { "status": "ok", "pdfPage": 450, "on": "2026-11-23", "how": "pdftotext of Material/IC.pdf" }
+        },
+        {
+          "book": "IBB",
+          "page": "329",
+          "quote": "their home banks are further raised by 1-1.2 metres",
+          "role": "context"
         }
       ]
     },
@@ -4219,7 +4263,7 @@
       "src": "The ground must fall again within this of the crest for it to be a crest and not a slope that goes on rising."
     },
     "sampleStepM": { "value": 30, "basis": "M", "src": "The elevation grid." },
-    "hisEyeM": { "value": 2, "basis": "M", "src": "His observer beyond the crest, standing." },
+    "hisEyeM": { "value": 2, "basis": "M", "src": "The En observer beyond the crest, standing." },
     "posnTallM": { "value": 1.7, "basis": "M", "src": "A man in the posn." },
     "seenMaxPct": { "value": 20, "basis": "M", "src": "Share of the forward posns the En side may see over the crest before the row warns." }
   },
@@ -4284,7 +4328,7 @@
     "intermediateMinM": {
       "value": 17200,
       "basis": "calc",
-      "src": "IBB s74 para 4 e (2) p 373: intermediate positions 'be sufficiently apart to force the enemy to at least move En field artillery before the En can bring it within range of the next position'; his field gun: the 105 mm IFG / LFG, max 17,200 m (ORBAT weapons.json en-105-mm-ifg-lfg); the tab takes the en unit's own guns when the ORBAT is loaded",
+      "src": "IBB s74 para 4 e (2) p 373: intermediate positions 'be sufficiently apart to force the enemy to at least move his field artillery before he can bring it within range of the next position'; the En field gun: the 105 mm IFG / LFG, max 17,200 m (ORBAT weapons.json en-105-mm-ifg-lfg); the tab takes the en unit's own guns when the ORBAT is loaded",
       "refs": [
         {
           "book": "IBB",

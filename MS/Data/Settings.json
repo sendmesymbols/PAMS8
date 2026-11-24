@@ -825,6 +825,7 @@
         "hHour": "",
         "air": true,
         "mapAir": true,
+        "airspace": true,
         "airBand": "contour",
         "lzClass": 4,
         "lzPoints": 4,

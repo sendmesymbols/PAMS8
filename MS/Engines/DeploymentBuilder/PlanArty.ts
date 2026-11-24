@@ -257,7 +257,7 @@ export function artyRows(items: { role: string; pts: XY[] }[], recipe: Recipe, e
     const fupOk = enemyFupM === null || beyond >= enemyFupM;
     const inBand = d >= a.band[0] - 1 && d <= a.band[1] + 1;
     const st: CheckState = dfOut || !fupOk ? 'warn' : inBand ? 'pass' : 'warn';
-    rows.push({ name: 'Arty reach', st, reason: `${what}: its gun area ${fmtM(Math.max(0, d))} behind the FDL (${km(a.band[0])}-${km(a.band[1])}: ${a.bandSrc}); its guns reach ${km(beyond)} beyond the FDL${enemyFupM !== null ? `, ${fupOk ? 'past' : 'short of'} his FUP ${km(enemyFupM)} out` : ''}${df.length ? `; ${df.length - dfOut} of ${df.length} DF Tgts in range` : ''}${a.band[1] < a.band[0] ? `; no band: a third of its range (${km(a.band[1])}) is short of the ${km(a.band[0])} it must stand back: a longer gun` : !inBand ? `; outside the band${d < a.band[0] ? ': too near the front, he overruns it early (OoW I p 70)' : ': too far back, the fire does not reach deep'}` : ''}` });
+    rows.push({ name: 'Arty reach', st, reason: `${what}: its gun area ${fmtM(Math.max(0, d))} behind the FDL (${km(a.band[0])}-${km(a.band[1])}: ${a.bandSrc}); its guns reach ${km(beyond)} beyond the FDL${enemyFupM !== null ? `, ${fupOk ? 'past' : 'short of'} the En FUP ${km(enemyFupM)} out` : ''}${df.length ? `; ${df.length - dfOut} of ${df.length} DF Tgts in range` : ''}${a.band[1] < a.band[0] ? `; no band: a third of its range (${km(a.band[1])}) is short of the ${km(a.band[0])} it must stand back: a longer gun` : !inBand ? `; outside the band${d < a.band[0] ? ': too near the front, the En overruns it early (OoW I p 70)' : ': too far back, the fire does not reach deep'}` : ''}` });
   }
   if (f && g) {
     const s = gunGround(ga.pts, f, g);

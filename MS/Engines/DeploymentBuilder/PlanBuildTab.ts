@@ -251,7 +251,7 @@ const brgText = (gridDeg: number, gma: number | null): string => {
 const nightLines = (s: NonNullable<FittedLayout['fit']['small']>, gma: number | null): string[] => {
   const n = s.night;
   if (!n) return [];
-  return [`  Night March chart on the way out (${n.grid}): ${n.lengthM} m, ${n.paces} paces, ${n.marchMin} min by night${n.thermalAtM !== null ? `; inside the En thermal sights from ${n.thermalAtM} m` : ''}${n.nightAtM !== null ? `, the En night sights from ${n.nightAtM} m` : ''}`,
+  return [`  Night March chart on the way out (${n.grid}): ${n.lengthM} m, ${n.paces} paces, ${n.moveMin} min on the move, ${n.marchMin} min with the Night March halts${n.thermalAtM !== null ? `; inside the En thermal sights ${n.thermalAtM ? `from ${n.thermalAtM} m` : 'the whole way'}` : ''}${n.nightAtM !== null ? `, the En night sights ${n.nightAtM ? `from ${n.nightAtM} m` : 'the whole way'}` : ''}`,
     ...n.legs.map((l) => `  Chart leg ${l.i}: ${brgText(l.gridDeg, gma)}, ${l.distM} m, ${l.paces} paces, ${l.min} min${l.sight !== 'none' ? ` (${l.sight} sights)` : ''}`),
     ...n.checks.map((c) => `  Chart: ${c}`)];
 };
@@ -265,11 +265,11 @@ const smallLines = (s: NonNullable<FittedLayout['fit']['small']>, gma: number | 
   if (s.task === 'ambush') return [
     `  Site ${s.site?.score ?? '?'} / 100, laid as ${s.site?.shape ?? '?'} (the ground suits ${s.site?.groundShape ?? '?'})`,
     ...(s.site?.parts ?? []).map((p) => `    ${p.ok ? '+' : '-'} ${p.what} (${p.pts})`),
-    ...(s.better ?? []).map((b) => `  Better site ${Math.abs(b.alongM)} m ${b.alongM < 0 ? 'up the Rd toward him' : 'down the Rd'}: scores ${b.score} (${b.shape})`),
-    ...(s.outlying ?? []).map((o) => `  ${o.label}: ${Math.abs(o.alongM)} m ${o.alongM < 0 ? 'up the Rd toward him' : 'down the Rd'}, site ${o.score} / 100, sees ${o.seenPct} % of its stretch`),
+    ...(s.better ?? []).map((b) => `  Better site ${Math.abs(b.alongM)} m ${b.alongM < 0 ? 'up the Rd toward the En' : 'down the Rd'}: scores ${b.score} (${b.shape})`),
+    ...(s.outlying ?? []).map((o) => `  ${o.label}: ${Math.abs(o.alongM)} m ${o.alongM < 0 ? 'up the Rd toward the En' : 'down the Rd'}, site ${o.score} / 100, sees ${o.seenPct} % of its stretch`),
   ];
   if (s.task === 'patrol') return [...nightLines(s, gma), ...(s.grid ? [`  Bearings grid (${s.grid})${gma === null ? '' : `, magnetic with GMA ${gma}`}`] : []), ...(s.legs ?? []).map((l) => `  ${l.way} leg ${l.i}: ${brgText(l.gridDeg, gma)}, ${l.distM} m, ${l.paces} paces, ${l.minDay} min by day / ${l.minNight} by night${l.feature ? `, ends at ${l.feature}` : ''}`)];
-  return (s.ops ?? []).map((o) => `  ${o.label}: sees ${o.seenPct} % of ${s.screen ? 'the ground he would watch you from' : 'the NAI'}, ${o.riseM === 0 ? 'level with' : o.riseM > 0 ? `${o.riseM} m above` : `${-o.riseM} m below`} it, ${o.cover ? 'in cover' : 'in the open'}`);
+  return (s.ops ?? []).map((o) => `  ${o.label}: sees ${o.seenPct} % of ${s.screen ? 'the ground the En would watch you from' : 'the NAI'}, ${o.riseM === 0 ? 'level with' : o.riseM > 0 ? `${o.riseM} m above` : `${-o.riseM} m below`} it, ${o.cover ? 'in cover' : 'in the open'}`);
 };
 
 export class PlanBuildTab {
@@ -789,8 +789,9 @@ export class PlanBuildTab {
       return u;
     }
     // a 3-Coy attack (Lt Cdo) has no Coy left for a second phase: one phase
-    const phases = base?.forCoys === 3 ? 1 : this._phases;
-    if (!base || base.task !== 'attack' || (phases !== 2 && this._tanks === 'none' && !this._mfAttk)) return base;
+    // phases are laid with Coys of a Bn (PlanPhase: C, D Coys round Obj 1): a Coy or Bde attack, and a 3-Coy Bn, in one phase
+    const phases = base?.forCoys === 3 || (base && base.echelon !== '16') ? 1 : this._phases;
+    if (!base || base.task !== 'attack' || (phases < 2 && this._tanks === 'none' && !this._mfAttk)) return base;
     const e = this._mfAttk ? this._engr : null;
     const coys = this._coys, key = `${base.id}:${phases}:${coys}:${this._tanks}:${this._mfAttk}:${e?.id ?? ''}:${this._engrCoys}`;
     let t = this._ph2.get(key);
@@ -855,7 +856,7 @@ export class PlanBuildTab {
   }
 
   /** A two-phase attack is being built (the R key and the card's hint apply). */
-  private get _isPh2(): boolean { return this._phases >= 2 && this._isAttack; }
+  private get _isPh2(): boolean { return this._phases >= 2 && this._isAttack && this._result?.recipe?.echelon === '16' && !this._result?.recipe?.forCoys; }
 
   /**
    * R while placing (or the Ph 2 by chips): phase 2 by both follow-up Coys or by C Coy with D Coy kept as the reserve.
@@ -1315,7 +1316,7 @@ export class PlanBuildTab {
       ${row('Alt on ghost', two('alternates.show', 'Alternates on the ghost', false, 'Draw the alternates (created hidden) on the ghost while placing'))}
       ${row('Alt created', pick('alternates.create', 'Alternates created', 'hidden', [['hidden', 'Hidden'], ['visible', 'Shown'], ['none', 'None']]))}
       ${row('Rule lines', pick('map.ruleLines', 'Rule lines', 'selected', [['selected', 'Fail / warn', 'Verdict rings only on the posns that fail or warn'], ['all', 'All', 'A verdict ring on every posn, the fire-lift rings'], ['none', 'None', 'No verdict rings or fire-lift rings']]))}
-      ${row('Apch bands', two('map.approachBands', 'Approach bands', true, 'His approaches drawn on the map with their chokes'))}
+      ${row('Apch bands', two('map.approachBands', 'Approach bands', true, 'The En approaches drawn on the map with their chokes'))}
       ${row('Labels', num('labelSize', 'Label size', 7, 5, 16, 1, 'pt on built plans', 'Text size of the designations a built plan writes'))}
       ${row('GMA', num('gmaDeg', 'GMA', '', -30, 30, 0.1, '° E +, empty: grid only', 'The grid-magnetic angle from the map sheet: route cards and night legs then give magnetic bearings too'))}
     </div>` : '';
@@ -1390,7 +1391,7 @@ export class PlanBuildTab {
       case 'mf': {
         const on = val === 'on';
         if (this._isCrossing) this._mfCross = on; else this._mfAttk = on;
-        this._swapPlan(on ? (this._isCrossing ? 'His minefield assumed: the home side drawn back, a lane to each crossing place' : 'His minefield assumed in front of the Obj: a lane for each assault Coy, breached before H') : 'No minefield known');
+        this._swapPlan(on ? (this._isCrossing ? 'The En minefield assumed: the home side drawn back, a lane to each crossing place' : 'The En minefield assumed in front of the Obj: a lane for each assault Coy, breached before H') : 'No minefield known');
         break;
       }
       case 'light': this._light = val === 'day' || val === 'moon' ? val : 'dark'; this._swapPlan(`Light: ${this._light === 'moon' ? 'moonlight' : this._light === 'dark' ? 'dark night' : 'day'}`); break;
@@ -1527,9 +1528,9 @@ export class PlanBuildTab {
       : task === 'advance' ? 'Aim along the axis of advance, then click'
         : task === 'withdrawal' ? 'Move the way the Bn withdraws, to the new main posn, then click'
         : task === 'attack' ? 'Aim toward your own side (where the attack comes from), then click'
-          : task === 'ambush' ? 'Aim up the Rd toward where he comes from, then click'
+          : task === 'ambush' ? 'Aim up the Rd toward where the En comes from, then click'
             : task === 'patrol' ? 'Move to the Obj and click'
-              : task === 'recce' ? (this._isScreen ? 'Move out to the ground he would watch you from, then click' : 'Move to the area to watch (NAI) and click')
+              : task === 'recce' ? (this._isScreen ? 'Move out to the ground the En would watch you from, then click' : 'Move to the area to watch (NAI) and click')
                 : 'Aim toward the enemy, then click';
     return { step: 'Step 2 of 2', text: second };
   }
@@ -1545,7 +1546,7 @@ export class PlanBuildTab {
     const r = this._result?.recipe;
     if (ter && r?.arty && ['defence', 'attack', 'crossing'].includes(r.task)) k.push(['G', 'site the gun area'], ['Shift G', 'back']);
     if (this._isAttack) {
-      if (!r?.forCoys) k.push(['P', this._phases === 1 ? '2 phases' : this._phases === 2 ? '3 phases' : '1 phase']);
+      if (!r?.forCoys && r?.echelon === '16') k.push(['P', this._phases === 1 ? '2 phases' : this._phases === 2 ? '3 phases' : '1 phase']);
       if (this._isPh2) k.push(['R', `Ph 2 by ${this._coys === 2 ? 'C Coy only' : 'C, D Coys'}`]);
       k.push(['T', this._tanks === 'none' ? 'tanks fire sp' : this._tanks === 'fire' ? 'tanks close sp' : 'no tanks']);
     }
@@ -1604,6 +1605,7 @@ export class PlanBuildTab {
         take();
         if (!this._isAttack) { this._keyWhy('P', 'phases are for an attack'); return; }
         if (r?.forCoys) { this._keyWhy('P', 'a 3-Coy Bn attacks in one phase'); return; }
+        if (r && r.echelon !== '16') { this._keyWhy('P', 'phases are laid for a Bn attack'); return; }
         this._setPhases(this._phases === 1 ? 2 : this._phases === 2 ? 3 : 1);
         this._showNote({ mode: this._phases === 2 ? `Two phases, Ph 2 by ${this._coysWord()}` : this._phases === 3 ? `Three phases, Ph 2 by ${this._coysWord()}, Ph 3 by ${this._coys === 1 ? 'D Coy' : 'A, B Coys from Obj 1'}` : 'One phase, a Res kept', keys: this._keysFor() });
         this._render();
@@ -1804,7 +1806,21 @@ export class PlanBuildTab {
       gmaDeg: gmaOf(this._settings.gmaDeg),
       // a two-phase attack: Obj 2 where the user marked it; tanks: the longest En ATGM from the En unit's weapons (ORBAT)
       obj2At: this._obj2At,
-      ...(() => { const eu = this._enUnit(recipe, kind); const atg = eu?.atgm.filter((w) => w.rangeM).sort((a, b) => (b.rangeM ?? 0) - (a.rangeM ?? 0))[0] ?? null; return { enAtgmM: atg?.rangeM ?? null, enAtgmSrc: atg && eu ? `the ${eu.name}'s ${atg.name}, ${fmtM(atg.rangeM!)} (ORBAT)` : null }; })(),
+      ...(() => {
+        const longest = (u: UnitBrief | null) => u?.atgm.filter((w) => w.rangeM).sort((a, b) => (b.rangeM ?? 0) - (a.rangeM ?? 0))[0] ?? null;
+        const eu = this._enUnit(recipe, kind);
+        let atg = longest(eu), holder = eu, via = '';
+        // an En Coy holds no ATGMs of its own: its Bn's support weapons cover its locality, so the Bn's reach counts
+        if (!atg && this._orbat) {
+          const e = this._enemyFor(recipe, kind);
+          if (e.echelon === '14' || e.echelon === '15') {
+            const bn = brief(this._orbat, enUnitFor('16', e.type, kind));
+            const a2 = longest(bn);
+            if (a2 && bn) { atg = a2; holder = bn; via = `, held by the En ${eu?.name ?? 'Coy'}'s parent Bn`; }
+          }
+        }
+        return { enAtgmM: atg?.rangeM ?? null, enAtgmSrc: atg && holder ? `the ${holder.name}'s ${atg.name}, ${fmtM(atg.rangeM!)} (ORBAT${via})` : null };
+      })(),
     };
   }
 
@@ -1916,7 +1932,7 @@ export class PlanBuildTab {
         target = w({ x: fx, y: fy + enemyFupM(this._doc, this._enemyFor(cur.recipe, kind).type)[0] });
         front = { kind: 'line', runs: [fdl.pts.map(w)], label: 'the FDL' };
       }
-      tWord = 'his FUP on the plan\'s axis';
+      tWord = 'the En FUP on the plan\'s axis';
     }
     const month = new Date().getMonth() + 1;
     const regts = a.regts?.length ? a.regts : [a];
@@ -1985,7 +2001,7 @@ export class PlanBuildTab {
     if (!r || !s) { say('J works while the plan rests: click the KZ, aim, stop the mouse.'); return; }
     const b = s.better?.[0];
     if (!b) { say('J: no better site on the Rd read.'); return; }
-    this._noteNext = `J: the KZ moved ${fmtM(Math.abs(b.alongM))} ${b.alongM < 0 ? 'up the Rd toward him' : 'down the Rd'} to the site that scores ${b.score} (here ${s.site?.score ?? '?'}); Shift+J takes it back`;
+    this._noteNext = `J: the KZ moved ${fmtM(Math.abs(b.alongM))} ${b.alongM < 0 ? 'up the Rd toward the En' : 'down the Rd'} to the site that scores ${b.score} (here ${s.site?.score ?? '?'}); Shift+J takes it back`;
     this._ambushFrom.push({ x: r.anchor.x, y: r.anchor.y });
     if (!this._host.moveAnchor({ x: b.x, y: b.y })) { this._ambushFrom.pop(); this._noteNext = ''; say('J: this plan faces the threat marker; rest the mouse on the blue ring instead.'); }
   }
@@ -2350,7 +2366,7 @@ export class PlanBuildTab {
   /** The patrol's Night March chart in the Check step (NightMarchRead on the route out). */
   private _nightChartHtml(n: NonNullable<FittedLayout['fit']['small']>['night']): string {
     if (!n) return '';
-    return `<div class="pb-sum">Night March chart, SP to the Obj <span class="pb-dim">(${esc(this._brgNote(n.grid))}; ${n.lengthM} m, ${n.paces} paces, ${n.marchMin} min by night${n.thermalAtM !== null ? `; inside the En thermal sights from ${n.thermalAtM} m` : ''})</span></div><table class="pb-t">${n.legs.map((l) => `<tr><td>Leg ${l.i}</td><td>${this._brgCell(l.gridDeg)}</td><td>${fmtM(l.distM)}</td><td>${l.paces} paces</td><td>${l.min} min</td><td class="pb-dim">${esc(l.sight === 'none' ? '' : l.sight + ' sights')}</td></tr>`).join('')}</table>${n.checks.length ? `<div class="pb-dim">${n.checks.map(esc).join(' · ')}</div>` : ''}`;
+    return `<div class="pb-sum">Night March chart, SP to the Obj <span class="pb-dim">(${esc(this._brgNote(n.grid))}; ${n.lengthM} m, ${n.paces} paces, ${n.moveMin} min on the move, ${n.marchMin} min with the Night March halts${n.thermalAtM !== null ? `; inside the En thermal sights ${n.thermalAtM ? `from ${n.thermalAtM} m` : 'the whole way'}` : ''})</span></div><table class="pb-t">${n.legs.map((l) => `<tr><td>Leg ${l.i}</td><td>${this._brgCell(l.gridDeg)}</td><td>${fmtM(l.distM)}</td><td>${l.paces} paces</td><td>${l.min} min</td><td class="pb-dim">${esc(l.sight === 'none' ? '' : l.sight + ' sights')}</td></tr>`).join('')}</table>${n.checks.length ? `<div class="pb-dim">${n.checks.map(esc).join(' · ')}</div>` : ''}`;
   }
 
   private _showCard(screenIn: { x: number; y: number } | null, html: string): void {
@@ -2424,7 +2440,7 @@ export class PlanBuildTab {
     const s = f.fit.small!;
     if (s.task === 'ambush') {
       const b = s.better?.[0];
-      return `<div class="pb-card-dim">Target ${esc(MOVER_LABEL[this._mover].toLowerCase())} · site ${s.site?.score ?? '?'}${s.site && s.site.groundShape !== s.site.shape ? ` · the ground suits an ${esc(LAYOUT_LABEL[s.site.groundShape.toLowerCase()] ?? s.site.groundShape)}` : ''}${b ? ` · better site ${fmtM(Math.abs(b.alongM))} ${b.alongM < 0 ? 'toward him' : 'on'} (blue ring, J goes there)` : ''}${s.outlying?.length ? ` · outlying ${s.outlying.map((o) => `${fmtM(Math.abs(o.alongM))} ${o.alongM < 0 ? 'up' : 'down'} (${o.score})`).join(', ')}` : ''}</div>`;
+      return `<div class="pb-card-dim">Target ${esc(MOVER_LABEL[this._mover].toLowerCase())} · site ${s.site?.score ?? '?'}${s.site && s.site.groundShape !== s.site.shape ? ` · the ground suits an ${esc(LAYOUT_LABEL[s.site.groundShape.toLowerCase()] ?? s.site.groundShape)}` : ''}${b ? ` · better site ${fmtM(Math.abs(b.alongM))} ${b.alongM < 0 ? 'toward the En' : 'on'} (blue ring, J goes there)` : ''}${s.outlying?.length ? ` · outlying ${s.outlying.map((o) => `${fmtM(Math.abs(o.alongM))} ${o.alongM < 0 ? 'up' : 'down'} (${o.score})`).join(', ')}` : ''}</div>`;
     }
     if (s.task === 'patrol') {
       const out = (s.legs ?? []).filter((l) => l.way === 'Out'), back = (s.legs ?? []).filter((l) => l.way === 'In');
@@ -2432,7 +2448,7 @@ export class PlanBuildTab {
       return `<div class="pb-card-dim">${out.length} legs out, ${back.length} in · by night ${sum(out)} + ${sum(back)} min · red: seen, green: hidden</div>`;
     }
     const seen = (s.naiPts ?? []).filter((p) => p.by.length).length, all = (s.naiPts ?? []).length || 1;
-    if (s.screen) return `<div class="pb-card-dim">${(s.ops ?? []).length} posts see ${Math.round((100 * seen) / all)} % of the ground he would watch you from · green: seen, red: not</div>`;
+    if (s.screen) return `<div class="pb-card-dim">${(s.ops ?? []).length} posts see ${Math.round((100 * seen) / all)} % of the ground the En would watch you from · green: seen, red: not</div>`;
     return `<div class="pb-card-dim">${(s.ops ?? []).length} OPs see ${Math.round((100 * seen) / all)} % of the NAI · green: seen, red: not</div>`;
   }
 
@@ -2574,13 +2590,13 @@ export class PlanBuildTab {
   private _enemyRows(task: string, ownEch: string | null): string {
     const d = ownEch ? defaultEnemy(this._doc, ownEch, this._ground === 'auto' ? null : this._ground, task) : null;
     const typeLabel = (t: string) => String((planDoctrine as any).enemy?.types?.[t]?.label ?? t);
-    const why = task === 'attack' ? 'One level down: your 3 : 1 on him (MW p 80)' : ownEch ? 'One level up: the 3 : 1 an attacker plans for (MW p 80)' : 'From his symbols on the map, else one level up';
+    const why = task === 'attack' ? 'One level down: your 3 : 1 on the En (MW p 80)' : ownEch ? 'One level up: the 3 : 1 an attacker plans for (MW p 80)' : 'From the En symbols on the map, else one level up';
     const autoE = this._enEch === 'auto', autoT = this._enType === 'auto';
     const ech = seg(EN_ECHELONS.map((e) => ({ on: this._enEch === e, label: echelonLabel(this._doc, e), data: `enEch:${e}`, picked: autoE && d?.echelon === e })),
       { auto: { on: autoE, label: 'Auto', data: 'enEch:auto', title: d ? `${why}: ${echelonLabel(this._doc, d.echelon)}` : why }, label: 'En force' });
     const tips: Record<EnemyType, string> = { inf: 'On foot: approaches on foot, foot rates, FUP 1000-1200 m (IBB p201)', mech: 'Tracked approaches, IPB vehicle rates, tank FUP 2500-3000 m (IBB p214)', armd: 'Tracked approaches, IPB vehicle rates, tank FUP 2500-3000 m (IBB p214)' };
     const type = seg(ENEMY_TYPES.map((t) => ({ on: this._enType === t, label: typeLabel(t), data: `enType:${t}`, title: tips[t], picked: autoT && d?.type === t })),
-      { auto: { on: autoT, label: 'Auto', data: 'enType:auto', title: d ? `The default for his echelon: ${typeLabel(d.type)}` : 'From his symbols on the map' }, label: 'En type' });
+      { auto: { on: autoT, label: 'Auto', data: 'enType:auto', title: d ? `The default for the En echelon: ${typeLabel(d.type)}` : 'From the En symbols on the map' }, label: 'En type' });
     return row(task === 'attack' ? 'Defender' : 'En force', ech) + row('En type', type);
   }
 
@@ -2736,7 +2752,7 @@ export class PlanBuildTab {
 
   /** Mark, move or clear the threat marker; while armed, the button says to click the map. */
   private _threatButtons(o: { sm?: boolean; mark?: string; clear?: string; title?: string; check?: boolean } = {}): string {
-    if (this._arming) return `${btn('Click the map where he comes from', 'threat', { armed: true, sm: o.sm })}<span class="pb-keyhint"><kbd>Esc</kbd> stops</span>`;
+    if (this._arming) return `${btn('Click the map where the En comes from', 'threat', { armed: true, sm: o.sm })}<span class="pb-keyhint"><kbd>Esc</kbd> stops</span>`;
     const own = this._ownThreat;
     const th = this._threatInfo(!o.check);
     const used = th ? `<span class="pb-keyhint" title="${esc(`The threat used: ${th.word}`)}">${esc(th.from === 'tab' ? 'marked here' : th.from === 'guide' ? 'Ground Guide marker' : `en symbols (${this._enemySide().n})`)}</span>` : '';
@@ -2770,7 +2786,7 @@ export class PlanBuildTab {
       ${row('Threat', this._threatButtons({ sm: true, mark: 'Mark the threat', title: 'Sets the front; without it the front is read from the enemy symbols, then a DCB or minefield in front', check: true }))}
       ${this._threatLine(true)}`;
     const r = this._check;
-    if (!r) return `${head}<div class="pb-empty">${icon('scan', 'pb-ic-lg')}<p>Select the plan's symbols (or place one from Templates), then <b>Read and check</b>.</p><p>Own and enemy symbols are both read: the enemy's give his force, his axes and his FUP.</p></div>`;
+    if (!r) return `${head}<div class="pb-empty">${icon('scan', 'pb-ic-lg')}<p>Select the plan's symbols (or place one from Templates), then <b>Read and check</b>.</p><p>Own and enemy symbols are both read: the enemy symbols give the En force, axes and FUP.</p></div>`;
     const pill = pillHtml;
     const top = `${this._tally(r.rows, `${esc(r.title)} <span class="pb-dim">${esc(this._checkNote)}</span>`, null)}
       <div class="pb-actions">${btn('Copy as Text', 'checkCopy', { sm: true, icon: 'copy' })}${btn('Clear', 'checkClear', { sm: true, kind: 'ghost' })}</div>`;
@@ -2857,7 +2873,7 @@ export class PlanBuildTab {
     const task = `${fam?.name ?? rec.name} · ${this._auto ? 'Auto' : LAYOUT_LABEL[rec.layout] ?? rec.layout}`;
     let enemy: string;
     if (rec.task === 'ambush') enemy = `Target: ${MOVER_LABEL[this._mover]}`;
-    else if (rec.task === 'crossing') enemy = `${this._light === 'moon' ? 'Moonlight' : this._light === 'dark' ? 'Dark night' : 'Day'}${this._mfCross ? ' · his mines' : ''}`;
+    else if (rec.task === 'crossing') enemy = `${this._light === 'moon' ? 'Moonlight' : this._light === 'dark' ? 'Dark night' : 'Day'}${this._mfCross ? ' · the En mines' : ''}`;
     else if (SMALL_TASKS.includes(rec.task)) enemy = this._threat ? 'Threat set' : 'Aim on the map';
     else {
       const e = this._enemyFor(rec, this._ground === 'auto' ? null : this._ground);
@@ -2956,22 +2972,22 @@ export class PlanBuildTab {
     const attack = res.recipe.task === 'attack'
       ? row('Time', seg([
         { on: !this._night, label: 'Day', data: 'night:off', title: 'SL crossed between first and last light (OOW2 s6 para 17)' },
-        { on: this._night, label: 'Night', data: 'night:on', title: 'Night rates (IBB p 18), the Night March chart from the Assy Area to the FUP, his night and thermal sights' }]))
+        { on: this._night, label: 'Night', data: 'night:on', title: 'Night rates (IBB p 18), the Night March chart from the Assy Area to the FUP, the En night and thermal sights' }]))
         + row('Phases', seg([
-          { on: this._phases === 1 || !!res.recipe.forCoys, label: '1', data: 'phases:1', title: 'One phase: the assault Coys onto the Obj, a reserve kept' },
-          { on: this._phases === 2 && !res.recipe.forCoys, label: '2', data: 'phases:2', disabled: !!res.recipe.forCoys, title: res.recipe.forCoys ? 'A 3-Coy Bn has no Coy left for a second phase' : 'Obj 1, then the follow-up Coys round it onto Obj 2 behind, from a new direction (IBB p186); Obj 2 on a hostile posn drawn behind Obj 1, else his high ground' },
-          { on: this._phases === 3 && !res.recipe.forCoys, label: '3', data: 'phases:3', disabled: !!res.recipe.forCoys, title: res.recipe.forCoys ? 'A 3-Coy Bn has no Coy left for more phases' : 'Obj 1, Obj 2, then Obj 3 beyond it: by D Coy when C Coy alone took Obj 2 (no reserve left: tell Bde), else by A and B Coys from Obj 1 (IBB p 189 para 23: each Obj a firm base for the next)' }]) + keyHint('P'))
-        + (this._phases >= 2 ? row('Ph 2 by', seg([
+          { on: this._phases === 1 || !!res.recipe.forCoys || res.recipe.echelon !== '16', label: '1', data: 'phases:1', title: 'One phase: the assault Coys onto the Obj, a reserve kept' },
+          { on: this._phases === 2 && !res.recipe.forCoys && res.recipe.echelon === '16', label: '2', data: 'phases:2', disabled: !!res.recipe.forCoys || res.recipe.echelon !== '16', title: res.recipe.echelon !== '16' ? 'Phases are laid for a Bn attack (its follow-up Coys round Obj 1)' : res.recipe.forCoys ? 'A 3-Coy Bn has no Coy left for a second phase' : 'Obj 1, then the follow-up Coys round it onto Obj 2 behind, from a new direction (IBB p186); Obj 2 on a hostile posn drawn behind Obj 1, else the En high ground' },
+          { on: this._phases === 3 && !res.recipe.forCoys && res.recipe.echelon === '16', label: '3', data: 'phases:3', disabled: !!res.recipe.forCoys || res.recipe.echelon !== '16', title: res.recipe.echelon !== '16' ? 'Phases are laid for a Bn attack (its follow-up Coys round Obj 1)' : res.recipe.forCoys ? 'A 3-Coy Bn has no Coy left for more phases' : 'Obj 1, Obj 2, then Obj 3 beyond it: by D Coy when C Coy alone took Obj 2 (no reserve left: tell Bde), else by A and B Coys from Obj 1 (IBB p 189 para 23: each Obj a firm base for the next)' }]) + keyHint('P'))
+        + (this._phases >= 2 && !res.recipe.forCoys && res.recipe.echelon === '16' ? row('Ph 2 by', seg([
           { on: this._coys === 2, label: 'C, D Coys', data: 'ph2Coys:2', title: 'Both follow-up Coys onto Obj 2; the BOF is the Spt Coy weapons; no Bn reserve is left: tell Bde (IBB p186 i). R flips it while placing.' },
           { on: this._coys === 1, label: 'C Coy, D res', data: 'ph2Coys:1', title: 'C Coy onto Obj 2, D Coy kept as the Bn reserve (IBB p186 h(3): commit only what the task needs); the BOF is the Spt Coy weapons. R flips it while placing.' }]) + keyHint('R')) : '')
-        + (this._phases >= 2 && !res.recipe.forCoys ? row('Obj 2', `${this._chip(!!this._armingObj2, this._obj2At ? 'Move Obj 2' : 'Mark Obj 2 on the map', 'obj2', 'Click where Obj 2 is: it stands over any En posn drawn behind Obj 1 and the high ground the finder would take')}${this._obj2At ? this._chip(false, 'Clear', 'clearObj2') : ''}`) : '')
+        + (this._phases >= 2 && !res.recipe.forCoys && res.recipe.echelon === '16' ? row('Obj 2', `${this._chip(!!this._armingObj2, this._obj2At ? 'Move Obj 2' : 'Mark Obj 2 on the map', 'obj2', 'Click where Obj 2 is: it stands over any En posn drawn behind Obj 1 and the high ground the finder would take')}${this._obj2At ? this._chip(false, 'Clear', 'clearObj2') : ''}`) : '')
         + row('Tanks', seg([
           { on: this._tanks === 'none', label: 'None', data: 'tanks:none', title: 'No tanks with the Bn' },
           { on: this._tanks === 'fire', label: 'Fire sp', data: 'tanks:fire', title: 'Infantry heavy: A Sqn from FUP (Tks) 2.5-3 km out to fire posns by the BOF, there as the infantry come as close to the Obj (IBB p214)' },
           { on: this._tanks === 'close', label: 'Close sp', data: 'tanks:close', title: 'Armour heavy: A Sqn less a troop from FUP (Tks) on its own axis converging on the Obj, rushing it from the assault line of the infantry; a troop covering from a flank (IBB pp 186-188)' }]) + keyHint('T'))
-        + row('His Mf', seg([
+        + row('En Mf', seg([
           { on: !this._mfAttk, label: 'None', data: 'mf:off', title: 'No minefield known in front of the Obj' },
-          { on: this._mfAttk, label: 'In front', data: 'mf:on', title: 'His protective minefield about 200 m in front of the Obj, 250-300 m deep (IC s111.5, s107): a lane for each assault Coy, breached before H (Breach row; the engineers in the Engrs row)' }]))
+          { on: this._mfAttk, label: 'In front', data: 'mf:on', title: 'The En protective minefield about 200 m in front of the Obj, 250-300 m deep (IC s111.5, s107): a lane for each assault Coy, breached before H (Breach row; the engineers in the Engrs row)' }]))
       : '';
     const sq = this._tankSqn;
     const tankFacts = res.recipe.task === 'attack' && this._tanks !== 'none' && sq
@@ -2997,7 +3013,7 @@ export class PlanBuildTab {
       { on: this._light === 'day', label: 'Day', data: 'light:day', title: 'Annex Q day column; a crossing by day: the far bank sees every boat' },
       { on: this._light === 'moon', label: 'Moonlight', data: 'light:moon' },
       { on: this._light === 'dark', label: 'Dark night', data: 'light:dark', title: 'Night assault preferable (IBB S46 para 18 p237)' }]))
-      + row('His mines', seg([
+      + row('En mines', seg([
         { on: !this._mfCross, label: 'None known', data: 'mf:off' },
         { on: this._mfCross, label: 'Assumed (S47)', data: 'mf:on', title: 'IBB S47 para 6: 900-1000 m of mixed mines and wire in front of a defended obstacle: the FUPs drawn back behind it, a Breach lane to each crossing place, timed from Annex Q para 4' }]));
     if (task === 'ambush') return row('Target', seg(MOVERS.map((m) => ({ on: this._mover === m, label: MOVER_LABEL[m], data: `mover:${m}`,
@@ -3028,22 +3044,22 @@ export class PlanBuildTab {
     if (SMALL_TASKS.includes(rec.task)) {
       const t = this._threat;
       const how = rec.task === 'ambush'
-        ? `${howTo('click the <b>KZ on the road</b> he will use', 'Move the cursor <b>up the road toward where he comes from</b> and click')}
-          <p class="pb-p">The stops go at each end of the KZ, Stop 1 on his side.${rec.layout === 'area' ? ' An area ambush adds an outlying ambush on his way in (up the Rd) and on his way out (down it), each at the best stretch 400-1200 m from the central KZ (IC s44 p152).' : ''}</p>`
+        ? `${howTo('click the <b>KZ on the road</b> the En will use', 'Move the cursor <b>up the road toward where the En comes from</b> and click')}
+          <p class="pb-p">The stops go at each end of the KZ, Stop 1 on the En side.${rec.layout === 'area' ? ' An area ambush adds an outlying ambush on the En route in (up the Rd) and on its route out (down it), each at the best stretch 400-1200 m from the central KZ (IC s44 p152).' : ''}</p>`
         : rec.task === 'patrol'
           ? howTo('click the <b>SP</b> (where the patrol leaves the own posns)', 'Move the cursor to the <b>Obj</b> and click: the Obj, the FRV and the routes follow the cursor')
           : rec.layout === 'screen'
-            ? howTo('click the <b>Wdr RV</b> in the main posn (where the screen withdraws to)', 'Move the cursor out to the <b>ground in front</b> he would watch the main posn from and click: the posts go between, laterally with intervals (IC s73 p378)')
+            ? howTo('click the <b>Wdr RV</b> in the main posn (where the screen withdraws to)', 'Move the cursor out to the <b>ground in front</b> the En would watch the main posn from and click: the posts go between, laterally with intervals (IC s73 p378)')
             : howTo('click the <b>SP</b> (where the recce party leaves)', 'Move the cursor to the <b>area to watch</b> and click: the NAI goes there, the OPs between');
       const threat = rec.task === 'patrol'
-        ? `<div class="pb-actions">${this._threatButtons({ mark: 'Mark where he watches from' })}</div><p class="pb-p pb-dim">${t ? `The routes keep out of the view from ${esc(this._threatInfo()?.word ?? 'the threat')}.` : 'No threat marked: the routes keep out of the view from the Obj.'}</p>`
+        ? `<div class="pb-actions">${this._threatButtons({ mark: 'Mark where the En watches from' })}</div><p class="pb-p pb-dim">${t ? `The routes keep out of the view from ${esc(this._threatInfo()?.word ?? 'the threat')}.` : 'No threat marked: the routes keep out of the view from the Obj.'}</p>`
         : '';
-      return `<div class="pb-sum">${rec.task === 'ambush' ? 'Where he comes from' : rec.task === 'patrol' ? 'Where the patrol goes' : 'What to watch'}</div>${how}${threat}
+      return `<div class="pb-sum">${rec.task === 'ambush' ? 'Where the En comes from' : rec.task === 'patrol' ? 'Where the patrol goes' : 'What to watch'}</div>${how}${threat}
         <p class="pb-p pb-dim">${this._terrain
-          ? (rec.task === 'ambush' ? 'When the mouse rests the road is read toward him: whether his vehicles can leave it, the bend or crest that hides the KZ, cover beside it, the KZ in view, the stops\' view, the withdrawal to the RV, posts and villages near; better sites along the road show as blue rings.'
+          ? (rec.task === 'ambush' ? 'When the mouse rests the road is read toward the En: whether En vehicles can leave it, the bend or crest that hides the KZ, cover beside it, the KZ in view, the stops\' view, the withdrawal to the RV, posts and villages near; better sites along the road show as blue rings.'
             : rec.task === 'patrol' ? 'When the mouse rests the routes out and in are found on foot (round NO-GO, away from roads, villages and skylines), and the patrol card is read: legs, bounds, the FRV, times, the stretches seen and hidden.'
               : rec.layout === 'screen'
-                ? 'When the mouse rests the ground in front is kept to the points that see the main posn (where he would watch it from); the posts go where they see most of that between them, no further forward than needed, on high ground or in cover, and the ways back keep in dead ground.'
+                ? 'When the mouse rests the ground in front is kept to the points that see the main posn (where the En would watch it from); the posts go where they see most of that between them, no further forward than needed, on high ground or in cover, and the ways back keep in dead ground.'
                 : 'When the mouse rests the OPs go where they see most of the NAI between them (high ground, cover), and the routes to them keep in dead ground.')
           : 'Without terrain data the layout is the rule\'s spacing; every ground check stays grey.'}</p>`;
     }
@@ -3052,8 +3068,8 @@ export class PlanBuildTab {
       ${this._enemyRows(rec.task, rec.echelon)}
       ${(() => { const en = this._enUnit(rec, this._ground === 'auto' ? null : this._ground); return en ? unitFacts(en) : ''; })()}
       <p class="pb-p pb-dim">${attack
-        ? 'His echelon sets the force ratio (MW p 80: more than 3 : 1).'
-        : 'His echelon sizes the approaches (he attacks on the corridors of the level below him: an en Bde on 1.5 km, IPB p 7) and the force ratio; his type sets his going (Inf on foot, Mech / Armd tracked), how fast he comes and where he forms up (1-1.2 km for infantry, 2.5-3 km for tanks, IBB pp 201, 214).'}</p>`;
+        ? 'The En echelon sets the force ratio (MW p 80: more than 3 : 1).'
+        : 'The En echelon sizes the approaches (the En attacks on the corridors of the level below its own: an en Bde on 1.5 km, IPB p 7) and the force ratio; the En type sets its going (Inf on foot, Mech / Armd tracked), how fast it comes and where it forms up (1-1.2 km for infantry, 2.5-3 km for tanks, IBB pp 201, 214).'}</p>`;
     if (attack) return `${force}
       <div class="pb-sum">Where you attack from</div>
       ${howTo('click the <b>objective</b>', 'Move the cursor toward <b>your own side</b> (where the attack comes from) and click: the FUP, start line and axis are laid back along that line, the BOF on the right flank')}
@@ -3066,7 +3082,7 @@ export class PlanBuildTab {
         ? `<p class="pb-p">Threat: ${esc(this._threatInfo()?.word ?? 'marked')}. The plan turns to face it as it follows the cursor, and <b>one click</b> places it.</p>`
         : `<p class="pb-p pb-dim">No threat marked:</p>${howTo('click where the <b>HQ</b> goes', 'Click toward the <b>enemy</b>')}`}
       <p class="pb-p pb-dim">${this._terrain
-        ? `When the mouse rests, his approaches are found (for his going, as wide as his corridors) from ${t ? 'the threat' : 'out along the front (assumed)'} to the plan and drawn in red; each is checked for direct fire from the forward posns, and the killing ground goes on the main one.`
+        ? `When the mouse rests, the En approaches are found (for its going, as wide as its corridors) from ${t ? 'the threat' : 'out along the front (assumed)'} to the plan and drawn in red; each is checked for direct fire from the forward posns, and the killing ground goes on the main one.`
         : 'Without terrain data the threat is a bearing: the approaches need the terrain bundle.'}</p>`;
   }
 
@@ -3245,9 +3261,9 @@ export class PlanBuildTab {
       return `${fmtM(r.lengthM)}${r.detour ? ' round NO-GO' : ''}${r.coveredPct !== null ? ` · ${r.coveredPct} % hidden` : ''}${r.slowPct ? ` · ${r.slowPct} % SLOW-GO` : ''}`;
     };
     return `
-      <div class="pb-sum">Trigger table <span class="pb-dim">(own move on foot against the enemy's ${w.mover}${w.enemyToFdlMin !== null ? `: ${w.enemyToFdlMin} min to the FDL on the main approach` : ''}, from ${esc(enemyStartWords(w))}${w.enemyStartAssumed ? ': mark the threat where he starts for a real time' : ''})</span></div>
+      <div class="pb-sum">Trigger table <span class="pb-dim">(own move on foot against the enemy's ${w.mover}${w.enemyToFdlMin !== null ? `: ${w.enemyToFdlMin} min to the FDL on the main approach` : ''}, from ${esc(enemyStartWords(w))}${w.enemyStartAssumed ? ': mark the threat where the En starts for a real time' : ''})</span></div>
       <ul class="pb-checks">${w.triggers.map((t) => ckRow(t.st, t.trigger,
-        `<div class="pb-det-head">${esc(t.who)} → ${esc(t.to)} · own ${t.min ?? '—'} min, his ${t.enemyMin ?? '—'} min</div>`
+        `<div class="pb-det-head">${esc(t.who)} → ${esc(t.to)} · own ${t.min ?? '—'} min, the En's ${t.enemyMin ?? '—'} min</div>`
         + whyHtml(`${route(t)}. ${t.reason}${t.coveredBy ? `. Covered by ${t.coveredBy}` : ''}`))).join('')}</ul>
       <div class="pb-actions">${btn(this._routesShown ? 'Hide the routes' : 'Show the routes on the map', 'routes', { sm: true })}</div>`;
   }
@@ -3299,7 +3315,7 @@ export class PlanBuildTab {
     const sc = 1000 * k;
     return `<svg class="pb-preview" viewBox="0 0 ${W} ${H}" role="img" aria-label="The plan from above, front up">${grid}${shapes}
       <line class="pb-pv-scale" x1="8" y1="${H - 8}" x2="${(8 + sc).toFixed(1)}" y2="${H - 8}"/><text x="${(10 + sc).toFixed(1)}" y="${H - 5}" class="pb-pv-txt">1 km</text>
-      <text x="${W - 6}" y="12" text-anchor="end" class="pb-pv-txt">${({ attack: 'Obj ↑', ambush: 'He comes ↑', patrol: 'Obj ↑', recce: 'NAI ↑', crossing: 'Far bank ↑' } as Record<string, string>)[res.recipe.task] ?? 'Front ↑'}</text></svg>`;
+      <text x="${W - 6}" y="12" text-anchor="end" class="pb-pv-txt">${({ attack: 'Obj ↑', ambush: 'En comes ↑', patrol: 'Obj ↑', recce: 'NAI ↑', crossing: 'Far bank ↑' } as Record<string, string>)[res.recipe.task] ?? 'Front ↑'}</text></svg>`;
   }
 }
 

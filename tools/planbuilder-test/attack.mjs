@@ -228,5 +228,15 @@ const O = centre(it(base, 'obj').pts), F0 = centre(it(base, 'fup').pts);
   check('...no ATGM in the unit (none given): no AT on the Obj row', !row(F.fitLayout(inpOf(front, flatG)).res.rows, 'AT on the Obj'));
 }
 
+// ── a Coy attack: the Bn layout's FUP laid farther out than 1.2 km from a Pl locality is pulled in to the band ──────
+{
+  const fl = F.fitLayout(inpOf(rec('coy-attk-right-flank'), flatG));
+  const fu = row(fl.res.rows, 'FUP from the Obj'), fd = row(fl.res.rows, 'FUP finder'), af = row(fl.res.rows, 'Assault frontage');
+  check('Coy Attk: the FUP pulled in to 1.0-1.2 km off the Pl Obj (IBB p201), the finder names the pull', fu?.st === 'pass' && /in to 1\.0 km-1\.2 km off the Obj/.test(fd?.reason ?? ''), `${fu?.reason} | ${fd?.reason}`);
+  check('...the assault frontage judged on the Company row, not the Bn one', /Company, night attack in plains/.test(af?.reason ?? ''), af?.reason);
+  const bde = F.fitLayout(inpOf(rec('bde-attk-two-up'), flatG));
+  check('Bde Attk: the assault frontage judged on the Brigade row (GSP p 86)', /Brigade, night attack in plains, two battalions up/.test(row(bde.res.rows, 'Assault frontage')?.reason ?? ''), row(bde.res.rows, 'Assault frontage')?.reason);
+}
+
 console.log(`\n${n} checks, ${fails} failed`);
 process.exit(fails ? 1 : 0);

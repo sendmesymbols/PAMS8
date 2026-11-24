@@ -13,7 +13,7 @@
   "needs": {
     "terrain": false
   },
-  "note": "IC s73 pp 378-381 (R): a screen is a Coy / Pl / Sec outpost laid laterally with intervals in front of (or on an exposed flank of) the main posn, only as far forward as is necessary to deny him observation and recce of the main posn and its obstacles, on his likely approaches, on defensible ground with clear observation and a covered route back. Plan metres from the RV in the main posn the screen withdraws to (the click), y toward the ground in front (the aim). Three Pl posts 300-1500 m forward across a 3 km front (E; IC p378 gives a knoll about 600 m out as an example); sections are not split (IC p380). With the terrain the posts are picked for what each adds to the view of the ground that sees the main posn, and the ways back are found in dead ground.",
+  "note": "IC s73 pp 378-381 (R): a screen is a Coy / Pl / Sec outpost laid laterally with intervals in front of (or on an exposed flank of) the main posn, only as far forward as is necessary to deny the En observation and recce of the main posn and its obstacles, on its likely approaches, on defensible ground with clear observation and a covered route back. Plan metres from the RV in the main posn the screen withdraws to (the click), y toward the ground in front (the aim). Three Pl posts 300-1500 m forward across a 3 km front (E; IC p378 gives a knoll about 600 m out as an example); sections are not split (IC p380). With the terrain the posts are picked for what each adds to the view of the ground that sees the main posn, and the ways back are found in dead ground.",
   "pivot": "rv",
   "slots": [
     {

@@ -365,7 +365,7 @@ export function writeGround(g: AprcGroundIn): AprcWritten {
       depth
         ? {
             id: 'gr.ded.dp2',
-            draft: `FDLs on Line ${depth.id} (${depth.name}, ${km(depth.frontM)} km between bdys${depth.obstacle ? `, along ${depth.obstacle}` : ''})${fdl ? `; Line ${fdl.id} (${fdl.name}) held by a screen in front` : ''}; ${deeper.length ? `depth on Line ${deeper[0].id} (${deeper[0].name})` : `the Str Pt ${mitg}`}. Weigh it against DP 1: more depth to his first fight, less ground forward.`,
+            draft: `FDLs on Line ${depth.id} (${depth.name}, ${km(depth.frontM)} km between bdys${depth.obstacle ? `, along ${depth.obstacle}` : ''})${fdl ? `; Line ${fdl.id} (${fdl.name}) held by a screen in front` : ''}; ${deeper.length ? `depth on Line ${deeper[0].id} (${deeper[0].name})` : `the Str Pt ${mitg}`}. Weigh it against DP 1: more depth to the En first fight, less ground forward.`,
             state: 'judge',
             basis: [featData, calc('The second def possibility: the def stepped back to the depth line of the AOR reading, the FDLs line of DP 1 a screen; a proposal to compare with DP 1')],
           }
@@ -505,12 +505,12 @@ function writeGroundAttk(g: AprcGroundIn): AprcWritten {
         seen.add(b);
         const side = l.buas.length === 3 ? sideOf(SIDES[i]) : null;
         others.push({ name: b, line: l, side });
-        kids.push(para(uniqueId(used, `gr.itg.${slug(b)}`), b, { draft: `Astride the ${side ? `${side} ` : ''}apch on Line ${l.id}, his likely ${role === 'FDLs' ? 'FDLs' : 'depth'} facing the attk.`, state: 'judge', basis: [featData, calc('A BUA within 800 m of an apch where a line across the apchs cuts it; the lines are the ones a defender of the MITG would hold')] }));
+        kids.push(para(uniqueId(used, `gr.itg.${slug(b)}`), b, { draft: `Astride the ${side ? `${side} ` : ''}apch on Line ${l.id}, the En likely ${role === 'FDLs' ? 'FDLs' : 'depth'} facing the attk.`, state: 'judge', basis: [featData, calc('A BUA within 800 m of an apch where a line across the apchs cuts it; the lines are the ones a defender of the MITG would hold')] }));
       });
     }
     if (r.map.itg.length) kids.push(para('gr.itg.more', null, { draft: `${cap1(plural(r.map.itg.length, 'more candidate'))} in the area from the data (high ground, crossings, junctions): shown on the trace.`, state: 'judge', basis: [data('ITG candidates: the bundle features flagged as important ground')] }));
     patches.push({ id: 'gr.itg', draft: '', state: 'gr', children: kids });
-    confirm.push({ text: `His localities and the ITGs are read from the ground: confirm them against his disposns (recce, int) before the APs are settled.`, paras: ['gr.itg', 'gr.ded.obj'] });
+    confirm.push({ text: `The En localities and the ITGs are read from the ground: confirm them against the En disposns (recce, int) before the APs are settled.`, paras: ['gr.itg', 'gr.ded.obj'] });
   }
 
   // 4. Aim and 11. Deductions the ground can propose
@@ -526,7 +526,7 @@ function writeGroundAttk(g: AprcGroundIn): AprcWritten {
       id: 'gr.ded.obj',
       draft: `${cap1(mitg)} emerges as the MITG${reasons.length ? `: ${list(reasons)}` : ''}.${rest.length ? ` Other imp tac gr in order of pri: ${rest.map((x, i) => `(${i + 1}) ${x}`).join(', ')}.` : ''}`,
       state: 'judge',
-      basis: [featData, calc('The MITG first, then his localities on the line nearest the attk, then in depth; a proposal'), frameIn],
+      basis: [featData, calc('The MITG first, then the En localities on the line nearest the attk, then in depth; a proposal'), frameIn],
     });
     const ranked = [...r.apchs].sort((a, b) => a.rank - b.rank);
     const border = ranked[0]?.cross?.border ?? null;
@@ -547,9 +547,9 @@ function writeGroundAttk(g: AprcGroundIn): AprcWritten {
     const front = frontFirst(r.lines.filter((l) => l.role === 'FDLs' || l.role === 'Depth'));
     if (front.length) patches.push({
       id: 'gr.ded.c.phases',
-      draft: `${front.map((l, i) => `Phase ${i + 1}: his ${l.role === 'FDLs' ? 'FDLs' : 'depth'} on Line ${l.id} (${[...new Set(l.buas.filter((x): x is string => !!x))].join(', ') || l.name})`).join('; ')}; then ${mitg}. Lines ${front.map((l) => l.id).join(' and ')} lie ${front.map((l) => (l.depthM !== null ? `${km(l.depthM)} km` : '?')).join(' and ')} past ${border ? `the ${border}` : 'the front of the area read'}.`,
+      draft: `${front.map((l, i) => `Phase ${i + 1}: the En's ${l.role === 'FDLs' ? 'FDLs' : 'depth'} on Line ${l.id} (${[...new Set(l.buas.filter((x): x is string => !!x))].join(', ') || l.name})`).join('; ')}; then ${mitg}. Lines ${front.map((l) => l.id).join(' and ')} lie ${front.map((l) => (l.depthM !== null ? `${km(l.depthM)} km` : '?')).join(' and ')} past ${border ? `the ${border}` : 'the front of the area read'}.`,
       state: 'judge',
-      basis: [featData, calc('The lines across the apchs that a defender of the MITG would hold: each a phase if held; a proposal, his disposns decide')],
+      basis: [featData, calc('The lines across the apchs that a defender of the MITG would hold: each a phase if held; a proposal, the En disposns decide')],
     });
   }
 
@@ -622,13 +622,13 @@ export function writeAttkDir(e: AprcAttkIn): AprcWritten {
   const order = [...onto].sort((a, b) => (a.onto === 'frontal' ? 1 : 0) - (b.onto === 'frontal' ? 1 : 0) || a.rank - b.rank);
   const avIn = data(`The IPB reading: apchs for ${e.aaFor} onto ${e.objective} from ${e.start}${e.startAssumed ? ' (taken)' : ''}, corridors ${km(e.mcWidthM)} km wide, coded GO / SLOW-GO / NO-GO by the book's criteria (${e.mover})`);
   const flankRule = rule('Flanking before frontal: a frontal attk has a small chance (user\'s rule); "being flanking in nature" (Mechs of Aprc (Attk) pp 3-4)');
-  const turnRule = rule('A turning apch round the obj onto a choke on his MSR blocks his wdr and rft (OoW Vol II s6; IBB S35 p 140); Aim limitation b (Mechs of Aprc (Attk) p 1)');
-  const fupRule = rule(`FUP ${km(e.fupM)} km short of the obj: 1000-1200 m, out of his NVD and SA reach (IBB p 201)`);
+  const turnRule = rule('A turning apch round the obj onto a choke on the En MSR blocks the En wdr and rft (OoW Vol II s6; IBB S35 p 140); Aim limitation b (Mechs of Aprc (Attk) p 1)');
+  const fupRule = rule(`FUP ${km(e.fupM)} km short of the obj: 1000-1200 m, out of the En NVD and SA reach (IBB p 201)`);
   const one = (a: AprcAttkAvenue): string =>
     `${ONTO_WORD[a.onto ?? ''] ?? a.label}: ${km(a.lengthM)} km, GO on ${pct(a.goPct)}, narrowest ${km(a.minWidthM)} km, ${a.waterLines ? plural(a.waterLines, 'water line') : 'no water line'}${a.assaultM !== null ? `; the assault ${km(a.assaultM)} km from the FUP${a.assaultNogoPct ? ` (${pct(a.assaultNogoPct)} NO-GO)` : ''}` : ''}`;
   const lt = onto.find((a) => a.onto === 'left'), rt = onto.find((a) => a.onto === 'right');
   const w = lt && rt ? lrWeigh(lt, rt) : null;
-  const turnText = e.turn ? ` The turning apch blocks ${e.turn.msr ? 'his MSR' : 'the main Rd behind him'} at ${e.turn.label} (${e.turn.kind}), ${km(e.turn.behindM)} km behind ${e.objective}.` : '';
+  const turnText = e.turn ? ` The turning apch blocks ${e.turn.msr ? 'the En MSR' : 'the main Rd behind the En'} at ${e.turn.label} (${e.turn.kind}), ${km(e.turn.behindM)} km behind ${e.objective}.` : '';
   patches.push({
     id: 'gr.ded.apch',
     draft: `Dir of attk in pri: ${order.map((a, i) => `(${i + 1}) ${one(a)}`).join('; ')}.${w ? ` Lt against Rt: ${w.text}${w.lt !== w.rt ? ` Better on ${Math.max(w.lt, w.rt)} of ${w.lt + w.rt} heads: the ${w.lt > w.rt ? 'Lt' : 'Rt'}.` : ''}` : ''}${turnText}`,
@@ -639,12 +639,12 @@ export function writeAttkDir(e: AprcAttkIn): AprcWritten {
   // the flank the weighing favours, when the turning apch is not the first
   const firstFlank = best.onto === 'turn' || best.onto === 'frontal' ? best : w && w.lt !== w.rt ? (w.lt > w.rt ? lt! : rt!) : best;
   patches.push({ id: 'gr.itg.mitg.dir', draft: `${cap1(ONTO_WORD[firstFlank.onto ?? ''] ?? firstFlank.label)}${firstFlank.onto === 'turn' ? '' : ` onto ${e.objective}`}.`, state: 'judge', basis: [avIn, flankRule] });
-  patches.push({ id: 'gr.ded.ap1', draft: `To attk ${firstFlank.onto === 'turn' ? 'by the turning apch' : `from the ${ONTO_WORD[firstFlank.onto ?? ''] ?? firstFlank.label}`} onto ${e.objective}${e.turn && firstFlank.onto !== 'turn' ? `, with a blocking posn on his ${e.turn.msr ? 'MSR' : 'Rd'} behind it` : ''}.`, state: 'judge', basis: [avIn, flankRule] });
+  patches.push({ id: 'gr.ded.ap1', draft: `To attk ${firstFlank.onto === 'turn' ? 'by the turning apch' : `from the ${ONTO_WORD[firstFlank.onto ?? ''] ?? firstFlank.label}`} onto ${e.objective}${e.turn && firstFlank.onto !== 'turn' ? `, with a blocking posn on the En's ${e.turn.msr ? 'MSR' : 'Rd'} behind it` : ''}.`, state: 'judge', basis: [avIn, flankRule] });
   if (firstFlank.fupWhere) patches.push({ id: 'gr.ded.ap1.fup', draft: `${firstFlank.fupWhere}, ${km(e.fupM)} km short of ${e.objective} on the ${ONTO_WORD[firstFlank.onto ?? ''] ?? firstFlank.label} apch.`, state: 'judge', basis: [avIn, fupRule] });
-  if (e.turn) patches.push({ id: 'gr.ded.ap1.block', draft: `At ${e.turn.label}${e.turn.where ? ` (${e.turn.where})` : ''}: a ${e.turn.kind} on ${e.turn.msr ? 'his MSR' : 'the main Rd'}, ${km(e.turn.behindM)} km behind ${e.objective}; it blocks his wdr and rft.`, state: 'judge', basis: [avIn, turnRule] });
+  if (e.turn) patches.push({ id: 'gr.ded.ap1.block', draft: `At ${e.turn.label}${e.turn.where ? ` (${e.turn.where})` : ''}: a ${e.turn.kind} on ${e.turn.msr ? 'the En MSR' : 'the main Rd'}, ${km(e.turn.behindM)} km behind ${e.objective}; it blocks the En wdr and rft.`, state: 'judge', basis: [avIn, turnRule] });
   const second = order.find((a) => a !== firstFlank && a.onto !== 'frontal') ?? order.find((a) => a !== firstFlank);
   if (second) patches.push({ id: 'gr.ded.ap2', draft: `From the ${ONTO_WORD[second.onto ?? ''] ?? second.label}: changes the dir of attk${second.fupWhere ? `; FUP ${second.fupWhere}` : ''}.`, state: 'judge', basis: [avIn] });
-  confirm.push({ text: `The dir of attk rests on the ground read${e.startAssumed ? ' from a start taken opposite the threat' : ''}: walk the FUP and the assault ground, and confirm his posns on the obj.`, paras: ['gr.ded.apch', 'gr.ded.ap1'] });
+  confirm.push({ text: `The dir of attk rests on the ground read${e.startAssumed ? ' from a start taken opposite the threat' : ''}: walk the FUP and the assault ground, and confirm the En posns on the obj.`, paras: ['gr.ded.apch', 'gr.ded.ap1'] });
   return { patches, confirm };
 }
 
@@ -759,7 +759,7 @@ export function writeSymbols(symbols: AprcSymbolIn[], o: { attack?: boolean } = 
   const own = symbols.filter((s) => s.side === 'own' && isUnit(s));
   const mapIn = input('Symbols on the map, as drawn');
   if (en.length) {
-    patches.push({ id: 'rev.en', draft: `Marked on the map: ${forceLine(en)}.`, state: 'map', basis: [mapIn], prompts: ['Add his likely aim and timings'] });
+    patches.push({ id: 'rev.en', draft: `Marked on the map: ${forceLine(en)}.`, state: 'map', basis: [mapIn], prompts: ['Add the En likely aim and timings'] });
     patches.push({ id: 'en.comp', draft: `${forceLine(en)}. ${where(en)}.`, state: 'map', basis: [mapIn] });
     // the attack: his disposns as marked, under his option against AP-1
     patches.push({ id: 'en.opt1.disp', draft: `Marked on the map: ${forceLine(en)}. ${where(en)}.`, state: 'map', basis: [mapIn] });
@@ -778,7 +778,7 @@ export function writeSymbols(symbols: AprcSymbolIn[], o: { attack?: boolean } = 
     patches.push({ id: 'own.str', draft: '', state: 'map', table, basis: [mapIn, calc('Counted as marked, by echelon. The ratio is left to the planner: it needs each unit at its real strength')] });
   }
   const drawnObs = symbols.filter(isObstacle).map((s) => `${s.label || s.name}${s.where ? ` ${s.where}` : ''}`);
-  return { patches, confirm: en.length ? [] : [{ text: 'No en symbols on the map: his strength and start points are not known to the reading.', paras: ['rev.en', 'en.comp', 'own.str'] }], drawnObs, enForce: en.length ? forceLine(en) : null, ownWhere: own.length ? where(own, 10) : null };
+  return { patches, confirm: en.length ? [] : [{ text: 'No en symbols on the map: the En strength and start points are not known to the reading.', paras: ['rev.en', 'en.comp', 'own.str'] }], drawnObs, enForce: en.length ? forceLine(en) : null, ownWhere: own.length ? where(own, 10) : null };
 }
 
 // ── a checked plan ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -818,10 +818,10 @@ export function writePlan(c: AprcCheckIn): AprcWritten {
       state: 'judge',
       table: {
         head: ['Ser', 'En Reactions', 'Own Ctr Actions'],
-        rows: tr.slice(0, 26).map((t, i) => [`${String.fromCharCode(97 + i)}.`, `${t.trigger}: his lead element there in ${Math.round(t.enemyMin)} min.`, `${t.who} from ${t.from} to ${t.to}: ${Math.round(t.min)} min. ${t.st === 'pass' ? 'In time.' : t.reason}`]),
+        rows: tr.slice(0, 26).map((t, i) => [`${String.fromCharCode(97 + i)}.`, `${t.trigger}: the En's lead element there in ${Math.round(t.enemyMin)} min.`, `${t.who} from ${t.from} to ${t.to}: ${Math.round(t.min)} min. ${t.st === 'pass' ? 'In time.' : t.reason}`]),
         widths: [0.08, 0.42, 0.5],
       },
-      basis: [planIn, calc('The what-if: his time along the approach at the IPB rates against each own move on foot or mounted')],
+      basis: [planIn, calc('The what-if: the En\'s time along the approach at the IPB rates against each own move on foot or mounted')],
     });
   }
   return { patches, confirm: [...(c.confirm ?? []), ...(c.assumptions ?? []).map((a) => `Assumed: ${a}`)].map((text) => ({ text, paras: ['crs.a'] })) };
@@ -902,7 +902,7 @@ export function writeEnemy(e: AprcEnemyIn): AprcWritten {
   const av = [...e.avenues].filter((a) => a.viable).sort((a, b) => a.rank - b.rank);
   if (!av.length) return { patches, confirm };
   const rateRule = rule(`Unopposed rates (IPB book p 18): ${e.mover} ${e.rates.go[0]} km/h by day, ${e.rates.go[1]} by night on GO; ${e.rates.slow[0]} / ${e.rates.slow[1]} on SLOW-GO`);
-  const how = calc(`His time along each avenue: each stretch at the rate for its going; earliest = by day, unassessed ground taken as GO; latest = by night, unassessed as SLOW-GO; from ${e.fromThreat ? 'the Threat marker' : 'the edge of the area read'} at H`);
+  const how = calc(`The En's time along each avenue: each stretch at the rate for its going; earliest = by day, unassessed ground taken as GO; latest = by night, unassessed as SLOW-GO; from ${e.fromThreat ? 'the Threat marker' : 'the edge of the area read'} at H`);
   const avIn = data(`The IPB reading: avenues for ${e.aaFor}, corridors ${km(e.mcWidthM)} km wide, coded GO / SLOW-GO / NO-GO by the book's criteria`);
   const cmp = calc('The avenues compared on time, going, width and water lines');
   const hMin = parseHHour(e.hHour);
@@ -917,12 +917,12 @@ export function writeEnemy(e: AprcEnemyIn): AprcWritten {
       l.role === 'FDLs' ? 'Ph 1 (break-in)' : fdlH !== null && l.h[0] > fdlH ? 'Ph 2' : fdlH === null && l.role === 'Depth' ? 'Ph 2' : 'Prelim ph';
     const parts = ls.filter((l) => l.role !== 'Str Pt').map((l) => `${name(l)}, Line ${l.id}${l.role ? ` (${l.role})` : ''} at ${whenText(l.h, hMin)}`);
     parts.push(`Ph 3, onto ${e.objective} at ${whenText(a.endH, hMin)}`);
-    return ` Unopposed, his phases would run: ${parts.join('; ')}. Each fight adds to these times.`;
+    return ` Unopposed, the En phases would run: ${parts.join('; ')}. Each fight adds to these times.`;
   };
   const optText = (a: AprcAvenueIn): string =>
     `${who} along ${a.id}${a.onto ? ` (${a.onto})` : ''}: ${km(a.lengthM)} km, GO on ${pct(a.goPct)}, narrowest ${km(a.minWidthM)} km${a.through.length ? `, through ${list(a.through.slice(0, 6))}` : ''}. ` +
-    `His lead element reaches the avenue at ${whenText(a.startH, hMin)} and ${e.objective} at ${whenText(a.endH, hMin)}.${phasesText(a)}`;
-  const linesCalc = av.some((a) => a.lines?.length) ? [calc('His time at each line of def: where the avenue crosses it, at the same rates')] : [];
+    `The En's lead element reaches the avenue at ${whenText(a.startH, hMin)} and ${e.objective} at ${whenText(a.endH, hMin)}.${phasesText(a)}`;
+  const linesCalc = av.some((a) => a.lines?.length) ? [calc('The En\'s time at each line of def: where the avenue crosses it, at the same rates')] : [];
   const tpl = e.template;
   // The template's phase names only: their timings are long and belong to the template, not the paragraph.
   const phaseNames = tpl ? [...new Set(tpl.phases.map((p) => p.phase.trim()).filter(Boolean))].slice(0, 6) : [];
@@ -939,7 +939,7 @@ export function writeEnemy(e: AprcEnemyIn): AprcWritten {
     const w2 = weigh(av[1], opts, e.mcWidthM);
     patches.push({ id: 'en.opt2', draft: `${optText(av[1])}${w2.adv.length ? ` Advs: ${w2.adv.join('; ')}.` : ''}${w2.dis.length ? ` Disadvs: ${w2.dis.join('; ')}.` : ''}`, state: 'judge', basis: [avIn, rateRule, how, ...linesCalc, ...hIn, cmp] });
     const fastest = [...opts].sort((a, b) => a.endH[0] - b.endH[0])[0];
-    if (Math.abs(opts[0].endH[0] - opts[1].endH[0]) >= WEIGH_MIN.hours) patches.push({ id: 'en.danger', draft: `Along ${fastest.id}: he is onto ${e.objective} earliest, at ${whenText(fastest.endH[0], hMin)}.`, state: 'judge', basis: [how, calc('Most dangerous taken as the earliest onto the objective; a proposal')] });
+    if (Math.abs(opts[0].endH[0] - opts[1].endH[0]) >= WEIGH_MIN.hours) patches.push({ id: 'en.danger', draft: `Along ${fastest.id}: the En is onto ${e.objective} earliest, at ${whenText(fastest.endH[0], hMin)}.`, state: 'judge', basis: [how, calc('Most dangerous taken as the earliest onto the objective; a proposal')] });
   }
 
   // Most probable: the IPB reading's main avenue (the best going of those viable); his intent decides
@@ -947,9 +947,9 @@ export function writeEnemy(e: AprcEnemyIn): AprcWritten {
   if (main)
     patches.push({
       id: 'en.probable',
-      draft: `Along ${main.id}${main.onto ? ` (${main.onto})` : ''}: the main avenue of the IPB reading, most GO of those viable (${pct(main.goPct)}${main.through.length ? `, through ${list(main.through.slice(0, 3))}` : ''}); he is onto ${e.objective} at ${whenText(main.endH, hMin)}.`,
+      draft: `Along ${main.id}${main.onto ? ` (${main.onto})` : ''}: the main avenue of the IPB reading, most GO of those viable (${pct(main.goPct)}${main.through.length ? `, through ${list(main.through.slice(0, 3))}` : ''}); the En is onto ${e.objective} at ${whenText(main.endH, hMin)}.`,
       state: 'judge',
-      basis: [avIn, calc("Most probable taken as the IPB reading's main avenue, most GO of those viable; his aim and his doctrine decide: a proposal, no book figure")],
+      basis: [avIn, calc("Most probable taken as the IPB reading's main avenue, most GO of those viable; the En aim and doctrine decide: a proposal, no book figure")],
     });
 
   // His reactions against own counter actions: the TAIs and the decisions before them.
@@ -958,11 +958,11 @@ export function writeEnemy(e: AprcEnemyIn): AprcWritten {
     const dp = e.dps.find((d) => d.tai === t.id);
     rows.push([
       '',
-      `His lead element at ${t.id} on ${t.aa} (${t.why}): ${whenText([t.earliestH, t.latestH], hMin)}.`,
-      dp ? `${dp.id}: ${dp.decision.replace(/[.?]\s*$/, '')}${dp.beforeH ? ' (before H)' : ` by ${whenText(dp.earliestH, hMin)}`}.` : 'Engage him there with the fire planned on it.',
+      `The En's lead element at ${t.id} on ${t.aa} (${t.why}): ${whenText([t.earliestH, t.latestH], hMin)}.`,
+      dp ? `${dp.id}: ${dp.decision.replace(/[.?]\s*$/, '')}${dp.beforeH ? ' (before H)' : ` by ${whenText(dp.earliestH, hMin)}`}.` : 'Engage the En there with the fire planned on it.',
     ]);
   }
-  for (const d of e.dps.filter((x) => x.kind === 'catk')) rows.push(['', `He is onto the depth localities on ${d.aa}.`, `${d.id}: ${d.decision.replace(/[.?]\s*$/, '')} by ${whenText(d.earliestH, hMin)}.`]);
+  for (const d of e.dps.filter((x) => x.kind === 'catk')) rows.push(['', `The En is onto the depth localities on ${d.aa}.`, `${d.id}: ${d.decision.replace(/[.?]\s*$/, '')} by ${whenText(d.earliestH, hMin)}.`]);
   rows.forEach((r, i) => (r[0] = `${String.fromCharCode(97 + (i % 26))}.`));
   if (rows.length)
     patches.push({
@@ -970,9 +970,9 @@ export function writeEnemy(e: AprcEnemyIn): AprcWritten {
       draft: '',
       state: 'judge',
       table: { head: ['Ser', 'En Reactions', 'Own Ctr Actions'], rows: rows.slice(0, 26), widths: [0.08, 0.46, 0.46] },
-      basis: [avIn, how, rule('A decision is taken while he is at least 2 hrs from the TAI (IPB book p 30)')],
+      basis: [avIn, how, rule('A decision is taken while the En is at least 2 hrs from the TAI (IPB book p 30)')],
     });
-  confirm.push({ text: `His times are the book's unopposed rates on the ground read, ${e.fromThreat ? 'from the Threat marker' : 'from the edge of the area read (no Threat marker)'}: set H and check them against his doctrine.`, paras: ['en.opts', 'crs.react'] });
+  confirm.push({ text: `The En's times are the book's unopposed rates on the ground read, ${e.fromThreat ? 'from the Threat marker' : 'from the edge of the area read (no Threat marker)'}: set H and check them against the En doctrine.`, paras: ['en.opts', 'crs.react'] });
   return { patches, confirm };
 }
 
@@ -1121,7 +1121,7 @@ export function writeStrength(s: AprcStrengthIn, o: { attack?: boolean; disposns
       patches.push({ id: 'own.ded.addl', draft: `Manoeuvre Coys ${ratio.toFixed(1)} : 1 own to en, short of 3 : 1: phase the attk so each phase has 3 : 1 where it strikes, or ask for more tps.`, state: 'judge', basis: [rule('An attacker wants more than 3 : 1, applied sequentially (MW p 80)'), calc('Manoeuvre Coys summed over each side (ORBAT)')] });
     const ownComp = s.own.map((u) => `${u.count} x ${u.name}: ${n1(u.coys)} manoeuvre Coys${u.plsPerCoy ? ` of ${u.plsPerCoy} Pls` : ''}${u.strength ? `, ${u.strength.toLocaleString('en-GB')} all ranks` : ''}${u.atgm ? `, ${u.atgm} ATGM launchers` : ''}${u.mortars ? `, ${u.mortars} mortars` : ''}`).join('; ');
     patches.push({ id: 'own.comp', draft: `${ownComp}.${o.disposns ? ` Disposns: ${o.disposns}.` : ''}`, state: s.ownAssumed ? 'judge' : 'map', basis: [data(`ORBAT: ${[...new Set(s.own.map((u) => u.src))].join('; ')}`), ...(o.disposns ? [input('Symbols on the map, as drawn')] : []), ...(s.ownAssumed ? [input(`Own assumed: ${s.ownAssumed}`)] : [])] });
-    return { patches, confirm: s.enAssumed ? [{ text: `En strength is assumed (${s.enAssumed}): mark his posns on the map for the real figures.`, paras: ['own.str'] }] : [] };
+    return { patches, confirm: s.enAssumed ? [{ text: `En strength is assumed (${s.enAssumed}): mark the En posns on the map for the real figures.`, paras: ['own.str'] }] : [] };
   }
   const rows = [
     ['a.', 'Manoeuvre Coys / Sqns', n1(coysEn), n1(coysOwn), ratio(coysEn, coysOwn)],
@@ -1153,7 +1153,7 @@ export function writeStrength(s: AprcStrengthIn, o: { attack?: boolean; disposns
       basis: [data(`ORBAT: ${[...new Set(s.own.map((u) => u.src))].join('; ')}`), calc('Pls held = manoeuvre Coys x Pls a Coy; ATGM pairs = launchers / 2'), calc('Pls needed: the DP 1 tasks table')],
     });
   }
-  return { patches, confirm: s.enAssumed ? [{ text: `En strength is assumed (${s.enAssumed}): mark his units on the map for the real figures.`, paras: ['own.str'] }] : [] };
+  return { patches, confirm: s.enAssumed ? [{ text: `En strength is assumed (${s.enAssumed}): mark the En units on the map for the real figures.`, paras: ['own.str'] }] : [] };
 }
 
 // ── time required ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -1243,7 +1243,7 @@ export function writeCoyTasks(coys: AprcCoyIn[]): AprcWritten {
         para(`${id}.tasks`, 'Tasks', {
           draft: '',
           state: 'map',
-          children: tasks.map((t, i) => para(`${id}.t${i + 1}`, null, { draft: t, state: i === 0 ? 'map' : 'judge', basis: i === 0 ? [planIn, data('Ends of the posn: the nearest named places, the 1:50k map')] : [planIn, calc('Depth and res: C attk onto the fwd posns; moves from the what-if, timed against his lead element')] })),
+          children: tasks.map((t, i) => para(`${id}.t${i + 1}`, null, { draft: t, state: i === 0 ? 'map' : 'judge', basis: i === 0 ? [planIn, data('Ends of the posn: the nearest named places, the 1:50k map')] : [planIn, calc('Depth and res: C attk onto the fwd posns; moves from the what-if, timed against the En\'s lead element')] })),
         }),
       ],
     });
@@ -1293,7 +1293,7 @@ export function writeFire(f: AprcFireIn): AprcWritten {
     state: 'judge',
     basis: [fireData, calc('Seen: a stretch in view of any posn within its obsn reach; the OPs on what is not seen are a proposal')],
   });
-  if (k.length) patches.push({ id: 'gr.ded.dp1.obs', draft: `Obs to hold him where own fire covers him: ${list(k.map((x) => `on ${x.on} ${km(x.alongM)} km along`))}. An obs no fire covers only delays him.`, state: 'judge', basis: [fireData, calc('Obs sited on the killing area candidates above, where own dir fire covers them; a proposal')] });
+  if (k.length) patches.push({ id: 'gr.ded.dp1.obs', draft: `Obs to hold the En where own fire covers it: ${list(k.map((x) => `on ${x.on} ${km(x.alongM)} km along`))}. An obs no fire covers only delays the En.`, state: 'judge', basis: [fireData, calc('Obs sited on the killing area candidates above, where own dir fire covers them; a proposal')] });
   const out = gaps.filter((g) => g.kind === 'o');
   return { patches, confirm: out.length ? [{ text: `Out of reach of own dir fire: ${out.slice(0, 4).map(gapText).join('; ')}: check the posns' ranges on the ground.`, paras: ['gr.ded.dp1.df'] }] : [] };
 }
@@ -1317,11 +1317,11 @@ export function writeAir(a: AprcAirIn): AprcWritten {
   const rt = [...a.routes].slice(0, 2);
   patches.push({
     id: 'en.ded.common',
-    draft: `Heliborne: his likeliest ${lz.length ? `LZs ${list(lz.map(z))}` : ''}${lz.length && dz.length ? '; ' : ''}${dz.length ? `DZs ${list(dz.map(z))}` : ''}.${rt.length ? ` Low-level air avenues (${a.band}): ${rt.map((r) => `${r.id} to ${r.to}, ${km(r.lengthM)} km, ${pct(r.seenPct)} of it seen from own posns`).join('; ')}.` : ''} Cover them with OPs and AD.`,
+    draft: `Heliborne: the En's likeliest ${lz.length ? `LZs ${list(lz.map(z))}` : ''}${lz.length && dz.length ? '; ' : ''}${dz.length ? `DZs ${list(dz.map(z))}` : ''}.${rt.length ? ` Low-level air avenues (${a.band}): ${rt.map((r) => `${r.id} to ${r.to}, ${km(r.lengthM)} km, ${pct(r.seenPct)} of it seen from own posns`).join('; ')}.` : ''} Cover them with OPs and AD.`,
     state: 'judge',
     basis: [data("Air: the Extended View's IPB air reading (slope, room, approach, existing helipads, sight from own posns)"), rule('LZ / DZ and air avenue factors: IPB book pp 5-6; landing point sizes FM 3-21.38 (US figures, to confirm with Army Aviation)')],
   });
-  return { patches, confirm: [{ text: 'His LZs and DZs are read from the ground: walk the likeliest and site the OPs over them.', paras: ['en.ded.common'] }] };
+  return { patches, confirm: [{ text: 'The En LZs and DZs are read from the ground: walk the likeliest and site the OPs over them.', paras: ['en.ded.common'] }] };
 }
 
 // ── time data (the defence) and the backward calc (the attack) ───────────────────────────────────────────────────
@@ -1344,7 +1344,7 @@ export function writeTimeData(t: AprcTimeDataIn): AprcWritten {
   if (t.reqH !== null && t.reqH > 0)
     patches.push({ id: 'ts.data.time-by-which-def-to-be-occupied', draft: `Not later than ${whenText(-t.reqH, hMin)}: the Time Req, at least ${Math.round(t.reqH)} h, back from H. Work done in parallel gives more time.`, state: 'judge', basis: [hIn, calc('H less the Time Req total (a floor: the rows it could fill); a proposal')] });
   if (hMin !== null || t.fdlH !== null)
-    patches.push({ id: 'ts.data.time-by-which-def-to-be-ready', draft: `By ${hMin === null ? 'H' : `H (${clockAt(hMin, 0)})`}: he sets out at H${t.fdlH !== null ? ` and can be at the FDLs from ${whenText(t.fdlH, hMin)}, unopposed` : ''}.`, state: 'judge', basis: [hIn, ...(t.fdlH !== null ? [calc("His earliest at the FDLs: the en options, at the IPB book's unopposed rates (p 18)")] : []), calc('Ready by H: a proposal')] });
+    patches.push({ id: 'ts.data.time-by-which-def-to-be-ready', draft: `By ${hMin === null ? 'H' : `H (${clockAt(hMin, 0)})`}: the En sets out at H${t.fdlH !== null ? ` and can be at the FDLs from ${whenText(t.fdlH, hMin)}, unopposed` : ''}.`, state: 'judge', basis: [hIn, ...(t.fdlH !== null ? [calc("The En's earliest at the FDLs: the en options, at the IPB book's unopposed rates (p 18)")] : []), calc('Ready by H: a proposal')] });
   return { patches, confirm: [] };
 }
 

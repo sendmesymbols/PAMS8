@@ -230,7 +230,13 @@ MS/
   corridors and avenues of approach: least-cost ways from strips of the area, an avenue = two corridors side by side,
   narrows, crossovers; drawn as the MS attack arrows (layer `ms-ground-guide-ipb-apch`), in tab 3 (replacing the single
   path), on the rail. Pure engine `GroundGuideIpbCorridors.ts`, map `GroundGuideIpbApchMap.ts`, tab 3
-  `GroundGuideIpbApchView.ts`; `guide.ipbApproaches()`, `ipbApproachesAround()`; `node tools/ipb-test/corridors.mjs` (43 checks).
+  `GroundGuideIpbApchView.ts`; `guide.ipbApproaches()`, `ipbApproachesAround()`; `node tools/ipb-test/corridors.mjs` (53 checks).
+  Review fixes (24 Nov 2026): the slope is judged along each way's own heading from the elevation (a cell coded for slope
+  alone is passable; a climb at the SLOW-GO figure is three times dearer, at NO-GO impassable, diagonal steps judged by
+  their components; a 'steep' narrows with its %), the free width is measured square to the way, strips are one avenue
+  wide (Bde 5, Div 4 on open ground), two ways through one narrows are one avenue, the turning approach ranks first only
+  while the way round is as good going (bonus 15-30 by cost), the book's day time is in the rank (8 points an hour) and the
+  reasons (`hoursDay`, `steepPct`); the enemy's mover is read off his symbols in the area (`_enemyMoverIn`, armour when none).
   **Y** (`ipb.apchEnd`: `objective` default / `through` / `both`): approaches onto the objective's frontage by its echelon
   (your symbol in the en's options; the Threat marker place or the nearest en symbol ahead in yours), frontal and Lt / Rt
   flanking from an FUP `ipb.fupM` (1,100 m) short, flanks first, the last 3 km on their side, and (`ipb.turn`) a turning
@@ -261,7 +267,8 @@ MS/
   before the depth localities; new tab **5 Decision** (time ladder, decision support picture, decisions, event matrix),
   map stars (`ipb.mapDecision`), rail line 5, Create on Map NAI / TAI / Decision Pt; **Annex A** weather (`annexA`: GSOD
   visibility, WorldClim temperature / wind; tiles Wx for Fire in tab 1, Wx for Mnvr in tab 3). `node
-  tools/ipb-test/decision.mjs` (25 checks). On foot the times add the MW p 81 climb (30-60 min per 300 m of ascent from
+  tools/ipb-test/decision.mjs` (31 checks). COA 1 most likely / COA 2 most dangerous (`decisionPoints.coa`, E; ATP 2-01.3
+  6-7..6-13) with the NAI that confirms each; entry NAIs are lines across the avenue (ATP 6-20). On foot the times add the MW p 81 climb (30-60 min per 300 m of ascent from
   the grid's elevation along the avenue; vehicles pay nothing), the same figure the Intelligent Deployment tab's moves pay.
   With F on the Gr Scope rail draws at the area read's scale (`scope.extScale: area`): centred on the area, the symbol and
   its rings where the symbol is (`ScopeFrame.spot`).
@@ -270,7 +277,14 @@ MS/
   LZ (landing points of `lzClass` x `lzPoints`, slope 7° / 4° in mountains, 10 : 1 approach, existing helipads first) and DZ
   ranked, OPs over the enemy's LZs, AD sites for long-range / flank / bottom shots, flight profile, Wx for Air; map
   (`ipb.mapAir`), rail line 4, Create on Map 'air' (LLTR, LZ, DZ, SHORAD EZ, OP); figures `IpbDoctrine.json air` (US T
-  figures to confirm); `guide.ipbAir()`; `node tools/ipb-test/air.mjs` (29 checks).
+  figures to confirm); `guide.ipbAir()`; `node tools/ipb-test/air.mjs` (33 checks). Review fixes (24 Nov 2026): the 10 : 1
+  approach test counts the ground rising beside the LZ; existing helipads / airfields are favoured for own LZs only; the
+  other side's AD symbols on the map (`Rng.ad`, `hisAd`, cost `air.cost.ad`) are a cost on the air avenues. **Airspace
+  measures and gun-target lines** (`ipb.airspace`, `GroundGuideIpbAirspace.ts`, `node tools/ipb-test/airspace.mjs` 31 checks;
+  24 Nov 2026): the 2525D ROZ / HIDACZ / ACA / engagement-zone symbols on the map read over each air avenue (share inside;
+  what each means for the side that flies, `IpbDoctrine airspace`, FM 3-09 2024 App B pp B-9, B-20, B-27; joint definitions
+  unverified) and own gun-target lines from PAA / artillery symbols to the targets (Obj and his Posns, or TAIs and the Threat),
+  avenues crossing or within 500 m (E) flagged; tab 4 tile, rail row, text, dotted lines and ✕ marks on the map.
   Phase 7: **situation templates** (`ipb.template` auto | id | off, `GroundGuideIpbTemplate.ts`, tab 5 page 2
   `GroundGuideIpbTemplateView.ts`): a doctrinal template from `MS/Data/IpbTemplates.json` (IDP Bde CC, DSF Div BG, Strike
   Corps bridgehead, Mtn Div attack, Inf Bde / Inf Div defence; KYE-2019, OoW, DW, IBB figures with pages; Fig 6 / 7 readings
@@ -523,8 +537,18 @@ MS/
   Annex Q by Light (Day / Moonlight / Dark night chips), the drift entry 2 x the width upstream. 2525D Assault Crossing
   `25271300` and Bridge `25271400` added to Symbols.json on the Bridge class; crossing places slide 150 m to better spots;
   the Mf chip adds his minefield 900-1000 m out with Breach lanes timed from Annex Q (`withMinefield`, `breachRow`). The
-  mirror, **canal defence** (`bn-def-canal`, IC s85 pp 449-458, IBB S57 pp 316-318): laid along the canal (`canalPrep`),
+  mirror, **canal defence** (`bn-def-canal`, IC s85 pp 449-458, IBB S60-62 pp 328-339, Annex V p 483): laid along the canal (`canalPrep`),
   rows Canal / Higher bank / Bridges in sector / Marsh / Obstacle value. `node tools/planbuilder-test/crossing.mjs` (58).
+  **Included 23-24 Nov 2026** (`PlanBuilder_Plan.md` "Included and enhanced"): every PlanDoctrine figure backed (D / R / calc
+  refs checked by `verify.py`, E decided + searched, M settings; `recipes.mjs` fails on any unbacked one); **reverse slope**
+  (`bn-def-rev-slope` / `coy-def-rev-slope`, `PlanRevSlope.ts`: crest on the 30 m elevation, FDL behind it within MG range,
+  OPs / FPF on the crest, Fields of fire FDL to crest; IC s78 pp 429-431, IBB s69 pp 357-359; `revslope.mjs`); **withdrawal
+  by night** (`bn-wdr-night`, `PlanWithdrawal.ts`: old HQ, aim back, new main posn; rear parties, RVs, EPs, routes back,
+  intermediate posn beyond En field artillery and behind an obstacle (class grid + mapped canals / rivers), programme from
+  last light; Check my plan `checkWithdrawal`; `withdrawal.mjs`); Coy Attk, Bde Def, Div Def, Bde Attk recipes; **three
+  phases** (`threePhaseRecipe`, P cycles 1-2-3) and an Obj 2 the user marks; the tank Sqn harbour and its move; FUP (Tks)
+  against the En ATGM range from the ORBAT; Corps bridging when the span passes the division's 84 m; the patrol's Night
+  March chart. Plan Builder texts say En / Own, never his / he.
   Review fixes (23 Nov 2026), checked by `node tools/planbuilder-fixes/run.mjs` (18): the ground's kind needs class data
   (elevation alone is never "plains"); no approach found is grey, never a Pass; Check my plan faces each posn by its drawn
   open face and times the drawn Sup / C Pen posns; the alternate's move one way (foot rate x under-fire factor + settle);
