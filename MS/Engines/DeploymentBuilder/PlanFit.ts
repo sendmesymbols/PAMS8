@@ -827,6 +827,8 @@ export interface FittedLayout {
   manual: Record<string, XY>;
   /** The kind of ground it was fitted for (set, read off the bundle, or assumed) and who attacks it. */
   terrain: TerrainSpec | null;
+  /** What the bundle reads the ground as where it rests, also when the user set the kind (for the dock's "detected"). */
+  detected?: TerrainSpec | null;
   enemy: EnemySpec | null;
   /** The unit (ORBAT) the plan is laid for; null when the ORBAT is not loaded. */
   unit: UnitBrief | null;
@@ -997,9 +999,11 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   // a reverse slope defence (PlanRevSlope): the crest in front read, the plan moved behind it, OPs and FPF on the crest
   const rs: RevSlopeFind | null = recipe.layout === 'rev-slope' ? findReverseSlope(base, frame, ground, ctx.doc) : null;
   if (rs && (Object.keys(rs.nudges).length || Object.keys(rs.geom).length)) fitBase = solveRecipe(recipe, ctx, { ...inp.opts, nudges: addNudges(manual, rs.nudges), geom: { ...(inp.opts.geom ?? {}), ...rs.geom } });
+  // what the bundle reads here, also when the user set the kind (the dock says both)
+  const detected = detectTerrain(ground, frame, base, recipe, ctx.doc);
   const terrain: TerrainSpec = inp.terrain && inp.terrain !== 'auto'
     ? { kind: inp.terrain, source: 'user' }
-    : detectTerrain(ground, frame, base, recipe, ctx.doc) ?? { kind: 'plains', source: 'assumed', why: 'the ground round it is not loaded yet' };
+    : detected ?? { kind: 'plains', source: 'assumed', why: 'the ground round it is not loaded yet' };
   // the default enemy in the mountains is infantry (MW pp 238-239); one the user set is kept
   const mtnType = doctrineAt(ctx.doc, 'terrain.kinds.mountain.enemyType');
   const enemy: EnemySpec | null = inp.enemy && inp.enemy.source === 'default' && terrain.kind === 'mountain' && recipe.task !== 'attack' && typeof mtnType === 'string'
@@ -1081,7 +1085,7 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   fit.fails = all.filter((c) => c.st === 'fail').length;
   fit.warns = all.filter((c) => c.st === 'warn').length;
   const res: SolveResult = { ...raw, mode: 'terrain', rows: merged.rows, slots: merged.slots, confirm: canal ? [...raw.confirm, ...canal.confirm] : raw.confirm, assumptions: [...raw.assumptions.filter((a) => !/terrain was not read/.test(a)), `Fitted to the ground: ${fit.data}.`] };
-  return { recipe, res, raw, fit, frame, anchor: inp.anchor, bearing: inp.bearing, manual: manualJ, terrain, enemy, unit };
+  return { recipe, res, raw, fit, frame, anchor: inp.anchor, bearing: inp.bearing, manual: manualJ, terrain, detected, enemy, unit };
 }
 
 // ── the unit's AT weapons (ORBAT) ──────────────────────────────────────────────────────────────────────────────────

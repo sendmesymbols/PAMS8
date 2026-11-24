@@ -5302,17 +5302,73 @@ body.ms-popup-dark .esri-popup__pointer-direction {
   padding: 0 0 4px;
 }
 
-/* Intelligent Deployment: the card beside the cursor while a built plan rests (PlanBuildTab._showCard / _cardHtml). The
-   user's pick C "Ledger" of plan-builder-card-options.html (24 Nov 2026): 500 px for a fitted plan, a one-line state
-   shrinks to its text. Sizes and colours are GroundGuideTokens' (12 / 13.5 / 15.5 / 22 px; the verdict ladder), so a Warn
-   here is the SLOW-GO orange of the Ground Guide. It sits in the map's container and never takes the mouse. */
+/* Intelligent Deployment: the plan's card while a built plan rests (PlanBuildTab._showCard / _cardHtml), docked full
+   width at the foot of the map as the Platoon Guide's bar is (the user, 24 Nov 2026: at the cursor it hid the map and the
+   plan; "full width, docked at bottom"). The ledger is the user's pick C of plan-builder-card-options.html; beside it
+   the Ground (what the terrain reads) and every layout's score, as chips that work while the plan is armed. Sizes and
+   colours are GroundGuideTokens' (12 / 13.5 / 15.5 / 22 px; the verdict ladder), so a Warn is the SLOW-GO orange of the
+   Ground Guide. It sits in the map's container over the host's panels at the foot, takes the mouse (its chips), and its
+   height is capped at 40 % of the map (_dockCard). */
 .pb-card {
-  position: absolute; z-index: 30; pointer-events: none; width: max-content; min-width: 280px; max-width: 500px;
+  position: absolute; z-index: 2147482700; left: 10px; right: 10px; bottom: 10px;
+  display: flex; flex-direction: column;
   border-radius: 10px; background: #1b1f25; border: 1px solid rgba(255, 255, 255, 0.16); overflow: hidden;
   box-shadow: 0 0 0 1px rgba(11, 13, 16, 0.85), 0 18px 38px -10px rgba(0, 0, 0, 0.6);
   color: #f1f3f6; font: 13.5px/1.42 system-ui, 'Segoe UI', Arial, sans-serif; font-variant-numeric: tabular-nums;
 }
-.pb-card.is-full { width: 500px; }
+/* while the dock is up the Mgr's floating placing bar would sit on it: hidden, its step leads the dock's key row */
+body.pb-docked .db-placement-instructions { display: none !important; }
+.pb-card .pb-c-keys .pb-c-step { white-space: normal; color: #dfe4ea; margin-right: 6px; }
+.pb-card .pb-c-keys .pb-c-step:empty { display: none; }
+.pb-card .pb-c-keys .pb-c-step b { color: #f7f8fa; font-weight: 700; margin-right: 8px; }
+/* a passing state (moving, fitting) over a reading: the reading stays, dimmed, the state in the head */
+.pb-card.is-stale .pb-c-body, .pb-card.is-stale .pb-c-fit { opacity: 0.45; transition: opacity 0.12s ease-out; }
+.pb-card .pb-c-status:empty { display: none; }
+.pb-card .pb-c-status { align-self: center; font-size: 12px; color: #8ec1ea; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.pb-card .pb-c-fold {
+  flex: none; align-self: center; width: 26px; height: 26px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent; color: #c3cbd3; font: 600 13px/1 system-ui, 'Segoe UI', Arial, sans-serif; cursor: pointer;
+}
+.pb-card .pb-c-fold:hover { background: #2c343e; color: #f7f8fa; }
+.pb-card .pb-c-fold:focus-visible, .pb-card .pb-c-gc:focus-visible, .pb-card .pb-c-lay:focus-visible { outline: 2px solid #8ec1ea; outline-offset: 1px; }
+/* folded: the ledger away, the ground and the layouts (and the keys) stay, the verdict in the head */
+.pb-card.is-folded .pb-c-main, .pb-card.is-folded .pb-c-det { display: none; }
+.pb-card.is-folded .pb-c-pick { flex-basis: 100%; border-right: 0; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.pb-card .pb-c-fv { flex: none; align-self: center; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 650; color: #dfe4ea; white-space: nowrap; }
+/* the body: the choices (Ground, Layouts) on the left, the ledger on the right; stacked when narrow. The dock's height is
+   capped (_dockCard): the body scrolls inside it, the head and the keys stay */
+.pb-card > .pb-c-h, .pb-card > .pb-c-keys { flex: none; }
+.pb-card .pb-c-body { flex: 1 1 auto; min-height: 0; display: flex; flex-wrap: wrap; align-items: stretch; overflow-y: auto; }
+.pb-card .pb-c-pick { flex: 0 1 470px; min-width: 260px; padding: 8px 14px 10px; display: grid; gap: 10px; align-content: start; background: #20262e; border-right: 1px solid rgba(255, 255, 255, 0.1); }
+.pb-card .pb-c-main { flex: 1 1 440px; min-width: 280px; }
+.pb-card .pb-c-sec { display: grid; gap: 6px; }
+.pb-card .pb-c-sl { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; color: #c3cbd3; text-transform: uppercase; }
+.pb-card .pb-c-sl > span { margin-left: auto; text-transform: none; font-weight: 400; }
+.pb-card .pb-c-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.pb-card .pb-c-gc, .pb-card .pb-c-lay {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; border-radius: 6px; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.14); background: #262d36; color: #dfe4ea;
+  font: 600 12px/1 system-ui, 'Segoe UI', Arial, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.pb-card .pb-c-gc:hover, .pb-card .pb-c-lay:hover { background: #2c343e; border-color: rgba(255, 255, 255, 0.26); color: #f7f8fa; }
+.pb-card .pb-c-gc.is-on, .pb-card .pb-c-lay.is-on { background: rgba(142, 193, 234, 0.16); border-color: #8ec1ea; color: #f7f8fa; box-shadow: inset 0 0 0 1px rgba(142, 193, 234, 0.45); }
+.pb-card .pb-c-gc.is-off { opacity: 0.5; }
+/* what the terrain reads here: a dotted ring, beside a kind the user set */
+.pb-card .pb-c-gc.is-read:not(.is-on) { border-style: dashed; border-color: #8ec1ea; }
+.pb-card .pb-c-lay > span { color: inherit; }
+.pb-card .pb-c-lay > b { font-size: 13.5px; font-weight: 750; color: #f7f8fa; min-width: 18px; text-align: right; }
+.pb-card .pb-c-lay .pb-ic, .pb-card .pb-c-det .pb-ic { width: 14px; height: 14px; vertical-align: -2px; }
+.pb-card .pb-c-vn { display: inline-flex; align-items: center; gap: 2px; }
+.pb-card .pb-c-vn em { font-style: normal; font-size: 12px; font-weight: 750; }
+.pb-card .pb-c-lay.pb-fail .pb-c-vn em { color: #ff8a8d; }
+.pb-card .pb-c-lay.pb-warn .pb-c-vn em { color: #ffb46b; }
+.pb-card .pb-c-lay.pb-unchecked > b { color: #7f8893; }
+.pb-card .pb-c-lay > i { font-style: normal; font-size: 11px; font-weight: 600; color: #8ec1ea; margin-left: 1px; }
+.pb-card .pb-c-lay.is-best { border-color: rgba(142, 193, 234, 0.6); }
+.pb-card .pb-c-det { font-size: 12px; color: #b8c1ca; line-height: 1.35; }
+.pb-card .pb-c-det b { color: #f7f8fa; }
+.pb-card .pb-c-det .pb-c-off { color: #ffb46b; }
+.pb-card .pb-c-det .pb-c-off b { color: #ffd2a6; }
 .pb-card b { font-weight: 650; }
 .pb-card .pb-card-dim { color: #c3cbd3; font-size: 12px; }
 .pb-card > .pb-card-dim { padding: 10px 14px; }

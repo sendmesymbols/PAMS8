@@ -752,6 +752,8 @@ class DeploymentBuilderEngine {
           replace: (doc, redraw) => this.replaceSelectedPlan(doc, redraw),
           readDrawn: (scope) => this.readDrawn(scope),
           moveAnchor: (xy) => this.moveAnchor(xy),
+          ghostSpot: () => this.ghostSpot(),
+          restoreGhost: (spot) => this.restoreGhost(spot),
           aside: () => el.querySelector<HTMLElement>('.db-tabs-aside'),
         });
       } catch (err) {
@@ -1966,6 +1968,26 @@ class DeploymentBuilderEngine {
    */
   public setPlacementHooks(h: PlacementHooks | null): void {
     this._placementHooks = h;
+  }
+
+  /** Where the ghost is drawn now, and in which phase (the Build tab's dock keeps it to put the plan back where it rested). */
+  public ghostSpot(): unknown {
+    const g = this._lastGhost;
+    return g && this._phase !== 'idle' ? { anchor: g.anchor, theta: g.theta, cursor: g.cursor, phase: this._phase } : null;
+  }
+
+  /**
+   * Put the ghost back at a spot ghostSpot() gave: the pointer went from the map onto the Build tab's dock, so the plan
+   * stays where it rested, not where the pointer crossed the map's edge. Only in the same phase (and, while aiming, the
+   * same anchor); the next pointer-move over the map takes it on as before. False: not put back.
+   */
+  public restoreGhost(spot: any): boolean {
+    if (!spot || this._phase === 'idle' || spot.phase !== this._phase) return false;
+    if (this._phase === 'bearing' && spot.anchor !== this._anchorPoint) return false;
+    if (this._ghostRafId !== null) { cancelAnimationFrame(this._ghostRafId); this._ghostRafId = null; }
+    this._pendingGhostCursor = null;
+    this._lastGhost = { anchor: spot.anchor, theta: spot.theta, cursor: spot.cursor };
+    return true;
   }
 
   /**

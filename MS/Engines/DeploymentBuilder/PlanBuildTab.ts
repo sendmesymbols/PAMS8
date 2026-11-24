@@ -93,6 +93,10 @@ export interface BuildTabHost {
   moveAnchor?(xy: XY): boolean;
   /** A slot in the Mgr's tab bar for the Build a plan / Check my plan switch; none: the switch gets a row of its own. */
   aside?(): HTMLElement | null;
+  /** Where the ghost is drawn now (opaque), to put it back there with restoreGhost; null while not placing. */
+  ghostSpot?(): unknown;
+  /** Draw the ghost again at a spot ghostSpot() gave (the pointer went onto the dock). False: not put back. */
+  restoreGhost?(spot: unknown): boolean;
 }
 
 /** Roles a posn can be set to in Check my plan (a click walks them). */
@@ -351,7 +355,8 @@ export class PlanBuildTab {
   private _task = 'defence';
   private _familyId = '';
   private _recipeId = '';
-  private _auto = false;
+  /** Auto ranks the layouts where the plan rests and takes the best: the default (the user, 24 Nov 2026). */
+  private _auto = true;
   private _detail: 'coy' | 'pl' = 'coy';
   private _alternates: 'visible' | 'hidden' | 'none' = 'hidden';
   private _altFromSettings = true;
@@ -408,8 +413,6 @@ export class PlanBuildTab {
   private _phases: 1 | 2 | 3 = 1;
   /** Tanks with the attack (PlanTanks): none, in the fire support role, or in close support (armour heavy). T cycles it while placing. */
   private _tanks: TankMode = 'none';
-  /** Where the cursor card was shown last (screen px), for a refresh without a rest point. */
-  private _cardAt: { x: number; y: number } | null = null;
   /** Phase 2 by both follow-up Coys (no Bn reserve) or by C Coy with D Coy kept as the reserve; null: the doctrine's default. R flips it while placing. */
   private _ph2Coys: 1 | 2 | null = null;
   private _ph2 = new Map<string, Recipe>();
@@ -623,8 +626,7 @@ export class PlanBuildTab {
     this._closeProbe();
     this._layer?.destroy();
     this._layer = null;
-    this._card?.remove();
-    this._card = null;
+    this._removeCard();
   }
 
   // ── recipes ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -1299,7 +1301,8 @@ export class PlanBuildTab {
     if (!r.width || !r.height || typeof document.elementsFromPoint !== 'function') return;
     const free = (x: number, y: number): boolean => {
       if (x < 0 || y < 0 || x >= W || y >= H) return false;
-      const top = document.elementsFromPoint(x, y).find((e) => e !== el && !el.contains(e) && !(e as HTMLElement).classList?.contains('pb-card'));
+      // the plan's dock counts as covering the map: the notice sits above it
+      const top = document.elementsFromPoint(x, y).find((e) => e !== el && !el.contains(e));
       if (!top || top === document.body || top === document.documentElement) return true;
       return !!top.closest('.esri-view-surface');
     };
@@ -1413,20 +1416,22 @@ export class PlanBuildTab {
       case 'task': {
         if (!TASKS.some((x) => x.id === val)) break;
         const prev = this._task, prevFam = this._familyId;
-        this._task = val; this._auto = false; this._pickDefaults();
+        this._task = val; this._auto = this._autoOn; this._pickDefaults();
         this._resetForTask(val, prev, this._familyId !== prevFam);
         this._solve();
         break;
       }
       case 'family': {
         const changed = val !== this._familyId;
-        this._familyId = val; this._recipeId = ''; this._auto = false;
+        this._familyId = val; this._recipeId = ''; this._auto = this._autoOn;
         this._resetForTask(this._task, this._task, changed);
         this._pickDefaults();
         break;
       }
-      case 'layout': this._recipeId = val; this._auto = false; this._solve(); break;
+      // while the plan is armed the ghost follows at once (and is fitted again where it rests), as the dock's chips do
+      case 'layout': if (this._placing) { this._setLayout(val); return; } this._recipeId = val; this._auto = false; this._solve(); break;
       case 'auto':
+        if (this._placing && this._autoOn && this._terrain) { this._setLayout('auto'); return; }
         if (!this._autoOn) { this._msg = 'Auto is switched off in the Options (Auto ranks the layouts).'; break; }
         if (!this._terrain) { this._msg = 'Auto ranks the layouts on the ground: it needs terrain data.'; break; }
         this._auto = true; break;
@@ -1457,7 +1462,9 @@ export class PlanBuildTab {
         break;
       }
       case 'light': this._light = val === 'day' || val === 'moon' ? val : 'dark'; this._swapPlan(`Light: ${this._light === 'moon' ? 'moonlight' : this._light === 'dark' ? 'dark night' : 'day'}`); break;
-      case 'ground': this._ground = (val as any) || 'auto'; this._solve(); if (this._mode === 'check' && this._checkRecs) this._runCheck(); break;
+      case 'ground':
+        if (this._placing && this._mode !== 'check') { this._setGround((val as any) || 'auto'); return; }
+        this._ground = (val as any) || 'auto'; this._solve(); if (this._mode === 'check' && this._checkRecs) this._runCheck(); break;
       case 'checkScope': this._checkScope = (val as any) || 'selected'; this._scopeChosen = true; break;
       case 'checkRun': this._defaultScope(); this._readAndCheck(); return;
       case 'role': {
@@ -1612,6 +1619,9 @@ export class PlanBuildTab {
       if (this._isPh2) k.push(['R', `Ph 2 by ${this._coys === 2 ? 'C Coy only' : 'C, D Coys'}`]);
       k.push(['T', this._tanks === 'none' ? 'tanks fire sp' : this._tanks === 'fire' ? 'tanks close sp' : 'no tanks']);
     }
+    // E / N: the ground and the layout while armed (the dock's chips do the same)
+    if (this._hasGround) { const g = this._nextGround(false); k.push(['E', `ground ${g === 'auto' ? 'Auto' : terrainLabel(this._doc, g).toLowerCase()}`]); }
+    if (this._hasLayouts) { const l = this._nextLayout(false); if (l) k.push(['N', `layout ${l === 'auto' ? 'Auto' : this._layoutWord(l).toLowerCase()}`]); }
     if (!this._placing?.entry.faceAt) k.push(['Right-click', 'reset the first click']);
     k.push(['Esc', 'cancel']);
     return k;
@@ -1625,7 +1635,7 @@ export class PlanBuildTab {
   /** The keys while placing. */
   private _placingKey(e: KeyboardEvent): void {
     const low = e.key.length === 1 ? e.key.toLowerCase() : '';
-    if (!['j', 'r', 'p', 't', 'm', 'g'].includes(low)) return;
+    if (!['j', 'r', 'p', 't', 'm', 'g', 'e', 'n'].includes(low)) return;
     const tgt = e.target as HTMLElement | null;
     if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.tagName === 'SELECT' || tgt.isContentEditable)) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -1633,6 +1643,20 @@ export class PlanBuildTab {
     const K = e.shiftKey ? `Shift+${low.toUpperCase()}` : low.toUpperCase();
     const r = this._result?.recipe;
     switch (low) {
+      // E: the kind of ground (Auto, Plains, Obstacle, Desert, Mountains), Shift+E back; fitted again where it rests
+      case 'e':
+        take();
+        if (!this._hasGround) { this._keyWhy(K, `a ${this._isCrossing ? 'crossing' : this._smallTask} is laid on the ground it reads: no kind of ground to set`); return; }
+        this._setGround(this._nextGround(e.shiftKey), true);
+        return;
+      // N: the layout (Auto, then the family's), Shift+N back; fitted again where it rests
+      case 'n': {
+        take();
+        const next = this._nextLayout(e.shiftKey);
+        if (!next) { this._keyWhy(K, 'this plan has one layout'); return; }
+        this._setLayout(next, true);
+        return;
+      }
       // M: an ambush's target (wheeled, tanks, on foot): what NO-GO holds it on the road
       case 'm':
         take();
@@ -1714,6 +1738,7 @@ export class PlanBuildTab {
     // a jitter of a few px where the plan rests keeps the fit, J's and G's moves and the products
     if (this._rest && !this._restTimer && this._sameRest(anchor, bearing, screen, cursor)) return;
     this._cursor = cursor;
+    this._ghostPhase = _phase;
     // moving: back to the quick layout, J's moves dropped, products off, the card says so
     const aimM = this._isSmall || this._isWithdrawal ? this._aimM(anchor, cursor) : null;
     if (aimM !== null && this._result) {
@@ -1750,11 +1775,12 @@ export class PlanBuildTab {
   /** How many layouts a fit here runs: Auto's (capped by planBuilder.auto.maxLayouts) or the one chosen. */
   private _fitIds(all = false): string[] {
     const fam = this._families.find((f) => f.id === this._familyId);
-    if (!fam || !((this._auto && this._autoOn) || all)) return [this._recipeId];
+    if (!fam) return [this._recipeId];
     const ids = this._famIds(fam);
     if (all) return ids;
     const cap = Math.max(1, Math.floor(Number(this._settings.auto?.maxLayouts) || ids.length));
-    // the chosen layout always among them, then the family's order
+    // Auto ranks them; a layout chosen by hand is fitted with the others beside it too, so the dock shows every layout's
+    // score where the plan rests (the user, 24 Nov 2026); the chosen one always among them, then the family's order
     return [this._recipeId, ...ids.filter((id) => id !== this._recipeId)].filter((id) => ids.includes(id)).slice(0, cap);
   }
 
@@ -1780,10 +1806,16 @@ export class PlanBuildTab {
   }
 
   /** Take a fitted layout (or ranking) as the ghost: swap the plan, draw the products, update the card. */
-  private _show(ranked: Fitted[]): void {
+  private _show(rankedIn: Fitted[]): void {
     const p = this._placing, r = this._rest;
     if (!p || !r) return;
+    // a J / G move refits the one layout placed: the others keep their scores at this spot (the dock's Layouts)
+    const ranked = rankedIn.length === 1 && this._ranked.length > 1 && this._held?.rest === r
+      ? [rankedIn[0], ...this._ranked.filter((x) => baseId(x.recipe.id) !== baseId(rankedIn[0].recipe.id))]
+      : rankedIn;
     this._ranked = ranked;
+    // where the plan rests with this reading: the dock puts it back here when the pointer goes onto it
+    this._held = { placing: p, rest: r, ranked, spot: this._host.ghostSpot?.() ?? null };
     const best = ranked[0];
     this._lastFit = best;
     this._lastSpot = { anchor: r.anchor, bearing: r.bearing, cursor: r.cursor ?? null };
@@ -1832,7 +1864,15 @@ export class PlanBuildTab {
     // the layout this ground suggests goes first (it only breaks ties: the score card ranks them)
     const first = out[0]?.terrain ? firstLayout(this._doc, out[0].terrain.kind) : null;
     if (first && out.length > 1) out.sort((a, b) => Number(b.recipe.layout === first) - Number(a.recipe.layout === first));
-    return rankFits(out);
+    const ranked = rankFits(out);
+    // what Auto would place here (the dock marks it beside a layout chosen by hand)
+    if (!all) this._autoPick = ranked[0] ? baseId(ranked[0].recipe.id) : '';
+    // a layout chosen by hand is the one placed: first, the others after it in their rank (their scores for the dock)
+    if (!(this._auto && this._autoOn) && !all) {
+      const i = ranked.findIndex((f) => baseId(f.recipe.id) === this._recipeId);
+      if (i > 0) ranked.unshift(...ranked.splice(i, 1));
+    }
+    return ranked;
   }
 
   /** What a route card's bearings are: grid (in the grid named) and mils, magnetic too when planBuilder.gmaDeg is set. */
@@ -2182,6 +2222,7 @@ export class PlanBuildTab {
     if (this._restTimer) clearTimeout(this._restTimer);
     this._restTimer = null;
     this._rest = null;
+    this._held = null;
     if (info.placed && this._lastFit) this._placedFit = this._lastFit;
     if (info.again && this._placing && !this._destroyed) {
       // the next copy starts from the quick layout; its own rest fits it
@@ -2193,8 +2234,7 @@ export class PlanBuildTab {
       this._ambushFrom = [];
       this._noteNext = '';
       this._clearProducts();
-      this._card?.remove();
-      this._card = null;
+      this._removeCard();
       if (this._placedFit) { this._recipeId = baseId(this._placedFit.recipe.id); this._result = this._placedFit.res; this._lastFit = this._placedFit; }
       this._showNote({ mode: 'Placed: click to place another copy', text: 'Each copy is fitted where it rests', keys: this._keysFor() });
       this._render();
@@ -2221,8 +2261,7 @@ export class PlanBuildTab {
     this._jKey = null;
     this._host.hooks(null);
     this._clearProducts();
-    this._card?.remove();
-    this._card = null;
+    this._removeCard();
     this._compare = null;
     this._routesShown = false;
     if (this._destroyed) return;
@@ -2449,53 +2488,191 @@ export class PlanBuildTab {
     return `<div class="pb-sum">Night March chart, SP to the Obj <span class="pb-dim">(${esc(this._brgNote(n.grid))}; ${n.lengthM} m, ${n.paces} paces, ${n.moveMin} min on the move, ${n.marchMin} min with the Night March halts${n.thermalAtM !== null ? `; inside the En thermal sights ${n.thermalAtM ? `from ${n.thermalAtM} m` : 'the whole way'}` : ''})</span></div><table class="pb-t">${n.legs.map((l) => `<tr><td>Leg ${l.i}</td><td>${this._brgCell(l.gridDeg)}</td><td>${fmtM(l.distM)}</td><td>${l.paces} paces</td><td>${l.min} min</td><td class="pb-dim">${esc(l.sight === 'none' ? '' : l.sight + ' sights')}</td></tr>`).join('')}</table>${n.checks.length ? `<div class="pb-dim">${n.checks.map(esc).join(' · ')}</div>` : ''}`;
   }
 
-  private _showCard(screenIn: { x: number; y: number } | null, html: string): void {
+  /**
+   * The plan's card, docked full width at the foot of the map (the user, 24 Nov 2026: at the cursor it hid the map and
+   * the plan), as the Platoon Guide's bar is. A fitted plan fills it (the ledger, the ground and the layouts with their
+   * scores, clickable); a passing state (moving, fitting) keeps the last reading dimmed and says what is happening, so
+   * the dock does not jump. Its key row leads with the step to do now (the Mgr's placing bar is hidden while it is up).
+   * `screen` is kept for the callers; the dock does not follow the cursor.
+   */
+  private _showCard(_screen: { x: number; y: number } | null, html: string): void {
     if (this._settings.card === false) return;
     const box = this._host.container();
-    // a key pressed while moving (T, P, R) has no rest point: the card stays where it was shown last
-    const screen = screenIn ?? (this._card ? this._cardAt : null);
-    if (!box || !screen) return;
-    this._cardAt = screen;
+    if (!box) return;
     if (!this._card) {
-      this._card = document.createElement('div');
-      this._card.className = 'pb-card';
-      box.appendChild(this._card);
+      const el = document.createElement('div');
+      el.className = 'pb-card';
+      el.setAttribute('role', 'region');
+      el.setAttribute('aria-label', 'Intelligent Deployment: the plan where it rests');
+      // the dock takes the mouse: its chips switch the ground and the layout while the plan is armed; nothing reaches the map
+      el.addEventListener('click', this._dockClick);
+      el.addEventListener('pointerenter', this._holdAtRest);
+      for (const t of ['pointerdown', 'pointerup', 'dblclick', 'wheel', 'contextmenu'] as const) el.addEventListener(t, (e) => e.stopPropagation());
+      box.appendChild(el);
+      this._card = el;
     }
-    // every key that works for the plan in hand, and what it does now, as key caps
-    this._card.innerHTML = `${html}<div class="pb-c-keys">${this._keysFor().map(([k, what]) => `<span>${kbd(k)}${esc(what)}</span>`).join('')}</div>`;
-    // the full ledger (a fitted plan) is 500 px; a one-line state (moving, fitting) shrinks to its text
-    this._card.classList.toggle('is-full', html.includes('pb-c-h'));
-    const w = box.clientWidth, h = box.clientHeight, cw = this._card.offsetWidth;
-    let x = screen.x + 22, y = screen.y + 22;
-    // too wide for the right of the cursor: on its left, as far out
-    if (x + cw > w) x = screen.x - cw - 22;
-    if (y + this._card.offsetHeight + 8 > h) y = screen.y - this._card.offsetHeight - 22;
-    // still too tall for either side: as low as it fits, never off the map's foot
-    y = Math.min(y, h - this._card.offsetHeight - 8);
-    this._card.style.left = `${Math.max(4, x)}px`;
-    this._card.style.top = `${Math.max(4, y)}px`;
-    this._clearOfHostBars(this._card, h);
+    const el = this._card;
+    const full = html.includes('pb-c-h');
+    if (!full && el.classList.contains('is-full') && el.querySelector('.pb-c-status')) {
+      // a passing state over a reading (each mouse move): the reading stays, dimmed, the state in its head; the dock
+      // keeps its place (no scan of the map's foot per move)
+      el.classList.add('is-stale');
+      el.querySelector('.pb-c-status')!.innerHTML = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      this._dockStep(el);
+      return;
+    }
+    // the step to do now (the Mgr's placing bar is hidden while the dock is up), then every key that works for the plan
+    // in hand and what it does now, as key caps
+    el.innerHTML = `${html}<div class="pb-c-keys"><span class="pb-c-step"></span>${this._keysFor().map(([k, what]) => `<span>${kbd(k)}${esc(what)}</span>`).join('')}</div>`;
+    this._dockStep(el);
+    el.classList.toggle('is-full', full);
+    el.classList.toggle('is-folded', full && this._dockFolded);
+    el.classList.remove('is-stale');
+    this._dockCard(el, box);
+  }
+
+  /** The step to do now, as the Mgr's placing bar says it (Step 1 of 2: Click where the HQ goes ...), at the head of the key row. */
+  private _dockStep(el: HTMLElement): void {
+    const s = el.querySelector<HTMLElement>('.pb-c-step');
+    if (!s) return;
+    const p = this._placing ? this._prompt(this._ghostPhase) : null;
+    s.innerHTML = p ? `<b>${esc(p.step)}</b>${esc(p.text)}` : '';
+  }
+
+  /** The placing phase the Mgr reported last (before the first click, or aiming after it): the dock's step line. */
+  private _ghostPhase: 'anchor' | 'bearing' = 'anchor';
+
+  /** The dock taken off the map (and the Mgr's own placing bar given back). */
+  private _removeCard(): void {
+    this._card?.remove();
+    this._card = null;
+    if (typeof document !== 'undefined') document.body.classList.remove('pb-docked');
+  }
+
+  /** Whether the dock is folded to its head (the ▾ button); kept while the tab lives. */
+  private _dockFolded = false;
+  /** The layout Auto ranks first where the plan rests (the last fit), marked in the dock beside one chosen by hand. */
+  private _autoPick = '';
+  /** The last reading shown and where the plan rested for it (the Mgr's ghost spot): the dock holds the plan there. */
+  private _held: { placing: unknown; rest: { anchor: XY; bearing: number; screen: { x: number; y: number } | null; cursor?: XY | null }; ranked: Fitted[]; spot: unknown } | null = null;
+
+  /**
+   * The pointer went from the map onto the dock: on its way it dragged the ghost to the map's edge (and may have started a
+   * fit there). The plan goes back where it rested with its reading, so the dock's chips act on that spot; the next
+   * move over the map takes the plan on again, with the ground and layout chosen.
+   */
+  private _holdAtRest = (): void => {
+    const h = this._held, p = this._placing;
+    if (!p || !h || h.placing !== p) return;
+    if (this._rest === h.rest && !this._restTimer) return;
+    if (!h.spot || !this._host.restoreGhost?.(h.spot)) return;
+    if (this._restTimer) clearTimeout(this._restTimer);
+    this._restTimer = null;
+    this._rest = h.rest;
+    this._show(h.ranked);
+  };
+
+  /**
+   * The dock spans the map's full width at its foot (the user, 24 Nov 2026: "full width, docked at bottom"), as the
+   * Platoon Guide's bar does, above the host's panels there; the CSS places it, this caps its height.
+   */
+  private _dockCard(el: HTMLElement, box: HTMLElement): void {
+    // at most about 40 % of the map: the plan stays in view above it (the ledger scrolls inside past that)
+    el.style.maxHeight = `${Math.max(150, Math.round(box.clientHeight * 0.4))}px`;
+    // the Mgr's floating "Click where ..." bar would sit on the dock: hidden while the dock is up, its words are in the dock
+    document.body.classList.add('pb-docked');
+  }
+
+
+  /** A chip of the dock: the ground (data-dock="ground:<kind|auto>"), the layout ("layout:<id|auto>"), or fold. */
+  private _dockClick = (e: Event): void => {
+    const b = (e.target as HTMLElement | null)?.closest('[data-dock]') as HTMLElement | null;
+    if (!b) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const [act, val] = String(b.dataset.dock).split(':');
+    if (act === 'fold') {
+      this._dockFolded = !this._dockFolded;
+      b.textContent = this._dockFolded ? '▴' : '▾';
+      const el = this._card, box = this._host.container();
+      el?.classList.toggle('is-folded', this._dockFolded);
+      if (el && box) this._dockCard(el, box);
+      return;
+    }
+    if (act === 'ground') this._setGround((val as 'auto' | TerrainKind) || 'auto');
+    else if (act === 'layout') this._setLayout(val || 'auto');
+  };
+
+  /** The ground's word for the dock and the key notice: Auto, or the kind set. */
+  private _groundWord(kind: 'auto' | TerrainKind): string {
+    return kind === 'auto' ? 'Auto (read off the terrain where the plan rests)' : terrainLabel(this._doc, kind);
+  }
+
+  /** A layout's short name (Two up, Three up...) for the dock and the key notice. */
+  private _layoutWord(id: string): string {
+    if (id === 'auto') return 'Auto (the best where it rests)';
+    const r = this._rcp(id);
+    return LAYOUT_LABEL[r?.layout ?? ''] ?? r?.name ?? id;
   }
 
   /**
-   * The card's top kept out from under the host's bars over the map (the top toolbars, a docked panel): its top corners
-   * are tested with elementsFromPoint and it steps down 8 px at a time until the map shows there, never past the map's
-   * foot. A host without elementsFromPoint (Node) leaves it where it is.
+   * The ground set (the dock's chips, E, the tab's Ground row while placing): the plan solved again and, while it rests,
+   * fitted again on the spot. `say` puts the change in the key notice (a key; a chip shows it in the dock itself).
    */
-  private _clearOfHostBars(el: HTMLElement, mapH: number): void {
-    if (typeof document.elementsFromPoint !== 'function') return;
-    const free = (x: number, y: number): boolean => {
-      const top = document.elementsFromPoint(x, y).find((e) => e !== el && !el.contains(e));
-      return !top || !!top.closest('.esri-view-surface, .esri-view-root');
-    };
-    const maxTop = mapH - el.offsetHeight - 8;
-    let top = parseFloat(el.style.top) || 0;
-    for (let i = 0; i < 80 && top < maxTop; i++) {
-      const r = el.getBoundingClientRect();
-      if (free(r.left + 6, r.top + 2) && free(r.right - 6, r.top + 2)) return;
-      top = Math.min(maxTop, top + 8);
-      el.style.top = `${top}px`;
+  private _setGround(kind: 'auto' | TerrainKind, say = false): void {
+    if (kind !== 'auto' && !TERRAIN_KINDS.includes(kind)) return;
+    this._ground = kind;
+    if (this._placing) this._swapPlan(`Ground: ${this._groundWord(kind)}`);
+    else this._solve();
+    this._render();
+    if (say) this._showNote({ mode: `Ground: ${this._groundWord(kind)}`, keys: this._keysFor() });
+  }
+
+  /** The layout set (the dock's chips, N, the tab's Layout row while placing): Auto ranks them, else the one chosen. */
+  private _setLayout(id: string, say = false): void {
+    if (id === 'auto') {
+      if (!this._autoOn || !this._terrain) { this._keyWhy('Auto', !this._terrain ? 'Auto ranks the layouts on the ground: it needs terrain data' : 'Auto is switched off in the Options'); return; }
+      this._auto = true;
+    } else {
+      const fam = this._families.find((f) => f.id === this._familyId);
+      if (!fam || !this._famIds(fam).includes(id)) return;
+      this._recipeId = id;
+      this._auto = false;
+      this._manual = {};
     }
+    if (this._placing) this._swapPlan(`Layout: ${this._layoutWord(id)}`);
+    else this._solve();
+    this._render();
+    if (say) this._showNote({ mode: `Layout: ${this._layoutWord(id)}`, keys: this._keysFor() });
+  }
+
+  /** The ground's order for E (Shift+E back): Auto, then the kinds. */
+  private _nextGround(back: boolean): 'auto' | TerrainKind {
+    const all: ('auto' | TerrainKind)[] = ['auto', ...TERRAIN_KINDS];
+    const i = all.indexOf(this._ground);
+    return all[(i + (back ? all.length - 1 : 1)) % all.length];
+  }
+
+  /** The layouts' order for N (Shift+N back): Auto (with the terrain and Auto on), then the family's layouts. */
+  private _nextLayout(back: boolean): string | null {
+    const fam = this._families.find((f) => f.id === this._familyId);
+    const ids = fam ? this._famIds(fam) : [];
+    const all = [...(this._autoOn && this._terrain ? ['auto'] : []), ...ids];
+    if (all.length < 2) return null;
+    const now = this._auto && this._autoOn && this._terrain ? 'auto' : this._recipeId;
+    const i = Math.max(0, all.indexOf(now));
+    return all[(i + (back ? all.length - 1 : 1)) % all.length];
+  }
+
+  /** The family has a choice of layout (the dock's Layouts and N). */
+  private get _hasLayouts(): boolean {
+    const fam = this._families.find((f) => f.id === this._familyId);
+    return !!fam && this._famIds(fam).length > 1;
+  }
+
+  /** The plan has a kind of ground to set (an ambush, patrol, recce or crossing has none). */
+  private get _hasGround(): boolean {
+    return !this._isSmall && !this._isCrossing;
   }
 
   /**
@@ -2523,7 +2700,11 @@ export class PlanBuildTab {
     if (best.fit.from && !best.fit.fromAssumed) ctx.push('faces the threat');
     if (best.fit.pending) ctx.push('Gr loading…');
     const score = Math.max(0, Math.min(100, Math.round(best.fit.score)));
-    const head = `<div class="pb-c-h"><div class="pb-c-tt"><div class="pb-c-t">${esc(best.recipe.name)}${this._auto ? '<span class="pb-c-chip">Auto</span>' : ''}</div>${ctx.length ? `<div class="pb-c-ctx">${esc(ctx.join(' · '))}</div>` : ''}</div><div class="pb-c-fit"><div><span>Fit</span><b>${score}</b><small>/100</small></div><i class="pb-c-bar"><b style="width:${score}%"></b></i></div></div>`;
+    const autoNow = this._auto && this._autoOn && this._terrain;
+    // folded, the head says the verdict in a word (the ledger is hidden; the ground and the layouts stay)
+    const nf = best.fit.fails, nw = best.fit.warns;
+    const verdict = `<span class="pb-c-fv">${cardIcon(nf ? 'fail' : nw ? 'warn' : 'pass')}${nf || nw ? esc([nf ? `${nf} fail${nf > 1 ? 's' : ''}` : '', nw ? `${nw} warn${nw > 1 ? 's' : ''}` : ''].filter(Boolean).join(', ')) : 'all pass'}</span>`;
+    const head = `<div class="pb-c-h"><div class="pb-c-tt"><div class="pb-c-t">${esc(best.recipe.name)}${autoNow ? '<span class="pb-c-chip">Auto</span>' : ''}</div>${ctx.length ? `<div class="pb-c-ctx">${esc(ctx.join(' · '))}</div>` : ''}</div><span class="pb-c-status" role="status"></span>${verdict}<div class="pb-c-fit"><div><span>Fit</span><b>${score}</b><small>/100</small></div><i class="pb-c-bar"><b style="width:${score}%"></b></i></div><button type="button" class="pb-c-fold" data-dock="fold" title="Fold the ledger away (the ground and the layouts stay) / open it again" aria-label="Fold or open the ledger">${this._dockFolded ? '▴' : '▾'}</button></div>`;
     // the ledger: the worst open and two more (as the mockup), the rest counted
     const shown = bad.slice(0, 3);
     // the row that opens: the worst with something to lay out (its detail), else none
@@ -2534,11 +2715,64 @@ export class PlanBuildTab {
     // the rest counted, the Gr moves the fit made
     const greyNames = [...new Set(grey.map((c) => c.name.replace(/^.*: /, '')))].slice(0, 3);
     const sum = `<div class="pb-c-sum"><span>${cardIcon('pass')}<b>${nPass}</b> Pass</span>${grey.length ? `<span>${cardIcon('unchecked')}<b>${grey.length}</b> Not checked${greyNames.length ? `: ${esc(greyNames.join(', '))}${grey.length > greyNames.length ? '…' : ''}` : ''}</span>` : ''}${best.fit.slides.length ? `<span class="pb-c-mv">${best.fit.slides.map((s) => slideWord(s)).join(', ')}</span>` : ''}</div>`;
-    // the layouts at this spot, and why the first is first (Auto ranks by fails, then warns, then score)
-    const tag = (r: Fitted) => { const f = r.fit.fails, w = r.fit.warns; return f || w ? ` (${[f ? `${f} fail${f > 1 ? 's' : ''}` : '', w ? `${w} warn${w > 1 ? 's' : ''}` : ''].filter(Boolean).join(', ')})` : ''; };
-    const lays = ranked.length > 1 ? `<div class="pb-c-sum pb-c-lays"><span>Layouts here${this._auto ? ', fewest fails, then warns, then score' : ''}: ${ranked.slice(0, 4).map((r, i) => `${i ? '' : '<b>'}${esc(LAYOUT_LABEL[r.recipe.layout] ?? r.recipe.layout)} ${Math.round(r.fit.score)}${tag(r)}${i ? '' : '</b>'}`).join(' · ')}</span></div>` : '';
     const line = this._jNote ? `<div class="pb-card-dim">${esc(this._jNote)}</div>` : best.fit.small ? this._smallCardLine(best) : best.fit.withdrawal ? this._wdrCardLine(best) : best.fit.crossing ? this._crossCardLine(best) : worst && best.recipe.task !== 'advance' ? '<div class="pb-card-dim">J moves the worst posn to better Gr nearby</div>' : '';
-    return `${head}${ledger}${sum}${lays}${line ? `<div class="pb-c-line">${line}</div>` : ''}`;
+    const pick = `${this._hasGround ? this._dockGround(best) : ''}${this._hasLayouts ? this._dockLayouts(ranked) : ''}`;
+    return `${head}<div class="pb-c-body">${pick ? `<div class="pb-c-pick">${pick}</div>` : ''}<div class="pb-c-main">${ledger}${sum}${line ? `<div class="pb-c-line">${line}</div>` : ''}</div></div>`;
+  }
+
+  /**
+   * The dock's Ground: Auto (with what the terrain reads where the plan rests) or a kind the user sets, as chips that
+   * work while the plan is armed (E walks them). Under them what was read, and why: when the user set the kind, what the
+   * terrain reads beside it, so a choice against the ground is seen.
+   */
+  private _dockGround(best: Fitted): string {
+    const used = best.terrain, read = best.detected ?? (used?.source === 'auto' ? used : null);
+    const label = (k: TerrainKind) => terrainLabel(this._doc, k);
+    const auto = this._ground === 'auto';
+    const autoLabel = auto && used ? `Auto · ${label(used.kind)}` : 'Auto';
+    const chips = [
+      `<button type="button" class="pb-c-gc${auto ? ' is-on' : ''}" data-dock="ground:auto" title="Read off the terrain where the plan rests: 400 m of rise within 5 km = mountains, a canal or bund in front = obstacle, dunes or sand = desert">${esc(autoLabel)}</button>`,
+      ...TERRAIN_KINDS.map((k) => `<button type="button" class="pb-c-gc${!auto && this._ground === k ? ' is-on' : ''}${read?.kind === k ? ' is-read' : ''}" data-dock="ground:${k}" title="${esc(`Lay and judge the plan as ${label(k)}${read?.kind === k ? ' (what the terrain reads here)' : ''}`)}">${esc(label(k))}</button>`),
+    ].join('');
+    let det: string;
+    if (!this._terrain) det = 'No terrain data: plains assumed';
+    else if (auto) {
+      det = used?.source === 'auto' ? `Read here: <b>${esc(label(used.kind))}</b>${used.why ? ` · ${esc(used.why)}` : ''}`
+        : `Not read: ${esc(used?.why ?? 'the ground round it is not loaded yet')}; ${esc(label(used?.kind ?? 'plains'))} assumed`;
+    } else {
+      det = read ? `Set by you; the terrain reads <b>${esc(label(read.kind))}</b> here${read.kind === this._ground ? '' : ` · ${esc(read.why ?? '')}`}`
+        : 'Set by you; the terrain here is not read yet';
+      if (read && read.kind !== this._ground) det = `<span class="pb-c-off">${det}</span>`;
+    }
+    return `<div class="pb-c-sec"><div class="pb-c-sl">Ground<span>${kbd('E')}</span></div><div class="pb-c-chips">${chips}</div><div class="pb-c-det">${det}</div></div>`;
+  }
+
+  /**
+   * The dock's Layouts: every layout of the family with its fit score where the plan rests and its worst verdict, Auto
+   * first (the default: the best here); a chip lays that layout (N walks them). The one placed is lit; with a layout
+   * chosen by hand, Auto's pick is marked beside it. A layout past planBuilder.auto.maxLayouts is not fitted: a dash.
+   */
+  private _dockLayouts(ranked: Fitted[]): string {
+    const fam = this._families.find((f) => f.id === this._familyId);
+    if (!fam) return '';
+    const ids = this._famIds(fam);
+    const autoNow = this._auto && this._autoOn && this._terrain;
+    const placed = ranked[0] ? baseId(ranked[0].recipe.id) : '';
+    const autoOk = this._autoOn && this._terrain;
+    const autoChip = `<button type="button" class="pb-c-gc${autoNow ? ' is-on' : ''}${autoOk ? '' : ' is-off'}" data-dock="layout:auto" title="${esc(autoOk ? 'Auto: the best layout where the plan rests (fewest fails, then warns, then the fit score)' : !this._terrain ? 'Auto ranks the layouts on the ground: it needs terrain data' : 'Auto is switched off in the Options')}">Auto</button>`;
+    const chips = ids.map((id) => {
+      const f = ranked.find((r) => baseId(r.recipe.id) === id);
+      const st: CheckState = !f ? 'unchecked' : f.fit.fails ? 'fail' : f.fit.warns ? 'warn' : 'pass';
+      const on = id === placed;
+      const star = !autoNow && f && id === this._autoPick && id !== placed;
+      const tip = f
+        ? `${this._layoutWord(id)}: fit ${Math.round(f.fit.score)}/100${f.fit.fails ? `, ${f.fit.fails} fail${f.fit.fails > 1 ? 's' : ''}` : ''}${f.fit.warns ? `, ${f.fit.warns} warn${f.fit.warns > 1 ? 's' : ''}` : ''}${on ? ' (placed)' : ''}${star ? '; Auto ranks it first here' : ''}`
+        : `${this._layoutWord(id)}: not fitted here (Auto fits at most planBuilder.auto.maxLayouts); click to lay it`;
+      // the icon carries the count of its verdict (2 fails, or 3 warns when none fails): Auto ranks on those before the score
+      const n = f ? f.fit.fails || f.fit.warns : 0;
+      return `<button type="button" class="pb-c-lay pb-${st}${on ? ' is-on' : ''}${star ? ' is-best' : ''}" data-dock="layout:${esc(id)}" title="${esc(tip)}">${f ? `<span class="pb-c-vn">${cardIcon(st)}${n ? `<em>${n}</em>` : ''}</span>` : ''}<span>${esc(this._layoutWord(id))}</span><b>${f ? Math.round(f.fit.score) : '–'}</b>${star ? '<i>Auto\'s pick</i>' : ''}</button>`;
+    }).join('');
+    return `<div class="pb-c-sec"><div class="pb-c-sl">Layouts here<span>${kbd('N')}</span></div><div class="pb-c-chips">${autoChip}${chips}</div><div class="pb-c-det">${autoNow ? 'Auto places the best: fewest fails, then fewest warns, then the higher score' : 'Chosen by hand; the others fitted beside it'} · ${cardIcon('fail')} 2 = two fails</div></div>`;
   }
 
   /** The card's last line for a crossing: the obstacle, the bridge, the tanks across, his observers. */
@@ -3100,13 +3334,15 @@ export class PlanBuildTab {
     const units = seg(fams.map((f) => ({ on: f.id === this._familyId, label: f.name, data: `family:${f.id}` })), { label: 'Unit' });
     const isBn = res.recipe.echelon === '16' && res.recipe.task === 'defence';
     // Auto leads the layouts; the layout it took where the plan last rested is ringed
-    const picked = this._auto && this._lastFit ? baseId(this._lastFit.recipe.id) : null;
+    // Auto shows on only where it can run (it needs the terrain data); without it the chosen layout stands
+    const autoNow = this._auto && this._terrain;
+    const picked = autoNow && this._lastFit ? baseId(this._lastFit.recipe.id) : null;
     // Auto (planBuilder.auto.enabled): ranks the layouts on the ground; without the terrain it says so on a click
     const cap = Math.max(1, Math.floor(Number(this._settings.auto?.maxLayouts) || layouts.length));
     const auto = layouts.length > 1 && this._autoOn
-      ? { on: this._auto, label: 'Auto', data: 'auto', title: this._terrain ? `Fit ${cap < layouts.length ? `up to ${cap} of the` : 'every'} layout${cap === 1 ? '' : 's'} where the plan rests and take the best` : 'Auto ranks the layouts on the ground: it needs terrain data', disabled: !this._terrain }
+      ? { on: autoNow, label: 'Auto', data: 'auto', title: this._terrain ? `Fit ${cap < layouts.length ? `up to ${cap} of the` : 'every'} layout${cap === 1 ? '' : 's'} where the plan rests and take the best` : 'Auto ranks the layouts on the ground: it needs terrain data', disabled: !this._terrain }
       : undefined;
-    const layout = seg(layouts.map((r) => ({ on: !this._auto && r.id === this._recipeId, label: LAYOUT_LABEL[r.layout] ?? r.layout, data: `layout:${r.id}`, title: r.name, picked: r.id === picked })), { auto, label: 'Layout' });
+    const layout = seg(layouts.map((r) => ({ on: !autoNow && r.id === this._recipeId, label: LAYOUT_LABEL[r.layout] ?? r.layout, data: `layout:${r.id}`, title: r.name, picked: r.id === picked })), { auto, label: 'Layout' });
     const attack = res.recipe.task === 'attack'
       ? row('Time', seg([
         { on: !this._night, label: 'Day', data: 'night:off', title: 'SL crossed after first light and before last light (OOW2 s6 para 18 a p 24)' },
