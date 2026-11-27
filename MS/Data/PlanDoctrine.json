@@ -3828,7 +3828,7 @@
     },
     "outline": {
       "basis": "E",
-      "decided": "User, 15 Nov 2026: a Battle Posn's outline is curved to suit the ground; the echelon mark stays on its rear side.",
+      "decided": "User, 15 Nov 2026: a Battle Posn's outline is curved to suit the ground; the echelon mark stays on its rear side. User, 27 Nov 2026: the curve keeps off obstacles and other posns; size and shape as the annex draws them (PlanShape.ts).",
       "scales": {
         "value": [0.75, 1.25],
         "basis": "M",
@@ -3840,6 +3840,28 @@
         "basis": "M",
         "note": "A point moves a tenth of the way only for 4 m of height gained.",
         "src": "A point moves a tenth of the way only for 4 m of height gained."
+      },
+      "clearM": {
+        "value": 40,
+        "basis": "M",
+        "src": "A point of the curve keeps this far from another posn's curve, so no two curves cross (user, 27 Nov 2026: the curves of D and B Coys crossed on the map)."
+      }
+    },
+    "itg": {
+      "basis": "E",
+      "decided": "User, 27 Nov 2026: an ITG is taken by moving the whole posn, its size and shape kept as the annex draws it, not by turning or stretching it (that \"messes up the whole layout\"); the move is made only when the layout holds.",
+      "reachM": {
+        "bn": 400,
+        "coy": 200,
+        "basis": "E",
+        "decided": "2026-11-27",
+        "searched": "IC s72-s78 (siting of defended localities), IBB S53 pp 276-281 and Annex U, MW pp 147-179 (27 Nov 2026): hold the ITG and the dominating ground; no figure for how far a posn moves to it",
+        "note": "A Vital / Imp Gr drawn on the map at most this far beyond the nearest posn's box (a Bn plan's Coy posns; a Coy plan's Pl posns) brings that posn to it, as the high-ground move (fit.highGround.moveM); further out it is the J move's or the commander's."
+      },
+      "marginM": {
+        "value": 100,
+        "basis": "M",
+        "src": "The posn moves until the ITG lies this far inside its edge, so the feature is held, not on the boundary."
       }
     },
     "assumedStartM": {
@@ -5337,6 +5359,13 @@
           }
         }
       ]
+    },
+    "acrossMinDeg": {
+      "value": 45,
+      "basis": "E",
+      "decided": "2026-11-27",
+      "searched": "IC s85 pp 449-458, IBB S60-62 pp 328-339 and Annex V (27 Nov 2026): the canal defended as an obstacle across the En approach; no angle printed",
+      "note": "A canal layout is laid along the water only when it lies at least this far off the line to the threat (half way between along and square to it); nearer that line it runs toward the En and the plan is laid square to the threat instead (user, 27 Nov 2026: a nullah toward the threat turned a plan side-on)."
     },
     "fdlFromCentreM": {
       "value": 70,

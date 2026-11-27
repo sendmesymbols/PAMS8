@@ -14,7 +14,7 @@
   "name": "Bn Def: two up, two back",
   "frontageRow": "Battalion, two companies up",
   "subRow": "Company, battalion two up",
-  "note": "Coys 1500 m wide with a 500 m gap (IBB Annex U App 6 p481): forward centres 1000 m either side of the axis. Bn HQ (IBB S3 pp 22-24; p 23: placed centrally within the Bn locality, preferably behind the depth localities; a defended locality of 55 all ranks, concealed from the air, dug in, near the Bde axis with an alternative posn; laid about 500 m behind the rearmost depth / reserve Coy (the distance a decision, E). IBB S54 para 8 p 288, Fig 26: the Bn group, Variation 1, front and flanks covered equally. The RRs, a section of two in each rifle Coy, sited first in the forward localities with an alternative each 200-300 m back (IBB S8 pp 38-42; IC p 367).",
+  "note": "As IBB Annex U App 6 p 481 draws it: A and B Coys 1500 m wide with a 500 m gap and 500 m flanks (4500 m), forward centres 1000 m either side of the axis; C and D Coys in depth, one behind EACH forward Coy (C behind A, D behind B), side by side with the same 500 m gap. Depth 3000-4000 m from the forward edge back; laid at 3050 m, the short end, so D Coy (the reserve) reaches the forward Coys within the half hour of a Coy counter-attack (IBB S53 para 12b p 279; the choice of the short end a decision, E). Bn HQ (IBB S3 pp 22-24; p 23: placed centrally within the Bn locality, preferably behind the depth localities; a defended locality of 55 all ranks, concealed from the air, dug in, near the Bde axis with an alternative posn; laid about 500 m behind the depth Coys, between them (the distance a decision, E). The RRs, a section of two in each rifle Coy, sited first in the forward localities with an alternative each 200-300 m back (IBB S8 pp 38-42; IC p 367).",
   "slots": [
     {
       "role": "fwdL",
@@ -100,18 +100,12 @@
         "doctrine": "size.coy"
       },
       "seed": {
-        "acrossM": 0,
-        "backM": 250
+        "acrossM": -1000,
+        "backM": 1150
       },
       "rule": {
-        "behind": [
-          "fwdL",
-          "fwdR"
-        ],
-        "coversGap": [
-          "fwdL",
-          "fwdR"
-        ]
+        "behind": "fwdL",
+        "side": "L"
       },
       "terrainRule": {
         "unseenFrom": "threat",
@@ -135,11 +129,16 @@
         "doctrine": "size.coy"
       },
       "seed": {
-        "acrossM": 0,
-        "backM": 1350
+        "acrossM": 1000,
+        "backM": 1150
       },
       "rule": {
-        "behind": "depth",
+        "behind": "fwdR",
+        "side": "R",
+        "gapTo": {
+          "slot": "depth",
+          "row": "Company, battalion two up"
+        },
         "reach": {
           "slots": [
             "fwdL",
@@ -168,7 +167,7 @@
       "shape": {
         "at": [
           0,
-          1850
+          2000
         ]
       }
     },

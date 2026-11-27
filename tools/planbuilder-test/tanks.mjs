@@ -169,7 +169,8 @@ for (const r of [front, right, left]) for (const mode of ['close', 'fire']) {
   const bad = (r) => R.validateRecipe(r, { doc, symbols }).filter((i) => i.level === 'fail').map((i) => i.msg);
   check('1 and 2 Sqns on a Bn Def: the recipes validate, own ids (-tkd1, -tkd2), the one passed in unchanged', !bad(d1).length && !bad(d2).length && d1.id === 'bn-def-two-up-tkd1' && d2.id === 'bn-def-two-up-tkd2' && d1.defTanks === 1 && d2.defTanks === 2 && !two.slots.some((x) => x.role === 'tkSqn') && !two.defTanks, [...bad(d1), ...bad(d2)].join('; '));
   const at = (r, role) => r.slots.find((x) => x.role === role)?.shape?.at;
-  check('leaguers beside the reserve (D Coy at 1350 m back): A Sqn 1100 m to the right, B Sqn 1100 m to the left', JSON.stringify(at(d1, 'tkSqn')) === '[1100,1350]' && JSON.stringify(at(d2, 'tkSqn2')) === '[-1100,1350]' && d2.slots.find((x) => x.role === 'tkSqn2').label === 'B Sqn');
+  // D Coy behind B Coy, 1000 m right of the axis, 1150 m back (IBB Annex U App 6 p 481)
+check('leaguers beside the reserve (D Coy at 1150 m back, 1000 m right): A Sqn 1100 m to its right, B Sqn 1100 m to its left', JSON.stringify(at(d1, 'tkSqn')) === '[2100,1150]' && JSON.stringify(at(d2, 'tkSqn2')) === '[-100,1150]' && d2.slots.find((x) => x.role === 'tkSqn2').label === 'B Sqn');
   check('a layout with no reserve (3 Coys three up): the leaguer 500 m behind the rear edge of the forward Coys (-550 m: at -50)', !bad(d3).length && at(d3, 'tkSqn')[0] === 900 && at(d3, 'tkSqn')[1] === -50, JSON.stringify(at(d3, 'tkSqn')));
   const coyDef = rec('coy-def-two-up');
   check('no Sqn and an attack are left as they are; more than 3 is held to 3; a plan that already has them is not given more', T.withDefTanks(two, doc, 0) === two && T.withDefTanks(front, doc, 1) === front && T.withDefTanks(two, doc, 9).defTanks === 3 && T.withDefTanks(d1, doc, 2) === d1);

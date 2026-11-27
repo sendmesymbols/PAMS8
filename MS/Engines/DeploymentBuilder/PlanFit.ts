@@ -13,9 +13,10 @@
  * `k` Mercator units per ground metre (1 / cos latitude); `toWorld` / `toLocal` do the same.
  */
 import type { DoctrineSet, Recipe } from './PlanRecipes';
-import { doctrineAt, resolveRange, SMALL_TASKS } from './PlanRecipes';
+import { doctrineAt, resolveRange, frontageRow, SMALL_TASKS, isCanalLayout } from './PlanRecipes';
 import type { Check, CheckState, SlotResult, SolveResult, SolveCtx, SolveOptions, XY } from './PlanSolve';
-import { solveRecipe, BP_SHAPE } from './PlanSolve';
+import { solveRecipe } from './PlanSolve';
+import { shapePosn, curveOf, type ShapeGround, type ShapeParams } from './PlanShape';
 import { atgmPairs, type UnitBrief } from './PlanOrbat';
 import { attackBreach, attackFactors, attackTimes, atOnObj, counterAttack, findAttackSpots, findMsrChoke, hSumRow, nightBrief, nightRow, phase2Row, phase3Row, type AttackFind, type CounterApch, type Factor, type HSum, type MsrChoke, type NightBrief } from './PlanAttack';
 import { findPhase2, goingRow, type Phase2Find, findPhaseN } from './PlanPhase';
@@ -96,6 +97,8 @@ export interface FitResult {
   slides: { role: string; label: string; distM: number; why?: 'nogo' | 'high'; riseM?: number }[];
   /** Each posn's outline shaped to the ground (BP_SHAPE box fractions), by role: fed back to the solver. */
   outlines?: Record<string, [number, number][]>;
+  /** The ITG drawn on the map (Vital / Imp Gr): the posn moved whole to take it in, or why it was not, by role. */
+  itg?: Record<string, { label: string; distM: number | null; why?: string }>;
   /** An attack's axis laid on the ground (plan metres), when it has to bend round NO-GO. */
   paths?: Record<string, XY[]>;
   /** ATGM launchers beyond the recipe's pair, from the unit's ORBAT, sited on the tank approaches (plan metres). */
@@ -245,6 +248,8 @@ export interface FitInput {
   rowsOver?: Check[];
   /** A drawn enemy FUP (world), used instead of the likely one. */
   enFup?: XY | null;
+  /** ITG the user designated on the map (Vital Gr / Imp Gr symbols, world): a posn beside one takes it inside its outline. */
+  itgAt?: { at: XY; label: string }[] | null;
 }
 
 export function fitPlan(inp: FitInput): FitResult {
@@ -285,8 +290,67 @@ export function fitPlan(inp: FitInput): FitResult {
     }
   }
 
+  // the layout as the annex draws it holds through a move (user, 27 Nov 2026: posns turned and stretched round the
+  // ground "messes up the whole layout"): the gaps between the forward posns within the row, the forward posns still
+  // in front of the depth ones, a depth posn still behind the posn it backs, the depth within the row
+  const sub = recipe.subRow ? frontageRow(doc, recipe.subRow) : null;
+  const rowF = recipe.frontageRow ? frontageRow(doc, recipe.frontageRow) : null;
+  const dRow = rowF ?? (recipe.depthRow ? frontageRow(doc, recipe.depthRow) : null);
+  const depthBand = dRow?.depthM != null ? resolveRange(doc, dRow.depthM) : null;
+  const isFwd = (x: Box) => x.kind === 'fwd' && x.turn === 0, isBack = (x: Box) => x.kind === 'depth' || x.kind === 'res';
+  const gapsOf = (list: Box[]) => { const fw = list.filter(isFwd).sort((a, z) => a.c.x - z.c.x); return fw.slice(1).map((x, i) => x.c.x - x.w / 2 - (fw[i].c.x + fw[i].w / 2)); };
+  const depthOf = (list: Box[]) => { const fw = list.filter(isFwd), dp = list.filter(isBack); return fw.length && dp.length ? Math.max(...fw.map((x) => x.c.y + x.h / 2)) - Math.min(...dp.map((x) => x.c.y - x.h / 2)) : null; };
+  const gap0 = gapsOf(boxes), depth0 = depthOf(boxes), x0: Record<string, number> = Object.fromEntries(boxes.map((x) => [x.role, x.c.x]));
+  const gapMax = Math.max(sub?.gapM != null ? sub.gapM * 1.1 : 0, ...gap0.map((v) => v + 50));
+  const layoutBreak = (b: Box, cand: Box): string | null => {
+    const list = boxes.map((x) => (x === b ? cand : x));
+    const gaps = gapsOf(list);
+    const wide = gaps.findIndex((v) => v > gapMax + 1);
+    if (wide >= 0) return `it would open a gap of ${fmtM(gaps[wide])} between the forward posns (the row gives ${fmtM(sub?.gapM ?? gapMax)})`;
+    const fw = list.filter(isFwd), dp = list.filter(isBack);
+    if (fw.length && dp.length && Math.min(...fw.map((x) => x.c.y - x.h / 2)) < Math.max(...dp.map((x) => x.c.y + x.h / 2)) - 1) return 'it would bring a depth posn up level with the forward posns';
+    if (isBack(b) && Math.abs(cand.c.x - x0[b.role]) > b.w / 2) return 'it would move it out from behind the posn it backs';
+    const d = depthOf(list);
+    if (d !== null && depthBand && depth0 !== null) {
+      const off = (v: number) => Math.max(0, depthBand[0] - v, v - depthBand[1]);
+      if (off(d) > off(depth0) + 1) return `it would make the depth ${fmtM(d)} (the row gives ${fmtM(depthBand[0])}-${fmtM(depthBand[1])})`;
+    }
+    return null;
+  };
+  const orig: Record<string, XY> = Object.fromEntries(boxes.map((x) => [x.role, { ...x.c }]));
+
+  // 1a. the ITG the user drew on the map (Vital / Imp Gr): the posn nearest it moves whole until the ITG lies inside
+  // it, its size and shape kept; a move that breaks the layout is not made, and the row says why (user, 27 Nov 2026)
+  out.itg = {};
+  if (!inp.checkOnly && inp.itgAt?.length) {
+    const reach = num(bn ? 'fit.itg.reachM.bn' : 'fit.itg.reachM.coy', bn ? 400 : 200), margin = num('fit.itg.marginM', 100);
+    for (const t of inp.itgAt) {
+      const p = toLocal(f, t.at);
+      const owner = [...boxes].sort((a, z) => boxDist(a, p) - boxDist(z, p))[0];
+      if (!owner || out.itg[owner.role]) continue;
+      const d = boxDist(owner, p);
+      if (d > reach) continue;
+      // the shift that brings the ITG inside the box, `margin` in from its edge (in the box's own frame, then turned back)
+      const tr = (owner.turn * Math.PI) / 180, dx = p.x - owner.c.x, dy = p.y - owner.c.y;
+      const u = dx * Math.cos(tr) - dy * Math.sin(tr), v = dx * Math.sin(tr) + dy * Math.cos(tr);
+      const hw = Math.max(0, owner.w / 2 - margin), hh = Math.max(0, owner.h / 2 - margin);
+      const du = u > hw ? u - hw : u < -hw ? u + hw : 0, dv = v > hh ? v - hh : v < -hh ? v + hh : 0;
+      if (!du && !dv) { out.itg[owner.role] = { label: t.label, distM: 0 }; continue; }
+      const cand: Box = { ...owner, c: P(owner.c.x + du * Math.cos(tr) + dv * Math.sin(tr), owner.c.y - du * Math.sin(tr) + dv * Math.cos(tr)) };
+      const shift = Math.hypot(du, dv);
+      const why = boxes.some((o) => o !== owner && overlap(cand, o, 50)) ? 'it would run into the next posn'
+        : groundCheck(g, readGround(g, f, cand, foot), owner.kind).st === 'fail' ? 'the ground there fails (NO-GO, water or a built-up area)'
+        : layoutBreak(owner, cand);
+      if (why) { out.itg[owner.role] = { label: t.label, distM: null, why }; continue; }
+      owner.c = cand.c;
+      out.nudges[owner.role] = P(owner.c.x - orig[owner.role].x, owner.c.y - orig[owner.role].y);
+      out.itg[owner.role] = { label: t.label, distM: Math.round(shift) };
+    }
+  }
+
   // 1b. up to the higher ground nearby (user: a posn sits near the top of a plateau or on higher ground): a posn not
-  // slid out of NO-GO moves a short way when the ground there stands clearly higher on average (E figures)
+  // slid out of NO-GO moves a short way when the ground there stands clearly higher on average (E figures); the layout
+  // holds (as the ITG move)
   const hiGain = num('fit.highGround.gainM', 8), hiMove = num(bn ? 'fit.highGround.moveM.bn' : 'fit.highGround.moveM.coy', bn ? 400 : 200);
   for (const b of inp.checkOnly ? [] : boxes) {
     if (out.nudges[b.role]) continue;
@@ -297,7 +361,7 @@ export function fitPlan(inp: FitInput): FitResult {
       for (let k = 0; k < 8; k++) {
         const a = (k * Math.PI) / 4;
         const cand: Box = { ...b, c: P(b.c.x + r * Math.cos(a), b.c.y + r * Math.sin(a)) };
-        if (boxes.some((o) => o !== b && overlap(cand, o, 50))) continue;
+        if (boxes.some((o) => o !== b && overlap(cand, o, 50)) || layoutBreak(b, cand)) continue;
         const gr = readGround(g, f, cand, foot);
         if (!Number.isFinite(gr.hi) || groundCheck(g, gr, b.kind).st !== 'pass') continue;
         const rise = gr.hi - here.hi;
@@ -312,32 +376,19 @@ export function fitPlan(inp: FitInput): FitResult {
     }
   }
 
-  // 1c. each posn's outline curved to the ground: a point of the curve moves out over higher ground and in off NO-GO
-  // and water; the echelon segment (first and last points, the rear side) stays (user, 15 Nov 2026; E figures)
+  // 1c. each posn's outline bent to the ground (PlanShape): a point of the curve moves in or out by up to a quarter of
+  // the posn's half-size, out over higher ground and in off obstacles (NO-GO, water, built-up areas), never into another
+  // posn's curve; size and shape as the annex draws them; the echelon segment (the rear side) stays (user, 15 and 27
+  // Nov 2026; E figures)
   out.outlines = {};
   if (!inp.checkOnly) {
     const sc = resolveRange(doc, doctrineAt(doc, 'fit.outline.scales')) ?? [0.75, 1.25];
-    const perTenth = num('fit.outline.perTenthM', 4);
-    const scales = [1, 0.88, 1.12, sc[0], sc[1]];
+    const pr: ShapeParams = { scales: [sc[0], sc[1]], perTenthM: num('fit.outline.perTenthM', 4), clearM: num('fit.outline.clearM', 40) };
+    const sg: ShapeGround = { toWorld: (p) => toWorld(f, p), cls: (x, y) => g.cls(x, y), elev: (x, y) => g.elev(x, y), water: WATER, nogo: foot.nogo, bua: BUA };
+    const curves = new Map(boxes.map((x) => [x.role, curveOf(x)]));
     for (const b of boxes) {
-      const e0 = readGround(g, f, b, foot).elev;
-      let changed = false;
-      const shape: [number, number][] = BP_SHAPE.map(([u, v], i) => {
-        if (i === 0 || i === BP_SHAPE.length - 1) return [u, v];
-        let bestS = 1, bestScore = -Infinity;
-        for (const s of scales) {
-          const w = toWorld(f, boxPt(b, s * u * b.w, s * v * b.h));
-          const c = g.cls(w.x, w.y);
-          if (c !== null && (foot.nogo.has(c) || WATER.has(c))) continue;
-          const e = g.elev(w.x, w.y);
-          const score = (Number.isFinite(e) && Number.isFinite(e0) ? Math.max(-15, Math.min(15, e - e0)) : 0) - perTenth * 10 * Math.abs(s - 1);
-          if (score > bestScore) { bestScore = score; bestS = s; }
-        }
-        if (!Number.isFinite(bestScore)) bestS = sc[0];   // every spot NO-GO: pull it in as far as it goes
-        if (bestS !== 1) changed = true;
-        return [u * bestS, v * bestS];
-      });
-      if (changed) out.outlines[b.role] = shape;
+      const shape = shapePosn(b, boxes.filter((o) => o !== b).map((o) => curves.get(o.role)!), sg, pr);
+      if (shape) { out.outlines[b.role] = shape; curves.set(b.role, curveOf(b, shape)); }
     }
   }
 
@@ -352,8 +403,10 @@ export function fitPlan(inp: FitInput): FitResult {
     const gr = readGround(g, f, b, foot);
     const gc = groundCheck(g, gr, b.kind);
     const slid = out.slides.find((s) => s.role === b.role);
-    if (slid && gc.st !== 'fail') gc.reason += slid.why === 'high' ? `; moved ${fmtM(slid.distM)} up to ground ${slid.riseM} m higher, confirm on the ground` : `; slid ${fmtM(slid.distM)} out of NO-GO, confirm on the ground`;
-    if (out.outlines?.[b.role]) gc.reason += '; its outline follows the ground';
+    const it = out.itg?.[b.role];
+    if (slid && gc.st !== 'fail' && !(it && it.distM)) gc.reason += slid.why === 'high' ? `; moved ${fmtM(slid.distM)} up to ground ${slid.riseM} m higher, confirm on the ground` : `; slid ${fmtM(slid.distM)} out of NO-GO, confirm on the ground`;
+    if (it) gc.reason += it.distM === null ? `; ${it.label} not taken in: ${it.why}, so it stays as the annex lays it` : it.distM ? `; moved ${fmtM(it.distM)} to take in ${it.label}` : `; holds ${it.label}`;
+    if (out.outlines?.[b.role]) gc.reason += '; its outline follows the ground, off obstacles';
     checks.push(gc);
     const isFront = b.kind === 'fwd' || b.kind === 'round';
     if (isFront) {
@@ -868,6 +921,8 @@ export interface FitLayoutInput {
   nmRules?: Record<string, any> | null;
   /** Hostile units and posns drawn on the map (Web Mercator): a two-phase attack lays Obj 2 on one behind Obj 1. */
   enemyAt?: XY[] | null;
+  /** ITG designated on the map (Vital Gr / Imp Gr, Web Mercator): the posns beside them take them inside their outlines. */
+  itgAt?: { at: XY; label: string }[] | null;
   /** Ambush, patrol, recce (PlanSmallOps): the aim point (a patrol's Obj, a recce's NAI), Web Mercator. */
   cursor?: XY | null;
   /** MovementDoctrine rules (rulesFrom) and PlatoonDoctrine rules (plRulesFrom); the foot speeds (MovementSpeeds.json). */
@@ -925,7 +980,7 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   if (inp.recipe.task === 'withdrawal') return fitWithdrawal(inp);
   // a canal defence: laid along the canal first (PlanCrossing.canalPrep: the posns' seeds moved, the shapes re-laid),
   // then fitted and checked as any defence; the canal's own rows join the defence's
-  const canal = inp.recipe.layout === 'canal' ? canalPrep(inp) : null;
+  const canal = isCanalLayout(inp.recipe.layout) ? canalPrep(inp) : null;
   if (canal && Object.keys(canal.geom).length) inp = { ...inp, opts: { ...inp.opts, geom: { ...(inp.opts.geom ?? {}), ...canal.geom } } };
   const { recipe, ctx, ground } = inp;
   const manualJ = inp.manual ?? {};
@@ -1009,7 +1064,7 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   const enemy: EnemySpec | null = inp.enemy && inp.enemy.source === 'default' && terrain.kind === 'mountain' && recipe.task !== 'attack' && typeof mtnType === 'string'
     ? { ...inp.enemy, type: mtnType as EnemySpec['type'] }
     : inp.enemy ?? null;
-  const fit = fitPlan({ res: fitBase, recipe, doc: ctx.doc, frame, ground, threat: recipe.task === 'attack' ? null : inp.threat ?? null, enemy: recipe.task === 'attack' ? null : enemy, terrain, rowsOver: rs?.rows });
+  const fit = fitPlan({ res: fitBase, recipe, doc: ctx.doc, frame, ground, threat: recipe.task === 'attack' ? null : inp.threat ?? null, enemy: recipe.task === 'attack' ? null : enemy, terrain, rowsOver: rs?.rows, itgAt: inp.itgAt ?? null });
   fit.paths = paths;
   if (find) fit.nudges = addNudges(fit.nudges, find.nudges);
   if (rs) { fit.nudges = addNudges(fit.nudges, rs.nudges); fit.revSlope = { crest: rs.crest, fdlBehindM: rs.fdlBehindM, crestRiseM: rs.crestRiseM }; }

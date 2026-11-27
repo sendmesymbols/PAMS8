@@ -105,7 +105,14 @@ for (const r of recipes) for (const s of r.slots) {
   if (s.echelon === '15' && R.FOOTPRINT_KINDS.includes(s.kind) && s.kind !== 'cpen') {
     const z = R.slotSizeM(doc, s);
     const turned = ((s.turnDeg ?? 0) % 180) === 90;
-    check(`${r.id} ${s.role}: Coy posn 1500 x 700 m`, !!z && (turned ? z.hM === 1500 && z.wM === 700 : z.wM === 1500 && z.hM === 700), JSON.stringify(z));
+    // the annexes' own exceptions: a forward Coy on a canal or AT ditch narrower (three up in 2750-4115 m with 450 m
+    // gaps, IBB Annex V p 483 / App 9 p 485: never wider, S59 para 6 b p 326); a forward Coy on extended frontages its
+    // three Pl localities of 600 m 300 m apart, 500 m deep (Annex U App 7 p 482)
+    const obstacle = (R.isCanalLayout(r.layout) || r.layout === 'ditch') && s.kind === 'fwd';
+    const extended = s.pls === 'three-up';
+    if (obstacle) check(`${r.id} ${s.role}: Coy on the obstacle, narrower than 1500 m (Annex V)`, !!z && z.wM <= 1500 && z.wM >= 900 && z.hM === 700, JSON.stringify(z));
+    else if (extended) check(`${r.id} ${s.role}: Coy of three Pls up, 2400 x 500 m (Annex U App 7)`, !!z && z.wM === 2400 && z.hM === 500, JSON.stringify(z));
+    else check(`${r.id} ${s.role}: Coy posn 1500 x 700 m`, !!z && (turned ? z.hM === 1500 && z.wM === 700 : z.wM === 1500 && z.hM === 700), JSON.stringify(z));
   }
 }
 

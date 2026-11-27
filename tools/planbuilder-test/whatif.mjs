@@ -100,15 +100,16 @@ check('an alternate on a lake fails its trigger', lkT.st === 'fail' && /NO-GO/.t
 // the enemy far away: moves pass; close: they fail (the enemy there first)
 const far = run(ground({ from: 30000 }));
 check('the enemy 30 km out: the shelled move is in time', far.whatIf.triggers.find((x) => x.id === 'shell-fwdL').st === 'pass', far.whatIf.triggers.find((x) => x.id === 'shell-fwdL').reason);
-const near = run(ground({ from: 2500 }));
+// distances from the FDL (the click is on the Bn HQ behind the depth Coys, not on the FDL)
+const near = run(ground({ from: Math.round(yFdlA + 1500) }));
 const nearMv = near.res.rows.find((r) => r.name === 'Moves in time');
 check('the En mech 2.5 km out: the move is too late, and the Moves row reads "Too late", not "Fail" (the user, 23 Nov 2026)', near.whatIf.triggers.find((x) => x.id === 'shell-fwdL').st === 'fail' && nearMv?.st === 'fail' && nearMv.word === 'Too late', `${near.whatIf.triggers.find((x) => x.id === 'shell-fwdL').reason} / ${nearMv?.word}`);
 check('...Copy as Text: the row and the trigger table say "Too late"', /\n {2}Moves in time {8}Too late/.test(S.planText(near.res, '', W.triggerLines(near.whatIf))) && W.triggerLines(near.whatIf).some((l) => /\[Too late\]/.test(l)));
 const noWay = W.movesRow({ ...near.whatIf, triggers: near.whatIf.triggers.map((x, k) => (k ? x : { ...x, st: 'fail', min: null, route: { ...x.route, blocked: true } })) });
 check('...a move with no route on foot keeps "Fail" (it is not late, it cannot go)', noWay.st === 'fail' && !noWay.word);
 // En infantry 2.5 km out: 4 km/h on foot to the En FUP (1 km out, IBB p201), then the En assault pace (IC s114 p 684)
-const infN = runEn(ground({ from: 2500 }), INF);
-const infExp = ((2500 - yFdlA - 1000) / 1000 / 4) * 60 + (1000 / 100) * bookPace;
+const infN = runEn(ground({ from: Math.round(yFdlA + 1500) }), INF);
+const infExp = ((Math.round(yFdlA + 1500) - yFdlA - 1000) / 1000 / 4) * 60 + (1000 / 100) * bookPace;
 check(`En infantry 2.5 km out: on foot to the En FUP, then 100 m in ${bookPace} min (IC s114 p 684) to the FDL; the shelled move is not too late`, Math.abs(infN.whatIf.enemyToFdlMin - infExp) <= 2 && infN.whatIf.triggers.find((x) => x.id === 'shell-fwdL').st !== 'fail', `${infN.whatIf.enemyToFdlMin} min (${Math.round(infExp)} wanted); ${infN.whatIf.triggers.find((x) => x.id === 'shell-fwdL').reason}`);
 
 // Copy as Text

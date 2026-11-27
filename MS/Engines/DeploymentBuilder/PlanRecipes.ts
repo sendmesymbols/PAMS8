@@ -61,6 +61,13 @@ export interface RecipeSlot {
   hostile?: boolean;
   /** Drawn with planned status (dashed): a posn taken up later in the battle (the mortars' step-up posn). */
   planned?: boolean;
+  /**
+   * The Pl localities inside a Coy posn: two up and one back (IBB Annex U App 5 p 480, the default) or three up in a row
+   * (App 7 p 482: a Bn on extended frontages, two Coys and three Pls up). `plsAlways` draws them whatever the Draw
+   * setting, where the annex draws the Pls and not the Coy (App 7's forward line).
+   */
+  pls?: 'two-up' | 'three-up';
+  plsAlways?: boolean;
   rule?: Record<string, unknown>;
   terrainRule?: Record<string, unknown>;
 }
@@ -132,7 +139,9 @@ export interface Recipe {
 export const SMALL_TASKS: readonly string[] = ['ambush', 'patrol', 'recce'];
 
 export const TASKS = ['defence', 'attack', 'crossing', 'advance', 'ambush', 'patrol', 'recce', 'withdrawal'] as const;
-export const LAYOUTS = ['two-up', 'three-up', 'one-up', 'all-round', 'canal', 'rev-slope', 'frontal', 'left-flank', 'right-flank', 'two-phase', 'night', 'line', 'l', 'v', 'patrol', 'two-ops', 'three-ops', 'four-bn', 'two-bde', 'area', 'screen', 'armd-lead', 'three-axes', 'delay', 'by-day', 'ridge', 'penetrant', 'lateral', 'pass', 'valley', 'mtn', 'bua', 'fixing'] as const;
+export const LAYOUTS = ['two-up', 'three-up', 'one-up', 'all-round', 'canal', 'rev-slope', 'frontal', 'left-flank', 'right-flank', 'two-phase', 'night', 'line', 'l', 'v', 'patrol', 'two-ops', 'three-ops', 'four-bn', 'two-bde', 'area', 'screen', 'armd-lead', 'three-axes', 'delay', 'by-day', 'ridge', 'penetrant', 'lateral', 'pass', 'valley', 'mtn', 'bua', 'fixing', 'extended', 'canal-three-up', 'ditch'] as const;
+/** A defence laid along a canal by PlanCrossing.canalPrep (IBB Annex V p 483 / App 8 p 484): two up, or three up as the annex draws it. */
+export const isCanalLayout = (layout: string | undefined | null): boolean => layout === 'canal' || layout === 'canal-three-up';
 export const ECHELONS = ['13', '14', '15', '16', '17', '18', '21'] as const;
 export const CHECK_NAMES = ['approaches', 'facingThreat', 'gaps', 'depth', 'flanks', 'exposure', 'killingGr', 'alternates', 'reserveReach', 'mutualSupport', 'fieldOfFire', 'backBlast', 'dfMinRange', 'deadGroundFront', 'fupDistance', 'assaultFrontage', 'bofFlank', 'bofRange', 'morReach', 'fireLift'] as const;
 
@@ -251,7 +260,7 @@ export function validateRecipe(r: Recipe, ctx: ValidateCtx): RecipeIssue[] {
   }
   if (r.frontageRow != null && !frontageRow(doc, r.frontageRow)) fail(`frontageRow "${r.frontageRow}" is not a row of OcokaDoctrine.frontage`);
   // a crossing's frontages and depths are PlanDoctrine.crossing.bridgehead (IBB S46), not an OcokaDoctrine row
-  if (r.frontageRow == null && r.basis === 'D' && r.task !== 'crossing' && r.task !== 'advance' && r.task !== 'withdrawal' && r.layout !== 'canal' && !SMALL_TASKS.includes(r.task)) warn('basis D but no frontage row');
+  if (r.frontageRow == null && r.basis === 'D' && r.task !== 'crossing' && r.task !== 'advance' && r.task !== 'withdrawal' && !isCanalLayout(r.layout) && !SMALL_TASKS.includes(r.task)) warn('basis D but no frontage row');
   if (r.assaultRow && !frontageRow(doc, r.assaultRow)) fail(`assaultRow "${r.assaultRow}" is not a row of OcokaDoctrine.frontage`);
   if (r.subRow && !frontageRow(doc, r.subRow)) fail(`subRow "${r.subRow}" is not a row of OcokaDoctrine.frontage`);
   if (r.depthRow && !frontageRow(doc, r.depthRow)) fail(`depthRow "${r.depthRow}" is not a row of OcokaDoctrine.frontage`);
@@ -343,7 +352,10 @@ export function validateRecipe(r: Recipe, ctx: ValidateCtx): RecipeIssue[] {
     if (Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.y - b.y) < (a.h + b.h) / 2) fail(`slots ${a.role} and ${b.role} overlap at their seeds`);
   }
   if (fp.length) {
-    const left = Math.min(...fp.map((f) => f.x - f.w / 2)), right = Math.max(...fp.map((f) => f.x + f.w / 2));
+    // on an obstacle (canal, AT ditch: IBB Annex V) the frontage is what the forward posns hold on it
+    const onObstacle = (isCanalLayout(r.layout) || r.layout === 'ditch') && fp.some((f) => f.kind === 'fwd');
+    const held = onObstacle ? fp.filter((f) => f.kind === 'fwd') : fp;
+    const left = Math.min(...held.map((f) => f.x - f.w / 2)), right = Math.max(...held.map((f) => f.x + f.w / 2));
     const front = Math.min(...fp.map((f) => f.y - f.h / 2)), rear = Math.max(...fp.map((f) => f.y + f.h / 2));
     const row = r.frontageRow ? frontageRow(doc, r.frontageRow) : null;
     const dRow = row ?? (r.depthRow ? frontageRow(doc, r.depthRow) : null);

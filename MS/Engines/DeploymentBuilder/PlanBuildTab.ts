@@ -56,7 +56,7 @@ import { OWN_ORBAT_FILES, brief, doctrineForUnit, enUnitFor, forceFromOrbat, mer
 import { atgmExtras } from './PlanFit';
 import { attackBreach, attackTimes, hRelText, hSumRow, phase2Row, withAttackMinefield } from './PlanAttack';
 import { withRecceScreen, checkSmallOp, solveSmall, type Mover } from './PlanSmallOps';
-import { SMALL_TASKS } from './PlanRecipes';
+import { SMALL_TASKS, isCanalLayout } from './PlanRecipes';
 import { rulesFrom as movRulesFrom } from '../MovementGuide/MovementGuideScan';
 import { plRulesFrom, type PlFootSpeeds } from '../PlatoonGuide/PlatoonGuideRead';
 import movementDoctrine from '../../Data/MovementDoctrine.json';
@@ -124,7 +124,7 @@ const TASKS: { id: string; label: string }[] = [
 ];
 const STEPS = ['Task', 'Enemy', 'Place', 'Check', 'Create'];
 const LAYOUT_LABEL: Record<string, string> = {
-  'two-up': 'Two up', 'three-up': 'Three up', 'one-up': 'One up', 'all-round': 'All round', canal: 'Canal', 'rev-slope': 'Reverse slope', night: 'By night', frontal: 'Frontal',
+  'two-up': 'Two up', 'three-up': 'Three up', 'one-up': 'One up', 'all-round': 'All round', canal: 'Canal', 'canal-three-up': 'Canal, three up', ditch: 'AT ditch', extended: 'Extended', 'rev-slope': 'Reverse slope', night: 'By night', frontal: 'Frontal',
   'left-flank': 'Lt flank', 'right-flank': 'Rt flank',
   line: 'Line', l: 'L', v: 'V', patrol: 'Out and back', 'two-ops': 'Two OPs', 'three-ops': 'Three OPs', 'four-bn': 'Four Bns', 'armd-lead': 'Armd Bde leading', 'two-bde': 'Two Bdes', area: 'Area', screen: 'Screen', 'three-axes': 'Three axes', delay: 'Delay', 'by-day': 'By day', ridge: 'Ridge',
 };
@@ -418,6 +418,8 @@ export class PlanBuildTab {
   private _ph2 = new Map<string, Recipe>();
   /** Hostile units and posns on the map (Web Mercator), read once per placement for a two-phase attack's Obj 2. */
   private _enemyAt: XY[] | null = null;
+  /** ITG designated on the map (Vital Gr / Imp Gr symbols, Web Mercator), read once per placement: posns beside them wrap them. */
+  private _itgAt: { at: XY; label: string }[] | null = null;
   private _nmRules = nmRulesFrom(nightMarchDoctrine);
   // ambush, patrol, recce (PlanSmallOps over the Movement / Platoon Guides)
   private _movRules = movRulesFrom(movementDoctrine);
@@ -962,6 +964,18 @@ export class PlanBuildTab {
         .map((x) => ({ x: x.pts.reduce((a, q) => a + q.x, 0) / x.pts.length, y: x.pts.reduce((a, q) => a + q.y, 0) / x.pts.length }));
     } catch { this._enemyAt = []; }
     return this._enemyAt;
+  }
+
+  /** The ITG designated on the map: Vital Gr (25242301) and Imp Gr (00000160) symbols, not the plan's own (read once per placement). */
+  private _itgPosns(): { at: XY; label: string }[] {
+    if (this._itgAt) return this._itgAt;
+    try {
+      const rd = this._host.readDrawn?.('all');
+      const syms = rd ? readSymbols(rd.records) : [];
+      this._itgAt = syms.filter((x) => !x.pbRole && x.pts.length && (x.key === '25242301' || x.key === '00000160'))
+        .map((x) => ({ at: { x: x.pts.reduce((a, q) => a + q.x, 0) / x.pts.length, y: x.pts.reduce((a, q) => a + q.y, 0) / x.pts.length }, label: `${x.key === '25242301' ? 'VG' : 'IG'}${x.label ? ` ${x.label}` : ''}` }));
+    } catch { this._itgAt = []; }
+    return this._itgAt;
   }
 
   /**
@@ -1590,7 +1604,7 @@ export class PlanBuildTab {
             : task === 'ambush' ? 'Click the KZ on the Rd'
               : task === 'patrol' ? 'Click the SP'
                 : task === 'recce' ? (this._isScreen ? 'Click the Wdr RV in the main posn' : 'Click the SP')
-                  : r?.layout === 'canal' ? 'Click the point on the canal' : 'Click where the HQ goes';
+                  : isCanalLayout(r?.layout) ? 'Click the point on the canal' : r?.layout === 'ditch' ? 'Click the point on the ditch' : 'Click where the HQ goes';
       return { step: 'Step 1 of 2', text: first };
     }
     const second = task === 'crossing' ? 'Aim across to the far bank, then click'
@@ -1901,6 +1915,8 @@ export class PlanBuildTab {
       unit: this._unit(recipe), force: this._force(recipe, kind),
       night: (recipe.task === 'attack' || recipe.task === 'patrol') && this._night, nmRules: this._nmRules,
       enemyAt: (recipe.phases ?? 1) >= 2 ? this._enemyPosns() : null,
+      // a defence's posns take in the ITG the user designated on the map (Vital / Imp Gr)
+      itgAt: recipe.task === 'defence' ? this._itgPosns() : null,
       // ambush, patrol, recce (PlanSmallOps): the aim point, the Movement / Platoon Guide rules, the foot speeds, the target
       cursor: this._cursor, movRules: this._movRules, plRules: this._plRules, speeds: this._speeds, mover: this._mover,
       // a crossing (PlanCrossing): the Water engine's rules, the light (Annex Q column), this month (the season)
@@ -2252,6 +2268,7 @@ export class PlanBuildTab {
     if (!placedAny && !this._destroyed && this._placing) this._msg = 'Placement cancelled: nothing placed.';
     this._placing = null;
     this._enemyAt = null;
+    this._itgAt = null;
     this._manual = {};
     this._jMoved.clear();
     this._jNote = '';

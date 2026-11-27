@@ -58,11 +58,30 @@ for (const r of recipes) {
 // ── defence specifics ────────────────────────────────────────────────────────────────────────────────────────────
 const get = (id) => recipes.find((r) => r.id === id);
 const two = S.solveRecipe(get('bn-def-two-up'), ctx, { alternates: 'visible' });
+// ── the layouts as IBB Annex U / V draw them (the user, 27 Nov 2026: "follow this layout in true sense") ───────────
+{
+  const box = (res, role) => { const it = res.items.find((i) => i.role === role); const xs = it.pts.map((p) => p.x), ys = it.pts.map((p) => p.y); return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys), cx: (Math.min(...xs) + Math.max(...xs)) / 2, cy: (Math.min(...ys) + Math.max(...ys)) / 2 }; };
+  const A = box(two, 'fwdL'), B = box(two, 'fwdR'), C = box(two, 'depth'), D = box(two, 'res');
+  check('two up (Annex U App 6): a depth Coy behind EACH forward Coy, C behind A, D behind B, side by side', Math.abs(C.cx - A.cx) < 1 && Math.abs(D.cx - B.cx) < 1 && Math.abs(C.cy - D.cy) < 1 && C.y1 < A.y0 && D.y1 < B.y0, `A ${A.cx},${A.cy} C ${C.cx},${C.cy} B ${B.cx},${B.cy} D ${D.cx},${D.cy}`);
+  check('two up: depth 3000-4000 m, the forward edge to the rear of the depth Coys', two.depthM >= 2999 && two.depthM <= 4001, `${Math.round(two.depthM)} m`);
+  check('one Bn HQ, behind the depth Coys, and the click on it (IBB S3 p 23)', two.items.filter((i) => i.role === 'hq').length === 1 && two.items.find((i) => i.role === 'hq').pts[0].y < C.y0 && two.items.find((i) => i.id === two.pivotId)?.role === 'hq');
+  const ex = S.solveRecipe(get('bn-def-extended'), ctx, {});
+  const pls = ex.items.filter((i) => i.role === 'fwdLPl').map((i) => box({ items: [i] }, i.role)).sort((a, b) => a.cx - b.cx);
+  check('extended (Annex U App 7): each forward Coy three Pls up in a row, 600 m, 300 m apart, drawn with Coy posns only', pls.length === 3 && pls.every((p) => Math.abs(p.x1 - p.x0 - 600) < 2 && Math.abs(p.cy - pls[0].cy) < 1) && Math.abs(pls[1].x0 - pls[0].x1 - 300) < 2, pls.map((p) => `${Math.round(p.x0)}..${Math.round(p.x1)}`).join(' '));
+  check('extended: 800 m between the Coys, 5600 m held inside the 6300 m row, two Coys back', Math.abs(box(ex, 'fwdR').x0 - box(ex, 'fwdL').x1 - 800) < 2 && Math.abs(ex.frontageM - 5600) < 2 && Math.abs(box(ex, 'depth').cx - box(ex, 'fwdL').cx) < 1 && Math.abs(box(ex, 'res').cx - box(ex, 'fwdR').cx) < 1, `${Math.round(ex.frontageM)} m`);
+  for (const id of ['bn-def-canal-three-up', 'bn-def-at-ditch']) {
+    const cv = S.solveRecipe(get(id), ctx, {});
+    const f3 = ['fwdL', 'fwdC', 'fwdR'].map((r) => box(cv, r));
+    check(`${id} (Annex V): three Coys up, 450 m apart, within 4115 m; frontage and depth pass`, f3.every((b) => Math.abs(b.cy - f3[0].cy) < 1) && Math.abs(f3[1].x0 - f3[0].x1 - 450) < 2 && Math.abs(f3[2].x0 - f3[1].x1 - 450) < 2 && cv.frontageM <= 4116 && row(cv, 'Frontage')?.st === 'pass' && row(cv, 'Depth')?.st === 'pass', `${Math.round(cv.frontageM)} m, ${row(cv, 'Depth')?.reason}`);
+    check(`${id}: a second line force and dotted C Pen posns in depth`, cv.items.some((i) => i.role === 'slf') && cv.items.filter((i) => /^cp/.test(i.role) && i.planned).length === 2);
+  }
+}
 check('Bn two up: frontage passes the two-up row', row(two, 'Frontage')?.st === 'pass', row(two, 'Frontage')?.reason);
 check('Bn two up: depth inside 3-4 km', row(two, 'Depth')?.st === 'pass', row(two, 'Depth')?.reason);
 check('Bn two up: gap 500 m passes', row(two, 'Gaps')?.st === 'pass', row(two, 'Gaps')?.reason);
 // at the book's 4 km/h (IBB p 18) a reserve 3.3 km deep (inside IBB's 3-4 km) needs 36 min, past the 30 min (IBB p 279): it warns
-check('Bn two up: reserve 36 min on foot passes a Bn counter-attack within an hour (IBB p 306; 4 km/h)', row(two, 'Reserve reach')?.st === 'pass' && /36 min.*wants 60 min/.test(row(two, 'Reserve reach')?.reason ?? ''), row(two, 'Reserve reach')?.reason);
+// D Coy behind B Coy (IBB Annex U App 6 p 481: a depth Coy behind each forward Coy), 3050 m deep
+check('Bn two up: reserve 43 min on foot passes a Bn counter-attack within an hour (IBB p 306; 4 km/h)', row(two, 'Reserve reach')?.st === 'pass' && /43 min.*wants 60 min/.test(row(two, 'Reserve reach')?.reason ?? ''), row(two, 'Reserve reach')?.reason);
 const feba = two.items.find((i) => i.role === 'fdl');
 const fwdTops = two.slots.filter((s) => s.kind === 'fwd').map((s) => s.centre.y + s.hM / 2);
 check('Bn two up: FEBA (25140400) along the forward edges', feba?.key === '25140400' && feba.pts.every((p) => fwdTops.some((t) => Math.abs(p.y - t) < 1)));

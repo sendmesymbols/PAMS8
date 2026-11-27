@@ -656,6 +656,18 @@ export function canalPrep(inp: FitLayoutInput): CanalPrep | null {
       rows: [pend ? { name: 'Canal', st: 'unchecked', reason: 'the ground at the click is still loading: rest the mouse there and it is read' }
         : { name: 'Canal', st: 'fail', reason: 'no canal or water within 400 m of the click: laid square to the aim, the canal not read', detail: { head: 'No canal at the click', why: 'The canal layout is laid along the obstacle the click is on; the bundle shows none within 400 m.', fix: ['Click on the canal in front of the Bn\'s centre', 'Take another layout (two up, three up) where there is no obstacle'] } }] };
   }
+  // the obstacle must lie across the En approach, not run toward him: else the defence laid along it stands side-on to
+  // the threat (user, 27 Nov 2026: a nullah toward the threat turned the plan to face away from it). The approach is
+  // the line from the click to the threat marker, else the aim.
+  const towardDeg = inp.threat ? ((Math.atan2(inp.threat.x - click[0], inp.threat.y - click[1]) / D2R) % 360 + 360) % 360 : aimDeg;
+  const offLine = Math.abs(((r.axisDeg - towardDeg) % 180 + 180) % 180), acrossDeg = Math.min(offLine, 180 - offLine);
+  const acrossMin = one(doc, 'canal.acrossMinDeg', 45);
+  if (acrossDeg < acrossMin) {
+    const nm0 = r.name ? `${r.name} (${r.typeLabel})` : r.typeLabel;
+    return { nudges: {}, geom: {}, confirm: [], reading: null, pending: !!mov.takePending?.(),
+      rows: [{ name: 'Canal', st: 'fail', reason: `${nm0} runs toward the threat: it runs ${Math.round(((r.axisDeg % 180) + 180) % 180)}°-${Math.round(((r.axisDeg % 180) + 180) % 180) + 180}° here, ${inp.threat ? 'the threat marker' : 'the aim'} lies ${Math.round(towardDeg)}°, only ${Math.round(acrossDeg)}° off it (wants ${acrossMin}° or more): it is not an obstacle across the En approach, so the plan is laid square to the threat, not along it`,
+        detail: { head: 'The water runs toward the threat', why: 'A canal defence is laid along the obstacle; one that runs toward the En would turn the Bn side-on to him (IC s85 para 3 d: the canal as an obstacle across his approach).', fix: ['Take a layout that faces the threat (two up, three up, extended)', 'Click on water that lies across the En approach', 'Move the threat marker if the En comes another way'] } }] };
+  }
   const wv = r.width.v ?? worst(r.width, 'lo') ?? 60;
   const NOMINAL = 45;
   const homeEdge = Math.max(r.home.crestM ?? 0, wv / 2), farEdge = Math.max(r.far.crestM ?? 0, wv / 2);

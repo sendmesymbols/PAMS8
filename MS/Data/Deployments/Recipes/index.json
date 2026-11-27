@@ -12,9 +12,12 @@
       "recipes": [
         "bn-def-two-up",
         "bn-def-three-up",
+        "bn-def-extended",
         "bn-def-one-up",
         "bn-def-all-round",
         "bn-def-canal",
+        "bn-def-canal-three-up",
+        "bn-def-at-ditch",
         "bn3-def-two-up",
         "bn3-def-three-up",
         "bn-def-rev-slope"

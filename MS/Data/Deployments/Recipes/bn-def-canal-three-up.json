@@ -1,0 +1,542 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "bn-def-canal-three-up",
+  "family": "bn-def",
+  "layout": "canal-three-up",
+  "echelon": "16",
+  "unit": "inf-bn-std",
+  "basis": "D",
+  "task": "defence",
+  "name": "Bn Def: on a canal, three up (Annex V)",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "pivot": "xTgt",
+  "note": "Defence on a canal as IBB Annex V p 483 (canal with a higher home bank) and App 8 p 484 (a higher far bank or banks of equal height) draw it: three Coys up on the home bank, each a Coy locality astride the bank (one Pl up, two back), 450 m apart (Annex V; App 8 prints 430 m, 500x: the wider kept), the Bn 2750-4115 m (3000-4500x, x = yards); each Coy 1070 m wide, so three with their gaps fit the 4115 m (calc: (4115 - 2 x 450) / 3); depth 1830-2750 m back from the obstacle (laid at 2700 m); D Coy and the second line force in depth (App 8: SECOND LINE FORCE), counter penetration posns AA and BB on the flanks in depth, dotted (occupied when ordered); protective detachments on the far bank between the minefields, mask posns for some major weapons beyond it (IC s85 para 7), minefields on the far side and in the gaps (para 17 a), double concertina on both banks (para 17 b). With the terrain the plan is laid along the canal the click is on (MovementGuideWater.readWater). Bn HQ (IBB S3 pp 22-24; p 23: placed centrally within the Bn locality, preferably behind the depth localities; a defended locality of 55 all ranks, concealed from the air, dug in, near the Bde axis with an alternative posn; laid beside D Coy, centrally in depth (the distance a decision, E). The RRs, a section of two in each rifle Coy, sited first in the forward localities with an alternative each 200-300 m back (IBB S8 pp 38-42; IC p 367).",
+  "alternates": [
+    {
+      "of": "fwdL",
+      "kind": "alt",
+      "spacing": {
+        "doctrine": "alt.spacingM.coy"
+      }
+    },
+    {
+      "of": "fwdC",
+      "kind": "alt",
+      "spacing": {
+        "doctrine": "alt.spacingM.coy"
+      }
+    },
+    {
+      "of": "fwdR",
+      "kind": "alt",
+      "spacing": {
+        "doctrine": "alt.spacingM.coy"
+      }
+    }
+  ],
+  "supplementary": "perSecondaryApproach",
+  "slots": [
+    {
+      "role": "xTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          -1620
+        ]
+      }
+    },
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "A Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "wM": 1070,
+        "hM": 700
+      },
+      "seed": {
+        "acrossM": -1520,
+        "backM": -1200
+      },
+      "rule": {
+        "side": "L"
+      },
+      "terrainRule": {
+        "prefer": [
+          "highGround",
+          "behindObstacle"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "fwdC",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "B Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "wM": 1070,
+        "hM": 700
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": -1200
+      },
+      "rule": {
+        "side": "C",
+        "gapTo": {
+          "slot": "fwdL",
+          "row": "Battalion along a canal"
+        },
+        "mutualSupport": "fwdL"
+      },
+      "terrainRule": {
+        "prefer": [
+          "highGround",
+          "behindObstacle"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "C Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "wM": 1070,
+        "hM": 700
+      },
+      "seed": {
+        "acrossM": 1520,
+        "backM": -1200
+      },
+      "rule": {
+        "side": "R",
+        "gapTo": {
+          "slot": "fwdC",
+          "row": "Battalion along a canal"
+        },
+        "mutualSupport": "fwdC"
+      },
+      "terrainRule": {
+        "prefer": [
+          "highGround",
+          "behindObstacle"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "D Coy",
+      "echelon": "15",
+      "order": 2,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": -700,
+        "backM": 600
+      },
+      "rule": {
+        "behind": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ],
+        "reach": {
+          "slots": [
+            "fwdL",
+            "fwdC",
+            "fwdR"
+          ],
+          "withinMin": {
+            "doctrine": "cpen.coyMin"
+          }
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "vehicleAccess": true,
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "slf",
+      "kind": "depth",
+      "sym": "25151200",
+      "label": "2nd Line Force",
+      "order": 2,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 1000,
+        "backM": 800
+      },
+      "rule": {
+        "behind": [
+          "fwdC",
+          "fwdR"
+        ]
+      }
+    },
+    {
+      "role": "cpAA",
+      "kind": "cpen",
+      "sym": "25151200",
+      "label": "AA",
+      "order": 2,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": -2300,
+        "backM": 50
+      },
+      "planned": true,
+      "rule": {},
+      "echelon": "15"
+    },
+    {
+      "role": "cpBB",
+      "kind": "cpen",
+      "sym": "25151200",
+      "label": "BB",
+      "order": 2,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 2300,
+        "backM": 50
+      },
+      "planned": true,
+      "rule": {},
+      "echelon": "15"
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bn HQ",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          1150
+        ]
+      }
+    },
+    {
+      "role": "fdl",
+      "kind": "line",
+      "sym": "25140400",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "joins": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ],
+        "edge": "front"
+      }
+    },
+    {
+      "role": "maskL",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "MASK",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": -1520,
+          "backM": -2020,
+          "wM": 300,
+          "hM": 150
+        }
+      }
+    },
+    {
+      "role": "maskR",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "MASK",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": 1520,
+          "backM": -2020,
+          "wM": 300,
+          "hM": 150
+        }
+      }
+    },
+    {
+      "role": "mfFar",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -1870,
+          "wM": 4500,
+          "hM": 200
+        }
+      }
+    },
+    {
+      "role": "mfGapL",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": -760,
+          "backM": -1350,
+          "wM": 400,
+          "hM": 200
+        }
+      }
+    },
+    {
+      "role": "wireFar",
+      "kind": "obstacle",
+      "sym": "25290308",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "pts": [
+          [
+            -2300,
+            -1690
+          ],
+          [
+            2300,
+            -1690
+          ]
+        ]
+      }
+    },
+    {
+      "role": "wireHome",
+      "kind": "obstacle",
+      "sym": "25290308",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "pts": [
+          [
+            -2150,
+            -1565
+          ],
+          [
+            2150,
+            -1565
+          ]
+        ]
+      }
+    },
+    {
+      "role": "killingGr",
+      "kind": "area",
+      "sym": "25242300",
+      "label": "K1",
+      "order": 4,
+      "terrainOnly": true,
+      "rule": {
+        "inRangeOf": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main.chokepoint"
+      }
+    },
+    {
+      "role": "atgm",
+      "kind": "point",
+      "sym": "15111200",
+      "label": "BS",
+      "order": 5,
+      "rule": {
+        "coversGap": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ],
+        "distM": {
+          "doctrine": "atFramework.atgmDetSpacingM"
+        },
+        "backBlastClear": true
+      },
+      "terrainRule": {
+        "sees": "killingGr"
+      }
+    },
+    {
+      "role": "rr",
+      "kind": "point",
+      "sym": "15110800",
+      "label": "RR",
+      "order": 6,
+      "rule": {
+        "perSlot": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ],
+        "ahead": -150
+      }
+    },
+    {
+      "role": "rrAlt",
+      "kind": "point",
+      "sym": "15110800",
+      "label": "RR (alt)",
+      "order": 6,
+      "planned": true,
+      "rule": {
+        "perSlot": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ],
+        "ahead": -400
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111402",
+      "label": "81 mm Mor",
+      "order": 5,
+      "rule": {
+        "behind": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ],
+        "minRange": {
+          "doctrine": "df.closeMinFromFdlM.mortar"
+        }
+      }
+    },
+    {
+      "role": "dfTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "DF Tgt",
+      "order": 5,
+      "rule": {
+        "ahead": {
+          "doctrine": "df.closeMinFromFdlM.mortar"
+        },
+        "of": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.all.chokepoint"
+      }
+    },
+    {
+      "role": "mfGapR",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": 760,
+          "backM": -1350,
+          "wM": 400,
+          "hM": 200
+        }
+      }
+    },
+    {
+      "role": "protDet1",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Prot Det",
+      "echelon": "13",
+      "order": 4,
+      "planned": true,
+      "shape": {
+        "at": [
+          -1520,
+          -2100
+        ]
+      }
+    },
+    {
+      "role": "protDet2",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Prot Det",
+      "echelon": "13",
+      "order": 4,
+      "planned": true,
+      "shape": {
+        "at": [
+          0,
+          -2100
+        ]
+      }
+    },
+    {
+      "role": "protDet3",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Prot Det",
+      "echelon": "13",
+      "order": 4,
+      "planned": true,
+      "shape": {
+        "at": [
+          1520,
+          -2100
+        ]
+      }
+    }
+  ]
+}

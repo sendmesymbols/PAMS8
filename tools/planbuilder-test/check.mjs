@@ -99,11 +99,13 @@ const bde = { echelon: '18', type: 'mech', source: 'user' };
 
 // ── the kind of ground ─────────────────────────────────────────────────────────────────────────────────────────────
 {
-  // a canal 300 m in front of the FDL, all along it
-  const fl = F.fitLayout(fitIn(ground({ cls: (x, y) => (y > 1250 && y < 1350 ? 20 : 2) }), { enemy: bde, terrain: 'auto' }));
+  // a canal 300 m in front of the FDL, all along it (the FDL's world y read off the plan: the click is on the Bn HQ)
+  const fl0 = F.fitLayout(fitIn(ground(), { enemy: bde, terrain: 'plains' }));
+  const fdlW = Math.max(...fl0.raw.slots.filter((s) => s.role.startsWith('fwd')).map((s) => F.toWorld(fl0.frame, { x: s.centre.x, y: s.centre.y + s.hM / 2 }).y));
+  const fl = F.fitLayout(fitIn(ground({ cls: (x, y) => (y > fdlW + 250 && y < fdlW + 350 ? 20 : 2) }), { enemy: bde, terrain: 'auto' }));
   check('Auto reads a canal in front as an obstacle', fl.terrain.kind === 'obstacle' && fl.terrain.source === 'auto', JSON.stringify(fl.terrain));
   check('the obstacle tie-in: the canal under the forward posns\' fire', row(fl.res.rows, 'Obstacle tie-in')?.st === 'pass', row(fl.res.rows, 'Obstacle tie-in')?.reason);
-  const flFar = F.fitLayout(fitIn(ground({ cls: (x, y) => (y > 2250 && y < 2350 ? 20 : 2) }), { enemy: bde, terrain: 'obstacle' }));
+  const flFar = F.fitLayout(fitIn(ground({ cls: (x, y) => (y > fdlW + 1250 && y < fdlW + 1350 ? 20 : 2) }), { enemy: bde, terrain: 'obstacle' }));
   check('a canal 1.3 km out is beyond the MGs: warn, move up or a mask posn', row(flFar.res.rows, 'Obstacle tie-in')?.st === 'warn', row(flFar.res.rows, 'Obstacle tie-in')?.reason);
   const al = C.frontageAllowance(doc, '16', 'obstacle');
   // frontages from the books, own rows only (24 Nov 2026): the Foxland (enemy) rows of IC s113 are never own
@@ -370,10 +372,13 @@ const S = await import('../../MS/Engines/DeploymentBuilder/PlanSolve.ts');
 }
 // ── J moves the reserve when its moves are too slow ─────────────────────────────────────────────────────────────────
 {
-  // the enemy's tanks 12 km out: the reserve on foot is late to the C Pen posn (38 against 29 min)
+  // the enemy's tanks 11 km in front of the FDL: the reserve on foot is late to the C Pen posn
+  const f0 = F.fitLayout(fitIn(ground(), { terrain: 'plains' }));
+  const fdlJ = Math.max(...f0.raw.slots.filter((s) => s.role.startsWith('fwd')).map((s) => F.toWorld(f0.frame, { x: s.centre.x, y: s.centre.y + s.hM / 2 }).y));
+  const from = Math.round(fdlJ + 11000);
   const g = ground({ avenues: [{ x: 0, chokes: [] }] });
-  g.avenues = () => { const path = []; for (let y = 12000; y >= -500; y -= 100) path.push({ x: 0, y }); return [{ path, lengthM: 12500, goPct: 100, minWidthM: 2000, chokes: [] }]; };
-  const inp = { ...fitIn(g, { enemy: { echelon: '18', type: 'mech', source: 'user' }, terrain: 'plains' }), threat: { x: 0, y: 12000 } };
+  g.avenues = () => { const path = []; for (let y = from; y >= -500; y -= 100) path.push({ x: 0, y }); return [{ path, lengthM: from + 500, goPct: 100, minWidthM: 2000, chokes: [] }]; };
+  const inp = { ...fitIn(g, { enemy: { echelon: '18', type: 'mech', source: 'user' }, terrain: 'plains' }), threat: { x: 0, y: from } };
   const refit = (i) => { const f = F.fitLayout(i); return f ? W.withMoves(f, i) : null; };
   const cur = refit(inp);
   const dres = cur.res.slots.find((s) => s.role === 'res');

@@ -337,6 +337,15 @@ check('No Movement Guide reader: the geometry stands, the ground rows grey', g0.
   check('...the defence engine still checks it (frontage, depth, fields of fire, flanks) and the canal is drawn for the map', ['Frontage', 'Depth', 'Fields of fire', 'Flanks'].every((n2) => row(rows, n2)) && (fl.fit.crossing?.obstacle.line.length ?? 0) >= 2, rows.map((r) => r.name).join(', '));
   const off = F.fitLayout(inpOf(cr, at(0, -2000), { threat: XY(at(0, 3000)), terrain: 'plains' }));
   check('...clicked 2 km from any canal: the Canal row fails with its fix, the plan stays laid square to the aim', row(off.res.rows, 'Canal')?.st === 'fail' && /Click on the canal/.test(row(off.res.rows, 'Canal').detail?.fix?.[0] ?? ''), row(off.res.rows, 'Canal')?.reason);
+  // the threat marker along the canal (east): the canal runs toward him, so the plan is not laid along it (user, 27 Nov
+  // 2026: a nullah toward the threat turned the plan side-on to it)
+  const along = F.fitLayout(inpOf(cr, at(0, 0), { threat: XY(at(4000, 200)), terrain: 'plains' }));
+  check('...the threat along the canal: "runs toward the threat" fails, the plan not laid along the water', row(along.res.rows, 'Canal')?.st === 'fail' && /runs toward the threat/.test(row(along.res.rows, 'Canal').reason) && !row(along.res.rows, 'Higher bank'), row(along.res.rows, 'Canal')?.reason);
+  for (const id of ['bn-def-canal-three-up']) {
+    const c3 = F.fitLayout(inpOf(rec(id), at(0, 0), { threat: XY(at(0, 3000)), terrain: 'plains' }));
+    const f3 = ['fwdL', 'fwdC', 'fwdR'].map((r) => it(c3.raw, r).pts.map((p) => world(c3, p)));
+    check(`${id} on the ground: three Coys on the home bank, the canal read`, f3.every((pts) => Math.max(...pts.map(nOfW)) < -30) && /Upper Test Canal/.test(row(c3.res.rows, 'Canal')?.reason ?? ''), row(c3.res.rows, 'Canal')?.reason);
+  }
 }
 
 // ── the obstacle frame ─────────────────────────────────────────────────────────────────────────────────────────────────

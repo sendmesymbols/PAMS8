@@ -12,7 +12,7 @@
  * Erasable TypeScript only: Node 24 runs this file as it is.
  */
 import type { DoctrineSet, Recipe } from './PlanRecipes';
-import { doctrineAt, resolveRange, slotSizeM, frontageRow, FOOTPRINT_KINDS, SMALL_TASKS } from './PlanRecipes';
+import { doctrineAt, resolveRange, slotSizeM, frontageRow, FOOTPRINT_KINDS, SMALL_TASKS, isCanalLayout } from './PlanRecipes';
 import { withdrawalGeometryRows } from './PlanWithdrawal';
 
 export type CheckState = 'pass' | 'warn' | 'fail' | 'unchecked';
@@ -198,13 +198,20 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     add(s.role, s.sym, s.label ?? '', battlePosnPts(b.c, w, h, turn, opts.outlines?.[s.role]), { echelon: s.echelon, drawType: 1, extra: { FACE_GAP: 5 }, planned: s.planned || undefined });
     // the unit in its posn: a Pl, Coy or (a Bde's posns) a Bn
     if (s.echelon === '14' || s.echelon === '15' || s.echelon === '16') add(`${s.role}Unit`, '10121100', s.label ?? '', [b.c], { echelon: s.echelon });
-    // the Pl posns inside a Coy locality: two up, one back (Pl 600 x 250 m in a 1500 x 700 m Coy, IBB Annex U App 5)
-    if (opts.detail === 'pl' && s.echelon === '15') {
+    // the Pl posns inside a Coy locality: two up, one back (Pl 600 x 250 m in a 1500 x 700 m Coy, IBB Annex U App 5
+    // p 480), or three up in a row (App 7 p 482: Pls 600 m, 300 m apart, in a 2400 m forward Coy)
+    if ((opts.detail === 'pl' || s.plsAlways) && s.echelon === '15') {
       const coyLetter = (s.label ?? '').split(' ')[0];
-      [[-0.3, 0.22, '1'], [0.3, 0.22, '2'], [0, -0.22, '3']].forEach(([u, v, n]) => {
-        add(`${s.role}Pl`, s.sym, String(n), battlePosnPts(boxPt(b.c, (u as number) * w, (v as number) * h, turn), 0.4 * w, 0.36 * h, turn),
+      const plW = num(doctrineAt(doc, 'size.pl.frontageM'), 600), plGap = num(doctrineAt(doc, 'size.pl.gapM'), 300);
+      // three up: each Pl 600 m of the Coy's width, the gaps 300 m (fractions of the Coy box, so a narrower Coy keeps the ratio)
+      const span = 3 * plW + 2 * plGap, pw = plW / span, step = (plW + plGap) / span;
+      const spots: [number, number, string, number, number][] = s.pls === 'three-up'
+        ? [[-step, 0, '1', pw, 0.9], [0, 0, '2', pw, 0.9], [step, 0, '3', pw, 0.9]]
+        : [[-0.3, 0.22, '1', 0.4, 0.36], [0.3, 0.22, '2', 0.4, 0.36], [0, -0.22, '3', 0.4, 0.36]];
+      for (const [u, v, n, fw, fh] of spots) {
+        add(`${s.role}Pl`, s.sym, n, battlePosnPts(boxPt(b.c, u * w, v * h, turn), fw * w, fh * h, turn),
           { echelon: '14', higher: `${coyLetter} Coy`, drawType: 1, extra: { FACE_GAP: 5 } });
-      });
+      }
     }
     slots.push({ role: s.role, label: s.label ?? s.role, kind: s.kind, centre: b.c, wM: w, hM: h, turnDeg: turn, checks: [], st: 'unchecked' });
   }
@@ -355,7 +362,8 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
   }
 
   // 3. the HQ (the click lands on it) for a defence
-  if (!isAttack && boxes.length) {
+  // (a recipe that lays its own HQ, IBB S3 p 23 behind the depth localities, keeps it: one HQ, the click on it)
+  if (!isAttack && boxes.length && !recipe.slots.some((s) => s.role === 'hq')) {
     const ech = recipe.echelon;
     // central, between the forward posns and the ones behind them, so the click lands on the middle of the plan
     const kindOf = (b: Box) => recipe.slots.find((s) => s.role === b.role)?.kind;
@@ -495,8 +503,8 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     const fpPts = fp.flatMap((b) => [boxPt(b.c, -b.w / 2, -b.h / 2, b.turn), boxPt(b.c, b.w / 2, b.h / 2, b.turn)]);
     const e = ext(fpPts.length ? fpPts : allPts);
     frontageM = e.x1 - e.x0; depthM = e.y1 - e.y0;
-    if (recipe.layout === 'canal') {
-      // on a canal the frontage is what the forward posns hold on the obstacle; the counter penetration posns (taken up
+    if (isCanalLayout(recipe.layout) || recipe.layout === 'ditch') {
+      // on a canal (or an AT ditch, IBB Annex V App 9) the frontage is what the forward posns hold on the obstacle; the counter penetration posns (taken up
       // when ordered) are not; the depth from the forward posns' front edge back to the rear of the depth posns
       const kindOf2 = (role: string) => recipe.slots.find((s) => s.role === role)?.kind;
       const fw = fp.filter((b) => kindOf2(b.role) === 'fwd'), dp = fp.filter((b) => kindOf2(b.role) === 'depth' || kindOf2(b.role) === 'res');
@@ -506,7 +514,7 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     const row = recipe.frontageRow ? frontageRow(doc, recipe.frontageRow) : null;
     const dRow = row ?? (recipe.depthRow ? frontageRow(doc, recipe.depthRow) : null);
     const fr = row ? range(row.frontageM) : null;
-    const canal = recipe.layout === 'canal';
+    const canal = isCanalLayout(recipe.layout);
     // a canal defence: its frontage and depth from IBB S61 p 333 with Annex V p 483 / App 8 p 484 (PlanDoctrine.canal)
     if (canal) {
       const maxF = num(doctrineAt(doc, 'canal.bnThreeUpMaxM'), 4115), dep = resolveRange(doc, doctrineAt(doc, 'canal.depthM')) ?? [1830, 2750];
