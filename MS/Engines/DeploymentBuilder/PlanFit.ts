@@ -22,6 +22,7 @@ import { attackBreach, attackFactors, attackTimes, atOnObj, counterAttack, findA
 import { findPhase2, goingRow, type Phase2Find, findPhaseN } from './PlanPhase';
 import { addTankTimes, defTankRows, findTankSpots, type TankFind, type TankMode, tankFupVsEnAtgm } from './PlanTanks';
 import { artyRows } from './PlanArty';
+import { attackFrontRows, frontLocal, frontRows, frontValid, nearestOnFront, rayAhead, readFront, shapeToFront, type EnFront, type FrontShape } from './PlanEnFront';
 import { adMountainRows, adRows } from './PlanAD';
 import type { ForceSides } from './PlanContext';
 import { fitSmallOp, type Mover, type SmallProbe, type SmallReading } from './PlanSmallOps';
@@ -139,6 +140,8 @@ export interface FitResult {
   fromAssumedM?: number;
   /** The enemy's likely (or drawn) FUP on the main approach, plan metres. */
   enFup?: XY | null;
+  /** The En front / area marked (PlanEnFront): each forward posn's stand-off straight ahead, plan metres, for the map. */
+  standLinks?: { role: string; label: string; from: XY; to: XY; dM: number }[];
 }
 
 // ── frames ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -250,6 +253,83 @@ export interface FitInput {
   enFup?: XY | null;
   /** ITG the user designated on the map (Vital Gr / Imp Gr symbols, world): a posn beside one takes it inside its outline. */
   itgAt?: { at: XY; label: string }[] | null;
+  /** The En front line or area marked (world, PlanEnFront): the plan follows its curvature, its rows read against it. */
+  front?: EnFront | null;
+}
+
+/**
+ * The layout as the annex draws it holds through a move (user, 27 Nov 2026: posns turned and stretched round the ground
+ * "messes up the whole layout"): the gaps between the forward posns within the row, the forward posns still in front of
+ * the depth ones, a depth posn still behind the posn it backs, the depth within the row. Reads `boxes` as they are when
+ * called (the gaps, depth and x places it keeps are those at creation). `overlapPad`: also refuse a move onto another posn.
+ */
+export function layoutGuard(boxes: Box[], recipe: Recipe, doc: DoctrineSet, overlapPad: number | null = null): (b: Box, cand: Box) => string | null {
+  const sub = recipe.subRow ? frontageRow(doc, recipe.subRow) : null;
+  const rowF = recipe.frontageRow ? frontageRow(doc, recipe.frontageRow) : null;
+  const dRow = rowF ?? (recipe.depthRow ? frontageRow(doc, recipe.depthRow) : null);
+  const depthBand = dRow?.depthM != null ? resolveRange(doc, dRow.depthM) : null;
+  const isFwd = (x: Box) => x.kind === 'fwd' && x.turn === 0, isBack = (x: Box) => x.kind === 'depth' || x.kind === 'res';
+  const gapsOf = (list: Box[]) => { const fw = list.filter(isFwd).sort((a, z) => a.c.x - z.c.x); return fw.slice(1).map((x, i) => x.c.x - x.w / 2 - (fw[i].c.x + fw[i].w / 2)); };
+  const depthOf = (list: Box[]) => { const fw = list.filter(isFwd), dp = list.filter(isBack); return fw.length && dp.length ? Math.max(...fw.map((x) => x.c.y + x.h / 2)) - Math.min(...dp.map((x) => x.c.y - x.h / 2)) : null; };
+  const gap0 = gapsOf(boxes), depth0 = depthOf(boxes), x0: Record<string, number> = Object.fromEntries(boxes.map((x) => [x.role, x.c.x]));
+  const gapMax = Math.max(sub?.gapM != null ? sub.gapM * 1.1 : 0, ...gap0.map((v) => v + 50));
+  return (b: Box, cand: Box): string | null => {
+    if (overlapPad !== null && boxes.some((o) => o !== b && o.role !== b.role && overlap(cand, o, overlapPad))) return 'it would run into the next posn';
+    const list = boxes.map((x) => (x === b ? cand : x));
+    const gaps = gapsOf(list);
+    const wide = gaps.findIndex((v) => v > gapMax + 1);
+    if (wide >= 0) return `it would open a gap of ${fmtM(gaps[wide])} between the forward posns (the row gives ${fmtM(sub?.gapM ?? gapMax)})`;
+    const fw = list.filter(isFwd), dp = list.filter(isBack);
+    if (fw.length && dp.length && Math.min(...fw.map((x) => x.c.y - x.h / 2)) < Math.max(...dp.map((x) => x.c.y + x.h / 2)) - 1) return 'it would bring a depth posn up level with the forward posns';
+    if (isBack(b) && Math.abs(cand.c.x - x0[b.role]) > b.w / 2) return 'it would move it out from behind the posn it backs';
+    const d = depthOf(list);
+    if (d !== null && depthBand && depth0 !== null) {
+      const off = (v: number) => Math.max(0, depthBand[0] - v, v - depthBand[1]);
+      if (off(d) > off(depth0) + 1) return `it would make the depth ${fmtM(d)} (the row gives ${fmtM(depthBand[0])}-${fmtM(depthBand[1])})`;
+    }
+    return null;
+  };
+}
+
+/** The En front's own figures (PlanDoctrine fit.enFront.*: E decisions, M settings). */
+function frontFigures(doc: DoctrineSet, bn: boolean) {
+  const num = (path: string, fb: number) => { const r = resolveRange(doc, doctrineAt(doc, path)); return r ? (r[0] + r[1]) / 2 : fb; };
+  return {
+    maxMoveM: num(bn ? 'fit.enFront.moveM.bn' : 'fit.enFront.moveM.coy', bn ? 600 : 300),
+    minMoveM: num('fit.enFront.minMoveM', 25),
+    bulgeM: num(bn ? 'fit.enFront.salientM.bn' : 'fit.enFront.salientM.coy', bn ? 400 : 200),
+    spreadWarnM: num(bn ? 'fit.enFront.spreadWarnM.bn' : 'fit.enFront.spreadWarnM.coy', bn ? 300 : 150),
+  };
+}
+
+/**
+ * The plan shaped to the En front with no terrain (geometry mode): the same moves fitPlan makes (forward posns straight
+ * forward or back to keep the stand-off as placed, the posns behind them with them, the layout held), and its rows.
+ */
+export function frontNudges(res: SolveResult, recipe: Recipe, doc: DoctrineSet, frame: FitFrame, front: EnFront | null): { nudges: Record<string, XY>; rows: Check[]; shape: FrontShape | null } {
+  if (!frontValid(front) || recipe.task !== 'defence') return { nudges: {}, rows: [], shape: null };
+  const bn = (levelOf(recipe.echelon) ?? 2) >= 2;
+  const fg = frontFigures(doc, bn);
+  const boxes: Box[] = res.slots.map((s) => ({ role: s.role, label: s.label, kind: s.kind, c: { ...s.centre }, w: s.wM, h: s.hM, turn: s.turnDeg }));
+  const lf = frontLocal(front, frame);
+  const shape = shapeToFront(boxes, lf, frame.pivot, fg, layoutGuard(boxes, recipe, doc, 50));
+  const rows = frontRows(readFront(lf, boxes, fg.bulgeM), front.kind, shape, fg.spreadWarnM);
+  return { nudges: shape.nudges, rows, shape };
+}
+
+/** The En front's rows on a plan read as drawn (Check my plan without the terrain): nothing moved. */
+export function frontCheckRows(res: SolveResult, recipe: Recipe, doc: DoctrineSet, frame: FitFrame, front: EnFront | null): Check[] {
+  if (!frontValid(front)) return [];
+  const fg = frontFigures(doc, (levelOf(recipe.echelon) ?? 2) >= 2);
+  const boxes: Box[] = res.slots.map((s) => ({ role: s.role, label: s.label, kind: s.kind, c: { ...s.centre }, w: s.wM, h: s.hM, turn: s.turnDeg }));
+  return frontRows(readFront(frontLocal(front, frame), boxes, fg.bulgeM), front.kind, null, fg.spreadWarnM);
+}
+
+/** The attack's rows against a marked En area / front: own control measures outside it, the Obj on it (world items). */
+export function attackFront(res: SolveResult, frame: FitFrame, front: EnFront | null): Check[] {
+  if (!frontValid(front)) return [];
+  const items = res.items.filter((i) => i.pts?.length).map((i) => ({ role: i.role, label: i.label ?? i.role, world: i.pts.map((p) => toWorld(frame, p)) }));
+  return attackFrontRows(front, items, 500);
 }
 
 export function fitPlan(inp: FitInput): FitResult {
@@ -266,6 +346,16 @@ export function fitPlan(inp: FitInput): FitResult {
   const kindOf = (role: string) => recipe.slots.find((s) => s.role === role)?.kind ?? '';
   const boxes: Box[] = res.slots.map((s) => ({ role: s.role, label: s.label, kind: s.kind, c: { ...s.centre }, w: s.wM, h: s.hM, turn: s.turnDeg }));
   const out: FitResult = { nudges: {}, slides: [], killingGr: null, slots: {}, rows: [], approaches: [], score: 0, fails: 0, warns: 0, pending: false, data: g.dataLine(), from: null, fromAssumed: false };
+
+  // 0. the En front or area marked (PlanEnFront; user, 27 Nov 2026): the plan follows its curvature, each forward posn
+  // moved whole straight forward or back to stand as far from it as the plan's axis does where it was put, the posns
+  // behind it with it, the layout held; read as drawn in Check my plan
+  const front = frontValid(inp.front) && recipe.task === 'defence' ? inp.front : null;
+  const fg = frontFigures(doc, bn);
+  let frontShape: FrontShape | null = null;
+  // where each posn started: every move below changes its centre, and the nudges are worked out from here at the end
+  const start: Record<string, XY> = Object.fromEntries(boxes.map((x) => [x.role, { ...x.c }]));
+  if (front && !inp.checkOnly) frontShape = shapeToFront(boxes, frontLocal(front, f), f.pivot, fg, layoutGuard(boxes, recipe, doc, 50));
 
   // 1. slide posns out of NO-GO (nearest spot whose ground does not fail, clear of the other posns)
   for (const b of inp.checkOnly ? [] : boxes) {
@@ -293,30 +383,7 @@ export function fitPlan(inp: FitInput): FitResult {
   // the layout as the annex draws it holds through a move (user, 27 Nov 2026: posns turned and stretched round the
   // ground "messes up the whole layout"): the gaps between the forward posns within the row, the forward posns still
   // in front of the depth ones, a depth posn still behind the posn it backs, the depth within the row
-  const sub = recipe.subRow ? frontageRow(doc, recipe.subRow) : null;
-  const rowF = recipe.frontageRow ? frontageRow(doc, recipe.frontageRow) : null;
-  const dRow = rowF ?? (recipe.depthRow ? frontageRow(doc, recipe.depthRow) : null);
-  const depthBand = dRow?.depthM != null ? resolveRange(doc, dRow.depthM) : null;
-  const isFwd = (x: Box) => x.kind === 'fwd' && x.turn === 0, isBack = (x: Box) => x.kind === 'depth' || x.kind === 'res';
-  const gapsOf = (list: Box[]) => { const fw = list.filter(isFwd).sort((a, z) => a.c.x - z.c.x); return fw.slice(1).map((x, i) => x.c.x - x.w / 2 - (fw[i].c.x + fw[i].w / 2)); };
-  const depthOf = (list: Box[]) => { const fw = list.filter(isFwd), dp = list.filter(isBack); return fw.length && dp.length ? Math.max(...fw.map((x) => x.c.y + x.h / 2)) - Math.min(...dp.map((x) => x.c.y - x.h / 2)) : null; };
-  const gap0 = gapsOf(boxes), depth0 = depthOf(boxes), x0: Record<string, number> = Object.fromEntries(boxes.map((x) => [x.role, x.c.x]));
-  const gapMax = Math.max(sub?.gapM != null ? sub.gapM * 1.1 : 0, ...gap0.map((v) => v + 50));
-  const layoutBreak = (b: Box, cand: Box): string | null => {
-    const list = boxes.map((x) => (x === b ? cand : x));
-    const gaps = gapsOf(list);
-    const wide = gaps.findIndex((v) => v > gapMax + 1);
-    if (wide >= 0) return `it would open a gap of ${fmtM(gaps[wide])} between the forward posns (the row gives ${fmtM(sub?.gapM ?? gapMax)})`;
-    const fw = list.filter(isFwd), dp = list.filter(isBack);
-    if (fw.length && dp.length && Math.min(...fw.map((x) => x.c.y - x.h / 2)) < Math.max(...dp.map((x) => x.c.y + x.h / 2)) - 1) return 'it would bring a depth posn up level with the forward posns';
-    if (isBack(b) && Math.abs(cand.c.x - x0[b.role]) > b.w / 2) return 'it would move it out from behind the posn it backs';
-    const d = depthOf(list);
-    if (d !== null && depthBand && depth0 !== null) {
-      const off = (v: number) => Math.max(0, depthBand[0] - v, v - depthBand[1]);
-      if (off(d) > off(depth0) + 1) return `it would make the depth ${fmtM(d)} (the row gives ${fmtM(depthBand[0])}-${fmtM(depthBand[1])})`;
-    }
-    return null;
-  };
+  const layoutBreak = layoutGuard(boxes, recipe, doc);
   const orig: Record<string, XY> = Object.fromEntries(boxes.map((x) => [x.role, { ...x.c }]));
 
   // 1a. the ITG the user drew on the map (Vital / Imp Gr): the posn nearest it moves whole until the ITG lies inside
@@ -359,6 +426,8 @@ export function fitPlan(inp: FitInput): FitResult {
     let best: { c: XY; score: number; d: number; rise: number } | null = null;
     for (let r = 100; r <= hiMove; r += 100) {
       for (let k = 0; k < 8; k++) {
+        // with an En front marked a forward posn keeps its stand-off: it moves up to higher ground along the front only
+        if (front && b.kind === 'fwd' && k % 4 !== 0) continue;
         const a = (k * Math.PI) / 4;
         const cand: Box = { ...b, c: P(b.c.x + r * Math.cos(a), b.c.y + r * Math.sin(a)) };
         if (boxes.some((o) => o !== b && overlap(cand, o, 50)) || layoutBreak(b, cand)) continue;
@@ -374,6 +443,11 @@ export function fitPlan(inp: FitInput): FitResult {
       out.slides.push({ role: b.role, label: b.label, distM: best.d, why: 'high', riseM: Math.round(best.rise) });
       b.c = best.c;
     }
+  }
+  // every move made (the En front, NO-GO, the ITG, high ground) as one nudge from where the posn started
+  for (const b of boxes) {
+    const s0 = start[b.role];
+    if (s0 && (Math.abs(b.c.x - s0.x) > 0.01 || Math.abs(b.c.y - s0.y) > 0.01)) out.nudges[b.role] = P(b.c.x - s0.x, b.c.y - s0.y);
   }
 
   // 1c. each posn's outline bent to the ground (PlanShape): a point of the curve moves in or out by up to a quarter of
@@ -468,6 +542,11 @@ export function fitPlan(inp: FitInput): FitResult {
   const fdlX = fdl.length && !boxes.some((b) => b.kind === 'round') ? (Math.min(...fdl.map((b) => b.c.x - (turned(b) ? b.h : b.w) / 2)) + Math.max(...fdl.map((b) => b.c.x + (turned(b) ? b.h : b.w) / 2))) / 2 : null;
   const centre = fdlX !== null ? toWorld(f, P(fdlX, frontY)) : toWorld(f, P(0, 0));
   let from = inp.threat ?? null;
+  // with no point marked, the En front: straight ahead of the FDL's middle, else its nearest point
+  if (!from && front) {
+    const ahead = rayAhead(frontLocal(front, f), fdlX ?? 0, frontY);
+    from = ahead !== null && ahead > 0 ? toWorld(f, P(fdlX ?? 0, frontY + ahead)) : nearestOnFront(front, toWorld(f, P(fdlX ?? 0, frontY))).at;
+  }
   if (!from) {
     const startM = num(bn ? 'fit.assumedStartM.bn' : 'fit.assumedStartM.coy', bn ? 5000 : 3000);
     from = toWorld(f, P(fdlX ?? 0, frontY + startM)); out.fromAssumed = true; out.fromAssumedM = startM;
@@ -627,6 +706,22 @@ export function fitPlan(inp: FitInput): FitResult {
     out.rows.push(out.killingGr
       ? { name: 'Killing Gr', st: 'pass', reason: 'on the main approach 400-1000 m in front, inside the forward posns\' reach' }
       : { name: 'Killing Gr', st: out.approaches.length ? 'warn' : 'unchecked', reason: out.approaches.length ? 'no stretch of the main approach 400-1000 m out is in reach: site it on the ground' : 'needs the approaches' });
+  }
+
+  // 4b. the En front or area marked: what it is against the plan, each forward posn's stand-off, what moved to keep it
+  if (front) {
+    const lf = frontLocal(front, f);
+    out.rows.push(...frontRows(readFront(lf, boxes, fg.bulgeM), front.kind, frontShape, fg.spreadWarnM));
+    // the nearest of the five rays across each forward posn: the stand-off the row reads
+    out.standLinks = boxes.filter((b) => b.kind === 'fwd' && b.turn % 180 === 0).flatMap((b) => {
+      const y0 = b.c.y + b.h / 2;
+      let best: { x: number; d: number } | null = null;
+      for (const u of [-0.4, -0.2, 0, 0.2, 0.4]) {
+        const x = b.c.x + u * b.w, d = rayAhead(lf, x, y0);
+        if (d !== null && d > 0 && (!best || d < best.d)) best = { x, d };
+      }
+      return best ? [{ role: b.role, label: b.label, from: P(best.x, y0), to: P(best.x, y0 + best.d), dM: Math.round(best.d) }] : [];
+    });
   }
 
   // 5. score (PlanDoctrine.scoreWeights): pass 1, warn 0.5, fail 0, unchecked 0.5
@@ -921,6 +1016,9 @@ export interface FitLayoutInput {
   nmRules?: Record<string, any> | null;
   /** Hostile units and posns drawn on the map (Web Mercator): a two-phase attack lays Obj 2 on one behind Obj 1. */
   enemyAt?: XY[] | null;
+  /** The En front line or area marked in the tab (Web Mercator, PlanEnFront): a defence follows its curvature; an
+   *  attack's assembly, FUP, SL and BOF are checked to lie outside it. */
+  front?: EnFront | null;
   /** ITG designated on the map (Vital Gr / Imp Gr, Web Mercator): the posns beside them take them inside their outlines. */
   itgAt?: { at: XY; label: string }[] | null;
   /** Ambush, patrol, recce (PlanSmallOps): the aim point (a patrol's Obj, a recce's NAI), Web Mercator. */
@@ -1064,7 +1162,7 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   const enemy: EnemySpec | null = inp.enemy && inp.enemy.source === 'default' && terrain.kind === 'mountain' && recipe.task !== 'attack' && typeof mtnType === 'string'
     ? { ...inp.enemy, type: mtnType as EnemySpec['type'] }
     : inp.enemy ?? null;
-  const fit = fitPlan({ res: fitBase, recipe, doc: ctx.doc, frame, ground, threat: recipe.task === 'attack' ? null : inp.threat ?? null, enemy: recipe.task === 'attack' ? null : enemy, terrain, rowsOver: rs?.rows, itgAt: inp.itgAt ?? null });
+  const fit = fitPlan({ res: fitBase, recipe, doc: ctx.doc, frame, ground, threat: recipe.task === 'attack' ? null : inp.threat ?? null, enemy: recipe.task === 'attack' ? null : enemy, terrain, rowsOver: rs?.rows, itgAt: inp.itgAt ?? null, front: recipe.task === 'attack' ? null : inp.front ?? null });
   fit.paths = paths;
   if (find) fit.nudges = addNudges(fit.nudges, find.nudges);
   if (rs) { fit.nudges = addNudges(fit.nudges, rs.nudges); fit.revSlope = { crest: rs.crest, fdlBehindM: rs.fdlBehindM, crestRiseM: rs.crestRiseM }; }
@@ -1079,6 +1177,8 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   fit.pending = fit.pending || ground.pending();
   const merged = mergeChecks(raw, fit);
   merged.rows = applyContext(merged.rows, ctx.doc, recipe.echelon, recipe.task, raw.frontageM, recipe.slots.filter((s) => s.kind === 'fwd').length, enemy, terrain, inp.force, recipe.task === 'attack' ? !!inp.night : null);
+  // an attack against a marked En area / front: own control measures outside it, the Obj on it
+  if (recipe.task === 'attack') merged.rows.push(...attackFront(raw, frame, inp.front ?? null));
   const at = recipe.task === 'attack' ? null : atCoverRow(raw, recipe, unit, fit.approaches, frame, ctx.doc, enemy);
   if (at) merged.rows.push(at);
   // tank Sqns grouped to a defence: their leaguers on the ground

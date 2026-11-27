@@ -19,6 +19,9 @@
 import Graphic from '@arcgis/core/Graphic';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import Polyline from '@arcgis/core/geometry/Polyline';
+import Polygon from '@arcgis/core/geometry/Polygon';
+import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
+import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel';
 import Point from '@arcgis/core/geometry/Point';
 import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
@@ -36,7 +39,8 @@ import ocokaDoctrine from '../../Data/OcokaDoctrine.json';
 import { doctrineAt, validateRecipe, validateFamilies, type Recipe, type DoctrineSet } from './PlanRecipes';
 import { solveRecipe, toPlanDocument, planText, detailLines, type SolveResult, type CheckState, type SlotResult, type Check, type XY } from './PlanSolve';
 import { withMoves, triggerLines, enemyStartWords, type WhatIfResult } from './PlanWhatIf';
-import { fitLayout, nextBestSpot, rankFits, scoreRowState, SCORE_ROWS, toLocal, toWorld, type FittedLayout, type FitLayoutInput } from './PlanFit';
+import { fitLayout, frontNudges, nextBestSpot, rankFits, scoreRowState, SCORE_ROWS, toLocal, toWorld, type FittedLayout, type FitLayoutInput } from './PlanFit';
+import { facePoint, frontPoint, frontValid, simplifyFront, type EnFront, type EnFrontKind } from './PlanEnFront';
 import { PlanGroundProbe } from './PlanGroundProbe';
 import { applyContext, groundNotes, defaultEnemy, echelonLabel, enemyFupM, firstLayout, terrainLabel, ENEMY_TYPES, TERRAIN_KINDS, type EnemySpec, type EnemyType, type TerrainKind, type TerrainSpec } from './PlanContext';
 import { checkPlan, checkText, readSymbols, reportWorld, type CheckReport, type PosnKind } from './PlanCheck';
@@ -372,6 +376,14 @@ export class PlanBuildTab {
   private _probeMissingUrl = '';
   /** The threat marked in this tab (null: the Ground Guide's marker, else the enemy symbols when the setting says so). */
   private _ownThreat: XY | null = null;
+  /**
+   * The En front line or area drawn in this tab (Web Mercator; PlanEnFront), beside or instead of the point: a defence
+   * faces it and follows its curvature, an attack's FUP, SL, assembly and BOF are checked to lie outside it.
+   */
+  private _enFront: EnFront | null = null;
+  /** The sketch that draws or reshapes the En front (on the tab's layer); what it is doing now. */
+  private _sketch: SketchViewModel | null = null;
+  private _frontTool: 'line' | 'area' | 'edit' | null = null;
   /** Obj 2 of a two-phase attack marked by the user on the map (Web Mercator); it stands over any posn drawn or high ground. */
   private _obj2At: XY | null = null;
   private _armingObj2: { remove(): void } | null = null;
@@ -600,6 +612,9 @@ export class PlanBuildTab {
     if (old) { old.graphics.removeAll(); old.destroy(); }
     this._layer = null;
     this._disarm();
+    try { this._sketch?.destroy(); } catch { /* gone */ }
+    this._sketch = null;
+    this._frontTool = null;
     const layer = this._layerOn();
     if (layer && gs.length) layer.addMany(gs);
     this._drawThreat();
@@ -626,6 +641,8 @@ export class PlanBuildTab {
     if (this._checkTimer) clearTimeout(this._checkTimer);
     this._checkTimer = null;
     this._closeProbe();
+    try { this._sketch?.destroy(); } catch { /* gone */ }
+    this._sketch = null;
     this._layer?.destroy();
     this._layer = null;
     this._removeCard();
@@ -1139,11 +1156,14 @@ export class PlanBuildTab {
    * threat marker (one marker for every engine, as the Gun Deployment and Admin Area tools read it), else with
    * `planBuilder.threat.fromEnemySymbols` the side of the enemy symbols nearest the map's centre; else none.
    */
-  private _threatInfo(withEnemy = true): { at: XY; from: 'tab' | 'guide' | 'enemy'; word: string } | null {
-    if (this._ownThreat) return { at: this._ownThreat, from: 'tab', word: 'the threat marked in this tab' };
+  private _threatInfo(withEnemy = true): { at: XY; from: 'tab' | 'guide' | 'enemy' | 'front'; word: string } | null {
+    const fw = this._frontWord();
+    if (this._ownThreat) return { at: this._ownThreat, from: 'tab', word: `the threat marked in this tab${fw ? ` and ${fw}` : ''}` };
     let g: XY | null = null;
     try { g = this._host.threat?.() ?? null; } catch { g = null; }
-    if (g) return { at: g, from: 'guide', word: "the Ground Guide's threat marker" };
+    if (g) return { at: g, from: 'guide', word: `the Ground Guide's threat marker${fw ? ` and ${fw}` : ''}` };
+    const fr = this._front;
+    if (fr) return { at: frontPoint(fr), from: 'front', word: fw };
     if (!withEnemy || this._settings.threat?.fromEnemySymbols !== true) return null;
     const e = this._enemySide();
     return e.at ? { at: e.at, from: 'enemy', word: `the enemy symbols on the map (${e.n} near the centre of the view)` } : null;
@@ -1151,6 +1171,20 @@ export class PlanBuildTab {
 
   /** The point the plan faces / is checked against (see _threatInfo). */
   private get _threat(): XY | null { return this._threatInfo()?.at ?? null; }
+
+  /** The En front drawn here, when it is a usable line or area. */
+  private get _front(): EnFront | null { return frontValid(this._enFront) ? this._enFront : null; }
+  private _frontWord(): string { const f = this._front; return f ? (f.kind === 'area' ? 'the En area marked' : 'the En front line marked') : ''; }
+
+  /**
+   * Where the En starts from as a point (his approaches begin there): the point marked here, else the Ground Guide's,
+   * else (with no front drawn and the setting on) the enemy symbols. Null with only a front: the fit starts his
+   * approaches on the front straight ahead of the plan.
+   */
+  private _startPoint(withEnemy = true): XY | null {
+    const th = this._threatInfo(withEnemy);
+    return th && th.from !== 'front' ? th.at : null;
+  }
 
   /**
    * The enemy symbols' side: the hostile symbol nearest the centre of the view and those within 5 km of it, averaged
@@ -1188,14 +1222,104 @@ export class PlanBuildTab {
       const mp = evt.mapPoint;
       if (mp) this._ownThreat = this._merc(mp);
       this._disarm();
-      this._msg = this._ownThreat ? (this._mode === 'check' ? 'Threat marked: the plan is checked against it.' : 'Threat marked: the plan faces it, and one click places it.') : '';
-      this._drawThreat();
-      if (this._mode === 'check' && this._checkRecs) this._runCheck();
-      this._render();
+      this._msg = this._ownThreat ? (this._mode === 'check' ? 'Threat marked: the plan is checked against it.' : this._front ? 'Threat marked: the En approaches start there; the plan faces the En front.' : 'Threat marked: the plan faces it, and one click places it.') : '';
+      this._afterThreat();
     });
     this._armKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { this._disarm(); this._msg = ''; this._render(); } };
     document.addEventListener('keydown', this._armKey);
   }
+  // ── the En front line / area ──────────────────────────────────────────────────────────────────────────────────
+  /** The sketch on the tab's layer (made again after a 2D / 3D switch). */
+  private _sketchOn(): SketchViewModel | null {
+    const view = this._host.view();
+    const layer = this._layerOn();
+    if (!view || !layer) return null;
+    if (this._sketch && (this._sketch.view !== view || this._sketch.layer !== layer)) { try { this._sketch.destroy(); } catch { /* gone */ } this._sketch = null; }
+    if (!this._sketch) {
+      const red = [229, 72, 77];
+      this._sketch = new SketchViewModel({
+        view: view as any, layer,
+        polylineSymbol: new SimpleLineSymbol({ color: [...red, 0.95], width: 3 }) as any,
+        polygonSymbol: new SimpleFillSymbol({ color: [...red, 0.14], outline: { color: [...red, 0.95], width: 2.5 } }) as any,
+        defaultCreateOptions: { mode: 'hybrid' } as any,
+        defaultUpdateOptions: { tool: 'reshape', toggleToolOnClick: false, enableRotation: false, enableScaling: false } as any,
+      } as any);
+      this._sketch.on('create', (e: any) => {
+        if (e.state === 'cancel') { this._frontTool = null; this._msg = ''; this._render(); return; }
+        if (e.state !== 'complete') return;
+        const kind = this._frontTool === 'area' ? 'area' : 'line';
+        layer.remove(e.graphic);
+        this._frontTool = null;
+        this._takeFront(e.graphic?.geometry, kind);
+      });
+      this._sketch.on('update', (e: any) => {
+        if (e.state !== 'complete') return;
+        const gr = e.graphics?.[0];
+        const kind: EnFrontKind = this._enFront?.kind ?? 'line';
+        this._frontTool = null;
+        this._takeFront(gr?.geometry, kind);
+      });
+    }
+    return this._sketch;
+  }
+
+  /** Draw the En front: a line along his front, or an area round his posns; clicks and drags (curves), double-click ends. */
+  private _drawFront(kind: 'line' | 'area'): void {
+    const sk = this._sketchOn();
+    if (!sk) return;
+    this._disarm();
+    this._frontTool = kind;
+    this._msg = kind === 'area'
+      ? 'Draw the En area round the En posns: click each corner, or hold the mouse down and drag for curves, knolls and salients; double-click to finish (Esc stops).'
+      : 'Draw the En front line: click along the En FDLs, or hold the mouse down and drag for curves; double-click to finish (Esc stops).';
+    try { sk.create(kind === 'area' ? 'polygon' : 'polyline', { mode: 'hybrid' } as any); } catch { this._frontTool = null; this._msg = 'The map cannot draw here.'; }
+    this._render();
+  }
+
+  /** Reshape the En front drawn: drag its points (Enter or a click off it ends). */
+  private _editFront(): void {
+    const f = this._front;
+    const sk = this._sketchOn();
+    const layer = this._layerOn();
+    if (!f || !sk || !layer) return;
+    this._disarm();
+    const gr = layer.graphics.find((g) => g.attributes?.kind === 'threat' && g.attributes?.front === 'shape');
+    if (!gr) return;
+    this._frontTool = 'edit';
+    this._msg = 'Drag the points of the En front to reshape it; click off it or press Enter to finish.';
+    void sk.update(gr as any, { tool: 'reshape' } as any).catch(() => { this._frontTool = null; });
+    this._render();
+  }
+
+  /** A drawn line / polygon taken as the En front (Web Mercator, simplified to 10 m and at most 200 points). */
+  private _takeFront(geom: any, kind: EnFrontKind): void {
+    const raw: number[][] = (kind === 'area' ? geom?.rings?.[0] : geom?.paths?.[0]) ?? [];
+    const sr = geom?.spatialReference;
+    let pts = raw.map((c) => this._merc({ x: c[0], y: c[1], spatialReference: sr }));
+    if (kind === 'area' && pts.length > 3 && pts[0].x === pts[pts.length - 1].x && pts[0].y === pts[pts.length - 1].y) pts = pts.slice(0, -1);
+    const f: EnFront = { kind, pts };
+    if (!frontValid(f)) { this._msg = kind === 'area' ? 'An En area needs three points or more.' : 'An En front line needs two points or more.'; this._drawThreat(); this._render(); return; }
+    this._enFront = simplifyFront(f, 10, 200);
+    this._msg = `${kind === 'area' ? 'En area' : 'En front line'} marked: ${this._mode === 'check' ? 'the plan is checked against it' : 'a defence faces it and follows its curvature; an attack keeps its FUP, SL, assembly and BOF outside it'}.`;
+    this._afterThreat();
+  }
+
+  private _clearFront(): void {
+    this._enFront = null;
+    try { this._sketch?.cancel(); } catch { /* idle */ }
+    this._frontTool = null;
+    this._msg = '';
+    this._afterThreat();
+  }
+
+  /** The threat or the front changed: draw it, check again, fit again where the plan rests. */
+  private _afterThreat(): void {
+    this._drawThreat();
+    if (this._mode === 'check' && this._checkRecs) this._runCheck();
+    else if (this._placing && this._rest && this._terrain) this._fitAtRest();
+    this._render();
+  }
+
   /** Mark Obj 2 of a two-phase attack on the map: the next click sets it (Esc stops). */
   private _armObj2(): void {
     const view = this._host.view();
@@ -1216,6 +1340,7 @@ export class PlanBuildTab {
     document.addEventListener('keydown', this._armKey);
   }
   private _disarm(): void {
+    if (this._frontTool) { this._frontTool = null; try { this._sketch?.cancel(); } catch { /* idle */ } }
     this._arming?.remove();
     this._arming = null;
     this._armingObj2?.remove();
@@ -1253,6 +1378,21 @@ export class PlanBuildTab {
       layer.addMany([
         new Graphic({ geometry: o2, symbol: new SimpleMarkerSymbol({ style: 'square', size: 14, color: [142, 193, 234, 0.85], outline: { color: [20, 24, 29], width: 1.5 } }), attributes: { kind: 'threat' } }),
         new Graphic({ geometry: o2, symbol: new TextSymbol({ text: 'Obj 2', color: [200, 225, 250], haloColor: [20, 24, 29], haloSize: 1.5, yoffset: 13, font: { size: 10, weight: 'bold' } }), attributes: { kind: 'threat' } }),
+      ]);
+    }
+    // the En front line / area drawn here (red, his side), labelled at its middle
+    const fr = this._front;
+    if (fr) {
+      const ring = fr.pts.map((p) => [p.x, p.y]);
+      const red = [229, 72, 77];
+      const geometry = fr.kind === 'area' ? new Polygon({ rings: [[...ring, ring[0]]], spatialReference: MERC }) : new Polyline({ paths: [ring], spatialReference: MERC });
+      const symbol = fr.kind === 'area'
+        ? new SimpleFillSymbol({ style: 'backward-diagonal', color: [...red, 0.55], outline: { color: [...red, 0.95], width: 2.5 } })
+        : new SimpleLineSymbol({ color: [...red, 0.95], width: 3 });
+      const mid = frontPoint(fr);
+      layer.addMany([
+        new Graphic({ geometry, symbol, attributes: { kind: 'threat', front: 'shape' } }),
+        new Graphic({ geometry: new Point({ x: mid.x, y: mid.y, spatialReference: MERC }), symbol: new TextSymbol({ text: fr.kind === 'area' ? 'En area' : 'En front', color: [255, 208, 209], haloColor: [20, 24, 29], haloSize: 1.5, font: { size: 10, weight: 'bold' } }), attributes: { kind: 'threat', front: 'label' } }),
       ]);
     }
     // only the tab's own marker is drawn here: the Ground Guide draws its own, the enemy symbols are on the map
@@ -1456,6 +1596,10 @@ export class PlanBuildTab {
       case 'obj2': this._armObj2(); break;
       case 'clearObj2': this._obj2At = null; this._drawThreat(); if (this._rest && this._terrain) this._fitAtRest(); this._render(); break;
       case 'clearThreat': this._ownThreat = null; this._disarm(); this._drawThreat(); if (this._mode === 'check' && this._checkRecs) this._runCheck(); break;
+      case 'frontLine': this._drawFront('line'); return;
+      case 'frontArea': this._drawFront('area'); return;
+      case 'editFront': this._editFront(); return;
+      case 'clearFront': this._clearFront(); return;
       case 'mode':
         this._mode = val === 'check' ? 'check' : 'build';
         if (this._mode === 'check') this._defaultScope();
@@ -1545,6 +1689,9 @@ export class PlanBuildTab {
     const out = this._docFor(res);
     const th = this._threatInfo();
     const faces = !!th && res.recipe.task !== 'attack' && res.recipe.task !== 'crossing' && res.recipe.task !== 'advance' && res.recipe.task !== 'withdrawal' && !SMALL_TASKS.includes(res.recipe.task);
+    // with an En front drawn the plan turns square to the part of it nearest the cursor (a window as wide as the plan)
+    const fr = this._front;
+    const win = Math.max(1000, res.frontageM || 0);
     const entry: PlanEntry = {
       id: `built-${res.recipe.id}-${Date.now().toString(36)}`,
       name: `${res.recipe.name} (built)`,
@@ -1560,6 +1707,7 @@ export class PlanBuildTab {
       // is aimed from the objective toward the own side; an ambush up the road toward him, a patrol at its Obj, a recce
       // at its NAI (the second click)
       faceAt: faces ? { ...th!.at } : undefined,
+      faceBy: faces && fr ? (a: XY) => facePoint(fr, a, win) : undefined,
       // geometry mode: the ground as set (none when Auto: nothing was read), the enemy and unit it was laid for
       meta: this._meta(res.recipe, this._ground === 'auto' ? null : this._ground, null, this._enemyFor(res.recipe, this._ground === 'auto' ? null : this._ground), this._unit(res.recipe)?.id ?? null),
       // the alternates (created hidden) on the ghost only when planBuilder.alternates.show is on
@@ -1584,7 +1732,7 @@ export class PlanBuildTab {
     });
     const last = this._host.lastBuilt?.() ?? null;
     this._host.place(entry, out.doc, { replaceLast: !!last && this._replaceLast });
-    this._showNote({ mode: `Placing ${res.recipe.name}${last && this._replaceLast ? ` (replaces ${last.name})` : ''}`, text: faces ? `Faces ${th!.word}` : this._prompt('anchor').text, keys: this._keysFor() });
+    this._showNote({ mode: `Placing ${res.recipe.name}${last && this._replaceLast ? ` (replaces ${last.name})` : ''}`, text: faces ? `Faces ${fr ? this._frontWord() : th!.word}${fr && res.recipe.task === 'defence' ? ', following its curve' : ''}` : this._prompt('anchor').text, keys: this._keysFor() });
   }
 
   /**
@@ -1596,7 +1744,7 @@ export class PlanBuildTab {
     const task = r?.task ?? '';
     const faces = !!this._placing?.entry.faceAt;
     if (phase === 'anchor') {
-      if (faces) return { step: 'Place the plan', text: `Click where the HQ goes: it faces ${this._threatInfo()?.word ?? 'the threat'}` };
+      if (faces) return { step: 'Place the plan', text: `Click where the HQ goes: it faces ${this._front ? this._frontWord() : this._threatInfo()?.word ?? 'the threat'}` };
       const first = task === 'crossing' ? 'Click H on the water'
         : task === 'advance' ? 'Click the SP of the advance'
           : task === 'withdrawal' ? (r?.layout === 'delay' ? 'Click the Bn HQ on the first delaying posn' : `Click the ${r?.echelon === '21' ? 'Div' : r?.echelon === '18' ? 'Bde' : 'Bn'} HQ of the old posn`)
@@ -1776,7 +1924,16 @@ export class PlanBuildTab {
     this._ranked = [];
     const aimWord = this._prompt(_phase).text;
     if (!this._terrain || bearing === null) {
-      this._showCard(screen, this._terrain ? `<div class="pb-card-dim">${esc(_phase === 'anchor' ? aimWord : this._prompt('bearing').text)} to fit it to the ground</div>` : `<div class="pb-card-dim">${esc(aimWord)} · geometry only: Gr not checked${aimM !== null ? ` · ${this._smallTask === 'patrol' ? 'Obj' : 'NAI'} ${fmtM(aimM)}` : ''}</div>`);
+      // geometry only with an En front drawn: the posns still follow its curve (PlanFit.frontNudges)
+      let frontNote = '';
+      const gf = !this._terrain && bearing !== null && aimM === null ? this._geomFront(anchor, bearing) : null;
+      if (gf) {
+        this._host.replace(this._docFor(gf.res).doc, false);
+        this._placing.swapped = true;
+        const so = gf.rows.find((x) => x.name === 'Stand-off');
+        frontNote = so ? ` · ${so.st === 'fail' ? 'on or inside the En front: move back' : `follows ${this._frontWord().replace(/ marked$/, '')}`}` : '';
+      }
+      this._showCard(screen, this._terrain ? `<div class="pb-card-dim">${esc(_phase === 'anchor' ? aimWord : this._prompt('bearing').text)} to fit it to the ground</div>` : `<div class="pb-card-dim">${esc(aimWord)} · geometry only: Gr not checked${esc(frontNote)}${aimM !== null ? ` · ${this._smallTask === 'patrol' ? 'Obj' : 'NAI'} ${fmtM(aimM)}` : ''}</div>`);
       return;
     }
     this._showCard(screen, `<div class="pb-card-dim">Moving: quick ghost at ${this._isSmall ? 'the rule\'s' : 'doctrinal'} spacing${aimM !== null ? ` · ${this._smallTask === 'patrol' ? 'Obj' : 'NAI'} ${fmtM(aimM)}` : ''}</div>`);
@@ -1847,6 +2004,9 @@ export class PlanBuildTab {
     if (cursor) this._cursor = cursor;
     const small = this._isSmall;
     if (!this._terrain) {
+      // geometry only with an En front drawn: a defence placed following its curve, its rows in the Check step
+      const gf = !small && !this._isWithdrawal ? this._geomFront(anchor, bearing) : null;
+      if (gf) { this._result = gf.res; return this._docFor(gf.res).doc; }
       // geometry only: a patrol's Obj or a recce's NAI where the second click is
       const aimM = small ? this._aimM(anchor, this._cursor) : null;
       if (aimM === null || !this._result) return null;
@@ -1863,6 +2023,26 @@ export class PlanBuildTab {
     this._lastSpot = { anchor, bearing, cursor: this._cursor };
     this._syncEntry(ranked[0]);
     return ranked[0].doc.doc;
+  }
+
+  /**
+   * Geometry mode (no terrain) with an En front drawn: the chosen defence solved at this spot with its forward posns
+   * moved to follow the front (PlanFit.frontNudges: the moves the fit makes, the layout held), the En front and
+   * Stand-off rows added. Null: no front, not a defence.
+   */
+  private _geomFront(anchor: XY, bearing: number): { res: SolveResult; rows: Check[] } | null {
+    const fr = this._front, r = this._result;
+    if (!fr || !r || r.recipe.task !== 'defence') return null;
+    const recipe = r.recipe, ctx = this._ctx(recipe);
+    const base = solveRecipe(recipe, ctx, this._opts());
+    const piv = base.items.find((i) => i.id === base.pivotId);
+    if (!piv) return null;
+    const frame = { anchor, bearing, k: 1 / Math.cos(2 * Math.atan(Math.exp(anchor.y / 6378137)) - Math.PI / 2), pivot: piv.pts[0] };
+    const fn = frontNudges(base, recipe, ctx.doc, frame, fr);
+    const res = Object.keys(fn.nudges).length ? solveRecipe(recipe, ctx, { ...this._opts(), nudges: fn.nudges }) : base;
+    const names = new Set(fn.rows.map((x) => x.name));
+    res.rows = [...res.rows.filter((x) => !names.has(x.name)), ...fn.rows];
+    return { res, rows: fn.rows };
   }
 
   /** The recipes to fit: the chosen layout, or with Auto the family's layouts (at most auto.maxLayouts); best first (PlanFit.rankFits). */
@@ -1910,7 +2090,7 @@ export class PlanBuildTab {
     const kind = this._ground === 'auto' ? null : this._ground;
     return {
       recipe, ctx: this._ctx(recipe), opts: this._opts(), ground: probe, anchor, bearing,
-      threat: this._threat, manual, begin: () => probe.begin(),
+      threat: this._startPoint(), front: this._front, manual, begin: () => probe.begin(),
       enemy: this._enemyFor(recipe, kind), terrain: this._ground,
       unit: this._unit(recipe), force: this._force(recipe, kind),
       night: (recipe.task === 'attack' || recipe.task === 'patrol') && this._night, nmRules: this._nmRules,
@@ -2204,6 +2384,9 @@ export class PlanBuildTab {
     if (!e) return;
     e.roles = f.doc.roles;
     e.hidden = f.doc.hidden;
+    // the layout's own pivot (a canal or ditch layout's is the point on the obstacle, not the HQ): without it the Mgr
+    // keeps the first layout's pivot and lays the plan away from where it was fitted
+    e.pivot = f.doc.pivotId ?? undefined;
     e.recipe = f.recipe.id;
     e.name = `${f.recipe.name} (built)`;
     e.meta = this._meta(f.recipe, f.terrain?.kind ?? null, f.terrain?.why ?? null, f.enemy, f.unit?.id ?? null);
@@ -2214,7 +2397,9 @@ export class PlanBuildTab {
     return {
       ground, groundWhy,
       enemy: enemy ? { echelon: enemy.echelon, type: enemy.type } : null,
-      unit, threat: this._threat && recipe.task !== 'attack' ? { ...this._threat } : null,
+      unit, threat: this._startPoint() && recipe.task !== 'attack' ? { ...this._startPoint()! } : null,
+      // the En front / area it was laid against (simplified): Check my plan reads it back
+      enFront: this._front ? simplifyFront(this._front, 15, 120) : null,
       // the AT Coys grouped to it (read back by Check my plan for the ATGM pairs and AT cover)
       atGroup: this._atGrouped(recipe) ? { id: this._atId, coys: this._atCoys, byPl: recipe.echelon === '15' } : null,
       defTanks: recipe.defTanks ?? 0,
@@ -2335,6 +2520,12 @@ export class PlanBuildTab {
       const mid = a.path[Math.floor(a.path.length * 0.35)];
       gs.push(new Graphic({ geometry: new Point({ x: mid.x, y: mid.y, spatialReference: MERC }), symbol: new TextSymbol({ text: `${a.id}${a.main ? ' main' : ''}`, color: [255, 179, 181], haloColor: [20, 24, 29], haloSize: 1.5, font: { size: 10, weight: 'bold' } }), attributes: { kind: 'apch' } }));
       for (const c of a.chokes.slice(0, 3)) gs.push(new Graphic({ geometry: new Point({ x: c.at.x, y: c.at.y, spatialReference: MERC }), symbol: new SimpleMarkerSymbol({ style: 'circle', size: 10, color: [0, 0, 0, 0], outline: { color: [255, 107, 111], width: 2 } }), attributes: { kind: 'apch' } }));
+    }
+    // the En front drawn: each forward posn's stand-off straight ahead to it, dotted, with its distance
+    for (const l of f.fit.standLinks ?? []) {
+      const a = toWorld(f.frame, l.from), b = toWorld(f.frame, l.to);
+      gs.push(new Graphic({ geometry: new Polyline({ paths: [[[a.x, a.y], [b.x, b.y]]], spatialReference: MERC }), symbol: new SimpleLineSymbol({ color: [255, 179, 181, 0.85], width: 1.5, style: 'short-dot' }), attributes: { kind: 'standoff' } }));
+      gs.push(new Graphic({ geometry: new Point({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, spatialReference: MERC }), symbol: new TextSymbol({ text: fmtM(l.dM), color: [255, 208, 209], haloColor: [20, 24, 29], haloSize: 1.5, font: { size: 9, weight: 'bold' } }), attributes: { kind: 'standoff' } }));
     }
     gs.push(...this._routeGraphics(f));
     gs.push(...this._attackGraphics(f));
@@ -2863,7 +3054,7 @@ export class PlanBuildTab {
       : null;
     try {
       this._check = checkPlan(recs as any, this._doc, {
-        threat: this._threatInfo(false)?.at ?? null, kinds: this._checkKinds, enemyOverride: override, terrain: this._ground,
+        threat: this._startPoint(false), front: this._front, kinds: this._checkKinds, enemyOverride: override, terrain: this._ground,
         ground: this._terrain ? this._probe : null, orbat: this._orbat, recipes: Object.fromEntries([...this._recipes, ...[...this._ph2.values()].map((t) => [t.id, t] as const)]) as any,
       });
     } catch (e) {
@@ -3140,13 +3331,25 @@ export class PlanBuildTab {
   }
 
   /** Mark, move or clear the threat marker; while armed, the button says to click the map. */
-  private _threatButtons(o: { sm?: boolean; mark?: string; clear?: string; title?: string; check?: boolean } = {}): string {
+  private _threatButtons(o: { sm?: boolean; mark?: string; clear?: string; title?: string; check?: boolean; front?: boolean; pointOff?: boolean } = {}): string {
     if (this._arming) return `${btn('Click the map where the En comes from', 'threat', { armed: true, sm: o.sm })}<span class="pb-keyhint"><kbd>Esc</kbd> stops</span>`;
+    if (this._frontTool === 'line' || this._frontTool === 'area') return `${btn(this._frontTool === 'area' ? 'Drawing the En area: double-click ends' : 'Drawing the En front: double-click ends', this._frontTool === 'area' ? 'frontArea' : 'frontLine', { armed: true, sm: o.sm })}<span class="pb-keyhint">drag for curves · <kbd>Esc</kbd> stops</span>`;
+    if (this._frontTool === 'edit') return `${btn('Reshaping the En front: click off it to end', 'editFront', { armed: true, sm: o.sm })}`;
     const own = this._ownThreat;
     const th = this._threatInfo(!o.check);
-    const used = th ? `<span class="pb-keyhint" title="${esc(`The threat used: ${th.word}`)}">${esc(th.from === 'tab' ? 'marked here' : th.from === 'guide' ? 'Ground Guide marker' : `en symbols (${this._enemySide().n})`)}</span>` : '';
-    return btn(own ? 'Move the threat' : th ? 'Mark here instead' : o.mark ?? 'Mark the threat on the map', 'threat', { icon: 'aim', sm: o.sm, title: th && !own ? `Now from ${th.word}; a marker here is used instead` : o.title })
+    const pointFrom = th && th.from !== 'front' ? th : null;
+    const used = pointFrom ? `<span class="pb-keyhint" title="${esc(`The threat used: ${pointFrom.word}`)}">${esc(pointFrom.from === 'tab' ? 'marked here' : pointFrom.from === 'guide' ? 'Ground Guide marker' : `en symbols (${this._enemySide().n})`)}</span>` : '';
+    const point = o.pointOff ? '' : btn(own ? 'Move the threat' : pointFrom ? 'Mark here instead' : o.mark ?? 'Mark the threat on the map', 'threat', { icon: 'aim', sm: o.sm, title: pointFrom && !own ? `Now from ${pointFrom.word}; a marker here is used instead` : o.title ?? 'A point: where the En comes from (the En approaches start there)' })
       + (own ? btn(o.clear ?? 'Clear', 'clearThreat', { kind: 'ghost', sm: o.sm }) : '') + used;
+    if (!o.front) return point;
+    const fr = this._front;
+    const front = fr
+      ? btn(fr.kind === 'area' ? 'Reshape the En area' : 'Reshape the En front', 'editFront', { sm: o.sm, title: 'Drag its points; click off it to end' })
+        + btn('Clear', 'clearFront', { kind: 'ghost', sm: o.sm, title: `Clear ${this._frontWord()}` })
+        + btn(fr.kind === 'area' ? 'Draw a line instead' : 'Draw an area instead', fr.kind === 'area' ? 'frontLine' : 'frontArea', { kind: 'ghost', sm: o.sm })
+      : btn('Draw the En front line', 'frontLine', { sm: o.sm, title: 'A line along the En FDLs, with its curves: clicks, or drag for curves; double-click ends' })
+        + btn('Draw the En area', 'frontArea', { sm: o.sm, title: 'An area round the En posns, with its ins and outs (salients, knolls): clicks, or drag for curves; double-click ends' });
+    return `${point}<span class="pb-break" aria-hidden="true"></span>${front}`;
   }
 
   /** Which threat the plan is laid against, and from where, in one line (none: what it falls back to). */
@@ -3172,7 +3375,7 @@ export class PlanBuildTab {
       <p class="pb-p pb-dim">Check a plan on the map: read as drawn, nothing moved; the same rules the build uses.</p>
       ${row('Read', scope)}
       ${this._check && [...SMALL_TASKS, 'crossing', 'advance'].includes(this._check.task as string) ? '' : `${this._enemyRows(this._check?.task ?? 'defence', null)}${this._groundRow()}`}
-      ${row('Threat', this._threatButtons({ sm: true, mark: 'Mark the threat', title: 'Sets the front; without it the front is read from the enemy symbols, then a DCB or minefield in front', check: true }))}
+      ${row('Threat', this._threatButtons({ sm: true, mark: 'Mark the threat', title: 'Sets the front; without it the front is read from the enemy symbols, then a DCB or minefield in front', check: true, front: true }))}
       ${this._threatLine(true)}`;
     const r = this._check;
     if (!r) return `${head}<div class="pb-empty">${icon('scan', 'pb-ic-lg')}<p>Select the plan's symbols (or place one from Templates), then <b>Read and check</b>.</p><p>Own and enemy symbols are both read: the enemy symbols give the En force, axes and FUP.</p></div>`;
@@ -3481,14 +3684,21 @@ export class PlanBuildTab {
     if (attack) return `${force}
       <div class="pb-sum">Where you attack from</div>
       ${howTo('click the <b>objective</b>', 'Move the cursor toward <b>your own side</b> (where the attack comes from) and click: the FUP, start line and axis are laid back along that line, the BOF on the right flank')}
+      <div class="pb-sum">The En</div>
+      <div class="pb-actions">${this._threatButtons({ front: true, pointOff: true })}</div>
+      <p class="pb-p pb-dim">${this._front ? `${esc(this._frontWord().replace(/^the /, 'The '))}: the assembly area, FUP, SL and BOF are checked to lie outside it, and the Obj on it.` : 'Optional: draw the En front line or area; the assembly area, FUP, SL and BOF are then checked to lie outside it.'}</p>
       ${this._terrain ? '<p class="pb-p pb-dim">While you aim, rest the mouse: the FUP, the going, the start line and the BOF\'s view are read from the ground.</p>' : ''}`;
     const t = this._threat;
+    const fr = this._front;
     return `${force}
-      <div class="pb-sum">Where the enemy comes from</div>
-      <div class="pb-actions">${this._threatButtons({ clear: 'Clear: aim by bearing' })}</div>
-      ${t
-        ? `<p class="pb-p">Threat: ${esc(this._threatInfo()?.word ?? 'marked')}. The plan turns to face it as it follows the cursor, and <b>one click</b> places it.</p>`
-        : `<p class="pb-p pb-dim">No threat marked:</p>${howTo('click where the <b>HQ</b> goes', 'Click toward the <b>enemy</b>')}`}
+      <div class="pb-sum">Where the enemy is</div>
+      <div class="pb-actions">${this._threatButtons({ clear: 'Clear: aim by bearing', front: true })}</div>
+      ${fr
+        ? `<p class="pb-p">${esc(this._frontWord().replace(/^the /, 'The '))}${this._startPoint() ? ` and ${esc(this._threatInfo()?.word.split(' and ')[0] ?? 'the threat')} (the En approaches start there)` : ''}. The plan turns square to the part of the En front nearest it as it follows the cursor, and <b>one click</b> places it. Each forward posn moves whole, straight forward or back (up to ${fmtM(Number(doctrineAt(this._doc, 'fit.enFront.moveM.bn')) || 600)} in a Bn plan), so it stands as far from the En front as the plan's axis does where you put it; the posns behind it go with it, the layout as the annex draws it.</p>`
+        : t
+          ? `<p class="pb-p">Threat: ${esc(this._threatInfo()?.word ?? 'marked')}. The plan turns to face it as it follows the cursor, and <b>one click</b> places it.</p>`
+          : `<p class="pb-p pb-dim">No threat marked:</p>${howTo('click where the <b>HQ</b> goes', 'Click toward the <b>enemy</b>')}`}
+      <p class="pb-p pb-dim">Mark the En as a point (where he comes from), a front line along the En FDLs, or an area round the En posns with its ins and outs, or a point with a line or area.</p>
       <p class="pb-p pb-dim">${this._terrain
         ? `When the mouse rests, the En approaches are found (for its going, as wide as its corridors) from ${t ? 'the threat' : 'out along the front (assumed)'} to the plan and drawn in red; each is checked for direct fire from the forward posns, and the killing ground goes on the main one.`
         : 'Without terrain data the threat is a bearing: the approaches need the terrain bundle.'}</p>`;

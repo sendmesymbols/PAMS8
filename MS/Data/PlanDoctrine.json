@@ -3864,6 +3864,49 @@
         "src": "The posn moves until the ITG lies this far inside its edge, so the feature is held, not on the boundary."
       }
     },
+    "enFront": {
+      "basis": "E",
+      "decided": "User, 27 Nov 2026: the En is marked as a point threat and / or a front line or an area with its curves, knolls and protruding parts (ins and outs), and the plan is created according to its curvature. Laid as the layout rule of the same day: each forward posn moves whole, straight forward or back, its size and shape as the annex draws them, never turned or stretched; the posns behind it move with it; a move is made only when the layout holds.",
+      "moveM": {
+        "bn": 600,
+        "coy": 300,
+        "basis": "E",
+        "decided": "2026-11-27",
+        "searched": "IBB S53 pp 276-281, S69 pp 357-359 and Annex U; OOW1 Sec 1 (domination of no man's land); MW s9 pp 123-128 (bulge, salient, enclave); IC s72-s78 (27 Nov 2026): the books say to dominate the no man's land and name salients and re-entrants, but give no distance from the En front and no figure for how far a posn moves to keep it",
+        "note": "Most a forward posn moves straight forward or back to stand as far from the En front as the plan's axis does where the user placed it (a Bn plan's Coy posns; a Coy plan's Pl posns). One and a half times the ITG reach (fit.itg.reachM): a Coy posn is 600-800 m deep, so the move stays within about its own depth."
+      },
+      "minMoveM": {
+        "value": 25,
+        "basis": "M",
+        "src": "Differences in stand-off smaller than this are left alone: a hand-drawn front is not that exact, and a posn moved by a few metres only jitters while the plan follows the mouse."
+      },
+      "salientM": {
+        "bn": 400,
+        "coy": 200,
+        "basis": "E",
+        "decided": "2026-11-27",
+        "searched": "MW s9 pp 124-126 (a salient or bulge is a projection toward the opposing side; no size given), IBB S69 p 357 para 1 d (dangerous salient or re-entrant; no size given) (27 Nov 2026)",
+        "note": "A bulge of the En front toward the plan this far out of the line through the rest of his front (the median of its nearest edge across the window) is read as a salient; a draw-back as far, a re-entrant. About half a Coy posn's frontage for a Bn plan, half a Pl posn's for a Coy plan."
+      },
+      "spreadWarnM": {
+        "bn": 300,
+        "coy": 150,
+        "basis": "E",
+        "decided": "2026-11-27",
+        "searched": "IBB S53 pp 276-281 and Annex U, OOW1 pp 34-45 (27 Nov 2026): no figure for an even stand-off along the FDL",
+        "note": "When the forward posns still stand this much further from the En front than one another after the moves (a move held to keep the layout), the Stand-off row warns: the nearer posn meets him first."
+      },
+      "salients": {
+        "basis": "D",
+        "src": "MW p 126 para 3 b: a salient commonly radiates threats on multiple axes; para 3 c: inside a salient the defender is unable to place sufficient strength at any one point; IBB S69 p 357 para 1 d: a reverse slope defence avoids a dangerous salient or re-entrant",
+        "note": "Read in the En front row: his salient opposite a posn, the plan inside a salient of his front (he comes level with the FDL beside both flanks).",
+        "refs": [
+          { "book": "MW", "page": "126", "quote": "A Salient commonly radiates threats on multiple axes", "role": "rule", "checked": { "status": "ok", "pdfPage": 123, "on": "2026-11-27", "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf" } },
+          { "book": "MW", "page": "126", "quote": "the defender is unable to place sufficient strength at any one point", "role": "rule", "checked": { "status": "ok", "pdfPage": 123, "on": "2026-11-27", "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf" } },
+          { "book": "IBB", "page": "357", "quote": "avoid occupying disadvantageous terrain such as a dangerous salient or re-entrant", "role": "context", "checked": { "status": "ok", "pdfPage": 374, "on": "2026-11-27", "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf" } }
+        ]
+      }
+    },
     "assumedStartM": {
       "note": "Where the enemy is assumed to start the what-if when no threat is marked: this far in front of the FDL, along the main approach.",
       "bn": {

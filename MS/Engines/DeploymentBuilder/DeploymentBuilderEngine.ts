@@ -123,6 +123,9 @@ export interface PlanEntry {
   rotate?: boolean;
   /** A Web Mercator point the plan turns to face while it follows the cursor (the threat): one click places it. */
   faceAt?: { x: number; y: number };
+  /** The point to face from where the pivot is now (Web Mercator): an En front line or area the plan turns square to
+   *  as it moves (Build tab). Wins over `faceAt` when it answers; `faceAt` must be set too. */
+  faceBy?: (at: { x: number; y: number }) => { x: number; y: number } | null;
   /** What a built plan was fitted for (ground kind, enemy, unit, the threat), written on each graphic as `pbMeta`:
    *  Check my plan reads the plan against the same, not a fresh guess. */
   meta?: Record<string, unknown>;
@@ -1952,9 +1955,11 @@ class DeploymentBuilderEngine {
 
   /** A plan that faces a set point (the Build tab's threat marker) turns toward it as it moves; else null. */
   private _faceBearing(at: Point): number | null {
-    const f = this._selectedPlanEntry?.faceAt;
-    if (!f) return null;
+    const e = this._selectedPlanEntry;
+    if (!e?.faceAt) return null;
     const a = this._toProjected(at);
+    let f: { x: number; y: number } | null = e.faceAt;
+    try { f = e.faceBy?.(a) ?? e.faceAt; } catch { f = e.faceAt; }
     if (Math.hypot(f.x - a.x, f.y - a.y) < 1) return null;
     return Math.atan2(f.x - a.x, f.y - a.y);
   }

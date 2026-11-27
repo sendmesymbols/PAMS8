@@ -23,7 +23,8 @@ import type { DoctrineSet } from './PlanRecipes';
 import { doctrineAt, resolveRange } from './PlanRecipes';
 import type { Check, CheckState, SlotResult, XY } from './PlanSolve';
 import { detailLines } from './PlanSolve';
-import { atCoverRow, detectTerrain, fitPlan, toLocal, toWorld, type FitFrame, type FitResult, type GroundAvenue, type PlanGround } from './PlanFit';
+import { atCoverRow, detectTerrain, fitPlan, frontCheckRows, toLocal, toWorld, type FitFrame, type FitResult, type GroundAvenue, type PlanGround } from './PlanFit';
+import { faceBearing, frontValid, nearestOnFront, type EnFront } from './PlanEnFront';
 import { movesRow, reserveMovesCheck, tankCoverRow, triggerLines, whatIf, type WhatIfResult } from './PlanWhatIf';
 import {
   assaultFrontageCheck, bnFrontageCheck, defaultEnemy, groundNotes, echelonLabel, enemyFupM, enemyProfile, footKmh, forceRow, frontageAllowance, frontageRowCheck, gapsAccepted, levelOf, strengthOf, terrainLabel, terrainRow,
@@ -213,7 +214,7 @@ export interface PosnRead {
 
 export interface ThreatRead {
   at: XY | null;
-  from: 'marker' | 'plan' | 'enemy' | 'cues' | 'obstacle' | 'none';
+  from: 'marker' | 'front' | 'plan' | 'enemy' | 'cues' | 'obstacle' | 'none';
   why: string;
 }
 
@@ -228,11 +229,15 @@ export interface MappedPlan {
   unclear: string[];
   /** Built by the Intelligent Deployment tab: its recipe and what it was fitted for (pbMeta). */
   built: { recipe: string | null; meta: any; allRound: boolean } | null;
+  /** The En front line or area the plan is read against: marked in the tab, else the one it was built against. */
+  front?: EnFront | null;
 }
 
 export interface MapOptions {
   /** Threat marker (world), if the user marked one. */
   threat?: XY | null;
+  /** The En front line or area marked in the tab (world, PlanEnFront). */
+  front?: EnFront | null;
   /** The user's roles, posn id -> kind. */
   kinds?: Record<string, PosnKind>;
   task?: 'defence' | 'attack' | 'auto';
@@ -318,7 +323,11 @@ export function mapPlan(syms: DrawnSymbol[], doc: DoctrineSet, opts: MapOptions 
   let threat: ThreatRead = { at: null, from: 'none', why: 'no threat marked, no enemy symbols, no obstacle drawn in front' };
   const builtFwd = posns.filter((p) => roleOf(p.id) && kindFromRole(roleOf(p.id)!) === 'fwd');
   const builtBack = posns.filter((p) => roleOf(p.id) && ['depth', 'res'].includes(kindFromRole(roleOf(p.id)!) ?? ''));
-  if (opts.threat) threat = { at: opts.threat, from: 'marker', why: 'the threat marker' };
+  // the En front line / area: marked in the tab, else the one a built plan was laid against (pbMeta.enFront)
+  const front: EnFront | null = frontValid(opts.front) ? opts.front : frontValid(meta?.enFront) ? meta.enFront as EnFront : null;
+  const frontWhy = front ? `the En ${front.kind === 'area' ? 'area' : 'front line'} ${frontValid(opts.front) ? 'marked' : 'the plan was built against'}` : '';
+  if (opts.threat) threat = { at: opts.threat, from: 'marker', why: `the threat marker${front ? ` and ${frontWhy}` : ''}` };
+  else if (front && ownC && task === 'defence') threat = { at: nearestOnFront(front, ownC).at, from: 'front', why: frontWhy };
   else if (meta?.threat && Number.isFinite(meta.threat.x)) threat = { at: { x: meta.threat.x, y: meta.threat.y }, from: 'plan', why: 'the threat the plan was built against' };
   else if (en.length && task === 'defence') threat = { at: centroid(en.flatMap((s) => (s.pts.length > 3 ? [centroid(s.pts)] : s.pts))), from: 'enemy', why: `the ${en.length} enemy symbols drawn` };
   else if (task === 'defence' && ownC && builtFwd.length && builtBack.length && !allRound) {
@@ -361,7 +370,10 @@ export function mapPlan(syms: DrawnSymbol[], doc: DoctrineSet, opts: MapOptions 
   const core = built && builtFwd.length ? [...builtFwd, ...builtBack] : posns.filter((p) => !p.planned);
   const anchorC = core.length ? centroid(core.map((p) => centroid(p.poly))) : ownC;
   if (task === 'defence' && anchorC && threat.at) {
-    const bearing = Math.atan2(threat.at.x - anchorC.x, threat.at.y - anchorC.y);
+    // facing an En front: square to the part of it nearest the plan (a window as wide as the posns held), as the build
+    const spanM = core.length ? (Math.max(...core.flatMap((p) => p.poly.map((v) => v.x))) - Math.min(...core.flatMap((p) => p.poly.map((v) => v.x)))) / kAt(anchorC.y) : 1000;
+    const fb = front ? faceBearing(front, anchorC, Math.max(1000, spanM)) : null;
+    const bearing = fb ?? Math.atan2(threat.at.x - anchorC.x, threat.at.y - anchorC.y);
     frame = { anchor: anchorC, bearing, k: kAt(anchorC.y), pivot: P(0, 0) };
   }
 
@@ -434,9 +446,9 @@ export function mapPlan(syms: DrawnSymbol[], doc: DoctrineSet, opts: MapOptions 
         posns.push({ id: s.id, label: s.label ? `Res (${s.label})` : 'Res', kind: set ?? 'res', kindWhy: set ? 'set' : `a ${s.name || 'Reserves'} symbol, held at a ${echelonLabel(doc, posnEch)} posn's size round it`, ech: posnEch, echBy: 'size', echSize: null, planned: s.status === '1', poly, units: [], c, w: wM, h: hM, faceDeg: null });
       }
     }
-    return { task, syms, posns, posnEch, planEch, threat, frame, unclear, built: built ? { recipe: recipeId, meta, allRound } : null };
+    return { task, syms, posns, posnEch, planEch, threat, frame, unclear, built: built ? { recipe: recipeId, meta, allRound } : null, front };
   }
-  return { task, syms, posns, posnEch: null, planEch: null, threat, frame: null, unclear, built: built ? { recipe: recipeId, meta, allRound } : null };
+  return { task, syms, posns, posnEch: null, planEch: null, threat, frame: null, unclear, built: built ? { recipe: recipeId, meta, allRound } : null, front };
 }
 
 // ── the report ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -739,7 +751,7 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
     const enFupSym = enSyms.find((s) => s.key === '25140302');
     // a front read from an obstacle or minefield gives the direction, not where he starts: assumed out along the front
     const start = mp.threat.from === 'marker' || mp.threat.from === 'enemy' || (mp.threat.from === 'plan' && mp.built?.meta?.threat) ? mp.threat.at : null;
-    fit = fitPlan({ res, recipe, doc, frame, ground: opts.ground, threat: start, approaches, enemy, terrain, checkOnly: true, enFup: enFupSym ? centroid(enFupSym.pts) : null });
+    fit = fitPlan({ res, recipe, doc, frame, ground: opts.ground, threat: start, approaches, enemy, terrain, checkOnly: true, enFup: enFupSym ? centroid(enFupSym.pts) : null, front: mp.front ?? null });
     for (const s of slots) s.checks.push(...(fit.slots[s.role] ?? []));
     // the obstacle drawn (a DCB or AT ditch is not in the bundle): its tie-in read from the symbol, not the ground
     const drawnOb = mp.syms.filter((s) => s.side === 'own' && isDitch(s.key));
@@ -799,6 +811,8 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
   } else {
     for (const s of slots) s.checks.push({ name: 'Ground', st: 'unchecked', reason: frame ? 'needs terrain data' : 'the front is not known' });
     for (const n of ['Approaches covered', 'Fields of fire', 'Flanks', 'Exposure']) rows.push({ name: n, st: 'unchecked', reason: opts.ground ? 'the front is not known: mark the threat' : 'needs terrain data' });
+    // the En front is geometry: read without the terrain too
+    if (frame && mp.front && slots.length) rows.push(...frontCheckRows(res, recipe, doc, frame, mp.front));
   }
   if (opts.orbat && fwd.length) {
     const fm = Math.max(...fwd.map((p) => p.c!.x + p.w! / 2)) - Math.min(...fwd.map((p) => p.c!.x - p.w! / 2));
