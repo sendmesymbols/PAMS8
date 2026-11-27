@@ -15,14 +15,14 @@
 import type { DoctrineSet, Recipe } from './PlanRecipes';
 import { doctrineAt, resolveRange, frontageRow, SMALL_TASKS, isCanalLayout } from './PlanRecipes';
 import type { Check, CheckState, SlotResult, SolveResult, SolveCtx, SolveOptions, XY } from './PlanSolve';
-import { solveRecipe } from './PlanSolve';
+import { plSpots, solveRecipe } from './PlanSolve';
 import { shapePosn, curveOf, type ShapeGround, type ShapeParams } from './PlanShape';
 import { atgmPairs, type UnitBrief } from './PlanOrbat';
 import { attackBreach, attackFactors, attackTimes, atOnObj, counterAttack, findAttackSpots, findMsrChoke, hSumRow, nightBrief, nightRow, phase2Row, phase3Row, type AttackFind, type CounterApch, type Factor, type HSum, type MsrChoke, type NightBrief } from './PlanAttack';
 import { findPhase2, goingRow, type Phase2Find, findPhaseN } from './PlanPhase';
 import { addTankTimes, defTankRows, findTankSpots, type TankFind, type TankMode, tankFupVsEnAtgm } from './PlanTanks';
 import { artyRows } from './PlanArty';
-import { attackFrontRows, frontLocal, frontRows, frontValid, nearestOnFront, rayAhead, readFront, shapeToFront, type EnFront, type FrontShape } from './PlanEnFront';
+import { attackFrontRows, fdlCurve, frontEdges, frontLocal, frontRows, frontValid, nearestOnFront, rayAhead, readFront, shapeToFront, standDist, type EnFront, type FrontEdges, type FrontShape, type LocalFront } from './PlanEnFront';
 import { adMountainRows, adRows } from './PlanAD';
 import type { ForceSides } from './PlanContext';
 import { fitSmallOp, type Mover, type SmallProbe, type SmallReading } from './PlanSmallOps';
@@ -142,6 +142,11 @@ export interface FitResult {
   enFup?: XY | null;
   /** The En front / area marked (PlanEnFront): each forward posn's stand-off straight ahead, plan metres, for the map. */
   standLinks?: { role: string; label: string; from: XY; to: XY; dM: number }[];
+  /** The En front: posns turned to face their part of it (deg clockwise, by role), forward Coys' Pl posts moved along
+   *  their facing (plSpots order), and the FDL laid along it (plan metres, by the FEBA slot's role). Fed to the solver. */
+  turns?: Record<string, number>;
+  plShift?: Record<string, number[]>;
+  frontPaths?: Record<string, XY[]>;
 }
 
 // ── frames ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -160,7 +165,7 @@ const fmtM = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math
 const WATER = new Set([4, 5, 20, 21, 22, 46]);
 const BUA = new Set([3]);
 
-interface Box { role: string; label: string; kind: string; c: XY; w: number; h: number; turn: number }
+interface Box { role: string; label: string; kind: string; c: XY; w: number; h: number; turn: number; /** Turned on top of `turn` to face an En front (PlanEnFront), deg clockwise. */ face?: number }
 const turned = (b: Box) => b.turn % 180 === 90;
 const overlap = (a: Box, b: Box, pad: number) => {
   const aw = turned(a) ? a.h : a.w, ah = turned(a) ? a.w : a.h, bw = turned(b) ? b.h : b.w, bh = turned(b) ? b.w : b.h;
@@ -299,22 +304,64 @@ function frontFigures(doc: DoctrineSet, bn: boolean) {
     minMoveM: num('fit.enFront.minMoveM', 25),
     bulgeM: num(bn ? 'fit.enFront.salientM.bn' : 'fit.enFront.salientM.coy', bn ? 400 : 200),
     spreadWarnM: num(bn ? 'fit.enFront.spreadWarnM.bn' : 'fit.enFront.spreadWarnM.coy', bn ? 300 : 150),
+    turnMaxDeg: num('fit.enFront.turnMaxDeg', 45),
+    edgeBendM: num(bn ? 'fit.enFront.edgeBendM.bn' : 'fit.enFront.edgeBendM.coy', bn ? 350 : 125),
   };
+}
+
+/** What the En front lays on a plan once its posns are where they end: front edges, Pl posts, the FDL, the turns. */
+interface FrontLaid { edges: FrontEdges; turns: Record<string, number>; plShift: Record<string, number[]>; paths: Record<string, XY[]> }
+function layFront(boxes: Box[], lf: LocalFront, refM: number, recipe: Recipe, doc: DoctrineSet, fg: ReturnType<typeof frontFigures>, base: Record<string, [number, number][]>): FrontLaid {
+  const pls = Object.fromEntries(recipe.slots.filter((s) => s.kind === 'fwd' && s.echelon === '15').map((s) => [s.role, plSpots(doc, s.pls)]));
+  const edges = frontEdges(boxes, lf, refM, fg, base, pls);
+  const turns = Object.fromEntries(boxes.filter((b) => b.face).map((b) => [b.role, b.face!]));
+  // the FEBA laid through the forward posns' front edges (recipe rule joins ... edge front): along the En front
+  const fdlRole = recipe.slots.find((s) => s.sym === '25140400' && (s.rule as any)?.joins && (s.rule as any)?.edge !== 'outer')?.role;
+  const curve = fdlRole ? fdlCurve(lf, boxes, refM) : [];
+  return { edges, turns, plShift: edges.plShift, paths: fdlRole && curve.length >= 2 ? { [fdlRole]: curve } : {} };
+}
+
+/** From each forward posn's front edge to the nearest point of the En front, for the map (plan metres). */
+function standLinksOf(boxes: Box[], lf: LocalFront, edges: Record<string, XY[]>): NonNullable<FitResult['standLinks']> {
+  const near = (p: XY): XY => {
+    let best = p, bd = Infinity;
+    const pts = lf.pts, n = pts.length, segN = lf.closed ? n : n - 1;
+    for (let i = 0; i < segN; i++) {
+      const a = pts[i], z = pts[(i + 1) % n];
+      const dx = z.x - a.x, dy = z.y - a.y, L = dx * dx + dy * dy;
+      const t = L ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / L)) : 0;
+      const q = P(a.x + t * dx, a.y + t * dy), d = Math.hypot(q.x - p.x, q.y - p.y);
+      if (d < bd) { bd = d; best = q; }
+    }
+    return best;
+  };
+  return boxes.filter((b) => b.kind === 'fwd' && b.turn % 180 === 0).flatMap((b) => {
+    const edge = edges[b.role] ?? [P(b.c.x - 0.3 * b.w, b.c.y + b.h / 2), P(b.c.x, b.c.y + b.h / 2), P(b.c.x + 0.3 * b.w, b.c.y + b.h / 2)];
+    let from: XY | null = null, d = Infinity;
+    for (const p of edge) { const v = standDist(lf, p); if (v > 0 && v < d) { d = v; from = p; } }
+    return from ? [{ role: b.role, label: b.label, from, to: near(from), dM: Math.round(d) }] : [];
+  });
 }
 
 /**
  * The plan shaped to the En front with no terrain (geometry mode): the same moves fitPlan makes (forward posns straight
  * forward or back to keep the stand-off as placed, the posns behind them with them, the layout held), and its rows.
  */
-export function frontNudges(res: SolveResult, recipe: Recipe, doc: DoctrineSet, frame: FitFrame, front: EnFront | null): { nudges: Record<string, XY>; rows: Check[]; shape: FrontShape | null } {
-  if (!frontValid(front) || recipe.task !== 'defence') return { nudges: {}, rows: [], shape: null };
+export interface FrontNudges {
+  nudges: Record<string, XY>; turns: Record<string, number>; plShift: Record<string, number[]>;
+  outlines: Record<string, [number, number][]>; paths: Record<string, XY[]>; rows: Check[]; shape: FrontShape | null;
+}
+export function frontNudges(res: SolveResult, recipe: Recipe, doc: DoctrineSet, frame: FitFrame, front: EnFront | null): FrontNudges {
+  const none: FrontNudges = { nudges: {}, turns: {}, plShift: {}, outlines: {}, paths: {}, rows: [], shape: null };
+  if (!frontValid(front) || recipe.task !== 'defence') return none;
   const bn = (levelOf(recipe.echelon) ?? 2) >= 2;
   const fg = frontFigures(doc, bn);
   const boxes: Box[] = res.slots.map((s) => ({ role: s.role, label: s.label, kind: s.kind, c: { ...s.centre }, w: s.wM, h: s.hM, turn: s.turnDeg }));
   const lf = frontLocal(front, frame);
-  const shape = shapeToFront(boxes, lf, frame.pivot, fg, layoutGuard(boxes, recipe, doc, 50));
-  const rows = frontRows(readFront(lf, boxes, fg.bulgeM), front.kind, shape, fg.spreadWarnM);
-  return { nudges: shape.nudges, rows, shape };
+  const shape = shapeToFront(boxes, lf, fg, layoutGuard(boxes, recipe, doc, 50));
+  const laid = shape.refM !== null ? layFront(boxes, lf, shape.refM, recipe, doc, fg, {}) : null;
+  const rows = frontRows(readFront(lf, boxes, fg.bulgeM, laid?.edges.edges ?? {}), front.kind, shape, fg.spreadWarnM, laid?.edges ?? null);
+  return { nudges: shape.nudges, turns: laid?.turns ?? {}, plShift: laid?.plShift ?? {}, outlines: laid?.edges.outlines ?? {}, paths: laid?.paths ?? {}, rows, shape };
 }
 
 /** The En front's rows on a plan read as drawn (Check my plan without the terrain): nothing moved. */
@@ -355,7 +402,7 @@ export function fitPlan(inp: FitInput): FitResult {
   let frontShape: FrontShape | null = null;
   // where each posn started: every move below changes its centre, and the nudges are worked out from here at the end
   const start: Record<string, XY> = Object.fromEntries(boxes.map((x) => [x.role, { ...x.c }]));
-  if (front && !inp.checkOnly) frontShape = shapeToFront(boxes, frontLocal(front, f), f.pivot, fg, layoutGuard(boxes, recipe, doc, 50));
+  if (front && !inp.checkOnly) frontShape = shapeToFront(boxes, frontLocal(front, f), fg, layoutGuard(boxes, recipe, doc, 50));
 
   // 1. slide posns out of NO-GO (nearest spot whose ground does not fail, clear of the other posns)
   for (const b of inp.checkOnly ? [] : boxes) {
@@ -464,6 +511,16 @@ export function fitPlan(inp: FitInput): FitResult {
       const shape = shapePosn(b, boxes.filter((o) => o !== b).map((o) => curves.get(o.role)!), sg, pr);
       if (shape) { out.outlines[b.role] = shape; curves.set(b.role, curveOf(b, shape)); }
     }
+  }
+  // 1d. the En front: each forward posn's front edge on its curve (the rear side from the ground's outline), the forward
+  // Coys' Pl posts with it, the FDL along it, the turns (user, 27 Nov 2026)
+  let frontLaid: FrontLaid | null = null;
+  if (front && frontShape?.refM != null) {
+    frontLaid = layFront(boxes, frontLocal(front, f), frontShape.refM, recipe, doc, fg, out.outlines);
+    Object.assign(out.outlines, frontLaid.edges.outlines);
+    out.turns = frontLaid.turns;
+    out.plShift = frontLaid.plShift;
+    out.frontPaths = frontLaid.paths;
   }
 
   // 2. posn by posn: ground, fields of fire, what overlooks it
@@ -711,17 +768,10 @@ export function fitPlan(inp: FitInput): FitResult {
   // 4b. the En front or area marked: what it is against the plan, each forward posn's stand-off, what moved to keep it
   if (front) {
     const lf = frontLocal(front, f);
-    out.rows.push(...frontRows(readFront(lf, boxes, fg.bulgeM), front.kind, frontShape, fg.spreadWarnM));
-    // the nearest of the five rays across each forward posn: the stand-off the row reads
-    out.standLinks = boxes.filter((b) => b.kind === 'fwd' && b.turn % 180 === 0).flatMap((b) => {
-      const y0 = b.c.y + b.h / 2;
-      let best: { x: number; d: number } | null = null;
-      for (const u of [-0.4, -0.2, 0, 0.2, 0.4]) {
-        const x = b.c.x + u * b.w, d = rayAhead(lf, x, y0);
-        if (d !== null && d > 0 && (!best || d < best.d)) best = { x, d };
-      }
-      return best ? [{ role: b.role, label: b.label, from: P(best.x, y0), to: P(best.x, y0 + best.d), dM: Math.round(best.d) }] : [];
-    });
+    const edges = frontLaid?.edges.edges ?? {};
+    out.rows.push(...frontRows(readFront(lf, boxes, fg.bulgeM, edges), front.kind, frontShape, fg.spreadWarnM, frontLaid?.edges ?? null));
+    // from the nearest point of each forward posn's front edge to the En front: the stand-off the row reads
+    out.standLinks = standLinksOf(boxes, lf, edges);
   }
 
   // 5. score (PlanDoctrine.scoreWeights): pass 1, warn 0.5, fail 0, unchecked 0.5
@@ -1163,13 +1213,14 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
     ? { ...inp.enemy, type: mtnType as EnemySpec['type'] }
     : inp.enemy ?? null;
   const fit = fitPlan({ res: fitBase, recipe, doc: ctx.doc, frame, ground, threat: recipe.task === 'attack' ? null : inp.threat ?? null, enemy: recipe.task === 'attack' ? null : enemy, terrain, rowsOver: rs?.rows, itgAt: inp.itgAt ?? null, front: recipe.task === 'attack' ? null : inp.front ?? null });
-  fit.paths = paths;
+  // an attack's axes, and the FDL laid along an En front
+  fit.paths = paths || fit.frontPaths ? { ...(paths ?? {}), ...(fit.frontPaths ?? {}) } : undefined;
   if (find) fit.nudges = addNudges(fit.nudges, find.nudges);
   if (rs) { fit.nudges = addNudges(fit.nudges, rs.nudges); fit.revSlope = { crest: rs.crest, fdlBehindM: rs.fdlBehindM, crestRiseM: rs.crestRiseM }; }
   const unit = inp.unit ?? null;
   // the reserve's pace on foot: the ground's in desert and mountains (IBB p 18, MW p 81), else cpen.footKmPerH (as Check my plan)
   const reserveKmh = terrain.kind === 'desert' || terrain.kind === 'mountain' ? footKmh(ctx.doc, terrain.kind).go : undefined;
-  const solveOpts = { ...inp.opts, nudges: addNudges(manual, fit.nudges), placed: fit.killingGr ? { killingGr: fit.killingGr } : undefined, outlines: fit.outlines, paths, mountedReserve: !!unit?.mounted, reserveKmh, geom: find?.geom ?? (rs ? { ...(inp.opts.geom ?? {}), ...rs.geom } : inp.opts.geom) };
+  const solveOpts = { ...inp.opts, nudges: addNudges(manual, fit.nudges), placed: fit.killingGr ? { killingGr: fit.killingGr } : undefined, outlines: fit.outlines, turns: fit.turns, plShift: fit.plShift, paths: fit.paths, mountedReserve: !!unit?.mounted, reserveKmh, geom: find?.geom ?? (rs ? { ...(inp.opts.geom ?? {}), ...rs.geom } : inp.opts.geom) };
   let raw = solveRecipe(recipe, ctx, solveOpts);
   // the unit's other ATGM pairs (ORBAT) on the tank approaches: uncovered ones first, then the main one (density)
   fit.atExtras = recipe.task === 'attack' ? [] : atgmExtras(raw, recipe, unit, fit.approaches, frame, ctx.doc);

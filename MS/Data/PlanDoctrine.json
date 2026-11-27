@@ -3875,6 +3875,21 @@
         "searched": "IBB S53 pp 276-281, S69 pp 357-359 and Annex U; OOW1 Sec 1 (domination of no man's land); MW s9 pp 123-128 (bulge, salient, enclave); IC s72-s78 (27 Nov 2026): the books say to dominate the no man's land and name salients and re-entrants, but give no distance from the En front and no figure for how far a posn moves to keep it",
         "note": "Most a forward posn moves straight forward or back to stand as far from the En front as the plan's axis does where the user placed it (a Bn plan's Coy posns; a Coy plan's Pl posns). One and a half times the ITG reach (fit.itg.reachM): a Coy posn is 600-800 m deep, so the move stays within about its own depth."
       },
+      "turnMaxDeg": {
+        "value": 45,
+        "basis": "E",
+        "decided": "2026-11-27",
+        "searched": "IBB S53 pp 276-281, S69 pp 357-359 and Annex U; OOW1 Sec 1; MW s9 pp 123-128; IC s72-s78 (27 Nov 2026): posns are sited to cover their approaches and fields of fire; no figure for how far a posn turns off the plan's front",
+        "note": "User, 27 Nov 2026 (\"do 1 to 4 and turn the posns too\"): each forward posn turns to face its own part of the En front, the posns behind it with it, size kept; the 27 Nov rule against turning posns stands for the ground. At most this far either way, half that when the full turn would touch the next posn, none when even that would."
+      },
+      "edgeBendM": {
+        "bn": 350,
+        "coy": 125,
+        "basis": "E",
+        "decided": "2026-11-27",
+        "searched": "as fit.enFront.turnMaxDeg (27 Nov 2026): no figure for how far a posn's front edge follows the En line",
+        "note": "User, 27 Nov 2026: the front edge of each forward posn (seven points across it) and each forward Pl post moves forward or back along the posn's facing to lie on the En front's curve, at most this far, and never behind the posn's middle; the rear side with the echelon mark stays. Half a Coy posn's 700 m depth for a Bn plan, half a Pl post's 250 m for a Coy plan."
+      },
       "minMoveM": {
         "value": 25,
         "basis": "M",

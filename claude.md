@@ -596,7 +596,20 @@ MS/
   options and says nothing was placed, a key notice says why a key does nothing, one threat (the tab's marker, else the
   Ground Guide's via the host's `threat`, else the enemy symbols with `threat.fromEnemySymbols`), an Options fold.
   Templates (was Samples) / Intelligent Deployment tabs in the Deployment Mgr; Intelligent Deployment = Task →
-  Enemy → Place → Check → Create. Doctrinal baseline plans (Bn / Coy Def two up, three up, one up, all round; Bn Attk
+  Enemy → Place → Check → Create. **The En as a front** (27 Nov 2026, `PlanEnFront.ts` pure, `node
+  tools/planbuilder-test/enfront.mjs` 46 checks): the Enemy step marks a point and / or an **En front line** or **En area**
+  with its curves, knolls and salients (a SketchViewModel on the tab's layer, clicks or drag, reshape, clear; not saved
+  with the session, carried on built graphics as `pbMeta.enFront`). A defence turns square to the part of it nearest the
+  plan (`faceBearing`, Mgr `PlanEntry.faceBy`) and follows its curvature (user, 27 Nov 2026, "do 1 to 4 and turn the
+  posns too"): the stand-off is the middle of the forward posns' as placed; each forward posn turns to face its own part
+  of it (`shapeToFront`, ±`fit.enFront.turnMaxDeg`, its depth posn with it, never onto a neighbour: the one exception to
+  the no-turn rule) and moves whole straight forward or back to that stand-off (the layout guard holding); then
+  `frontEdges` bends its front edge (seven points, `edgeBendM`) onto the curve, rear side and echelon mark kept, and moves
+  the forward Pl posts in Pl detail, and `fdlCurve` lays the FEBA along it (solver `turns`, `plShift`, `paths.fdl`;
+  PlanFit step 0 and 1d; geometry mode `frontNudges`). Rows
+  En front (across, depth, flank wrap, En salients MW p 126 para 3 b, own plan in a salient para 3 c) and Stand-off;
+  the En approaches start on the front when no point is marked; an attack's FUP / SL / Assy / BOF are checked outside an En
+  area; Check my plan reads the front marked, else the one the plan was built with. Doctrinal baseline plans (Bn / Coy Def two up, three up, one up, all round; Bn Attk
   frontal) from recipes (`MS/Data/Deployments/Recipes/`: slots with a geometry `seed` or `shape`, `rule` and
   `terrainRule`), figures in `MS/Data/PlanDoctrine.json` (frontages stay in `OcokaDoctrine.json`). Pure validator
   `PlanRecipes.ts` and solver `PlanSolve.ts` in `MS/Engines/DeploymentBuilder/` (`node tools/planbuilder-test/recipes.mjs`,

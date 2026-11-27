@@ -78,6 +78,8 @@ export interface PlanItem {
 export interface SlotResult {
   role: string; label: string; kind: string; centre: XY; wM: number; hM: number; turnDeg: number;
   checks: Check[]; st: CheckState;
+  /** Turned on top of `turnDeg` to face its part of an En front (PlanEnFront), degrees clockwise; drawn, not in `turnDeg`. */
+  faceDeg?: number;
 }
 
 export interface SolveOptions {
@@ -92,6 +94,10 @@ export interface SolveOptions {
   extraPosns?: { role: string; key: string; label: string; centre: XY; w: number; h: number; turnDeg: number }[];
   /** A posn's outline shaped to the ground by the fit: BP_SHAPE points as box fractions, by role. */
   outlines?: Record<string, [number, number][]>;
+  /** A posn turned to face its own part of an En front (PlanEnFront), degrees clockwise on top of its recipe turn, by role. */
+  turns?: Record<string, number>;
+  /** A Coy's Pl posts moved forward (+) or back along its facing, metres, by the Coy's role, in plSpots order (PlanEnFront). */
+  plShift?: Record<string, number[]>;
   /** A line's points laid on the ground by the fit (an attack axis round NO-GO: a curve through CTRL_PTS), by role. */
   paths?: Record<string, XY[]>;
   /** Points the fit adds from the ORBAT (ATGM pairs beyond the recipe's, sited on the tank approaches). */
@@ -154,6 +160,20 @@ const boxOverlap = (a: Box, b: Box, pad = 0) => {
  * reshape the curve to the ground (PlanFit `outlines`): a posn follows its high ground and keeps off NO-GO.
  */
 export const BP_SHAPE: [number, number][] = [[0.2, -0.5], [0.5, -0.3], [0.46, 0.42], [0, 0.5], [-0.46, 0.42], [-0.5, -0.3], [-0.2, -0.5]];
+
+/**
+ * The Pl posns inside a Coy locality, as fractions of the Coy box: [u across, v toward the front, number, width, depth].
+ * Two up, one back (Pl 600 x 250 m in a 1500 x 700 m Coy, IBB Annex U App 5 p 480), or three up in a row (App 7 p 482:
+ * Pls 600 m, 300 m apart, in a 2400 m forward Coy).
+ */
+export function plSpots(doc: DoctrineSet, pls?: string): [number, number, string, number, number][] {
+  const one = (v: unknown, fb: number) => { const r = resolveRange(doc, v); return r ? mid(r) : fb; };
+  const plW = one(doctrineAt(doc, 'size.pl.frontageM'), 600), plGap = one(doctrineAt(doc, 'size.pl.gapM'), 300);
+  const span = 3 * plW + 2 * plGap, pw = plW / span, step = (plW + plGap) / span;
+  return pls === 'three-up'
+    ? [[-step, 0, '1', pw, 0.9], [0, 0, '2', pw, 0.9], [step, 0, '3', pw, 0.9]]
+    : [[-0.3, 0.22, '1', 0.4, 0.36], [0.3, 0.22, '2', 0.4, 0.36], [0, -0.22, '3', 0.4, 0.36]];
+}
 function battlePosnPts(c: XY, w: number, h: number, turn: number, shape: [number, number][] = BP_SHAPE): XY[] {
   return shape.map(([u, v]) => boxPt(c, u * w, v * h, turn));
 }
@@ -194,26 +214,26 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     const nudge = opts.nudges?.[s.role];
     const b: Box = { role: s.role, c: nudge ? P(seed.x + nudge.x, seed.y + nudge.y) : seed, w, h, turn };
     boxes.push(b); bySlot.set(s.role, b);
+    // turned on top of its recipe turn to face its part of an En front (drawn so; the box keeps its recipe turn)
+    const face = opts.turns?.[s.role] ?? 0;
+    const drawTurn = turn + face;
     // a posn taken up when ordered (a canal defence's counter penetration posns) is drawn planned (dashed)
-    add(s.role, s.sym, s.label ?? '', battlePosnPts(b.c, w, h, turn, opts.outlines?.[s.role]), { echelon: s.echelon, drawType: 1, extra: { FACE_GAP: 5 }, planned: s.planned || undefined });
+    add(s.role, s.sym, s.label ?? '', battlePosnPts(b.c, w, h, drawTurn, opts.outlines?.[s.role]), { echelon: s.echelon, drawType: 1, extra: { FACE_GAP: 5 }, planned: s.planned || undefined });
     // the unit in its posn: a Pl, Coy or (a Bde's posns) a Bn
     if (s.echelon === '14' || s.echelon === '15' || s.echelon === '16') add(`${s.role}Unit`, '10121100', s.label ?? '', [b.c], { echelon: s.echelon });
     // the Pl posns inside a Coy locality: two up, one back (Pl 600 x 250 m in a 1500 x 700 m Coy, IBB Annex U App 5
     // p 480), or three up in a row (App 7 p 482: Pls 600 m, 300 m apart, in a 2400 m forward Coy)
     if ((opts.detail === 'pl' || s.plsAlways) && s.echelon === '15') {
       const coyLetter = (s.label ?? '').split(' ')[0];
-      const plW = num(doctrineAt(doc, 'size.pl.frontageM'), 600), plGap = num(doctrineAt(doc, 'size.pl.gapM'), 300);
-      // three up: each Pl 600 m of the Coy's width, the gaps 300 m (fractions of the Coy box, so a narrower Coy keeps the ratio)
-      const span = 3 * plW + 2 * plGap, pw = plW / span, step = (plW + plGap) / span;
-      const spots: [number, number, string, number, number][] = s.pls === 'three-up'
-        ? [[-step, 0, '1', pw, 0.9], [0, 0, '2', pw, 0.9], [step, 0, '3', pw, 0.9]]
-        : [[-0.3, 0.22, '1', 0.4, 0.36], [0.3, 0.22, '2', 0.4, 0.36], [0, -0.22, '3', 0.4, 0.36]];
-      for (const [u, v, n, fw, fh] of spots) {
-        add(`${s.role}Pl`, s.sym, n, battlePosnPts(boxPt(b.c, u * w, v * h, turn), fw * w, fh * h, turn),
+      // three up: each Pl 600 m of the Coy's width, the gaps 300 m (fractions of the Coy box, so a narrower Coy keeps the ratio);
+      // with an En front each Pl post may stand forward or back along the Coy's facing (opts.plShift)
+      const shift = opts.plShift?.[s.role] ?? [];
+      plSpots(doc, s.pls).forEach(([u, v, n, fw, fh], i) => {
+        add(`${s.role}Pl`, s.sym, n, battlePosnPts(boxPt(b.c, u * w, v * h + (shift[i] ?? 0), drawTurn), fw * w, fh * h, drawTurn),
           { echelon: '14', higher: `${coyLetter} Coy`, drawType: 1, extra: { FACE_GAP: 5 } });
-      }
+      });
     }
-    slots.push({ role: s.role, label: s.label ?? s.role, kind: s.kind, centre: b.c, wM: w, hM: h, turnDeg: turn, checks: [], st: 'unchecked' });
+    slots.push({ role: s.role, label: s.label ?? s.role, kind: s.kind, centre: b.c, wM: w, hM: h, turnDeg: turn, checks: [], st: 'unchecked', faceDeg: face || undefined });
   }
 
   const fwdBoxes = (names: unknown): Box[] => (Array.isArray(names) ? names : [names]).map((n) => bySlot.get(String(n))).filter((b): b is Box => !!b);
@@ -290,7 +310,9 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
         const pts = bs.map((b) => boxPt(b.c, 0, b.h / 2, b.turn)).sort((p, q) => Math.atan2(p.y, p.x) - Math.atan2(q.y, q.x));
         if (pts.length >= 3) add(s.role, s.sym, label, [...pts, pts[0]], { drawType: 2 });
       } else {
-        const pts = [...bs].sort((a, b) => a.c.x - b.c.x).flatMap((b) => [P(b.c.x - b.w / 2, front(b)), P(b.c.x + b.w / 2, front(b))]);
+        // an FDL laid by the fit (along an En front, PlanEnFront.fdlCurve), else through the forward posns' front edges
+        const laid = opts.paths?.[s.role];
+        const pts = laid?.length ? laid.map((p) => ({ ...p })) : [...bs].sort((a, b) => a.c.x - b.c.x).flatMap((b) => [P(b.c.x - b.w / 2, front(b)), P(b.c.x + b.w / 2, front(b))]);
         if (pts.length >= 2) add(s.role, s.sym, label, pts, { drawType: 1 });
       }
       continue;

@@ -26,7 +26,7 @@ export interface EnFront {
 }
 
 /** A posn's box in plan metres (PlanFit's Box). */
-export interface FrontBox { role: string; label: string; kind: string; c: XY; w: number; h: number; turn: number }
+export interface FrontBox { role: string; label: string; kind: string; c: XY; w: number; h: number; turn: number; /** Turned on top of `turn` to face the En front (deg clockwise). */ face?: number }
 
 /** The plan's frame (PlanFit's FitFrame). */
 export interface FrontFrame { anchor: XY; bearing: number; k: number; pivot: XY }
@@ -196,28 +196,109 @@ const isFwd = (b: FrontBox) => b.kind === 'fwd' && b.turn % 180 === 0;
 const isBack = (b: FrontBox) => b.kind === 'depth' || b.kind === 'res';
 const front = (b: FrontBox) => b.c.y + (b.turn % 180 === 90 ? b.w : b.h) / 2;
 const halfW = (b: FrontBox) => (b.turn % 180 === 90 ? b.h : b.w) / 2;
+const rad = (d: number) => (d * Math.PI) / 180;
 
-/** How far ahead his front stands from a posn's front edge, the nearest of five rays across it; null: none hits. */
-function standOf(lf: LocalFront, b: FrontBox): { dM: number | null; inside: boolean } {
-  let best: number | null = null, inside = false;
-  for (const u of [-0.4, -0.2, 0, 0.2, 0.4]) {
-    const d = rayAhead(lf, b.c.x + u * 2 * halfW(b), front(b));
-    if (d === null) continue;
-    if (d < 0) inside = true;
-    if (best === null || d < best) best = d;
+/** A point (u across, v toward the front, metres) of a box, turned by its recipe turn and its face turn. */
+export function boxPtF(b: FrontBox, u: number, v: number): XY {
+  const t = rad(b.turn + (b.face ?? 0));
+  return P(b.c.x + u * Math.cos(t) + v * Math.sin(t), b.c.y - u * Math.sin(t) + v * Math.cos(t));
+}
+
+/**
+ * Beyond the En front: inside an area, or past a line (the line crosses the way straight back toward the own side, -y,
+ * an odd number of times).
+ */
+export function beyondFront(lf: LocalFront, p: XY): boolean {
+  if (lf.closed) return inRing(lf.pts, p);
+  let n = 0;
+  for (const [a, b] of segs(lf.pts, false)) {
+    if ((a.x > p.x) === (b.x > p.x) || a.x === b.x) continue;
+    if (a.y + ((p.x - a.x) / (b.x - a.x)) * (b.y - a.y) < p.y) n++;
   }
-  // a posn whose centre lies in his area is inside it whatever its front edge says
-  if (lf.closed && inRing(lf.pts, b.c)) inside = true;
-  return { dM: best, inside };
+  return n % 2 === 1;
+}
+
+/** Shortest distance from a point to the En front, metres; negative beyond it (inside his area, past his line). */
+export function standDist(lf: LocalFront, p: XY): number {
+  let best = Infinity;
+  for (const [a, b] of segs(lf.pts, lf.closed)) {
+    const q = nearestOnSeg(a, b, p);
+    best = Math.min(best, Math.hypot(q.x - p.x, q.y - p.y));
+  }
+  return beyondFront(lf, p) ? -best : best;
+}
+
+/** The Battle Posn's front side as the annex draws it (BP_SHAPE: 0.42 at the corners, 0.5 in the middle). */
+const FRONT_U = [0.46, 0.31, 0.15, 0, -0.15, -0.31, -0.46];
+const frontV = (u: number) => 0.5 - 0.08 * (u / 0.46) ** 2;
+
+/** A posn's front edge in plan metres: its own bent edge when given, else the annex's front side. */
+function edgeOf(b: FrontBox, edge?: XY[] | null): XY[] {
+  if (edge?.length) return edge;
+  const w = 2 * halfW(b), h = front(b) * 2 - b.c.y * 2;
+  return FRONT_U.map((u) => boxPtF(b, u * w, frontV(u) * h));
+}
+
+/** The nearest the En front comes to a posn's front edge (m; negative: across it), and whether it lies in his area. */
+function standOf(lf: LocalFront, b: FrontBox, edge?: XY[] | null): { dM: number; inside: boolean } {
+  const ds = edgeOf(b, edge).map((p) => standDist(lf, p));
+  const dM = Math.min(...ds);
+  return { dM, inside: dM < 0 || beyondFront(lf, b.c) };
+}
+
+/**
+ * The turn (degrees clockwise, within ±maxDeg) that sets a posn square to its own part of the En front: the directions
+ * from the middle of its front edge to the En front within its frontage of the nearest point, weighted 1 / d².
+ */
+function faceAngle(lf: LocalFront, b: FrontBox, maxDeg: number): number {
+  const w = 2 * halfW(b);
+  const p = boxPtF({ ...b, face: 0 }, 0, front(b) - b.c.y);
+  if (beyondFront(lf, p)) return 0;
+  const pts: XY[] = [];
+  for (const [a, z] of segs(lf.pts, lf.closed)) {
+    const n = Math.max(1, Math.ceil(Math.hypot(z.x - a.x, z.y - a.y) / 40));
+    for (let i = 0; i <= n; i++) pts.push(P(a.x + ((z.x - a.x) * i) / n, a.y + ((z.y - a.y) * i) / n));
+  }
+  const d = pts.map((q) => Math.hypot(q.x - p.x, q.y - p.y));
+  const dmin = Math.min(...d);
+  let sx = 0, sy = 0;
+  for (let i = 0; i < pts.length; i++) {
+    if (d[i] > dmin + Math.max(600, w)) continue;
+    const wt = 1 / Math.max(50, d[i]) ** 2;
+    sx += ((pts[i].x - p.x) / Math.max(1e-6, d[i])) * wt;
+    sy += ((pts[i].y - p.y) / Math.max(1e-6, d[i])) * wt;
+  }
+  if (!sx && !sy) return 0;
+  // the front points +y at turn 0; a turn clockwise brings it toward +x
+  const deg = (Math.atan2(sx, sy) * 180) / Math.PI - b.turn;
+  return Math.max(-maxDeg, Math.min(maxDeg, deg));
+}
+
+/** Two turned boxes closer than `pad` (separating axes on their corners). */
+function overlapTurned(a: FrontBox, b: FrontBox, pad: number): boolean {
+  const corners = (x: FrontBox) => { const hw = x.w / 2 + pad / 2, hh = x.h / 2 + pad / 2; return [boxPtF(x, -hw, -hh), boxPtF(x, hw, -hh), boxPtF(x, hw, hh), boxPtF(x, -hw, hh)]; };
+  const ca = corners(a), cb = corners(b);
+  for (const poly of [ca, cb]) {
+    for (let i = 0; i < 4; i++) {
+      const p = poly[i], q = poly[(i + 1) % 4];
+      const nx = -(q.y - p.y), ny = q.x - p.x;
+      const proj = (c: XY[]) => c.map((v) => v.x * nx + v.y * ny);
+      const pa = proj(ca), pb = proj(cb);
+      if (Math.max(...pa) < Math.min(...pb) || Math.max(...pb) < Math.min(...pa)) return false;
+    }
+  }
+  return true;
 }
 
 export interface FrontShape {
   /** Plan-metre moves by role (fed to the solver with the fit's other nudges). */
   nudges: Record<string, XY>;
-  /** The stand-off kept: from the FDL at the plan's axis (where the user put it), metres; null: not read. */
+  /** The stand-off the plan is laid at: the middle of the forward posns' stand-offs where the user placed it, metres. */
   refM: number | null;
   moved: { role: string; label: string; byM: number }[];
   held: { role: string; label: string; wantM: number; why: string }[];
+  /** Posns turned to face their own part of the En front (degrees clockwise), by role. */
+  turned: { role: string; label: string; deg: number; why?: string }[];
 }
 
 export interface ShapeOpts {
@@ -225,24 +306,29 @@ export interface ShapeOpts {
   maxMoveM: number;
   /** Smaller differences are left alone (PlanDoctrine fit.enFront.minMoveM). */
   minMoveM: number;
+  /** Most a posn turns to face its part of the En front (PlanDoctrine fit.enFront.turnMaxDeg). */
+  turnMaxDeg: number;
+  /** Most a front edge or a Pl post bends forward or back to follow the En front (PlanDoctrine fit.enFront.edgeBendM). */
+  edgeBendM: number;
 }
 
 /**
- * Each forward posn moves straight forward or back so its front edge stands `refM` from his front (the stand-off at
- * the plan's axis, as the user put it), the posns behind it with it; central depth posns by the forward posns' mean.
- * `guard(b, cand)` is PlanFit's layout test (overlap, gaps, depth): a step it refuses is halved once, else held.
- * Mutates `boxes` (their centres) as PlanFit's other moves do.
+ * The plan laid against the En front (user, 27 Nov 2026: "do 1 to 4 and turn the posns too"): the stand-off is the
+ * middle of the forward posns' stand-offs where the user placed it; each forward posn turns to face its own part of the
+ * En front (within ±turnMaxDeg, never onto another posn) and moves whole straight forward or back so its front edge
+ * stands that far from it; the posns behind it move and turn with it, central depth posns by the forward posns' mean.
+ * `guard(b, cand)` is PlanFit's layout test: a move it refuses is halved once, else held. Mutates `boxes` (centres and
+ * `face`) as PlanFit's other moves do; frontEdges then bends each front edge onto the En front's curve.
  */
-export function shapeToFront(boxes: FrontBox[], lf: LocalFront, pivot: XY, o: ShapeOpts, guard: (b: FrontBox, cand: FrontBox) => string | null): FrontShape {
-  const out: FrontShape = { nudges: {}, refM: null, moved: [], held: [] };
+export function shapeToFront(boxes: FrontBox[], lf: LocalFront, o: ShapeOpts, guard: (b: FrontBox, cand: FrontBox) => string | null): FrontShape {
+  const out: FrontShape = { nudges: {}, refM: null, moved: [], held: [], turned: [] };
   const fwd = boxes.filter(isFwd);
   if (!fwd.length || boxes.some((b) => b.kind === 'round')) return out;
-  const frontY = Math.max(...fwd.map(front));
-  const stands = fwd.map((b) => ({ b, d: standOf(lf, b).dM }));
-  const known = stands.filter((s) => s.d !== null).map((s) => s.d!) .sort((a, z) => a - z);
-  if (!known.length) return out;
-  let ref = rayAhead(lf, pivot.x, frontY);
-  if (ref === null || ref < 0) ref = known[Math.floor(known.length / 2)];
+  const known = fwd.map((b) => standOf(lf, b).dM).sort((a, z) => a - z);
+  const mid = known.length / 2;
+  const ref = known.length % 2 ? known[Math.floor(mid)] : (known[mid - 1] + known[mid]) / 2;
+  // across his line already: nothing sensible to keep; the rows say so
+  if (!(ref > 0)) return out;
   out.refM = ref;
   const orig = new Map(boxes.map((b) => [b.role, { ...b.c }]));
   const backs = boxes.filter(isBack);
@@ -251,13 +337,14 @@ export function shapeToFront(boxes: FrontBox[], lf: LocalFront, pivot: XY, o: Sh
     const f = fwd.filter((x) => Math.abs(d.c.x - x.c.x) <= halfW(x)).sort((a, z) => Math.abs(d.c.x - a.c.x) - Math.abs(d.c.x - z.c.x))[0];
     if (f) owner.set(d, f);
   }
+  const clear = (b: FrontBox, face: number) => !boxes.some((x) => x !== b && overlapTurned({ ...b, face }, x, 50));
   /** Move a group by s along y, back boxes first when going back; all or nothing. */
   const moveGroup = (group: FrontBox[], s: number): string | null => {
     const order = s < 0 ? [...group].reverse() : group;
     const done: [FrontBox, XY][] = [];
     for (const b of order) {
       const cand: FrontBox = { ...b, c: P(b.c.x, b.c.y + s) };
-      const why = guard(b, cand);
+      const why = guard(b, cand) ?? (boxes.some((x) => x !== b && !group.includes(x) && overlapTurned(cand, x, 50)) ? 'it would run into the next posn' : null);
       if (why) { for (const [x, c] of done.reverse()) x.c = c; return why; }
       done.push([b, { ...b.c }]);
       b.c = cand.c;
@@ -265,17 +352,27 @@ export function shapeToFront(boxes: FrontBox[], lf: LocalFront, pivot: XY, o: Sh
     return null;
   };
   const shifts: number[] = [];
-  for (const { b, d } of stands) {
-    if (d === null) continue;
-    const want = d - ref;
-    if (Math.abs(want) < o.minMoveM) { shifts.push(0); continue; }
-    const s = Math.max(-o.maxMoveM, Math.min(o.maxMoveM, want));
+  for (const b of fwd) {
     const group = [b, ...backs.filter((x) => owner.get(x) === b)];
-    let why = moveGroup(group, s);
-    let got = why ? 0 : s;
-    if (why && Math.abs(s / 2) >= o.minMoveM) { const w2 = moveGroup(group, s / 2); if (!w2) { got = s / 2; why = null; } }
+    // 1. face its own part of the En front, the posns behind it with it (half the turn, else none, when it would touch a neighbour)
+    const want = faceAngle(lf, b, o.turnMaxDeg);
+    let face = 0;
+    if (Math.abs(want) >= 2) {
+      for (const f of [want, want / 2]) if (group.every((x) => clear(x, f))) { face = f; break; }
+      if (face) out.turned.push({ role: b.role, label: b.label, deg: Math.round(face), why: Math.abs(face) < Math.abs(want) - 0.5 ? `half the ${Math.round(Math.abs(want))}° it needs: a full turn would touch the next posn` : undefined });
+      else out.turned.push({ role: b.role, label: b.label, deg: 0, why: `not turned the ${Math.round(Math.abs(want))}° it needs: it would touch the next posn` });
+    }
+    for (const x of group) x.face = face;
+    // 2. straight forward or back to the stand-off (worked out again on the turned edge)
+    let s = 0;
+    for (let k = 0; k < 4; k++) s += standOf(lf, { ...b, c: P(b.c.x, b.c.y + s) }).dM - ref;
+    if (Math.abs(s) < o.minMoveM) { shifts.push(0); continue; }
+    const sc = Math.max(-o.maxMoveM, Math.min(o.maxMoveM, s));
+    let why = moveGroup(group, sc);
+    let got = why ? 0 : sc;
+    if (why && Math.abs(sc / 2) >= o.minMoveM) { const w2 = moveGroup(group, sc / 2); if (!w2) { got = sc / 2; why = null; } }
     if (got) { shifts.push(got); out.moved.push({ role: b.role, label: b.label, byM: Math.round(got) }); }
-    if (why || Math.abs(got) < Math.abs(want) - 1) out.held.push({ role: b.role, label: b.label, wantM: Math.round(want), why: why ?? `moved ${fmtM(Math.abs(got))} of ${fmtM(Math.abs(want))}: the most a posn moves to keep the stand-off` });
+    if (why || Math.abs(got) < Math.abs(s) - 1) out.held.push({ role: b.role, label: b.label, wantM: Math.round(s), why: why ?? `moved ${fmtM(Math.abs(got))} of ${fmtM(Math.abs(s))}: the most a posn moves to keep the stand-off` });
   }
   // depth posns behind no forward posn (a central reserve) follow the forward posns' mean
   const mean = shifts.length ? shifts.reduce((a, z) => a + z, 0) / shifts.length : 0;
@@ -291,6 +388,87 @@ export function shapeToFront(boxes: FrontBox[], lf: LocalFront, pivot: XY, o: Sh
     if (b.c.x !== o0.x || b.c.y !== o0.y) out.nudges[b.role] = P(b.c.x - o0.x, b.c.y - o0.y);
   }
   return out;
+}
+
+export interface FrontEdges {
+  /** Each forward posn's outline (box fractions, BP_SHAPE's rear and sides, its front side on the En front's curve). */
+  outlines: Record<string, [number, number][]>;
+  /** The same front edges in plan metres (the rows read the stand-off off them). */
+  edges: Record<string, XY[]>;
+  /** A forward Coy's Pl posts moved along its facing (metres, plSpots order). */
+  plShift: Record<string, number[]>;
+  /** How far each front edge bends (the most of its points), and where the bend reached its limit. */
+  bent: { role: string; label: string; maxM: number; short: boolean }[];
+}
+
+/**
+ * Each forward posn's front edge laid on the En front's curve `refM` from it (seven points across, each moved along the
+ * posn's facing, within ±edgeBendM and never behind the posn's middle), its rear side and echelon mark kept as `base`
+ * (the ground's outline, else the annex's); a forward Coy's forward Pl posts moved the same way so each keeps its inset
+ * behind the Coy's front edge (`pls`: plSpots by role).
+ */
+export function frontEdges(boxes: FrontBox[], lf: LocalFront, refM: number, o: ShapeOpts, base: Record<string, [number, number][]> = {}, pls: Record<string, [number, number, string, number, number][]> = {}): FrontEdges {
+  const out: FrontEdges = { outlines: {}, edges: {}, plShift: {}, bent: [] };
+  const toRef = (b: FrontBox, u: number, v: number, extra = 0, lim: [number, number] = [-o.edgeBendM, o.edgeBendM]) => {
+    let t = 0;
+    for (let k = 0; k < 5; k++) t = Math.max(lim[0], Math.min(lim[1], t + standDist(lf, boxPtF(b, u, v + t)) - (refM + extra)));
+    return t;
+  };
+  for (const b of boxes.filter(isFwd)) {
+    const w = 2 * halfW(b), h = 2 * (front(b) - b.c.y);
+    const bs = base[b.role]?.length === 7 ? base[b.role] : null;
+    const rear: [number, number][] = bs ? [bs[0], bs[1]] : [[0.2, -0.5], [0.5, -0.3]];
+    const rearL: [number, number][] = bs ? [bs[5], bs[6]] : [[-0.5, -0.3], [-0.2, -0.5]];
+    let maxT = 0, short = false;
+    const fr: [number, number][] = FRONT_U.map((u) => {
+      const v0 = frontV(u) * h;
+      const t = toRef(b, u * w, v0, 0, [Math.max(-o.edgeBendM, -v0), o.edgeBendM]);
+      maxT = Math.max(maxT, Math.abs(t));
+      if (Math.abs(standDist(lf, boxPtF(b, u * w, v0 + t)) - refM) > 25) short = true;
+      return [u, (v0 + t) / h];
+    });
+    out.outlines[b.role] = [...rear, ...fr, ...rearL];
+    out.edges[b.role] = fr.map(([u, v]) => boxPtF(b, u * w, v * h));
+    if (maxT >= o.minMoveM) out.bent.push({ role: b.role, label: b.label, maxM: Math.round(maxT), short });
+    const spots = pls[b.role];
+    if (spots?.length) {
+      out.plShift[b.role] = spots.map(([u, v, , , fh]) => {
+        const fv = v + fh / 2;
+        if (fv <= 0) return 0;   // the Pl in depth moves with its Coy only
+        return Math.round(toRef(b, u * w, fv * h, (0.5 - fv) * h));
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * The FDL laid `refM` from the En front across the forward posns' frontage, every bend, knoll, salient and re-entrant
+ * of it (plan metres, every ~25-60 m, thinned to 8 m); where the En front is not ahead (beyond its end) the line keeps
+ * the forward posns' front.
+ */
+export function fdlCurve(lf: LocalFront, boxes: FrontBox[], refM: number): XY[] {
+  const fwd = boxes.filter(isFwd);
+  if (!fwd.length) return [];
+  const x0 = Math.min(...fwd.map((b) => b.c.x - halfW(b))), x1 = Math.max(...fwd.map((b) => b.c.x + halfW(b)));
+  const frontY = Math.max(...fwd.map(front));
+  const step = Math.max(25, (x1 - x0) / 80);
+  const pts: XY[] = [];
+  for (let x = x0; x <= x1 + 0.5; x += step) {
+    if (rayAhead(lf, x, frontY - 3 * refM) === null) { pts.push(P(x, frontY)); continue; }
+    let y = frontY;
+    for (let k = 0; k < 8; k++) y += standDist(lf, P(x, y)) - refM;
+    pts.push(P(x, y));
+  }
+  // thinned (Douglas-Peucker, 8 m) so the FEBA carries tens of points, not hundreds
+  const dp = (a: XY[]): XY[] => {
+    if (a.length < 3) return a.slice();
+    let idx = -1, dm = -1;
+    for (let i = 1; i < a.length - 1; i++) { const q = nearestOnSeg(a[0], a[a.length - 1], a[i]); const d = Math.hypot(q.x - a[i].x, q.y - a[i].y); if (d > dm) { dm = d; idx = i; } }
+    if (dm <= 8) return [a[0], a[a.length - 1]];
+    return [...dp(a.slice(0, idx + 1)).slice(0, -1), ...dp(a.slice(idx))];
+  };
+  return dp(pts);
 }
 
 export interface FrontReading {
@@ -316,7 +494,7 @@ export interface FrontReading {
  * His front as it lies against the plan: across, depth, flanks, salients and re-entrants, stand-offs. `bulgeM` is the
  * smallest bulge read as a salient (PlanDoctrine fit.enFront.salientM).
  */
-export function readFront(lf: LocalFront, boxes: FrontBox[], bulgeM: number): FrontReading {
+export function readFront(lf: LocalFront, boxes: FrontBox[], bulgeM: number, edges: Record<string, XY[]> = {}): FrontReading {
   const posns = boxes.filter((b) => ['fwd', 'depth', 'res', 'round', 'cpen'].includes(b.kind));
   const fwd = posns.filter((b) => b.kind === 'fwd' || b.kind === 'round');
   const use = fwd.length ? fwd : posns;
@@ -344,8 +522,11 @@ export function readFront(lf: LocalFront, boxes: FrontBox[], bulgeM: number): Fr
     if (opp.length) depthM = Math.max(...opp.map((p) => p.y)) - Math.min(...opp.map((p) => p.y));
   }
   // level with or behind the FDL beside a flank (within one frontage out)
+  // level with the flank posn's own front edge (posns that follow the En front stand at different depths)
+  const flankFront = (side: -1 | 1) => { const b = [...use].sort((a, z) => (side < 0 ? a.c.x - z.c.x : z.c.x - a.c.x))[0]; return b ? front(b) : frontY; };
   const flank = (side: -1 | 1): number | null => {
-    const near = pts.filter((p) => (side < 0 ? p.x < x0 && p.x >= x0 - W : p.x > x1 && p.x <= x1 + W) && p.y <= frontY);
+    const fy = flankFront(side);
+    const near = pts.filter((p) => (side < 0 ? p.x < x0 && p.x >= x0 - W : p.x > x1 && p.x <= x1 + W) && p.y <= fy);
     if (!near.length) return null;
     return Math.round(Math.min(...near.map((p) => (side < 0 ? x0 - p.x : p.x - x1))));
   };
@@ -388,7 +569,7 @@ export function readFront(lf: LocalFront, boxes: FrontBox[], bulgeM: number): Fr
       reentrants.push({ x: deep.x, backM: Math.round(deep.y - base), opposite: opp(deep.x) });
     }
   }
-  const stand = fwd.map((b) => { const s = standOf(lf, b); return { role: b.role, label: b.label, dM: s.dM === null ? null : Math.round(s.dM), inside: s.inside }; });
+  const stand = fwd.map((b) => { const s = standOf(lf, b, edges[b.role]); return { role: b.role, label: b.label, dM: Math.round(s.dM), inside: s.inside }; });
   const inside = posns.filter((b) => {
     if (lf.closed) {
       for (const u of [-0.4, 0, 0.4]) for (const v of [-0.4, 0, 0.4]) if (inRing(lf.pts, P(b.c.x + u * 2 * halfW(b), b.c.y + v * (front(b) - b.c.y) * 2))) return true;
@@ -420,7 +601,7 @@ function segCrossesBox(a: XY, b: XY, c: XY, hw: number, hh: number): boolean {
  * The En front's rows: "En front" (what he is against the plan) and "Stand-off" (each forward posn from his front, what
  * moved to keep it). `shape` is the fit's move (null in Check my plan: read as drawn). `kind` names his mark.
  */
-export function frontRows(rd: FrontReading, kind: EnFrontKind, shape: FrontShape | null, spreadWarnM: number): Check[] {
+export function frontRows(rd: FrontReading, kind: EnFrontKind, shape: FrontShape | null, spreadWarnM: number, edges: FrontEdges | null = null): Check[] {
   const rows: Check[] = [];
   const what = kind === 'area' ? 'En area' : 'En front line';
   // En front: across, depth, flanks, salients
@@ -447,13 +628,19 @@ export function frontRows(rd: FrontReading, kind: EnFrontKind, shape: FrontShape
   const list = rd.stand.map((s) => `${s.label} ${s.dM === null ? 'none ahead' : fmtM(s.dM)}`).join(', ');
   const moved = shape?.moved.filter((m) => rd.stand.some((s) => s.role === m.role)) ?? [];
   const held = shape?.held ?? [];
-  const how = shape
-    ? `${shape.refM !== null ? `kept at ${fmtM(shape.refM)} as placed (the axis)` : ''}${moved.length ? `; ${moved.map((m) => `${m.label} ${m.byM > 0 ? 'forward' : 'back'} ${fmtM(Math.abs(m.byM))}`).join(', ')} to follow the En front, size and shape as the annex draws them` : ''}${held.length ? `; ${held.map((h) => `${h.label} not moved ${fmtM(Math.abs(h.wantM))} ${h.wantM > 0 ? 'forward' : 'back'}: ${h.why}`).join('; ')}` : ''}`
-    : 'read as drawn';
+  const turnWord = (d: number) => `${Math.abs(d)}° ${d > 0 ? 'Rt' : 'Lt'}`;
+  const turned = shape?.turned ?? [];
+  const parts2: string[] = [];
+  if (shape?.refM != null) parts2.push(`laid at ${fmtM(shape.refM)}, the middle of where the forward posns stood as placed`);
+  if (turned.length) parts2.push(turned.map((t) => (t.deg ? `${t.label} turned ${turnWord(t.deg)} to face its part of the En front${t.why ? ` (${t.why})` : ''}` : `${t.label} ${t.why}`)).join(', '));
+  if (moved.length) parts2.push(`${moved.map((m) => `${m.label} ${m.byM > 0 ? 'forward' : 'back'} ${fmtM(Math.abs(m.byM))}`).join(', ')}, whole, size and shape as the annex draws them`);
+  if (edges?.bent.length) parts2.push(`front edges bent onto the En front's curve (${edges.bent.map((b) => `${b.label} up to ${fmtM(b.maxM)}${b.short ? ', short of it where it bends further' : ''}`).join(', ')}), the FDL along it`);
+  if (held.length) parts2.push(held.map((h) => `${h.label} not moved ${fmtM(Math.abs(h.wantM))} ${h.wantM > 0 ? 'forward' : 'back'}: ${h.why}`).join('; '));
+  const how = shape ? parts2.join('; ') : 'read as drawn';
   rows.push({
     name: 'Stand-off',
     st: spread > spreadWarnM ? 'warn' : 'pass',
-    reason: `forward posns from the ${what} straight ahead: ${list}${how ? ` (${how.replace(/^; /, '')})` : ''}${spread > spreadWarnM ? `; ${fmtM(spread)} between the nearest and the farthest: the nearer posn meets the En first and the line is uneven, move it or accept it` : ''}`,
+    reason: `forward posns' front edges from the ${what} at the nearest: ${list}${how ? ` (${how})` : ''}${spread > spreadWarnM ? `; ${fmtM(spread)} between the nearest and the farthest: the nearer posn meets the En first and the line is uneven, move it or accept it` : ''}`,
   });
   return rows;
 }

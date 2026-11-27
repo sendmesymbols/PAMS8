@@ -74,20 +74,70 @@ const inW = (f) => ({ kind: f.kind, pts: f.pts.map((p) => F.toWorld(fr, p)) });
 const bowed = inW({ kind: 'line', pts: [{ x: -8000, y: frontY + 2000 }, { x: A.centre.x, y: frontY + 2000 }, { x: 0, y: frontY + 2000 }, { x: B.centre.x, y: frontY + 1600 }, { x: 8000, y: frontY + 1600 }] });
 const fitB = F.fitPlan({ res: base, recipe: r2, doc, frame: fr, ground: open, threat: null, front: bowed });
 const nB = fitB.nudges.fwdR, nA = fitB.nudges.fwdL;
-check('B Coy, where his front comes nearer, moves back about 400 m', nB && near(nB.y, -400, 30) && near(nB.x, 0, 1), JSON.stringify(nB));
-check('A Coy, already at the stand-off, stays', !nA || near(nA.y, 0, 30), JSON.stringify(nA));
+// the stand-off kept is the middle of the two Coys' as placed (about 1.8 km): A Coy forward, B Coy back
+check('B Coy, where the En front comes nearer, moves back', nB && nB.y < -100, JSON.stringify(nB));
+check('A Coy, further from it, moves forward', nA && nA.y > 100, JSON.stringify(nA));
 const dep = r2.slots.find((s) => s.kind === 'depth');
 const dB = base.slots.filter((s) => s.kind === 'depth' || s.kind === 'res').find((s) => Math.abs(s.centre.x - B.centre.x) <= B.wM / 2);
 if (dB) check('the depth posn behind B Coy moves back with it', fitB.nudges[dB.role] && near(fitB.nudges[dB.role].y, nB.y, 1), JSON.stringify(fitB.nudges[dB.role]));
 else check('a depth posn backs B Coy in the annex layout', !!dep && false, 'none found behind B');
 const so = row(fitB.rows, 'Stand-off');
-check('Stand-off row passes after the move and says what moved', so?.st === 'pass' && /back 400 m/.test(so.reason), so?.reason);
+check('Stand-off row passes, both front edges at the same stand-off, says what moved, turned and bent', so?.st === 'pass' && /back \d+ m/.test(so.reason) && /the middle of where/.test(so.reason), so?.reason);
+const sds = (/A Coy ([\d.]+) (km|m), B Coy ([\d.]+) (km|m)/.exec(so?.reason ?? '') ?? []);
+const km = (v, u) => (u === 'km' ? Number(v) * 1000 : Number(v));
+check('both forward Coys end within 50 m of the same stand-off', sds.length && Math.abs(km(sds[1], sds[2]) - km(sds[3], sds[4])) <= 50, sds.slice(1).join(' '));
 check('En front row: across the front, no flank wrap', row(fitB.rows, 'En front')?.st === 'pass', row(fitB.rows, 'En front')?.reason);
-check('the approaches start on his front, not assumed', fitB.fromAssumed === false && near(F.toLocal(fr, fitB.from).y, frontY + 2000, 50), JSON.stringify(fitB.from));
-check('stand-off links drawn for the forward posns', (fitB.standLinks ?? []).length === 2 && fitB.standLinks.every((l) => near(l.dM, 2000, 40)), JSON.stringify(fitB.standLinks?.map((l) => l.dM)));
-const re = S.solveRecipe(r2, ctx, { alternates: 'none', nudges: fitB.nudges });
+check('the approaches start on the En front, not assumed', fitB.fromAssumed === false, JSON.stringify(fitB.from));
+check('stand-off links drawn for the forward posns', (fitB.standLinks ?? []).length === 2, JSON.stringify(fitB.standLinks?.map((l) => l.dM)));
+const re = S.solveRecipe(r2, ctx, { alternates: 'none', nudges: fitB.nudges, turns: fitB.turns, outlines: fitB.outlines, plShift: fitB.plShift, paths: fitB.frontPaths });
 const Bn = re.slots.find((s) => s.role === 'fwdR');
-check('the solver lays B Coy where the fit moved it, size kept', near(Bn.centre.y, B.centre.y - 400, 30) && Bn.wM === B.wM && Bn.hM === B.hM);
+check('the solver lays B Coy where the fit moved it, size kept', near(Bn.centre.y, B.centre.y + nB.y, 1) && Bn.wM === B.wM && Bn.hM === B.hM);
+
+// 1. the FDL follows the En front's curve, the same stand-off all along
+const lfB = { pts: bowed.pts.map((p) => F.toLocal(fr, p)), closed: false };
+const fdl = fitB.frontPaths?.fdl ?? [];
+const ref = Number((/laid at ([\d.]+) (km|m)/.exec(so?.reason ?? '') ?? [])[1]) * ((/laid at [\d.]+ km/.test(so?.reason ?? '')) ? 1000 : 1);
+check('the FDL is laid along the En front (more than two points, a bend in it)', fdl.length >= 4 && Math.max(...fdl.map((p) => p.y)) - Math.min(...fdl.map((p) => p.y)) > 200, `${fdl.length} pts`);
+check('every FDL point stands the stand-off from the En front (within 40 m)', fdl.every((p) => Math.abs(E.standDist(lfB, p) - ref) <= 40), fdl.map((p) => Math.round(E.standDist(lfB, p))).join(','));
+const fdlItem = re.items.find((i) => i.role === 'fdl');
+check('the solver draws the FEBA on that curve', fdlItem && fdlItem.pts.length === fdl.length);
+
+// 2. a knoll in the En front within one Coy's frontage bends that Coy's front edge, not the whole posn
+const bump = inW({ kind: 'line', pts: [{ x: -8000, y: frontY + 1500 }, { x: A.centre.x - 400, y: frontY + 1500 }, { x: A.centre.x, y: frontY + 1150 }, { x: A.centre.x + 400, y: frontY + 1500 }, { x: 8000, y: frontY + 1500 }] });
+const fitK2 = F.fitPlan({ res: base, recipe: r2, doc, frame: fr, ground: open, threat: null, front: bump });
+const oA = fitK2.outlines?.fwdL ?? [];
+check('A Coy\'s outline has the bent front (11 points: rear kept, seven across the front)', oA.length === 11, String(oA.length));
+const vMid = oA[5]?.[1], vEnd = oA[2]?.[1];
+check('its front edge follows the knoll: held back in the middle opposite it, forward at the corners where the En line recedes', vMid <= 0.52 && vEnd > vMid + 0.1, `${vMid?.toFixed(2)} mid, ${vEnd?.toFixed(2)} at the corner`);
+check('the rear side and echelon mark stay as the annex draws them', oA[0][0] === 0.2 && oA[0][1] === -0.5 && oA[10][0] === -0.2 && oA[10][1] === -0.5);
+
+// 3. the stand-off is the middle of the Coys', not the axis: a salient between the Coys does not pull them onto its shoulders
+const between = inW({ kind: 'line', pts: [{ x: -8000, y: frontY + 2000 }, { x: -500, y: frontY + 2000 }, { x: 0, y: frontY + 600 }, { x: 500, y: frontY + 2000 }, { x: 8000, y: frontY + 2000 }] });
+const fitM = F.fitPlan({ res: base, recipe: r2, doc, frame: fr, ground: open, threat: null, front: between });
+const sdOf = (rows) => { const m = /A Coy ([\d.]+) (km|m), B Coy ([\d.]+) (km|m)/.exec(row(rows, 'Stand-off')?.reason ?? ''); return m ? [km(m[1], m[2]), km(m[3], m[4])] : null; };
+const before = sdOf(F.frontCheckRows(base, r2, doc, fr, between)), after = sdOf(fitM.rows);
+check('a salient between the Coys: the stand-off kept is the Coys own as placed, not the salient tip',before && after && Math.abs(after[0] - before[0]) <= 40 && Math.abs(after[1] - before[1]) <= 40, `${before} -> ${after}`);
+
+// 5. a posn turns to face its own part of a slanted En front (within 45 deg), its depth posn with it
+const slantR = inW({ kind: 'line', pts: [{ x: -8000, y: frontY + 2000 }, { x: 0, y: frontY + 2000 }, { x: 8000, y: frontY + 2000 - 8000 * Math.tan(Math.PI / 9) }] });
+const fitT = F.fitPlan({ res: base, recipe: r2, doc, frame: fr, ground: open, threat: null, front: slantR });
+const tB = fitT.turns?.fwdR ?? 0, tA = fitT.turns?.fwdL ?? 0;
+check('B Coy, facing the En line slanting toward it, turns about 20 deg Rt', tB > 10 && tB <= 45, `${tB.toFixed(1)}`);
+check('A Coy, facing the straight part, turns little', Math.abs(tA) < Math.abs(tB), `${tA.toFixed(1)}`);
+const reT = S.solveRecipe(r2, ctx, { alternates: 'none', nudges: fitT.nudges, turns: fitT.turns, outlines: fitT.outlines });
+const bpB = reT.items.find((i) => i.role === 'fwdR');
+const rear = bpB.pts[0], rear2 = bpB.pts[bpB.pts.length - 1];
+check('the solver draws B Coy turned (its rear side no longer square to the plan)', Math.abs(rear.y - rear2.y) > 20, `${Math.round(rear.y)} vs ${Math.round(rear2.y)}`);
+check('the Stand-off row says which posns turned and which way', /turned \d+° Rt/.test(row(fitT.rows, 'Stand-off')?.reason ?? ''), row(fitT.rows, 'Stand-off')?.reason);
+
+// 4. Pl detail: each forward Pl post stands on the curve, its inset behind the Coy's front edge kept
+const resPl = S.solveRecipe(r2, ctx, { alternates: 'none', detail: 'pl' });
+const fitPl = F.fitPlan({ res: resPl, recipe: r2, doc, frame: fr, ground: open, threat: null, front: bump });
+const sh = fitPl.plShift?.fwdL ?? [];
+check('A Coy\'s forward Pl posts get their own shifts, the depth Pl none', sh.length === 3 && sh[2] === 0 && (sh[0] !== 0 || sh[1] !== 0), JSON.stringify(sh));
+const rePl = S.solveRecipe(r2, ctx, { alternates: 'none', detail: 'pl', nudges: fitPl.nudges, turns: fitPl.turns, outlines: fitPl.outlines, plShift: fitPl.plShift });
+const pls = rePl.items.filter((i) => i.role === 'fwdLPl');
+check('the solver draws the Pl posts where they were shifted', pls.length === 3);
 
 // the move is capped (PlanDoctrine fit.enFront.moveM.bn 600) and says so
 const steep = inW({ kind: 'line', pts: [{ x: -8000, y: frontY + 2000 }, { x: 0, y: frontY + 2000 }, { x: B.centre.x, y: frontY + 900 }, { x: 8000, y: frontY + 900 }] });
@@ -101,7 +151,7 @@ check('Check my plan reads the front without moving a posn', Object.keys(fitC.nu
 
 // geometry mode: the same moves without terrain
 const geo = F.frontNudges(base, r2, doc, fr, bowed);
-check('geometry mode: B Coy moves back as with the terrain', geo.nudges.fwdR && near(geo.nudges.fwdR.y, -400, 30), JSON.stringify(geo.nudges.fwdR));
+check('geometry mode: B Coy moves as with the terrain, turned and laid the same', geo.nudges.fwdR && near(geo.nudges.fwdR.y, fitB.nudges.fwdR.y, 1) && JSON.stringify(geo.turns) === JSON.stringify(fitB.turns ?? {}) && (geo.paths.fdl ?? []).length === fdl.length, JSON.stringify(geo.nudges.fwdR));
 check('geometry mode gives the En front and Stand-off rows', !!row(geo.rows, 'En front') && !!row(geo.rows, 'Stand-off'));
 
 // an area: posn inside it fails; a salient of his toward A Coy warns (MW p 126); wrapping both flanks warns

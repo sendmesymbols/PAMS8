@@ -2039,7 +2039,8 @@ export class PlanBuildTab {
     if (!piv) return null;
     const frame = { anchor, bearing, k: 1 / Math.cos(2 * Math.atan(Math.exp(anchor.y / 6378137)) - Math.PI / 2), pivot: piv.pts[0] };
     const fn = frontNudges(base, recipe, ctx.doc, frame, fr);
-    const res = Object.keys(fn.nudges).length ? solveRecipe(recipe, ctx, { ...this._opts(), nudges: fn.nudges }) : base;
+    // its posns moved, turned to face their part of it, front edges and Pl posts on its curve, the FDL along it
+    const res = fn.shape?.refM != null ? solveRecipe(recipe, ctx, { ...this._opts(), nudges: fn.nudges, turns: fn.turns, plShift: fn.plShift, outlines: fn.outlines, paths: fn.paths }) : base;
     const names = new Set(fn.rows.map((x) => x.name));
     res.rows = [...res.rows.filter((x) => !names.has(x.name)), ...fn.rows];
     return { res, rows: fn.rows };

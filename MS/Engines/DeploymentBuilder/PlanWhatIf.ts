@@ -645,7 +645,7 @@ export function withMoves(fl: FittedLayout, inp: FitLayoutInput): FittedWithMove
     if (c !== null && foot.nogo.has(c)) { t.st = 'fail'; t.reason = `${alt.label} sits on ${inp.ground.label(c)} (NO-GO on foot): site it on the ground`; }
   }
   const raw = extra.length && inp.opts.alternates !== 'none'
-    ? solveRecipe(fl.recipe, inp.ctx, { ...inp.opts, nudges: addNudges(fl.manual, fl.fit.nudges), placed: fl.fit.killingGr ? { killingGr: fl.fit.killingGr } : undefined, extraPosns: extra, outlines: fl.fit.outlines, paths: fl.fit.paths, extraPoints: fl.fit.atExtras, mountedReserve: !!fl.unit?.mounted, reserveKmh: fl.terrain?.kind === 'desert' || fl.terrain?.kind === 'mountain' ? footKmh(inp.ctx.doc, fl.terrain.kind).go : undefined })
+    ? solveRecipe(fl.recipe, inp.ctx, { ...inp.opts, nudges: addNudges(fl.manual, fl.fit.nudges), placed: fl.fit.killingGr ? { killingGr: fl.fit.killingGr } : undefined, extraPosns: extra, outlines: fl.fit.outlines, turns: fl.fit.turns, plShift: fl.fit.plShift, paths: fl.fit.paths, extraPoints: fl.fit.atExtras, mountedReserve: !!fl.unit?.mounted, reserveKmh: fl.terrain?.kind === 'desert' || fl.terrain?.kind === 'mountain' ? footKmh(inp.ctx.doc, fl.terrain.kind).go : undefined })
     : fl.raw;
   const merged = mergeChecks(raw, fl.fit);
   // the fitted rows as fitLayout left them (the enemy force, the ground, AT cover come with them): the planned posns
