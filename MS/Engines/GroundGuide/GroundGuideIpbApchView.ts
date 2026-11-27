@@ -152,6 +152,9 @@ const corridorsWord = (a: IpbApchAa): string => {
 };
 
 /** What an avenue is, in a line. */
+/** The Read As row and Copy as Text line when the approaches are typed in mountains (IpbDoctrine mountainApproach). */
+const MTN_ROW = 'Apchs typed from the 30 m elevation across them: a valley or nullah floor, a ridge line or a side slope (MW s7 para 4 a p 78). Where the choice exists attack along the gradient, ridges and spurs (MW p 79); routes follow ridge lines rather than gullies and streams (MW p 46). Confirm on the ground.';
+
 function aaLine(v: IpbApchView, a: IpbApchAa): string {
   if (a.onto) {
     const room = a.twoPct >= 60 ? (a.open ? `room for 3+ ${v.mcFor} corridors` : `2 ${v.mcFor} corridors side by side`) : a.onePct >= 60 ? `1 ${v.mcFor} corridor: tight` : `narrower than a ${v.mcFor} corridor`;
@@ -337,7 +340,9 @@ function aaCards(v: IpbApchView): HTMLElement {
     chip(`median ${km(a.medianWidthM)} wide`, a.medianWidthM >= 2 * v.mcWidthM);
     chip(a.narrows.length ? `${a.narrows.length} narrows` : 'no narrows', a.narrows.length === 0);
     if (a.waterLines) chip(`${a.waterLines} water line${a.waterLines > 1 ? 's' : ''}`, null);
+    if (a.mtn) chip(`${a.mtn.label}${a.mtn.hardest ? ' · the difficult one' : ''}`, null);
     card.append(chips);
+    if (a.mtn) card.append(el('div', 'ms-gia-t', `${a.mtn.say.join('. ')}. Read from the 30 m elevation: confirm on the ground.`));
     if (a.narrows.length) {
       const nr = el('div', 'ms-gia-nr');
       for (const n of a.narrows.slice(0, 4)) nr.append(el('b', undefined, narrowsWord(n)), el('span', undefined, `${km(n.alongM)} in${n.widthM < v.mcWidthM / 2 ? ' · under half a corridor' : ''}`));
@@ -408,6 +413,7 @@ export function apchTiles(o: GroundGuideOcoka): HTMLElement[] {
     ['Mover', `${v.mover === 'armour' ? 'Armour' : v.mover === 'mech' ? 'Mechanized' : 'Dismounted'}, moving ${Math.round(v.axisDeg)}°`],
     ['Coding', v.codingText.replace(/^IPB coding \([^)]*\):\s*/, '')],
   ];
+  if (v.aas.some((a) => a.mtn)) rows.push(['Mountains', MTN_ROW]);
   if (v.hqNote) rows.push(['Note', v.hqNote]);
   const list = el('div', 'ms-gx-list');
   for (const [a, b] of rows) list.append(el('div', undefined, a), el('div', undefined, b));
@@ -839,6 +845,21 @@ export function wxTile(v: IpbApchView | null | undefined, use: 'fire' | 'mnvr' |
     grp.append(head, row);
     g.append(grp);
   }
+  // On mountain ground: MW's weather and snow notes for this use, the month and the area's height (notes, never coded).
+  const mtn = (w.mtn?.notes ?? []).filter((x) => x.for.includes(use));
+  if (mtn.length) {
+    const grp = el('div', 'ms-gia-wxg');
+    const head = el('div', 'ms-gia-wxh', `Mountains${w.mtn?.elevM != null ? ` · about ${w.mtn.elevM} m` : ''}`);
+    head.title = 'Mountain Warfare (GSP-1973): the weather notes for the month and the height of the area read (its middle, from the 30 m elevation). Notes only: they do not change the coding.';
+    head.setAttribute('data-split-head', '');
+    grp.append(head);
+    for (const x of mtn) {
+      const row = el('div', 'ms-gia-wxr ms-gia-wxo');
+      row.append(el('span', 'ms-gia-wxe', x.text));
+      grp.append(row);
+    }
+    g.append(grp);
+  }
   const src = `Annex A (book pp 19-20) from the month's means: visibility from the nearest stations${w.stationKm != null ? ` (${Math.round(w.stationKm)} km off${w.stationKm > 100 ? ': a guess' : ''})` : ''}, temperature and wind speed from WorldClim${w.wind ? ', wind direction from ERA5 (1990-2019 normal)' : ''}. Daily means, not the hour. Ceiling, cloud, humidity and stability: get from Met.`;
   // The source note goes in the list, after the last block, so a split never leaves it alone in a column of its own.
   const n = note(`Month's means, not the hour · Annex A pp 19-20${w.stationKm != null ? ` · stations ${Math.round(w.stationKm)} km off${w.stationKm > 100 ? ' (a guess)' : ''}` : ''}`);
@@ -1034,7 +1055,7 @@ export function decisionTiles(o: GroundGuideOcoka): HTMLElement[] {
   }
   const rt = el('div', 'ms-gx-list');
   const rows: Array<[string, string]> = [
-    ['Rates', `${dv.rates.mover === 'dismounted' ? 'Foot' : 'Vehicles'}: GO ${dv.rates.go[0]} / ${dv.rates.go[1]}, SLOW-GO ${dv.rates.slow[0]} / ${dv.rates.slow[1]}, NO-GO ${dv.rates.nogo[0]} / ${dv.rates.nogo[1]} km/h, day / night (${dv.rates.mountain ? 'mountains: MW p 81, 3 km/h by day, 0.5 by night' : 'book p 18'})`],
+    ['Rates', `${dv.rates.mover === 'dismounted' ? 'Foot' : 'Vehicles'}: GO ${dv.rates.go[0]} / ${dv.rates.go[1]}, SLOW-GO ${dv.rates.slow[0]} / ${dv.rates.slow[1]}, NO-GO ${dv.rates.nogo[0]} / ${dv.rates.nogo[1]} km/h, day / night (${dv.rates.mountain ? 'mountains: MW p 81, 3 km/h by day, 0.5-1 by night (0.5 used)' : 'book p 18'})`],
     ...(dv.rates.climbMinPer300
       ? ([['Climb', `${dv.rates.climbMinPer300[0]}-${dv.rates.climbMinPer300[1]} min per 300 m of ascent on foot, earliest / latest (MW p 81)${dv.rates.climbM && Object.keys(dv.rates.climbM).length ? `: ${Object.entries(dv.rates.climbM).map(([id, m]) => `${id} climbs ${Math.round(m)} m`).join(', ')}` : ''}`]] as Array<[string, string]>)
       : []),
@@ -1048,11 +1069,12 @@ export function decisionTiles(o: GroundGuideOcoka): HTMLElement[] {
   for (const [a, b] of rows) rt.append(el('div', undefined, a), el('div', undefined, b));
   out.push(tile('Rates & Times', rt));
   if (v.side !== 'enemy' && dv.reserves?.length) {
-    // Reading the En defence: when each level of his reserve can react (IDD p 5), against own time onto the Obj.
+    // Reading the En defence: when each level of his reserve can react (IDD p 5; IC s114 para 14 pp 671-672 beside, the
+    // books differ: OcokaDoctrine enemyMarch.reserves), against own time onto the Obj.
     const list = el('div', 'ms-gx-list');
     for (const r of dv.reserves) list.append(el('div', undefined, `${r.level} res`), el('div', undefined, `${r.fromH === r.toH ? `H+${r.fromH}` : `H+${r.fromH} to H+${r.toH}`}${r.from === 'decision' ? ' after his decision' : ''}${r.what ? ` · ${r.what}` : ''}`));
     const best = [...dv.profiles].filter((p) => p.viable).sort((p, q) => p.endH[0] - q.endH[0])[0];
-    out.push(tile('En Reserves · When They Can React', list, note(`Indian Defensive Doctrine p 5: Bn about 1 h, Bde 2-4 h after the attack starts, Div 4-6 h, Corps 12-16 h after the decision.${best ? ` Own fastest Apch ${best.aa} crosses the area ${hPlus(best.endH[0])} at the earliest.` : ''} Be firm on the Obj and sited against them before they can come in.`)));
+    out.push(tile('En Reserves · When They Can React', list, note(`Indian Defensive Doctrine p 5: Bn about 1 h, Bde 2-4 h after the attack starts, Div 4-6 h, Corps 12-16 h after the decision. The books differ: IC s114 para 14 pp 671-672 (Foxland) gives his Bn's committed depth Coy 30-45 min of the attack, his Bde's Sqn and about two Coys 2-3 h and his Div's reserve 4-6 h of the decision to employ them, and GSP 1947 Inf Div in Battle p 83 the same (the Bn's Coy within 35-40 min of the attack); the earlier Bn figure is IC's and GSP's.${best ? ` Own fastest Apch ${best.aa} crosses the area ${hPlus(best.endH[0])} at the earliest.` : ''} Be firm on the Obj and sited against them before they can come in.`)));
   }
   if (v.side === 'enemy' && (dv.nais.length || dv.dps.length)) {
     const acts = el('div', 'ms-gia-acts');
@@ -1135,7 +1157,9 @@ export function apchText(o: GroundGuideOcoka): string[] {
   for (const a of v.aas) {
     L.push(`${a.viable ? `Apch ${a.id}` : `Lone corridor ${a.id}1`} (${aaRole(a)}): ${aaLine(v, a)}; median ${km(a.medianWidthM)} wide.`);
     for (const n of a.narrows) L.push(`  Narrows: ${narrowsWord(n)}, ${km(n.alongM)} in.`);
+    if (a.mtn) L.push(`  ${a.mtn.label}${a.mtn.hardest ? ' (the difficult one)' : ''}: ${a.mtn.say.join('. ')}.`);
   }
+  if (v.aas.some((a) => a.mtn)) L.push(`Mountains: ${MTN_ROW}`);
   for (const x of v.crossovers) L.push(`Crossover ${x.id}: ${x.a} to ${x.b}, ${km(x.alongM)} in.`);
   for (const n of v.notes) L.push(n);
   L.push('Ranked on the going (a proposal). NO-GO does not mean impassable. Check on the ground.');

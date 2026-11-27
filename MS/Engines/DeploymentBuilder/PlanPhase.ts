@@ -74,11 +74,12 @@ export interface Phase2Lay {
 
 /**
  * Lay phase 2 round Obj 1 on one side: FUP 2 on a line `offDeg` off the one he faces (from Obj 2 toward Obj 1),
- * beyond the last fire lift from Obj 2 and clear of Obj 1, SL 2 at its forward edge, the axis from SL 2 to just inside
+ * 1000-1200 m from Obj 2 (IC s68 para 12 e (1) p 333, a night figure; kept by day as the layout's spacing) and clear of
+ * Obj 1, SL 2 at its forward edge (IC s68 para 13 a p 334), the axis from SL 2 to just inside
  * Obj 2, the LOE beyond its far edge along the axis; the follow-up Coys' way from the FUP kept off Obj 1.
  */
 export function layPhase2(o1: Box, o2: Box, fup: XY, side: 1 | -1, offDeg: number, doc: DoctrineSet): Phase2Lay {
-  const band = rng(doc, 'attack.phase2.fup2FromObj2M', [600, 1200]);
+  const band = rng(doc, 'attack.phase2.fup2FromObj2M', [1000, 1200]);
   const clear = num(doc, 'attack.phase2.clearObj1M', 300);
   const loeBeyond = num(doc, 'attack.loeBeyondObjM', 600);
   const face = unit(P(o1.c.x - o2.c.x, o1.c.y - o2.c.y));

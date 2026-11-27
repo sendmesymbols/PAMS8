@@ -201,5 +201,36 @@ check('score-card rows read from the merged checks', F.SCORE_ROWS.every((s) => s
   check('J: nothing to improve on clean ground', F.nextBestSpot({ ...inp, ground: makeGround({}) }, F.fitLayout({ ...inp, ground: makeGround({}) })) === null || true);
 }
 
+// ── IC review (27 Nov 2026): approach responsibility, Coy fields of fire, Coy three up ranked after two up ────────────
+{
+  // Bn two up, the 900 m approach straight up the middle: it comes in on the gap between A and B Coys (IC s74 para 4 a (1))
+  const ar = row(fitNear.rows, 'Approach responsibility');
+  check('Approach responsibility: an approach on the gap between two forward posns warns, with Why and a whole-plan shift', ar?.st === 'warn' && /gap between A Coy and B Coy/.test(ar.reason) && /IC s74 para 4 a \(1\) p 382/.test(ar.reason) && ar.detail?.fix?.some((f) => /Shift the whole plan/.test(f)), ar?.reason);
+  // the same plan with the approach on B Coy's front: one posn holds it
+  const bx = F.toWorld(fr, { x: B.centre.x, y: 0 }).x;
+  const gB2 = { ...makeGround(), avenues(from, to) { const path = []; for (let y = from.y; y >= to.y; y -= 200) path.push({ x: bx, y }); return [{ path, lengthM: from.y - to.y, goPct: 80, minWidthM: 900, chokes: [] }]; } };
+  const fB2 = F.fitPlan({ res: base, recipe: r2, doc, frame: fr, ground: gB2, threat: { x: bx, y: 6000 } });
+  check('Approach responsibility: on one Coy\'s front it passes', row(fB2.rows, 'Approach responsibility')?.st === 'pass' && /B Coy's front/.test(row(fB2.rows, 'Approach responsibility').reason), row(fB2.rows, 'Approach responsibility')?.reason);
+  check('Approach responsibility: no ground data, grey', row(fitNone.rows, 'Approach responsibility')?.st !== 'pass');
+  // a Coy plan: a wood 150 m in front of a forward Pl warns (IC s72 para 6 b p 372: 100 m minimum), never fails
+  const rc = rec('coy-def-two-up');
+  const cb = S.solveRecipe(rc, ctx, { alternates: 'none' });
+  const cf = frameFor(cb);
+  const P2 = cb.slots.find((s) => s.role === 'fwdR');
+  const pf = F.toWorld(cf, { x: P2.centre.x, y: P2.centre.y + P2.hM / 2 });
+  const gW = makeGround({ wood: [pf.x - 500, pf.y + 150, pf.x + 500, pf.y + 260] });
+  const fW = F.fitPlan({ res: cb, recipe: rc, doc, frame: cf, ground: gW, threat: null });
+  const fofC = fW.slots.fwdR.find((c) => c.name === 'Fd of fire');
+  check('Coy plan: 100-199 m clear warns, not fails (IC 100 m beside IBB 200 m)', fofC?.st === 'warn' && /IC s72 para 6 b p 372/.test(fofC.reason), fofC?.reason);
+  // a Bn plan keeps IBB's 200 m: the same wood 150 m out fails or warns as before (checked above for B Coy)
+  // Coy three up ranks after two up unless the frontage to hold is wider than two up's
+  const cfam = ['coy-def-two-up', 'coy-def-three-up', 'coy-def-one-up'].map(rec);
+  const cfits = cfam.map((r) => F.fitLayout({ recipe: r, ctx, opts: { alternates: 'none' }, ground: makeGround({}), anchor: { x: 0, y: 0 }, bearing: 0, threat: { x: 0, y: 5000 } })).filter(Boolean);
+  const order = F.rankFits(cfits).map((x) => x.recipe.layout);
+  check('Coy Auto: three up ranks after two up (IC s74 para 11 p 391)', order.indexOf('three-up') > order.indexOf('two-up'), order.join(', '));
+  const wider = F.rankFits(cfits.map((x) => x.recipe.layout === 'three-up' ? { ...x, fit: { ...x.fit, fails: 0, warns: 0, score: 100 } } : x), { holdM: 2500 }).map((x) => x.recipe.layout);
+  check('Coy Auto: over-extended (frontage to hold > two up\'s) lets three up lead', wider[0] === 'three-up', wider.join(', '));
+}
+
 console.log(`\n${n} checks, ${fails} failed`);
 process.exit(fails ? 1 : 0);

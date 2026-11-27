@@ -715,7 +715,7 @@ export function ipbReasonsAt(c: IpbCoding, rules: IpbRules, bx: number, by: numb
   }
   if (y & WHY.MANMADE) out.push({ crit: 'manMade', cls: 'nogo', text: 'Man-made obstacle on the map: NO-GO (IPB p 10)' });
   if (y & WHY.SEASON) out.push({ crit: 'season', cls: 'nogo', text: 'Season rule (Rann June-November / above 2500 m in winter / snow slope over 35°): NO-GO' });
-  if (y & WHY.NOTE_SEASON) out.push({ crit: 'season', cls: 'na', text: 'Season rule applies here (shown as a note, not in the coding): the Rann in the rains, snow closure, snow slides over 35° (25° after a fall), wet slides on 15-20° in rain or thaw, lee slopes and cornices suspect (DW p 4; MW pp 281-282)' });
+  if (y & WHY.NOTE_SEASON) out.push({ crit: 'season', cls: 'na', text: 'Season rule applies here (shown as a note, not in the coding): the Rann in the rains, snow closure, snow slides over 35° (25° after a fall), wet slides on 15-20° in rain or thaw, lee slopes and cornices suspect (DW p 4; MW pp 281-282); slides start on the convex part of a slope: cross high, on a concave slope, and go straight down rather than traverse (MW pp 69, 71); above 2500 m winter snow hides the tracks: mark tracks and true ridge lines with poles before the first snowfall (MW p 298)' });
   out.push({ crit: 'waterTable', cls: 'na', text: 'Water table: not in the bundle, not assessed' });
   return out;
 }

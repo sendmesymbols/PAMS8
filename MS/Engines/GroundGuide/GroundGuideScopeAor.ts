@@ -206,7 +206,7 @@ export function aorText(r: AorReading, f: Pick<AorFrame, 'season' | 'month' | 'u
   L.push(`   a. Pri of Apchs. ${w.ranked.map((a) => a.side).join(', ')} (shortest past the border, least terrain friction).`);
   L.push(`   b. Pri of Comb of Apchs. ${r.laterals.length ? r.laterals.map((l) => `${l.a} and ${l.b} (${l.n} laterals)`).join('; ') : 'No metalled lateral joins the apchs'}.`);
   L.push('   c. Lines of Def.');
-  r.lines.forEach((l, i) => L.push(`      (${i + 1}) Line ${l.id}${f.denial === l.id ? ' (Line of Denial, given by the higher comd: OoW Vol I pp 17-18)' : ''}. ${l.name}, ${km(l.frontM)} km between bdys${l.obstacle ? ` (along ${l.obstacle})` : ''}.`));
+  r.lines.forEach((l, i) => L.push(`      (${i + 1}) Line ${l.id}${f.denial === l.id ? ' (Line of Denial, given by the higher comd: OoW Vol I pp 17-18)' : ''}. ${l.name}, ${km(l.frontM)} km between bdys${l.obstacle ? ` (along ${l.obstacle})` : ''}${l.desert ? `; ${l.desert}` : ''}.`));
   const pri = ['FDLs', 'Depth', 'Screen'].map((role) => r.lines.find((l) => l.role === role)).filter(Boolean) as AorDefLine[];
   if (pri.length) L.push(`      Pri: ${pri.map((l) => `Line ${l.id}`).join(', ')}.`);
   if (w.dp) L.push(`   d. DP 1 (without premises). ${w.dp}. Bias of def ${w.ranked[0]?.side ?? '—'}.`);

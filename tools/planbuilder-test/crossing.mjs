@@ -1,7 +1,7 @@
 // crossing.mjs -- checks Phase 7 of the Intelligent Deployment (MS/Engines/DeploymentBuilder/PlanCrossing.ts through
 // PlanFit.fitLayout): the crossing recipes (Bn two up, Bde two up / four Bns, Div bridgehead: IBB S46 pp 237-239),
 // the plan re-laid along the obstacle the click is on (MovementGuideWater.readWater / readReach), the crossing means
-// and times from IBB Annex Q (pp 467-468), the drift entry (IC s70 para 4e p358), the bridge site, the far-side ground
+// and times from IBB Annex Q (pp 467-468), the drift entry (IC s70 para 4 e p 357), the bridge site, the far-side ground
 // that observes the crossing places and the Bridgehead Line reaching out for it (IBB S46 para 24 c p240).
 // Ground: the Water engine's test canal (tools/movement-test/water.mjs: 60 m, banks 3 m, drawn and flowing east, a
 // Class 60 bridge at km 1.0, marsh on the south bank at km -0.5..0.5), with a ridge 2.2 km north of it (40 m) and a

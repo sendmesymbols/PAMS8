@@ -1,5 +1,5 @@
 {
- "when": "2026-11-24T14:45:51.540Z",
+ "when": "2026-11-27T17:58:50.404Z",
  "node": "v24.18.0",
  "results": [
   {
@@ -205,12 +205,12 @@
   {
    "name": "everything the cursor card needs fits a mouse move (under 4 ms in Node)",
    "ok": true,
-   "detail": "1.20 ms hills, 1.74 ms town"
+   "detail": "1.24 ms hills, 1.80 ms town"
   },
   {
    "name": "the fine picture fits a Detail refresh (under 20 ms)",
    "ok": true,
-   "detail": "5.6 ms"
+   "detail": "5.7 ms"
   },
   {
    "name": "step 1 px agrees with the independent check on 98 % or more of the samples",
@@ -3787,106 +3787,106 @@
  "timing": {
   "Margalla crest": {
    "fire wedge 90 deg to 600 m (rifle)": {
-    "median": 0.024200000000064392,
-    "p95": 0.035499999999956344
+    "median": 0.024400000000014188,
+    "p95": 0.03469999999992979
    },
    "fire wedge 90 deg to 2 km (tank)": {
-    "median": 0.23349999999993543,
-    "p95": 0.28960000000006403
+    "median": 0.23490000000003874,
+    "p95": 0.2949999999999591
    },
    "observation all round, 2 deg, to 5 km": {
-    "median": 0.9197000000000344,
-    "p95": 0.9773999999999887
+    "median": 0.9547000000000025,
+    "p95": 1.0278999999999314
    },
    "straight ways out, 24 sectors to 2 km": {
-    "median": 0.0026000000000294676,
-    "p95": 0.0030999999999039574
+    "median": 0.0027000000000043656,
+    "p95": 0.003000000000156433
    },
    "highest ground within 3 km": {
-    "median": 0.032500000000027285,
-    "p95": 0.033699999999953434
+    "median": 0.03289999999992688,
+    "p95": 0.034099999999853026
    },
    "sight to 3 ITG candidates 3 km away": {
-    "median": 0.015399999999999636,
-    "p95": 0.019199999999955253
+    "median": 0.015300000000024738,
+    "p95": 0.018000000000029104
    },
    "picture: all round, fine, to 5 km, with the trace": {
-    "median": 5.551299999999856,
-    "p95": 5.930599999999913
+    "median": 5.680900000000065,
+    "p95": 6.406900000000178
    },
    "going flood to 5 km (ways round)": {
-    "median": 2.1111000000000786,
-    "p95": 2.545600000000377
+    "median": 2.1820000000002437,
+    "p95": 2.8896999999997206
    },
    "sight tables for a month": {
-    "median": 0.004699999999957072,
-    "p95": 0.019500000000334694
+    "median": 0.005100000000311411,
+    "p95": 0.07760000000007494
    },
    "map: avenue from 4 km east, 300 m frontage": {
-    "median": 2.303100000000086,
-    "p95": 3.1383999999998196
+    "median": 2.286800000000312,
+    "p95": 2.5392000000001644
    },
    "map: better position within 300 m": {
-    "median": 0.45020000000022264,
-    "p95": 0.5195999999996275
+    "median": 0.4546999999997752,
+    "p95": 0.5398999999997613
    },
    "map: fan runs of the tank wedge": {
-    "median": 0.33510000000023865,
-    "p95": 0.47699999999986176
+    "median": 0.26710000000002765,
+    "p95": 0.32649999999966894
    },
-   "perMove": 1.2037000000000262
+   "perMove": 1.2404999999999973
   },
   "Lahore centre": {
    "fire wedge 90 deg to 600 m (rifle)": {
-    "median": 0.029099999999743886,
-    "p95": 0.04629999999997381
+    "median": 0.02819999999974243,
+    "p95": 0.04179999999996653
    },
    "fire wedge 90 deg to 2 km (tank)": {
-    "median": 0.3139000000001033,
-    "p95": 0.41049999999995634
+    "median": 0.3141000000000531,
+    "p95": 0.3649000000000342
    },
    "observation all round, 2 deg, to 5 km": {
-    "median": 1.3674000000000888,
-    "p95": 2.0884000000000924
+    "median": 1.4229999999997744,
+    "p95": 1.6054999999996653
    },
    "straight ways out, 24 sectors to 2 km": {
-    "median": 0.010999999999967258,
-    "p95": 0.011799999999766442
+    "median": 0.011700000000018917,
+    "p95": 0.015499999999974534
    },
    "highest ground within 3 km": {
-    "median": 0.031199999999898864,
-    "p95": 0.03210000000035507
+    "median": 0.032000000000152795,
+    "p95": 0.04120000000011714
    },
    "sight to 3 ITG candidates 3 km away": {
-    "median": 0.016700000000128057,
-    "p95": 0.01890000000003056
+    "median": 0.01749999999992724,
+    "p95": 0.021999999999934516
    },
    "picture: all round, fine, to 5 km, with the trace": {
-    "median": 7.6413000000002285,
-    "p95": 10.847600000000057
+    "median": 7.480500000000575,
+    "p95": 8.121000000000095
    },
    "going flood to 5 km (ways round)": {
-    "median": 3.407799999999952,
-    "p95": 5.192699999999604
+    "median": 2.7257999999992535,
+    "p95": 3.047599999999875
    },
    "sight tables for a month": {
-    "median": 0.004600000000209548,
-    "p95": 0.013200000000324508
+    "median": 0.004599999999300053,
+    "p95": 0.016200000000026193
    },
    "map: avenue from 4 km east, 300 m frontage": {
-    "median": 2.2887000000000626,
-    "p95": 3.0291000000006534
+    "median": 2.208699999999226,
+    "p95": 2.4899999999997817
    },
    "map: better position within 300 m": {
-    "median": 3.163800000000265,
-    "p95": 4.242000000000189
+    "median": 3.251900000000205,
+    "p95": 3.569300000000112
    },
    "map: fan runs of the tank wedge": {
-    "median": 0.3459000000002561,
-    "p95": 0.427599999999984
+    "median": 0.35099999999965803,
+    "p95": 0.4054999999998472
    },
-   "perMove": 1.7402000000001863
+   "perMove": 1.7982999999999265
   },
-  "buildGridMs": 1.4031000000004497
+  "buildGridMs": 1.6607000000003609
  }
 }

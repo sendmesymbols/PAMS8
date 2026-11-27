@@ -39,24 +39,25 @@ import ocokaDoctrine from '../../Data/OcokaDoctrine.json';
 import { doctrineAt, validateRecipe, validateFamilies, type Recipe, type DoctrineSet } from './PlanRecipes';
 import { solveRecipe, toPlanDocument, planText, detailLines, type SolveResult, type CheckState, type SlotResult, type Check, type XY } from './PlanSolve';
 import { withMoves, triggerLines, enemyStartWords, type WhatIfResult } from './PlanWhatIf';
-import { fitLayout, frontNudges, nextBestSpot, rankFits, scoreRowState, SCORE_ROWS, toLocal, toWorld, type FittedLayout, type FitLayoutInput } from './PlanFit';
+import { fitLayout, frontNudges, nextBestSpot, rankFits, scoreRowState, SCORE_ROWS, toLocal, toWorld, type FitFrame, type FittedLayout, type FitLayoutInput } from './PlanFit';
 import { facePoint, frontPoint, frontValid, simplifyFront, type EnFront, type EnFrontKind } from './PlanEnFront';
 import { PlanGroundProbe } from './PlanGroundProbe';
 import { applyContext, groundNotes, defaultEnemy, echelonLabel, enemyFupM, firstLayout, terrainLabel, ENEMY_TYPES, TERRAIN_KINDS, type EnemySpec, type EnemyType, type TerrainKind, type TerrainSpec } from './PlanContext';
 import { checkPlan, checkText, readSymbols, reportWorld, type CheckReport, type PosnKind } from './PlanCheck';
 import { twoPhaseRecipe, threePhaseRecipe } from './PlanPhase';
+import { withDivOptions } from './PlanDivAttack';
 import { addTankTimes, defTankRows, withDefTanks, withTanks, type TankMode } from './PlanTanks';
-import { artyOnPlan, artyRows, gunRole, ownArtyTypes, ownDivArties, withArty, type ArtyDoctrine, type ArtyType } from './PlanArty';
+import { artyOnPlan, artyRows, gunRole, mountainGunRows, ownArtyTypes, ownDivArties, withArty, withGunSections, type ArtyDoctrine, type ArtyType, type GunSections } from './PlanArty';
 import { adOnPlan, adRows, ownAdTypes, vpsOf, withAd, type AdType } from './PlanAD';
 import { airLiftOf, airLiftRow } from './PlanAvn';
 import { advanceRows, checkAdvance, marchFromOrbat } from './PlanAdvance';
 import moveDoctrine from '../../Data/MoveDoctrine.json';
 import { bridgeKinds, engrShare, engrText, inundation, INUND_SOILS, ownEngrTypes, soilWord, withInundation, type EngrType, type InundSoil } from './PlanEngr';
-import { findGunAreas, gunRulesFrom, gunWeapons, type Front, type GunTask, type GunWeapon } from '../GunDeployment/GunDeploymentFind';
+import { findGunSites, gunRulesFrom, gunTaskFor, gunWeapons, type Front, type GunTask, type GunWeapon } from '../GunDeployment/GunDeploymentFind';
 import { SiteBundle } from '../SiteScan/SiteProbe';
 import { dataCatalog, seasonFor, type Tone } from '../SiteScan/SiteScan';
 import gunDoctrine from '../../Data/GunDoctrine.json';
-import { OWN_ORBAT_FILES, brief, doctrineForUnit, enUnitFor, forceFromOrbat, mergeOwn, minefieldRow, ownAtTypes, ownBdeTypes, ownBnTypes, ownDivTypes, ownUnitFor, recceSqnOf, sizeText, tankSqnOf, tankSqnText, typeFits, unitForPlan, unitLine, withAtGroup, type AtType, type OrbatSet, type OwnType, type TankSqn, type UnitBrief } from './PlanOrbat';
+import { OWN_ORBAT_FILES, brief, doctrineForUnit, enUnitFor, forceFromOrbat, mergeOwn, minefieldRow, secondLineRow, ownAtTypes, ownBdeTypes, ownBnTypes, ownDivTypes, ownUnitFor, recceSqnOf, sizeText, tankSqnOf, tankSqnText, typeFits, unitForPlan, unitLine, withAtGroup, type AtType, type OrbatSet, type OwnType, type TankSqn, type UnitBrief } from './PlanOrbat';
 import { atgmExtras } from './PlanFit';
 import { attackBreach, attackTimes, hRelText, hSumRow, phase2Row, withAttackMinefield } from './PlanAttack';
 import { withRecceScreen, checkSmallOp, solveSmall, type Mover } from './PlanSmallOps';
@@ -130,7 +131,7 @@ const STEPS = ['Task', 'Enemy', 'Place', 'Check', 'Create'];
 const LAYOUT_LABEL: Record<string, string> = {
   'two-up': 'Two up', 'three-up': 'Three up', 'one-up': 'One up', 'all-round': 'All round', canal: 'Canal', 'canal-three-up': 'Canal, three up', ditch: 'AT ditch', extended: 'Extended', 'rev-slope': 'Reverse slope', night: 'By night', frontal: 'Frontal',
   'left-flank': 'Lt flank', 'right-flank': 'Rt flank',
-  line: 'Line', l: 'L', v: 'V', patrol: 'Out and back', 'two-ops': 'Two OPs', 'three-ops': 'Three OPs', 'four-bn': 'Four Bns', 'armd-lead': 'Armd Bde leading', 'two-bde': 'Two Bdes', area: 'Area', screen: 'Screen', 'three-axes': 'Three axes', delay: 'Delay', 'by-day': 'By day', ridge: 'Ridge',
+  line: 'Line', l: 'L', v: 'V', patrol: 'Out and back', 'two-ops': 'Two OPs', 'three-ops': 'Three OPs', 'four-bn': 'Four Bns', 'armd-lead': 'Armd Bde leading', 'two-bde': 'Two Bdes', area: 'Area', screen: 'Screen', 'three-axes': 'Three axes', 'main-left': 'Two up, main Lt', 'main-right': 'Two up, main Rt', delay: 'Delay', 'by-day': 'By day', ridge: 'Ridge', salient: 'Salient', mobile: 'Mobile def', valleys: 'Valleys',
 };
 const MOVER_LABEL: Record<Mover, string> = { wheeled: 'Wheeled', tracked: 'Tanks', dismounted: 'On foot' };
 const MOVERS: Mover[] = ['wheeled', 'tracked', 'dismounted'];
@@ -140,7 +141,7 @@ const footSpeeds = (): PlFootSpeeds => {
   return { ground: f.ground ?? { open: [4, 3] }, road: f.road?.track ?? [4, 3], toblerA: Array.isArray(f.slope?.a) ? f.slope.a[0] : 3.5, toblerB: typeof f.slope?.b === 'number' ? f.slope.b : 0.05 };
 };
 /** A recipe id without the two-phase suffix (PlanPhase.twoPhaseRecipe adds -2ph). */
-const baseId = (id: string) => id.replace(/-ad$/, '').replace(/-gun$/, '').replace(/-inu$/, '').replace(/-rcs$/, '').replace(/-en$/, '').replace(/-mf$/, '').replace(/-tk[cf]$/, '').replace(/-tkd\d$/, '').replace(/-amf$/, '').replace(/-2ph1?$/, '');
+const baseId = (id: string) => id.replace(/-ad$/, '').replace(/-gun$/, '').replace(/-inu$/, '').replace(/-rcs$/, '').replace(/-en$/, '').replace(/-mf$/, '').replace(/-tk[cf]$/, '').replace(/-tkd\d$/, '').replace(/-amf$/, '').replace(/-2ph1?$/, '').replace(/-pre$/, '');
 const WORD: Record<CheckState, string> = { pass: 'Pass', warn: 'Warn', fail: 'Fail', unchecked: 'Not checked' };
 const RGB: Record<CheckState, [number, number, number]> = { pass: [47, 168, 98], warn: [238, 138, 31], fail: [229, 72, 77], unchecked: [127, 136, 147] };
 const esc = (s: unknown) => Utils.escapeHtml(String(s ?? ''));
@@ -442,6 +443,8 @@ export class PlanBuildTab {
   private _mfCross = false;
   /** An attack: his protective minefield in front of the Obj (Annex Q: lanes breached before H). */
   private _mfAttk = false;
+  /** A Div attack's preliminary operation on his outposts (PlanDivAttack.withDivOptions; GSP 1947 s19 para 13 d p 89). */
+  private _divPrelim = false;
   private _plRules = plRulesFrom(platoonDoctrine);
   private _speeds = footSpeeds();
   /** An ambush's target: wheeled, tanks or on foot (M walks it while placing). */
@@ -488,7 +491,8 @@ export class PlanBuildTab {
   private _gunBundle: SiteBundle | null = null;
   private _gunBundleUrl = '';
   private _gunWeapons: GunWeapon[] | null = null;
-  private _gunSite: { key: string; row: Check } | null = null;
+  /** G's result: the Gun site row; on mountain ground the section sites for each gun-area role (world metres). */
+  private _gunSite: { key: string; row: Check; secs?: { role: string; name: string; rings: [number, number][][]; labels?: string[] }[] } | null = null;
   private _gunWanted = false;
   private readonly _gunR = gunRulesFrom(gunDoctrine as any);
   /** An inundation belt in front of a Bn defence (0: none), the water fed in, the soil (PlanEngr.inundation). */
@@ -871,6 +875,15 @@ export class PlanBuildTab {
       if (!u) { u = withInundation(d, this._doc, { beltYds: this._inundYds, cusecs: this._cusecs, soil: this._soil }); this._ph2.set(ik, u); }
       return u;
     }
+    // a Div attack: the preliminary operation and Ph 2 by the Div reserve (PlanDivAttack.withDivOptions), cached
+    if (base?.task === 'attack' && base.echelon === '21') {
+      const ph: 1 | 2 = this._phases >= 2 ? 2 : 1;
+      if (ph === 1 && !this._divPrelim) return base;
+      const key = `${base.id}:div:${ph}:${this._divPrelim}`;
+      let v = this._ph2.get(key);
+      if (!v) { v = withDivOptions(base, this._doc, { phases: ph, prelim: this._divPrelim }); this._ph2.set(key, v); }
+      return v;
+    }
     // a 3-Coy attack (Lt Cdo) has no Coy left for a second phase: one phase
     // phases are laid with Coys of a Bn (PlanPhase: C, D Coys round Obj 1): a Coy or Bde attack, and a 3-Coy Bn, in one phase
     const phases = base?.forCoys === 3 || (base && base.echelon !== '16') ? 1 : this._phases;
@@ -1000,8 +1013,8 @@ export class PlanBuildTab {
    * that do stay (Day / Night between two attacks, or an attack and a patrol; an attack's tanks between Bn families).
    */
   private _resetForTask(task: string, prevTask: string, familyChanged: boolean): void {
-    if (task !== 'attack') { this._tanks = 'none'; this._phases = 1; this._ph2Coys = null; this._mfAttk = false; }
-    if (task !== 'attack' && task !== 'patrol') this._night = false;
+    if (task !== 'attack') { this._tanks = 'none'; this._phases = 1; this._ph2Coys = null; this._mfAttk = false; this._divPrelim = false; }
+    if (task !== 'attack' && task !== 'patrol' && task !== 'ambush') this._night = false;
     if (task !== 'crossing') { this._light = 'dark'; this._mfCross = false; }
     if (task !== 'ambush') this._mover = 'wheeled';
     if (task !== 'recce') this._recceScreen = false;
@@ -1071,6 +1084,13 @@ export class PlanBuildTab {
     return l ? [airLiftRow(l)] : [];
   }
 
+  /** A Rangers / FC Wing or a Mjd Bn as the plan's unit: what the book lets it do (GSP 1947 pp 73-74, PlanOrbat.secondLineRow). */
+  private _secondLineRows(res: SolveResult): Check[] {
+    if (!this._orbat) return [];
+    const row = secondLineRow(this._unit(res.recipe), res.recipe.task, this._enemyFor(res.recipe, this._ground === 'auto' ? null : this._ground).type);
+    return row ? [row] : [];
+  }
+
   /** The rows the ORBAT adds to a defence: the protective minefield in time (engineer rates). */
   private _orbatRows(res: SolveResult): Check[] {
     if (!this._orbat || res.recipe.task === 'attack') return [];
@@ -1099,7 +1119,7 @@ export class PlanBuildTab {
     const tk = h && r.tanks ? addTankTimes(h, res, null, null, this._doc, this._night, r.tanks, null) : [];
     const p2 = h ? phase2Row(h, this._doc) : null;
     const brR = r.task === 'attack' ? attackBreach(r as any, this._doc, this._night, this._orbat?.engrData, t.kind)?.row ?? null : null;
-    return { ...res, rows: groundNotes([...rows, ...layoutRows(res.items, r, this._doc), ...this._orbatRows(res), ...(r.task === 'attack' ? this._artyGeomRows(res) : []), ...this._liftRows(res),...(brR ? [brR] : []), ...(h ? [hSumRow(h, this._doc)] : []), ...(p2 ? [p2] : []), ...tk], this._doc, t.kind, r.task, r.echelon, r.task === 'attack' ? this._night : null) };
+    return { ...res, rows: groundNotes([...rows, ...layoutRows(res.items, r, this._doc), ...this._orbatRows(res), ...this._secondLineRows(res), ...(r.task === 'attack' ? this._artyGeomRows(res) : []), ...this._liftRows(res),...(brR ? [brR] : []), ...(h ? [hSumRow(h, this._doc)] : []), ...(p2 ? [p2] : []), ...tk], this._doc, t.kind, r.task, r.echelon, r.task === 'attack' ? this._night : null) };
   }
 
   // ── terrain ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -1610,6 +1630,7 @@ export class PlanBuildTab {
       case 'enType': this._enType = (val as any) || 'auto'; this._solve(); if (this._mode === 'check' && this._checkRecs) this._runCheck(); break;
       case 'night': this._night = val === 'on'; this._solve(); break;
       case 'phases': this._setPhases(val === '3' ? 3 : val === '2' ? 2 : 1); break;
+      case 'prelim': this._divPrelim = val === 'on'; this._swapPlan(this._divPrelim ? 'Prelim op: his outposts on the ground of the FUPs cleared first by each leading Bde\'s Res Bn' : 'No preliminary operation'); break;
       case 'ph2Coys': this._setCoys(val === '1' ? 1 : 2); break;
       case 'tanks': this._setTanks(val === 'close' || val === 'fire' ? val : 'none'); break;
       case 'mover': this._setMover(MOVERS.includes(val as Mover) ? (val as Mover) : 'wheeled'); break;
@@ -1778,6 +1799,7 @@ export class PlanBuildTab {
     if (ter && r?.arty && ['defence', 'attack', 'crossing'].includes(r.task)) k.push(['G', 'site the gun area'], ['Shift G', 'back']);
     if (this._isAttack) {
       if (!r?.forCoys && r?.echelon === '16') k.push(['P', this._phases === 1 ? '2 phases' : this._phases === 2 ? '3 phases' : '1 phase']);
+      if (r?.echelon === '21' && /^main-/.test(r.layout)) k.push(['P', this._phases === 1 ? '2 phases' : '1 phase']);
       if (this._isPh2) k.push(['R', `Ph 2 by ${this._coys === 2 ? 'C Coy only' : 'C, D Coys'}`]);
       k.push(['T', this._tanks === 'none' ? 'tanks fire sp' : this._tanks === 'fire' ? 'tanks close sp' : 'no tanks']);
     }
@@ -1853,7 +1875,14 @@ export class PlanBuildTab {
         take();
         if (!this._isAttack) { this._keyWhy('P', 'phases are for an attack'); return; }
         if (r?.forCoys) { this._keyWhy('P', 'a 3-Coy Bn attacks in one phase'); return; }
-        if (r && r.echelon !== '16') { this._keyWhy('P', 'phases are laid for a Bn attack'); return; }
+        // a Div attack two up: Ph 2 by the Div reserve (PlanDivAttack.withDivOptions); one up is phased already
+        if (r && r.echelon === '21' && /^main-/.test(r.layout)) {
+          this._setPhases(this._phases === 1 ? 2 : 1);
+          this._showNote({ mode: this._phases === 2 ? 'Two phases, Ph 2 by the Div reserve onto his depth' : 'One phase, the Div reserve kept', keys: this._keysFor() });
+          this._render();
+          return;
+        }
+        if (r && r.echelon !== '16') { this._keyWhy('P', r.echelon === '21' ? 'one Bde up is phased already: the follow-up Bde round the leading one' : 'phases are laid for a Bn attack'); return; }
         this._setPhases(this._phases === 1 ? 2 : this._phases === 2 ? 3 : 1);
         this._showNote({ mode: this._phases === 2 ? `Two phases, Ph 2 by ${this._coysWord()}` : this._phases === 3 ? `Three phases, Ph 2 by ${this._coysWord()}, Ph 3 by ${this._coys === 1 ? 'D Coy' : 'A, B Coys from Obj 1'}` : 'One phase, a Res kept', keys: this._keysFor() });
         this._render();
@@ -2094,7 +2123,7 @@ export class PlanBuildTab {
       threat: this._startPoint(), front: this._front, manual, begin: () => probe.begin(),
       enemy: this._enemyFor(recipe, kind), terrain: this._ground,
       unit: this._unit(recipe), force: this._force(recipe, kind),
-      night: (recipe.task === 'attack' || recipe.task === 'patrol') && this._night, nmRules: this._nmRules,
+      night: (recipe.task === 'attack' || recipe.task === 'patrol' || recipe.task === 'ambush') && this._night, nmRules: this._nmRules,
       enemyAt: (recipe.phases ?? 1) >= 2 ? this._enemyPosns() : null,
       // a defence's posns take in the ITG the user designated on the map (Vital / Imp Gr)
       itgAt: recipe.task === 'defence' ? this._itgPosns() : null,
@@ -2130,12 +2159,28 @@ export class PlanBuildTab {
     // an ambush, patrol or recce has no posns to move or trigger table: its own reading is the fit
     // G's site (the Gun Deployment finder) while its moves stand
     const gs = Object.keys(manual).some((k) => /^gunArea\d*$/.test(k)) && this._gunSite?.key === recipe.id ? [this._gunSite.row] : [];
-    if (recipe.task === 'crossing' && gs.length) return { ...fl, res: { ...fl.res, rows: [...fl.res.rows, ...gs] }, doc: this._docFor(fl.raw) };
-    if (SMALL_TASKS.includes(recipe.task) || recipe.task === 'crossing' || recipe.task === 'advance') return { ...fl, doc: this._docFor(fl.raw) };
+    if (recipe.task === 'crossing' && gs.length) { const x = this._gunSections({ ...fl, res: { ...fl.res, rows: [...fl.res.rows, ...gs] } }, recipe, gs[0] ?? null); return { ...x, doc: this._docFor(x.raw) }; }
+    if (SMALL_TASKS.includes(recipe.task) || recipe.task === 'advance') return { ...fl, doc: this._docFor(fl.raw) };
+    if (recipe.task === 'crossing') { const x = this._gunSections(fl, recipe, null); return { ...x, doc: this._docFor(x.raw) }; }
     // the what-if: Sup and C Pen posns, routes and times against the enemy (PlanWhatIf)
-    const f = withMoves(fl, inp);
-    f.res = { ...f.res, rows: [...f.res.rows, ...this._orbatRows(f.res), ...this._liftRows(f.res), ...gs] };
+    const f0 = withMoves(fl, inp);
+    f0.res = { ...f0.res, rows: [...f0.res.rows, ...this._orbatRows(f0.res), ...this._secondLineRows(f0.res), ...this._liftRows(f0.res), ...gs] };
+    const f = this._gunSections(f0, recipe, gs[0] ?? null);
     return { ...f, doc: this._docFor(f.raw) };
+  }
+
+  /**
+   * Towed guns on mountain ground (MW s22 pp 240, 244): the Gun area rows set aside the conventional area (not checked
+   * until G sites the Bty by sections, then the sections' verdict), and once G has sited them the plan carries one
+   * gun-area outline per section site (PlanArty.withGunSections), in the plan and in Create on Map.
+   */
+  private _gunSections<T extends { res: SolveResult; raw: SolveResult; frame: FitFrame; terrain: { kind: TerrainKind } | null }>(f: T, recipe: Recipe, sited: Check | null): T {
+    const kind = f.terrain?.kind ?? null;
+    if (kind !== 'mountain' || !recipe.arty) return f;
+    const secs = sited && this._gunSite?.key === recipe.id ? this._gunSite.secs ?? [] : [];
+    const local: GunSections[] = secs.map((s) => ({ role: s.role, name: s.name, labels: s.labels, rings: s.rings.map((ring) => ring.map(([x, y]) => toLocal(f.frame, { x, y }))) }));
+    const rows = mountainGunRows(f.res.rows, recipe.arty, kind, this._gunR.mountains.lightIds, local.length ? sited : null);
+    return { ...f, res: withGunSections({ ...f.res, rows }, local), raw: withGunSections(f.raw, local) };
   }
 
   /**
@@ -2240,6 +2285,7 @@ export class PlanBuildTab {
     const worse = (x: CheckState, y: CheckState) => (ORDER.indexOf(y) > ORDER.indexOf(x) ? y : x);
     const manual = { ...this._manual };
     const parts: string[] = [];
+    const secs: { role: string; name: string; rings: [number, number][][]; labels: string[] }[] = [];
     let st: CheckState = 'pass', sited = 0;
     for (let i = 0; i < regts.length; i++) {
       const g = regts[i], role = gunRole(i), ga = item(role);
@@ -2256,13 +2302,15 @@ export class PlanBuildTab {
         inputs: { target: tWord, front: front?.label, centre: `the plan's gun area (${g.name})` },
         seasonWhy: season.why, wetFromMm: 100,
       };
+      // towed guns on mountain ground go by section (MW s22 pp 240, 244): the ground as the plan was fitted for it
+      const t2 = gunTaskFor(b, task, this._gunR, cur.terrain?.kind === 'mountain');
       b.begin();
       let res;
-      try { res = findGunAreas(b, b.rules, task, this._gunR, (x, y) => b.standing(x, y, month)); }
+      try { res = findGunSites(b, b.rules, t2, this._gunR, (x, y) => b.standing(x, y, month)); }
       catch (err) { say(`G: the gun finder failed: ${err instanceof Error ? err.message : String(err)}`); return; }
       if (b.pending()) { this._gunWanted = true; say('G: the ground for the gun areas is loading: it runs again when it arrives.'); return; }
       const s = res.sites[0];
-      if (!s) { parts.push(`${g.name}: no gun area within ${fmtM(radiusM)} of the plan's (${res.notes.join(' ') || 'none passes'})`); st = worse(st, 'warn'); continue; }
+      if (!s) { parts.push(`${g.name}: no ${res.btys ? 'section site' : 'gun area'} within ${fmtM(radiusM)} of the plan's (${res.notes.join(' ') || 'none passes'})`); st = worse(st, 'warn'); continue; }
       const to = toLocal(cur.frame, { x: s.at[0], y: s.at[1] });
       const prev = manual[role] ?? { x: 0, y: 0 };
       const dx = to.x - C.x, dy = to.y - C.y, distM = Math.hypot(dx, dy);
@@ -2272,12 +2320,20 @@ export class PlanBuildTab {
       // the finder scores 0-1
       const sc = s.score <= 1 ? `${Math.round(s.score * 100)} %` : String(Math.round(s.score));
       const where = distM < 50 ? 'where the plan put it' : `${fmtM(distM)} ${Math.abs(dy) >= Math.abs(dx) ? (dy > 0 ? 'forward' : 'back') : dx > 0 ? 'right' : 'left'} of where the plan put it`;
+      if (res.btys) {
+        // by sections: every Bty's section sites, the plan's gun area on the first (Sec 1), the others added to the plan
+        const multi = res.btys.length > 1;
+        secs.push({ role, name: g.name, rings: res.btys.flatMap((bt) => bt.sites.map((x) => x.ring)), labels: res.btys.flatMap((bt, bi) => bt.sites.map((_, si) => `${g.name}${multi ? ` B${bi + 1}` : ''} Sec ${si + 1}`)) });
+        for (const bt of res.btys) st = worse(st, TONE[bt.tone] ?? 'unchecked');
+        parts.push(`${g.name}: by sections (towed ${g.weapon.name} on mountain ground): ${res.btys.map((bt) => `${bt.row.value}${bt.row.fix ? ` (${bt.row.fix})` : ''}: ${bt.sites.map((x, i) => `Sec ${i + 1} ${x.verdict} (${x.rows.filter((q) => q.tone !== 'ok').map((q) => `${q.label} ${q.value}`).join('; ') || 'all checks pass'})`).join(', ')}`).join('; ')}; Sec 1 ${where}. ${res.btys[0].row.why}`);
+        continue;
+      }
       parts.push(`${g.name}: the best of ${res.sites.length} within ${fmtM(radiusM)} (${res.tried} places tried), score ${sc}, ${where}: ${s.verdict}. ${s.rows.map((x) => `${x.label} ${x.value}`).join('; ')}${s.fixes.length ? `. Fix: ${s.fixes.slice(0, 2).join('; ')}` : ''}`);
     }
     this._gunWanted = false;
     if (!sited && !parts.length) { say('G: no gun area on the plan to site.'); return; }
     this._manual = manual;
-    this._gunSite = { key: cur.recipe.id, row: { name: 'Gun site', st, reason: `Sited by Gun Deployment (G; Shift+G takes it back): ${parts.join(' | ')}` } };
+    this._gunSite = { key: cur.recipe.id, row: { name: 'Gun site', st, reason: `Sited by Gun Deployment (G; Shift+G takes it back): ${parts.join(' | ')}` }, ...(secs.length ? { secs } : {}) };
     const f = this._fitOne(cur.recipe, r.anchor, r.bearing, this._manual);
     if (f) { this._jNote = `G: ${sited} gun area${sited === 1 ? '' : 's'} sited by the Gun Deployment finder; Shift+G takes ${sited === 1 ? 'it' : 'them'} back`; this._show([f]); }
   }
@@ -2559,7 +2615,7 @@ export class PlanBuildTab {
   }
 
   /**
-   * An attack on the map: the fire-lift rings round the objective with the minute each lifts (IC s66 p305), the route
+   * An attack on the map: the fire-lift rings round the objective with the minute each lifts (IC s66 para 7 e (1) pp 304-305), the route
    * on foot from the Assy Area to the FUP, and his MSR choke behind the objective.
    */
   private _attackGraphics(f: Fitted): Graphic[] {
@@ -3300,7 +3356,7 @@ export class PlanBuildTab {
 
   /** An advance: how far apart its report lines are set, and the march's H (PlanAdvance). */
   private _advRow(): string {
-    const rl = seg(([1, 2, 3] as const).map((k) => ({ on: this._rlApartKm === k, label: `${k} km`, data: `rlApart:${k}`, title: `Report lines on the water and bridges ahead at least ${k} km apart${k === 1 ? ' (the default)' : ''}` })), { sm: true, label: 'RL apart' });
+    const rl = seg(([1, 2, 3] as const).map((k) => ({ on: this._rlApartKm === k, label: `${k} km`, data: `rlApart:${k}`, title: `Bounds on the water, report lines on lateral roads and railways, at least ${k} km apart${k === 1 ? ' (the default)' : ''} (IC s58 paras 4, 6 pp 242-243)` })), { sm: true, label: 'Bd / RL apart' });
     const h = seg([
       { on: this._hAt === 'first', label: 'First light', data: 'hAt:first', title: "The Adv Gd's head at the SP at first light today (an advance by day; the default)" },
       { on: this._hAt === 'last', label: 'Last light', data: 'hAt:last', title: 'At last light today: a night advance, night speeds and density' },
@@ -3465,7 +3521,7 @@ export class PlanBuildTab {
     const fam = this._families.find((f) => f.id === this._familyId);
     const task = `${fam?.name ?? rec.name} · ${this._auto ? 'Auto' : LAYOUT_LABEL[rec.layout] ?? rec.layout}`;
     let enemy: string;
-    if (rec.task === 'ambush') enemy = `Target: ${MOVER_LABEL[this._mover]}`;
+    if (rec.task === 'ambush') enemy = `Target: ${MOVER_LABEL[this._mover]} · by ${this._night ? 'night' : 'day'}`;
     else if (rec.task === 'crossing') enemy = `${this._light === 'moon' ? 'Moonlight' : this._light === 'dark' ? 'Dark night' : 'Day'}${this._mfCross ? ' · the En mines' : ''}`;
     else if (SMALL_TASKS.includes(rec.task)) enemy = this._threat ? 'Threat set' : 'Aim on the map';
     else {
@@ -3568,21 +3624,31 @@ export class PlanBuildTab {
       ? row('Time', seg([
         { on: !this._night, label: 'Day', data: 'night:off', title: 'SL crossed after first light and before last light (OOW2 s6 para 18 a p 24)' },
         { on: this._night, label: 'Night', data: 'night:on', title: 'Night rates (IBB p 18), the Night March chart from the Assy Area to the FUP, the En night and thermal sights; in the desert half the frontage and depth of a day attack (DW p 47)' }]))
-        + row('Phases', seg([
+        + (res.recipe.echelon === '21'
+          // a Div attack: Ph 2 by the Div reserve (two up only) and the preliminary operation (PlanDivAttack.withDivOptions)
+          ? row('Phases', seg([
+            { on: this._phases === 1 || !/^main-/.test(res.recipe.layout), label: '1', data: 'phases:1', title: 'One phase: the two Bdes onto OBJ A and OBJ B, the Div reserve kept' },
+            { on: this._phases >= 2 && /^main-/.test(res.recipe.layout), label: '2', data: 'phases:2', disabled: !/^main-/.test(res.recipe.layout), title: /^main-/.test(res.recipe.layout) ? 'Ph 2: the Div reserve Bde through the gap between OBJ A and OBJ B onto OBJ C, his depth; a fresh reserve to be made (GSP 1947 s19 para 13 b (5)-(6) p 88)' : 'One Bde up is phased already: the follow-up Bde round the leading one' }]) + keyHint('P'))
+            + row('Prelim op', seg([
+              { on: !this._divPrelim, label: 'None', data: 'prelim:off', title: 'No outposts of his out of contact with his main posn' },
+              { on: this._divPrelim, label: 'Clear outposts', data: 'prelim:on', title: 'His outposts on the ground of the FUPs and SLs cleared first by each leading Bde\'s Res Bn: his main posn observed, the guns forward, a good SL (GSP 1947 s19 para 13 d p 89)' }]))
+          : '')
+        + (res.recipe.echelon === '21' ? '' : row('Phases', seg([
           { on: this._phases === 1 || !!res.recipe.forCoys || res.recipe.echelon !== '16', label: '1', data: 'phases:1', title: 'One phase: the assault Coys onto the Obj, a reserve kept' },
           { on: this._phases === 2 && !res.recipe.forCoys && res.recipe.echelon === '16', label: '2', data: 'phases:2', disabled: !!res.recipe.forCoys || res.recipe.echelon !== '16', title: res.recipe.echelon !== '16' ? 'Phases are laid for a Bn attack (its follow-up Coys round Obj 1)' : res.recipe.forCoys ? 'A 3-Coy Bn has no Coy left for a second phase' : 'Obj 1, then the follow-up Coys round it onto Obj 2 behind, from a new direction (IBB p186); Obj 2 on a hostile posn drawn behind Obj 1, else the En high ground' },
-          { on: this._phases === 3 && !res.recipe.forCoys && res.recipe.echelon === '16', label: '3', data: 'phases:3', disabled: !!res.recipe.forCoys || res.recipe.echelon !== '16', title: res.recipe.echelon !== '16' ? 'Phases are laid for a Bn attack (its follow-up Coys round Obj 1)' : res.recipe.forCoys ? 'A 3-Coy Bn has no Coy left for more phases' : 'Obj 1, Obj 2, then Obj 3 beyond it: by D Coy when C Coy alone took Obj 2 (no reserve left: tell Bde), else by A and B Coys from Obj 1 (IBB p 189 para 23: each Obj a firm base for the next)' }]) + keyHint('P'))
+          { on: this._phases === 3 && !res.recipe.forCoys && res.recipe.echelon === '16', label: '3', data: 'phases:3', disabled: !!res.recipe.forCoys || res.recipe.echelon !== '16', title: res.recipe.echelon !== '16' ? 'Phases are laid for a Bn attack (its follow-up Coys round Obj 1)' : res.recipe.forCoys ? 'A 3-Coy Bn has no Coy left for more phases' : 'Obj 1, Obj 2, then Obj 3 beyond it: by D Coy when C Coy alone took Obj 2 (no reserve left: tell Bde), else by A and B Coys from Obj 1 (IBB p 189 para 23: each Obj a firm base for the next)' }]) + keyHint('P')))
         + (this._phases >= 2 && !res.recipe.forCoys && res.recipe.echelon === '16' ? row('Ph 2 by', seg([
           { on: this._coys === 2, label: 'C, D Coys', data: 'ph2Coys:2', title: 'Both follow-up Coys onto Obj 2; the BOF is the Spt Coy weapons; no Bn reserve is left: tell Bde (IBB p186 i). R flips it while placing.' },
           { on: this._coys === 1, label: 'C Coy, D res', data: 'ph2Coys:1', title: 'C Coy onto Obj 2, D Coy kept as the Bn reserve (IBB p186 h(3): commit only what the task needs); the BOF is the Spt Coy weapons. R flips it while placing.' }]) + keyHint('R')) : '')
         + (this._phases >= 2 && !res.recipe.forCoys && res.recipe.echelon === '16' ? row('Obj 2', `${this._chip(!!this._armingObj2, this._obj2At ? 'Move Obj 2' : 'Mark Obj 2 on the map', 'obj2', 'Click where Obj 2 is: it stands over any En posn drawn behind Obj 1 and the high ground the finder would take')}${this._obj2At ? this._chip(false, 'Clear', 'clearObj2') : ''}`) : '')
-        + row('Tanks', seg([
+        // tanks and his minefield are laid on a Bn attack (PlanTanks, PlanAttack.withAttackMinefield): a Div attack's Bdes build their own
+        + (res.recipe.echelon === '21' ? '' : row('Tanks', seg([
           { on: this._tanks === 'none', label: 'None', data: 'tanks:none', title: 'No tanks with the Bn' },
           { on: this._tanks === 'fire', label: 'Fire sp', data: 'tanks:fire', title: 'Infantry heavy: A Sqn from FUP (Tks) 2.5-3 km out to fire posns by the BOF, there as the infantry come as close to the Obj (IBB p214)' },
           { on: this._tanks === 'close', label: 'Close sp', data: 'tanks:close', title: 'Armour heavy: A Sqn less a troop from FUP (Tks) on its own axis converging on the Obj, rushing it from the assault line of the infantry; a troop covering from a flank (IBB pp 186-188)' }]) + keyHint('T'))
         + row('En Mf', seg([
           { on: !this._mfAttk, label: 'None', data: 'mf:off', title: 'No minefield known in front of the Obj' },
-          { on: this._mfAttk, label: 'In front', data: 'mf:on', title: 'The En protective minefield about 200 m in front of the Obj, 250-300 m deep (IC s111.5, s107): a lane for each assault Coy, breached before H (Breach row; the engineers in the Engrs row)' }]))
+          { on: this._mfAttk, label: 'In front', data: 'mf:on', title: 'The En protective minefield about 200 m in front of the Obj, 250-300 m deep (IC s111.5, s107): a lane for each assault Coy, breached before H (Breach row; the engineers in the Engrs row)' }])))
       : '';
     const sq = this._tankSqn;
     const tankFacts = res.recipe.task === 'attack' && this._tanks !== 'none' && sq
@@ -3612,7 +3678,10 @@ export class PlanBuildTab {
         { on: !this._mfCross, label: 'None known', data: 'mf:off' },
         { on: this._mfCross, label: 'Assumed (S47)', data: 'mf:on', title: 'IBB S47 para 6: 900-1000 m of mixed mines and wire in front of a defended obstacle: the FUPs drawn back behind it, a Breach lane to each crossing place, timed from Annex Q para 4' }]));
     if (task === 'ambush') return row('Target', seg(MOVERS.map((m) => ({ on: this._mover === m, label: MOVER_LABEL[m], data: `mover:${m}`,
-      title: m === 'wheeled' ? 'Soft-skinned vehicles: a canal, embankment, cutting or close country beside the Rd holds them on it' : m === 'tracked' ? 'Tanks: only the ground NO-GO for tracks holds them on the Rd' : 'Men on foot: they leave a Rd almost anywhere' }))) + keyHint('M'));
+      title: m === 'wheeled' ? 'Soft-skinned vehicles: a canal, embankment, cutting or close country beside the Rd holds them on it' : m === 'tracked' ? 'Tanks: only the ground NO-GO for tracks holds them on the Rd; the KZ long enough for the whole column, with covering, killing and cut-off groups (IC s46 para 9 p 172)' : 'Men on foot: they leave a Rd almost anywhere' }))) + keyHint('M'))
+      + row('Time', seg([
+        { on: !this._night, label: 'Day', data: 'night:off', title: 'By day: men well dispersed, fire opened at longer ranges (IC s44 para 16 p 157); the site occupied by day only in small parties by a covered approach (para 10 a p 150)' },
+        { on: this._night, label: 'Night', data: 'night:on', title: 'By night: men closer together, fire at point blank range (IC s44 para 17 p 157); better to occupy the site at night (para 10 a p 150)' }]));
     if (task === 'patrol') return row('Time', seg([
       { on: !this._night, label: 'Day', data: 'night:off' },
       { on: this._night, label: 'Night', data: 'night:on', title: 'Night routes also keep off wood edges (and villages, tracks, skylines: day and night); times at night rates' }]));
@@ -3657,11 +3726,11 @@ export class PlanBuildTab {
       const t = this._threat;
       const how = rec.task === 'ambush'
         ? `${howTo('click the <b>KZ on the road</b> the En will use', 'Move the cursor <b>up the road toward where the En comes from</b> and click')}
-          <p class="pb-p">The stops go at each end of the KZ, Stop 1 on the En side.${rec.layout === 'area' ? ' An area ambush adds an outlying ambush on the En route in (up the Rd) and on its route out (down it), each at the best stretch 400-1200 m from the central KZ (IC s44 p152).' : ''}</p>`
+          <p class="pb-p">The stops go at each end of the KZ, Stop 1 on the En side; the reserve on the RV side (IC s44 para 8 c p 149) and the covering group back toward the RV (para 15 b p 156).${rec.layout === 'area' ? ' An area ambush adds an outlying ambush on the En route in (up the Rd) and on its route out (down it), each at the best stretch 400-1200 m from the central KZ (IC s44 para 11 b p 152 prints no distance: the band is a decision, E).' : ''}</p>`
         : rec.task === 'patrol'
           ? howTo('click the <b>SP</b> (where the patrol leaves the own posns)', 'Move the cursor to the <b>Obj</b> and click: the Obj, the FRV and the routes follow the cursor')
           : rec.layout === 'screen'
-            ? howTo('click the <b>Wdr RV</b> in the main posn (where the screen withdraws to)', 'Move the cursor out to the <b>ground in front</b> the En would watch the main posn from and click: the posts go between, laterally with intervals (IC s73 p378)')
+            ? howTo('click the <b>Wdr RV</b> in the main posn (where the screen withdraws to)', 'Move the cursor out to the <b>ground in front</b> the En would watch the main posn from and click: the posts go between, laterally with intervals (IC s73 para 10 p 377)')
             : howTo('click the <b>SP</b> (where the recce party leaves)', 'Move the cursor to the <b>area to watch</b> and click: the NAI goes there, the OPs between');
       const threat = rec.task === 'patrol'
         ? `<div class="pb-actions">${this._threatButtons({ mark: 'Mark where the En watches from' })}</div><p class="pb-p pb-dim">${t ? `The routes keep out of the view from ${esc(this._threatInfo()?.word ?? 'the threat')}.` : 'No threat marked: the routes keep out of the view from the Obj.'}</p>`
@@ -3829,7 +3898,7 @@ export class PlanBuildTab {
       const L: string[] = [];
       if (a.hSum) {
         for (const st of a.hSum.steps) L.push(`  ${hRelText(st.at).padEnd(10)} ${st.label}${st.distM ? `, ${st.distM} m` : ''}, ${st.min} min`);
-        L.push(`  Fire lifts (IC s66 p305): ${a.hSum.lifts.map((l) => `${l.label} ${l.rM} m ${hRelText(l.at)}`).join(', ')}`);
+        L.push(`  Fire lifts (IC s66 para 7 e (1) pp 304-305): ${a.hSum.lifts.map((l) => `${l.label} ${l.rM} m ${hRelText(l.at)}`).join(', ')}`);
         const p2 = a.hSum.phase2;
         if (p2) L.push(`  Phase 2: Obj 1 taken ${hRelText(p2.obj1At)}, H2 ${hRelText(p2.h2At)} (${p2.gapMin} min after), fire lifts on Obj 2 ${p2.lifts.map((l) => `${l.label} ${l.rM} m ${hRelText(l.at)}`).join(', ')}, on Obj 2 ${hRelText(p2.obj2At)}`);
         const p3 = a.hSum.phase3;

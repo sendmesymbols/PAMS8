@@ -23,6 +23,7 @@ import { doctrineAt, resolveRange } from './PlanRecipes';
 import type { Check, CheckDetail, SolveCtx, SolveOptions, SolveResult, XY } from './PlanSolve';
 import { solveRecipe } from './PlanSolve';
 import type { FitFrame, FitLayoutInput, FitResult, FittedLayout } from './PlanFit';
+import { detectTerrain } from './PlanFit';
 import { RouteScanner, bearingOf, distToLine, groundDist, offsetPt, pointInRing, type GoingSets, type MercXY, type NearLine, type RouteReading, type Rules, type Station } from '../MovementGuide/MovementGuideScan';
 import { ambushSiteAt, ambushSites, planPatrol, stationAtChain, type AmbushShape, type AmbushSite } from '../MovementGuide/MovementGuidePlans';
 import { patrolCard, plRulesFrom, type PatrolCard, type PlFootSpeeds, type PlProbe } from '../PlatoonGuide/PlatoonGuideRead';
@@ -40,7 +41,7 @@ export interface SmallReading {
   task: 'ambush' | 'patrol' | 'recce';
   /** Recce laid as a screen (IC s73): posts in front of the main posn, the ground he would watch it from. */
   screen?: boolean;
-  /** Area ambush (IC s44 p 152): the outlying ambushes on his ways in and out along the Rd. */
+  /** Area ambush (IC s44 para 11 b p 152): the outlying ambushes on his ways in and out along the Rd. */
   outlying?: { x: number; y: number; label: string; alongM: number; score: number; seenPct: number }[];
   /** Ambush: the road read, from where he comes to beyond the KZ; the site; better sites along it; the KZ points seen. */
   road?: MercXY[] | null;
@@ -307,6 +308,13 @@ export function solveSmall(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = {
 const MOVER_WORD: Record<Mover, string> = { wheeled: 'the En vehicles', tracked: 'the En tanks', dismounted: 'the En on foot' };
 const SHAPE_WORD: Record<AmbushShape, string> = { line: 'line', L: 'L', V: 'V' };
 const SHAPE_WHY: Record<AmbushShape, string> = { line: 'a straight stretch without high ground on both sides', L: 'a bend or crest within 200 m', V: 'high ground on both sides of the Rd' };
+/** "a line", "an L", "a V". */
+const A_SHAPE = (s: AmbushShape) => (s === 'L' ? 'an L' : `a ${SHAPE_WORD[s]}`);
+/**
+ * The layout suits the ground: the ground's own, or an L on a straight stretch (IC s44 para 18 b p 158: the L "can be
+ * deployed on a strait stretch of a road or track or a sharp bend").
+ */
+const SHAPE_FITS = (shape: AmbushShape, gs: AmbushShape) => shape === gs || (shape === 'L' && gs === 'line');
 
 /** A plan as drawn on the map, by role (Web Mercator): Check my plan reads it as it is, no siting search. */
 export type Drawn = Record<string, { pts: MercXY[]; base?: { start: MercXY; mid: MercXY; end: MercXY } }>;
@@ -343,22 +351,29 @@ function drawnAmbush(dr: Drawn, eng: AmbushSite['layout'], st: Station, path: Me
 }
 
 function readAmbush(c: Ctx): SmallRead {
-  const { recipe, doc, frame, mov, R, inp } = c;
+  const { recipe, doc, frame, mov, inp } = c;
   const dr = c.drawn ?? null;
+  const mover: Mover = inp.mover ?? 'wheeled';
+  // By day or by night (IC s44 paras 16-17 p 157): by night closer together, fire at point blank range; by day dispersed,
+  // fire opened at longer ranges. The fire line's band from the Rd follows (smallOps.ambush.fireOffsetNightM / DayM, E).
+  const night = !!inp.night;
+  const offB = fig(doc, night ? 'smallOps.ambush.fireOffsetNightM' : 'smallOps.ambush.fireOffsetDayM', night ? [30, 120] : [30, 250]);
+  // A tank ambush (IC s46 para 9 p 172): the whole column comes into the site before it is sprung: a longer KZ (E).
+  const tankKz = mover === 'tracked' ? one(doc, 'smallOps.ambush.tankKzM', 400) : null;
+  const R: Rules = { ...c.R, ambush: { ...c.R.ambush, coverFromM: Math.min(c.R.ambush.coverFromM, offB[0]), fireOffsetMaxM: offB[1], ...(tankKz ? { kzM: tankKz } : {}) } };
   const A = R.ambush;
   const shape: AmbushShape = recipe.layout === 'l' ? 'L' : recipe.layout === 'v' ? 'V' : 'line';
   // drawn (Check my plan): the KZ where it is drawn, he comes from Stop 1's side; built: the click and the aim
   const click: MercXY = dr?.kzTgt?.pts[0] ?? (dr?.kz?.pts.length ? ctrW(dr.kz.pts) : [frame.anchor.x, frame.anchor.y]);
   const aimDeg = dr?.stop1?.pts[0] ? bearingOf(click, dr.stop1.pts[0]) : ((frame.bearing / D2R) % 360 + 360) % 360;
   const onRoadM = one(doc, 'smallOps.ambush.onRoadM', 50), snapM = one(doc, 'smallOps.ambush.snapM', 300);
-  // an area ambush reads the Rd far enough each way for its outlying ambushes (IC s44 p 152)
+  // an area ambush reads the Rd far enough each way for its outlying ambushes (IC s44 para 11 b p 152)
   const area = recipe.layout === 'area';
   const outReach = area ? fig(doc, 'smallOps.ambush.outlyingM', [400, 1200])[1] + 300 : 0;
   const upM = Math.max(outReach, one(doc, 'smallOps.ambush.upM', 1500)), downM = Math.max(outReach, one(doc, 'smallOps.ambush.downM', 800));
   const rd = roadAround(mov, click, aimDeg, upM, downM, snapM);
   const path: MercXY[] = rd?.path ?? [offsetPt(click[0], click[1], aimDeg, upM), click, offsetPt(click[0], click[1], aimDeg + 180, downM)];
   const chain = rd?.chainM ?? upM;
-  const mover: Mover = inp.mover ?? 'wheeled';
   const going = mov.going(mover), foot = mov.going('dismounted');
   mov.takePending?.();
   const r: RouteReading = new RouteScanner(R).scan(path, mov, { going, sight: true, threat: null });
@@ -393,6 +408,18 @@ function readAmbush(c: Ctx): SmallRead {
     rv: [L.meeting],
   };
   geomW.wdr = [offsetPt(fm[0], fm[1], awayFire, 80), [(fm[0] + L.meeting[0]) / 2, (fm[1] + L.meeting[1]) / 2], offsetPt(L.meeting[0], L.meeting[1], bearingOf(L.meeting, fm), 25)];
+  // The reserve, sited on the same side of the position as the RV (IC s44 para 8 c p 149), near the comd (para 15 b (4)
+  // p 156): back along the way to the RV, a little away from the En end. The covering group with the automatic weapons
+  // (para 15 b (3) p 156; the V's "third portion" covering the withdrawal, para 18 c p 158): back from the fire line toward
+  // the RV, toward the En end where the reaction comes from. Distances E (smallOps.ambush.reserveBackM / coverGpBackM).
+  const upDeg = bearingOf(kzC, along(path, kz0));
+  const resBack = one(doc, 'smallOps.ambush.reserveBackM', 250), covBack = one(doc, 'smallOps.ambush.coverGpBackM', 150);
+  const onWdr = (m: number): MercXY => along([fm, L.meeting], Math.min(m, Math.max(0, groundDist(fm, L.meeting) - 50)));
+  const resP = onWdr(resBack), covP = onWdr(covBack);
+  geomW.res = [offsetPt(resP[0], resP[1], upDeg + 180, 40)];
+  geomW.cov = [offsetPt(covP[0], covP[1], upDeg, 60)];
+  const resAt: MercXY | null = dr ? dr.res?.pts[0] ?? null : geomW.res[0];
+  const covAt: MercXY | null = dr ? dr.cov?.pts[0] ?? null : geomW.cov[0];
   if (L.arm && recipe.slots.some((s) => s.role === 'amb2')) {
     const am: MercXY = [(L.arm[0][0] + L.arm[1][0]) / 2, (L.arm[0][1] + L.arm[1][1]) / 2];
     geomW.amb2 = arcOf(L.arm[0], L.arm[1], shape === 'L' ? 22 : 30, kzC);
@@ -424,7 +451,7 @@ function readAmbush(c: Ctx): SmallRead {
     .sort((p, q) => q.score - p.score)
     .slice(0, 2)
     .map((s) => ({ x: s.x, y: s.y, score: s.score, alongM: Math.round(s.chainM - site.chainM), shape: s.layout.shape }));
-  // an area ambush (IC s44 p 152, Fig 16): the central site and an outlying ambush on his way in (up the Rd) and his way out
+  // an area ambush (IC s44 para 11 b p 152, Fig 16): the central site and an outlying ambush on his way in (up the Rd) and his way out
   // (down it), each a point ambush of its own at the best site in the band (drawn: where it is drawn)
   const outlying: { up: boolean; label: string; site: AmbushSite; seenPct: number; found: boolean }[] = [];
   if (area) {
@@ -490,7 +517,7 @@ function readAmbush(c: Ctx): SmallRead {
       detail: { head: `Seen from ${A.followM} m back`, why: 'The vehicles behind the KZ see the ambush spring and can stop, deploy or go round.', whyShort: 'the En column behind sees it', fix: [...betterFix, 'Site the KZ just past a bend or over a crest', 'Stop 1 cuts off the vehicles behind (a mine or an obstacle on the Rd)'] } });
   const coverAt = L.side === 'L' ? st.coverL : st.coverR, rise = Math.max(st.riseL, st.riseR);
   if (dr) {
-    // drawn: how far back from the road the fire line lies (cover 30-120 m out: MovementDoctrine ambush, E)
+    // drawn: how far back from the road the fire line lies (the Day / Night band: smallOps.ambush.fireOffsetNightM / DayM, E)
     const off2 = Math.round(Math.min(distToLine(L.fireLine[0], path.flat()), distToLine(L.fireLine[1], path.flat())));
     if (off2 < A.coverFromM || off2 > A.fireOffsetMaxM) rows.push({ name: 'Fire line', st: 'warn', reason: `drawn ${off2} m from the Rd (cover is looked for ${A.coverFromM}-${A.fireOffsetMaxM} m out)`, detail: { head: `Fire line ${off2} m from the Rd`, why: off2 < A.coverFromM ? 'On the verge: the group is in the vehicles\' own fire and blast.' : 'Too far back: the fire spreads and the KZ is not swept.', fix: [`Site it ${A.coverFromM}-${A.fireOffsetMaxM} m from the Rd, in cover`] } });
     else rows.push({ name: 'Fire line', st: 'pass', reason: `drawn ${off2} m from the Rd (${A.coverFromM}-${A.fireOffsetMaxM} m)` });
@@ -502,7 +529,7 @@ function readAmbush(c: Ctx): SmallRead {
   const kzPct = Math.round(kzShare * 100);
   rows.push(pending && unknown > kzPts.length / 2 ? { name: 'KZ in view', st: 'unchecked', reason: 'the ground is still loading' }
     : { name: 'KZ in view', st: kzShare >= kzWarn ? 'pass' : kzShare >= kzFail ? 'warn' : 'fail', reason: `the fire group sees ${kzPct} % of the KZ (${seenN} of ${kzPts.length} points)`,
-      detail: kzShare >= kzWarn ? undefined : { head: `${kzPct} % of the KZ in view`, items: [`${seenN} of ${kzPts.length} points along the KZ seen from the fire line (eye ${eye} m, a ${tall} m vehicle)`], why: 'Folds, crops or buildings between the fire line and the Rd (30 m elevation plus what stands on it: a chance, not a fact).', whyShort: 'folds or crops in the way', fix: ['Move the fire line closer to the Rd (30-120 m)', 'Site it on higher ground beside the Rd', 'Shorten the KZ to what the fire group sees'] } });
+      detail: kzShare >= kzWarn ? undefined : { head: `${kzPct} % of the KZ in view`, items: [`${seenN} of ${kzPts.length} points along the KZ seen from the fire line (eye ${eye} m, a ${tall} m vehicle)`], why: 'Folds, crops or buildings between the fire line and the Rd (30 m elevation plus what stands on it: a chance, not a fact).', whyShort: 'folds or crops in the way', fix: [`Move the fire line closer to the Rd (${offB[0]}-${offB[1]} m)`, 'Site it on higher ground beside the Rd', 'Shorten the KZ to what the fire group sees'] } });
   const blind = ['Stop 1', 'Stop 2'].filter((_, i) => !stopSees[i]);
   rows.push({ name: 'Stops', st: blind.length ? 'warn' : 'pass', reason: blind.length ? `${blind.join(' and ')} may not see the Rd 200 m beyond its end of the KZ` : `both see the Rd 200 m beyond their ends of the KZ (${A.stopM} m out)`,
     detail: blind.length ? { head: `${blind.join(', ')}: Rd not in view`, why: 'A stop that cannot see the Rd beyond the KZ gives no warning and cannot cut off the vehicles that escape.', fix: ['Move the stop up a rise or to a bend where it sees along the Rd', 'A mine or obstacle on the Rd at its end'] } : undefined });
@@ -511,6 +538,30 @@ function readAmbush(c: Ctx): SmallRead {
     detail: wc >= 30 ? undefined : { head: `Withdrawal ${wc} % in cover`, why: 'The groups break contact across open ground to the RV: the survivors and the vehicles behind can shoot them.', fix: ['Withdraw along a nullah, tree line or bund (walk it by day)', 'Smoke, and a covering group firing as the fire group breaks'] } });
   const rvB = fig(doc, 'smallOps.ambush.rvM', [750, 900]);
   rows.push({ name: 'RV', st: L.meetingM >= rvB[0] - 1 && L.meetingM <= rvB[1] + 1 ? 'pass' : 'warn', reason: `${fmtM(L.meetingM)} back from the Rd, ${compass(bearingOf(kzC, L.meeting))} (wants ${rvB[0]}-${rvB[1]} m, R)` });
+  // the reserve on the RV side of the Rd (IC s44 para 8 c p 149)
+  const roadSide = (p: MercXY) => { const ah = offsetPt(st.x, st.y, st.bearing, 50); return Math.sign((ah[0] - st.x) * (p[1] - st.y) - (ah[1] - st.y) * (p[0] - st.x)); };
+  if (!resAt) rows.push({ name: 'Reserve', st: 'warn', reason: 'no reserve drawn (IC s44 para 8 c p 149: a reserve must be detailed)', detail: { head: 'No reserve', why: 'A reserve, able to act on its own initiative, takes on what the parties cannot and covers the move back to the RV (IC s44 paras 8 c, 14 pp 149, 153).', fix: ['Draw a few men as the reserve on the same side of the position as the RV, near the comd'] } });
+  else {
+    const same = roadSide(resAt) === roadSide(L.meeting);
+    rows.push(same ? { name: 'Reserve', st: 'pass', reason: `on the RV side of the Rd, ${fmtM(groundDist(resAt, fm))} back from the fire line (IC s44 para 8 c p 149)` }
+      : { name: 'Reserve', st: 'warn', reason: 'across the Rd from the RV', detail: { head: 'Reserve on the far side of the Rd', why: 'The reserve is initially sited on the same side of the ambush position as the RV used on withdrawal (IC s44 para 8 c p 149): across the Rd it cannot cover the move back.', fix: ['Move the reserve to the RV side, within reach of the comd'] } });
+  }
+  // the covering group: fire on the KZ and on a reacting En after the parties withdraw (IC s44 para 15 b (3) p 156)
+  const covWord = shape === 'V' ? 'the third portion covering the withdrawal (IC s44 para 18 c p 158)' : 'covers the withdrawal and a reacting En (IC s44 para 15 b (3) p 156)';
+  if (!covAt) rows.push({ name: 'Cov Gp', st: 'warn', reason: `no covering group drawn (${shape === 'V' ? 'IC s44 para 18 c p 158: a third portion covers the withdrawal' : 'IC s44 para 15 b (3) p 156'})`, detail: { head: 'No covering group', why: 'With the parties withdrawing, nothing holds off the En who react: the clean break becomes a running fight (IC s44 para 15 b (3) p 156).', fix: ['Draw a covering group with the MGs back from the fire line, seeing the KZ'] } });
+  else {
+    let n2 = 0, hit = 0, unk = 0;
+    for (const q of kzPts) { n2++; const s = mov.sight(covAt[0], covAt[1], eye, q.x, q.y, tall); if (s === null) unk++; else if (s >= 0.5) hit++; }
+    const pct = n2 ? Math.round((100 * hit) / n2) : 0;
+    rows.push(unk > n2 / 2 ? { name: 'Cov Gp', st: 'unchecked', reason: 'the ground is still loading' }
+      : pct >= 50 ? { name: 'Cov Gp', st: 'pass', reason: `${fmtM(groundDist(covAt, fm))} back from the fire line, sees ${pct} % of the KZ: ${covWord}` }
+        : { name: 'Cov Gp', st: 'warn', reason: `sees ${pct} % of the KZ from ${fmtM(groundDist(covAt, fm))} back`, detail: { head: `Cov Gp sees ${pct} % of the KZ`, why: 'The covering group takes on the En in the target area and the En reacting after the parties withdraw (IC s44 para 15 b (3) p 156); it cannot do that without the KZ in view.', fix: ['Move it up a rise or nearer the fire line where it sees the KZ', 'Site the MGs on a flank where they fire along the KZ'] } });
+  }
+  // by day or by night (IC s44 paras 10 a, 16-17 pp 150, 157)
+  rows.push(night ? { name: 'Day / Night', st: 'pass', reason: `by night: fire line ${offB[0]}-${offB[1]} m from the Rd, fire at point blank range (IC s44 para 17 a p 157; band E); the site occupied by night (para 10 a p 150)` }
+    : wc >= 30 ? { name: 'Day / Night', st: 'pass', reason: `by day: fire opened at longer ranges, the fire line up to ${offB[1]} m from the Rd (IC s44 para 16 b p 157; band E); occupied in small parties by a covered approach (${wc} % in cover from the RV: para 10 a p 150)` }
+      : { name: 'Day / Night', st: 'warn', reason: `by day with no covered approach: ${wc} % in cover from the RV`, detail: { head: 'Occupied by day without a covered approach', why: 'It is better to occupy the site at night; by day only in small parties by a good covered approach, and without one day occupation should be ruled out (IC s44 para 10 a p 150).', fix: ['Occupy by night (Time: Night)', 'Find a covered approach (a nullah, tree line or bund) and go in small parties'] } });
+  if (tankKz) rows.push({ name: 'Tank ambush', st: 'pass', reason: `KZ ${fmtM(A.kzM)} so the whole column is in it before it is sprung (IC s46 para 9 p 172; length E); Stop 2 the covering group (AT weapons, AT mines to block the leading tanks), the fire group the killing group (AT weapons, the comd), Stop 1 the cut-off group (AT and small arms) (IC s46 para 9 a p 172)` });
   const reinf = st.reinforcementKm;
   /** His QRF's time to the KZ from a post `km` away (smallOps.ambush.qrfKmh / qrfTurnOutMin; 30 km/h and 5 min: E). */
   const qrfMin = (km: number) => Math.round((km / one(doc, 'smallOps.ambush.qrfKmh', 30)) * 60 + one(doc, 'smallOps.ambush.qrfTurnOutMin', 5));
@@ -520,8 +571,10 @@ function readAmbush(c: Ctx): SmallRead {
   rows.push(villages.length ? { name: 'Village', st: 'warn', reason: `${villages.map((v) => v.name ?? 'a village').slice(0, 2).join(', ')} within ${A.villageKm} km`, detail: { head: `${villages.map((v) => v.name ?? 'a village').slice(0, 2).join(', ')} within ${A.villageKm} km`, why: 'People round the KZ: warning to the En before it springs, and civilians in the arcs.', fix: ['Fix the arcs clear of the village', 'Move the KZ further from it', ...betterFix] } }
     : { name: 'Village', st: 'pass', reason: `no village within ${A.villageKm} km` });
   const gs = site.groundShape;
+  const fitsGround = SHAPE_FITS(shape, gs);
   rows.push(gs === shape ? { name: 'Layout', st: 'pass', reason: `${SHAPE_WORD[shape]}: the ground suits it (${SHAPE_WHY[gs]})` }
-    : { name: 'Layout', st: 'warn', reason: `the ground suits an ${SHAPE_WORD[gs]} here (${SHAPE_WHY[gs]})`, detail: { head: `The ground suits an ${SHAPE_WORD[gs]}`, why: `${SHAPE_WHY[gs][0].toUpperCase()}${SHAPE_WHY[gs].slice(1)}.`, fix: [`Take the ${SHAPE_WORD[gs]} layout (Auto or Compare)`] } });
+    : fitsGround ? { name: 'Layout', st: 'pass', reason: `L on a straight stretch: the L can be laid on a straight stretch of a road or track or at a sharp bend (IC s44 para 18 b p 158)` }
+      : { name: 'Layout', st: 'warn', reason: `the ground suits ${A_SHAPE(gs)} here (${SHAPE_WHY[gs]})`, detail: { head: `The ground suits ${A_SHAPE(gs)}`, why: `${SHAPE_WHY[gs][0].toUpperCase()}${SHAPE_WHY[gs].slice(1)}.`, fix: [`Take the ${SHAPE_WORD[gs]} layout (Auto or Compare)`] } });
   const minScore = A.minScore;
   rows.push({ name: 'Site', st: site.score >= minScore ? 'pass' : site.score >= minScore - 15 ? 'warn' : 'fail', reason: `scores ${site.score} (the Movement Guide's rule; ${minScore} or more makes a likely site)`,
     detail: { head: `Site ${site.score} / 100`, items: site.parts.map((p) => `${p.ok ? '+' : '-'} ${p.what} (${p.pts})`), why: site.score >= minScore ? undefined : 'The things that make an ambush work are missing here (the minus lines).', fix: site.score >= minScore ? undefined : [...betterFix, 'Walk the Rd for a defile or a bend with cover beside it'] } });
@@ -533,21 +586,26 @@ function readAmbush(c: Ctx): SmallRead {
     const items = outlying.map((o) => `${o.label}: ${upWord(o.site.chainM - site.chainM)}, site ${o.site.score} / 100, sees ${o.seenPct} % of its stretch${o.found ? '' : ' (no likely site in its band: laid at the middle of it)'}`);
     const weak = outlying.filter((o) => o.site.score < minScore || o.seenPct < seenWarn || !o.found);
     const missing = !dr ? (['up', 'down'] as const).filter((w) => !outlying.some((o) => o.up === (w === 'up'))) : [];
-    rows.push(missing.length ? { name: 'Outlying', st: 'warn', reason: `no Rd read ${missing.map((w) => (w === 'up' ? 'up toward the En' : 'down beyond the KZ')).join(' or ')} for an outlying ambush`, detail: { head: 'An outlying ambush not sited', items, why: 'The area ambush closes each way in and out of the central site (IC s44 p 152); the Rd read stops short.', fix: ['Lay it by hand on that way in or out', 'Click the central KZ nearer the middle of the stretch'] } }
+    rows.push(missing.length ? { name: 'Outlying', st: 'warn', reason: `no Rd read ${missing.map((w) => (w === 'up' ? 'up toward the En' : 'down beyond the KZ')).join(' or ')} for an outlying ambush`, detail: { head: 'An outlying ambush not sited', items, why: 'The area ambush closes each way in and out of the central site (IC s44 para 11 b p 152); the Rd read stops short.', fix: ['Lay it by hand on that way in or out', 'Click the central KZ nearer the middle of the stretch'] } }
       : !want ? { name: 'Outlying', st: 'unchecked', reason: 'no outlying ambush drawn' }
         : { name: 'Outlying', st: weak.length ? 'warn' : 'pass', reason: items.join('; '),
-          detail: weak.length ? { head: `${weak.map((o) => o.label).join(', ')}: a weak site`, items, why: 'Each outlying ambush is a point ambush of its own (IC s44 p 152): it wants the same defile or bend, cover and the stretch in view.', fix: ['Move it along its band to a better stretch (walk the Rd)', 'Mines or an obstacle to hold the En at it', 'Side tracks into the area: an outlying ambush on each (recce)'] } : undefined });
+          detail: weak.length ? { head: `${weak.map((o) => o.label).join(', ')}: a weak site`, items, why: 'Each outlying ambush is a point ambush of its own (IC s44 para 11 b p 152): it wants the same defile or bend, cover and the stretch in view.', fix: ['Move it along its band to a better stretch (walk the Rd)', 'Mines or an obstacle to hold the En at it', 'Side tracks into the area: an outlying ambush on each (recce)'] } : undefined });
   }
 
   const confirm = [
     `The KZ (${SHAPE_WORD[shape]}): walk it; ${mw} cannot leave it; the fire group sees all of it from cover`,
     'Stops: each sees the Rd beyond its end; the signal to spring and to withdraw',
     `The withdrawal to the RV (${fmtM(L.meetingM)} back): covered, walked by day`,
-    ...(shape === 'V' ? ['V: arcs fixed so the two legs never fire into each other'] : []),
-    ...(area ? ['Area ambush: every way into and out of the central site found on the ground (tracks the map misses), one outlying ambush on each; the Pl Comd at the central KZ until it is sprung (IC s44 p 152)'] : []),
+    'The reserve on the RV side, in comms with the comd; the Cov Gp\'s fire for the withdrawal (a time bracket agreed) (IC s44 para 15 b (3)-(4) p 156)',
+    night ? 'By night: fire for a set period, then the task finished with bayonets or knives; no noise or light (IC s44 para 17 b-c p 157)'
+      : 'By day: men well dispersed and hidden from the air, perfect stillness; supporting fire directed by observation (IC s44 para 16 p 157)',
+    'If the ambush lasts 24 hours or more: an admin area, defendable, out of earshot of the main posn, with lanes in for a silent approach and water near; often at the RV (IC s44 para 8 e pp 149-150)',
+    ...(shape === 'V' ? ['V: arcs fixed so the two halves never fire into each other; the Cov Gp (the third portion) covers the assault groups\' withdrawal (IC s44 para 18 c p 158)'] : []),
+    ...(tankKz ? ['Tank ambush: the site out of view of the En observers, on the route the tanks are known to take; AT mines with the covering group to stop the leading tanks (IC s46 para 9 pp 172-173)'] : []),
+    ...(area ? ['Area ambush: every way into and out of the central site found on the ground (tracks the map misses), one outlying ambush on each; the Pl Comd at the central KZ until it is sprung (IC s44 para 11 b p 152)'] : []),
     ...(villages.length ? ['The village: no civilians in the arcs'] : []),
   ];
-  const score = Math.max(0, Math.min(100, site.score - (gs !== shape ? one(doc, 'smallOps.ambush.shapePenalty', 10) : 0) - (rd ? 0 : 40) - (kzShare < kzFail ? 15 : 0)));
+  const score = Math.max(0, Math.min(100, site.score - (fitsGround ? 0 : one(doc, 'smallOps.ambush.shapePenalty', 10)) - (rd ? 0 : 40) - (kzShare < kzFail ? 15 : 0)));
   return {
     geom, extra: [], rows, confirm, score, pending,
     small: { task: 'ambush', road: path, site: { score: site.score, shape, groundShape: gs, exits: site.exits, parts: site.parts }, better, kzPts,
@@ -633,9 +691,17 @@ function readPatrol(c: Ctx): SmallRead {
       : { name: 'Route out', st: 'warn', reason: rOut, detail: { head: `${ratio.toFixed(1)} times the straight line`, items: [`${fmtM(out.lengthM)} on foot against ${fmtM(straight)} straight`], why: 'The way goes round what a patrol avoids: villages, roads and tracks, skylines, NO-GO and ground the Obj may see.', whyShort: 'round villages, roads, what the En sees', fix: ['Accept a Rd or village crossing by night, in one bound (move the SP)', 'Aim at the Obj from another side', 'A nearer SP, or a lying-up place on the way'] } });
     const featured = out.legs.filter((l) => l.endFeature).length;
     const boundB = fig(doc, 'smallOps.patrol.boundM', [550, 750]);
-    rows.push({ name: 'Bounds', st: out.legs.length <= 1 || featured * 2 >= out.legs.length ? 'pass' : 'warn',
-      reason: `${out.bounds.length} check points, bounds of ${fmtM((boundB[0] + boundB[1]) / 2)} (R ${boundB[0]}-${boundB[1]} m); ${featured} of ${out.legs.length} legs end on a feature recognisable at night`,
-      detail: featured * 2 >= out.legs.length ? undefined : { head: `${featured} of ${out.legs.length} legs end on a feature`, why: 'Legs that end in open ground are hard to find at night: the patrol counts paces and drifts.', fix: ['Bend the route to end legs on a bridge, tomb, mosque, junction or hill (the card lists those near)', 'Mark the check points on the air photo before the patrol'] } });
+    // the route's own spacing (IC s40 para 23 p 116: bounds 550-750 m apart): the legs, and the check points the card lays
+    // along the way out (from the SP, between them, and on to the Obj)
+    const legM = out.legs.map((l) => l.distM);
+    const cps = [0, ...out.bounds.map((b) => b.chainM), out.lengthM];
+    const gaps = cps.slice(1).map((m, i) => m - cps[i]).filter((g) => g > 1);
+    const span = (xs: number[]) => (xs.length ? (Math.round(Math.min(...xs)) === Math.round(Math.max(...xs)) ? fmtM(Math.min(...xs)) : `${fmtM(Math.min(...xs))}-${fmtM(Math.max(...xs))}`) : '-');
+    const wide = gaps.filter((g) => g > boundB[1] + 50).length;
+    const legsOk = out.legs.length <= 1 || featured * 2 >= out.legs.length;
+    rows.push({ name: 'Bounds', st: legsOk && !wide ? 'pass' : 'warn',
+      reason: `${out.bounds.length} check points ${span(gaps)} apart, legs of ${span(legM)} (IC s40 para 23 p 116: ${boundB[0]}-${boundB[1]} m between bounds); ${featured} of ${out.legs.length} legs end on a feature recognisable at night`,
+      detail: legsOk && !wide ? undefined : { head: !legsOk ? `${featured} of ${out.legs.length} legs end on a feature` : `${wide} stretch${wide > 1 ? 'es' : ''} longer than ${boundB[1]} m between bounds`, why: !legsOk ? 'Legs that end in open ground are hard to find at night: the patrol counts paces and drifts. Bounds are features easily recognisable at night (IC s40 para 23 p 116).' : `Bounds should be ${boundB[0]}-${boundB[1]} m apart (IC s40 para 23 p 116): a longer stretch is walked on the compass alone.`, fix: ['Bend the route to end legs on a bridge, tomb, mosque, junction or hill (the card lists those near)', 'Mark the check points on the air photo before the patrol'] } });
   }
   if (out && routes.back && back) {
     const same = sharedShare(backP!, outP!, Math.max(60, R.patrol.separateM / 2));
@@ -661,8 +727,8 @@ function readPatrol(c: Ctx): SmallRead {
     if (!frvAt) rows.push({ name: 'FRV', st: 'warn', reason: dr ? 'no FRV drawn short of the Obj' : `the route is too short for an FRV ${frvB[0]}-${frvB[1]} m short of the Obj` });
     else {
       const s = mov.sight(objC[0], objC[1], R.patrol.threatEyeM, frvAt[0], frvAt[1], 1.7);
-      rows.push(s === null ? { name: 'FRV', st: 'unchecked', reason: `${fmtM(frvM)} short of the Obj (R ${frvB[0]}-${frvB[1]} m); its view from the Obj not read (ground loading)` }
-        : s < 0.5 ? { name: 'FRV', st: frvIn ? 'pass' : 'warn', reason: `${fmtM(frvM)} short of the Obj (R ${frvB[0]}-${frvB[1]} m), hidden from it` }
+      rows.push(s === null ? { name: 'FRV', st: 'unchecked', reason: `${fmtM(frvM)} short of the Obj (IC s41 para 9 p 132: ${frvB[0]}-${frvB[1]} m); its view from the Obj not read (ground loading)` }
+        : s < 0.5 ? { name: 'FRV', st: frvIn ? 'pass' : 'warn', reason: `${fmtM(frvM)} short of the Obj (IC s41 para 9 p 132: ${frvB[0]}-${frvB[1]} m), hidden from it` }
           : { name: 'FRV', st: 'warn', reason: `${fmtM(frvM)} short of the Obj, but the Obj may see it`, detail: { head: 'FRV seen from the Obj', why: 'The patrol waits and regroups at the FRV: seen from the Obj, it is found before the task starts.', fix: ['Move the FRV into dead ground short of the Obj (the green stretches)', 'Approach the Obj from another side'] } });
     }
     const len = Math.max(1, out.lengthM), seenM = stretchLen(out.exposed), seenPct = Math.round((100 * seenM) / len);
@@ -679,13 +745,22 @@ function readPatrol(c: Ctx): SmallRead {
     rows.push(dg.length ? { name: 'Dangers', st: 'warn', reason: `${out.dangers.length} on the way out: ${dg.map((d) => `${d.label} km ${(d.chainM / 1000).toFixed(1)}`).join(', ')}`, detail: { head: `${out.dangers.length} dangers on the way out`, items: dg.map((d) => `km ${(d.chainM / 1000).toFixed(1)}: ${d.label} (${d.why})`), fix: ['Cross Rds, tracks and VPs at a bound, one group covering', 'Recce each on the air photo'] } }
       : { name: 'Dangers', st: 'pass', reason: 'no Rd, VP or likely ambush on the way out' });
     if (out.obstacles.length) rows.push({ name: 'Obstacles', st: 'warn', reason: `${out.obstacles.length} to cross: ${out.obstacles.slice(0, 3).map((o) => `${o.label} km ${(o.chainM / 1000).toFixed(1)}`).join(', ')}`, detail: { head: 'Obstacles to cross', fix: ['Recce each crossing (depth, banks, current)', 'A crossing drill and a rope'] } });
-    const task = one(doc, 'smallOps.patrol.taskMin', 60), nightH = one(doc, 'smallOps.patrol.nightH', 10);
+    // at the Obj: an hour or more, then the Obj again from another direction (IC s41 paras 10-11 pp 132-133): counted twice
+    const taskOne = one(doc, 'smallOps.patrol.taskMin', 60), rounds = one(doc, 'smallOps.patrol.taskRounds', 2), nightH = one(doc, 'smallOps.patrol.nightH', 10);
+    const task = taskOne * rounds;
     const total = out.minNight + (back?.minNight ?? out.minNight) + task;
-    rows.push({ name: 'Time', st: total <= nightH * 60 ? 'pass' : 'warn', reason: `by night: out ${fmtMin(out.minNight)}, ${fmtMin(task)} at the Obj, back ${fmtMin(back?.minNight ?? out.minNight)}: ${fmtMin(total)} of a ${nightH} h night (E)`,
+    rows.push({ name: 'Time', st: total <= nightH * 60 ? 'pass' : 'warn', reason: `by night: out ${fmtMin(out.minNight)}, ${fmtMin(task)} at the Obj, back ${fmtMin(back?.minNight ?? out.minNight)}: ${fmtMin(total)} of a ${nightH} h night (E); at the Obj ${fmtMin(taskOne)} or more${rounds > 1 ? ', then again from another direction' : ''} (IC s41 para 10 p 132)`,
       detail: total <= nightH * 60 ? undefined : { head: `${fmtMin(total)}: longer than the night`, why: 'The patrol is caught in the open at first light.', fix: ['A nearer SP or a lying-up place on the way', 'Out one night, back the next'] } });
     for (const x of out.checks.slice(0, 3)) confirm.push(x);
   }
-  confirm.push('The FRV: hidden from the Obj; the check points on the air photo', 'Paces counted (120 = 100 m) and bearings set for each leg');
+  confirm.push(
+    'The FRV: hidden from the Obj; the check points on the air photo',
+    'Paces counted (120 = 100 m), each leg measured from the map to the nearest 50 paces, bearings set for each leg (IC s40 para 23 p 116)',
+    'At each bound the RV 100-200 m off it (the En may use the same bound); the compass reset there for the next leg (IC s40 para 23 p 116)',
+    night ? 'By night: off corners and edges of woods, villages, tracks, hedges and deep defiles; open ground rather than cover; below the crest on slopes (IC s40 para 24 p 116; hedges and defiles are not on the map: walk it)'
+      : 'By day: concealment first, every bit of cover used (IC s40 para 25 p 116)',
+    'Planning time: four daylight hours at least for even a simple recce patrol, longer for more (IC s40 para 12 p 111)',
+  );
   // the Night March chart on the way out (NightMarchRead): the same legs the Night March tool would give the patrol
   let nightChart: SmallReading['night'] | undefined;
   if (inp.nmRules && outP && outP.length >= 2 && !dr) {
@@ -840,6 +915,7 @@ function readRecce(c: Ctx): SmallRead {
   const confirm = [
     ...chosen.map((_, i) => `OP ${i + 1}: the view to the NAI by day and with NVD by night; a way in and out unseen`),
     'Relief of the OPs, comms back to the SP, what to report and when',
+    'Planning time: four daylight hours at least for even a simple recce patrol (IC s40 para 12 p 111)',
   ];
   const fails = rows.filter((x) => x.st === 'fail').length, warns = rows.filter((x) => x.st === 'warn').length;
   return {
@@ -853,10 +929,10 @@ function readRecce(c: Ctx): SmallRead {
   };
 }
 
-// ── screen (IC s73 pp 378-381) ───────────────────────────────────────────────────────────────────────────────────────
+// ── screen (IC s73 paras 10-18 pp 377-380) ───────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * A Coy screen in front of the main posn (IC s73 pp 378-381, R; figures E in PlanDoctrine smallOps.screen): Pl posts laid
+ * A Coy screen in front of the main posn (IC s73 paras 10-18 pp 377-380, R; figures E in PlanDoctrine smallOps.screen): Pl posts laid
  * laterally with intervals on the ground he would watch the main posn from, only as far forward as is necessary, on
  * defensible ground with clear observation and a covered route back. The click is the RV in the main posn the screen
  * withdraws to; the aim is the ground in front. Read like the recce: the ground in front sampled, kept to the points that see
@@ -872,7 +948,8 @@ function readScreen(c: Ctx): SmallRead {
   const naiC = ctrW(ring);
   const aimDeg = bearingOf(rv, naiC);
   const front = one(doc, 'smallOps.screen.frontM', 3000);
-  const fwd = fig(doc, 'smallOps.screen.fwdM', [300, 1500]);
+  const fwd = fig(doc, 'smallOps.screen.fwdM', [1000, 1500]);
+  const nearM = Math.min(fwd[0], one(doc, 'smallOps.screen.nearestM', 400));
   const apartM = one(doc, 'smallOps.screen.postsApartM', 400), stepM = one(doc, 'smallOps.screen.stepM', 200);
   // a Recce Sqn's AFV Tps see from the commander's cupola, not a trench (smallOps.screen.tankEyeM, E)
   const eye = recipe.screenBy ? recipe.screenBy.eyeM : one(doc, 'smallOps.screen.postEyeM', 1), hisEye = one(doc, 'smallOps.screen.hisEyeM', 2), tall = one(doc, 'smallOps.screen.mainTallM', 2);
@@ -906,20 +983,23 @@ function readScreen(c: Ctx): SmallRead {
     if (!asDrawn && k === null) { noCls++; return; }
     if (!asDrawn && k !== null && foot.nogo.has(k)) return;
     const f = ahead(p);
-    if (!asDrawn && (f < fwd[0] || f > fwd[1] || Math.abs(across(p)) > front / 2)) return;
+    // the search reaches in to nearM (the books differ: AMP p 1.2 puts screens 1-1.5 km out, IC s73 paras 10-11 p 377 only
+    // as far forward as is necessary, a knoll about 600 m out its example): nearer ground is kept, and warned below
+    if (!asDrawn && (f < nearM || f > fwd[1] || Math.abs(across(p)) > front / 2)) return;
     const seen = samples.map((s) => sees(p, eye, s, tall));
     const pct = seen.filter(Boolean).length / samples.length;
     const e = mov.elev(p[0], p[1]);
     const rise = e === e && mean === mean ? e - mean : 0;
     const cover = k !== null && coverCls.has(k);
-    // as far forward as is necessary and no further (IC p378): the nearer of two equal posts scores more
-    const near = one(doc, 'smallOps.screen.nearPts', 25) * Math.max(0, Math.min(1, 1 - (f - fwd[0]) / Math.max(1, fwd[1] - fwd[0])));
+    // as far forward as is necessary and no further (IC s73 para 10 p 377): within the AMP band the nearer of two equal
+    // posts scores more; nearer than the band no bonus (it wins on its view alone)
+    const near = f < fwd[0] ? 0 : one(doc, 'smallOps.screen.nearPts', 25) * Math.max(0, Math.min(1, 1 - (f - fwd[0]) / Math.max(1, fwd[1] - fwd[0])));
     cands.push({ p, seen, pct, rise, cover, score: 60 * pct + Math.max(0, Math.min(15, rise / 2)) + (cover ? 10 : 0) + near, name });
   };
   const drawnPosts = dr ? Object.keys(dr).filter((r2) => /^op\d$/.test(r2)).sort().map((r2) => dr[r2].pts[0]) : [];
   if (dr) for (const p of drawnPosts) consider(p, null, true);
   else {
-    for (let d = fwd[0]; d <= fwd[1] + 0.1; d += stepM) for (let l = -front / 2; l <= front / 2 + 0.1; l += stepM) {
+    for (let d = nearM; d <= fwd[1] + 0.1; d += stepM) for (let l = -front / 2; l <= front / 2 + 0.1; l += stepM) {
       const m = offsetPt(rv[0], rv[1], aimDeg, d);
       consider(offsetPt(m[0], m[1], aimDeg + 90, l), null);
     }
@@ -935,9 +1015,9 @@ function readScreen(c: Ctx): SmallRead {
     for (const cd of cands) {
       if (chosen.includes(cd) || chosen.some((o) => groundDist(o.p, cd.p) < apartM)) continue;
       const adds = cd.seen.filter((s, k) => s && !union[k]).length / samples.length;
-      // laterally with intervals (IC p378): a post across the front from the others scores more
+      // laterally with intervals (IC s73 para 10 p 377): a post across the front from the others scores more
       const gap = chosen.length ? Math.min(...chosen.map((o) => Math.abs(across(o.p) - across(cd.p)))) : 0;
-      // the view first (clear observation: IC p380); then the post's own score; then the spread across the front
+      // the view first (clear observation and a covered route back: IC s73 para 16 p 379); then the post's own score; then the spread across the front
       const sc = chosen.length ? 100 * adds + 0.3 * cd.score + 10 * Math.min(1, gap / (front / Math.max(1, n))) : cd.score;
       if (sc > ps) { ps = sc; pick = cd; }
     }
@@ -947,7 +1027,7 @@ function readScreen(c: Ctx): SmallRead {
   }
   // left to right across the front: 1, 2, 3 Pl
   chosen.sort((a, b) => across(a.p) - across(b.p));
-  // the way back to the RV, covered from the ground in front (IC p380 / p381)
+  // the way back to the RV, covered from the ground in front (IC s73 paras 16, 18 pp 379-380)
   const Rr = { ...R, patrol: { ...R.patrol, maxCells: Math.min(160, one(doc, 'smallOps.patrol.maxCells', 260)) } };
   const seenAlong = (pts: MercXY[]) => { const L = pathLen(pts); let n2 = 0, hit = 0; for (let d = 0; d <= L; d += 50) { const q = along(pts, d); n2++; if ((mov.sight(naiC[0], naiC[1], R.patrol.threatEyeM, q[0], q[1], 1.7) ?? 0) >= 0.5) hit++; } return n2 ? Math.round((100 * hit) / n2) : 0; };
   const routes = dr
@@ -982,37 +1062,37 @@ function readScreen(c: Ctx): SmallRead {
       : { name: 'En viewpoints', st: 'warn', reason: 'none of the ground in front sees the main posn (30 m elevation): the screen gives early warning only', detail: { head: 'No ground in front sees the main posn', why: 'Folds or what stands on the ground hide the main posn from the area aimed at; the screen still warns and delays.', fix: ['Aim at the ground nearer the main posn', 'Walk it: the map misses walls, crops and trees'] } });
   rows.push(loading ? { name: 'Ground in front seen', st: 'unchecked', reason: 'the ground is still loading' }
     : { name: 'Ground in front seen', st: uPct >= sWarn ? 'pass' : uPct >= sFail ? 'warn' : 'fail', reason: `the posts see ${uPct} % of ${overlook.length ? 'the ground the En would watch you from' : 'the ground in front'} (wants ${sWarn} %, E)`,
-      detail: { head: `${uPct} % in view`, items: chosen.map(postWord), why: uPct >= sWarn ? undefined : 'Folds, trees or buildings hide parts of it from the posts (a chance on 30 m elevation).', whyShort: uPct >= sWarn ? undefined : 'folds, trees or buildings in the way', fix: uPct >= sWarn ? undefined : ['A post on higher ground or a rooftop', 'A standing patrol or LP in the ground not seen (the red dots)', 'Mines in front and on the flanks of the screen (IC p380)'] } });
+      detail: { head: `${uPct} % in view`, items: chosen.map(postWord), why: uPct >= sWarn ? undefined : 'Folds, trees or buildings hide parts of it from the posts (a chance on 30 m elevation).', whyShort: uPct >= sWarn ? undefined : 'folds, trees or buildings in the way', fix: uPct >= sWarn ? undefined : ['A post on higher ground or a rooftop', 'A standing patrol or LP in the ground not seen (the red dots)', 'Mines in front and on the flanks of the screen (IC s73 para 15 p 379)'] } });
   const anyPost = chosen.length > 0;
   const far = chosen.map((o, i) => ({ o, i, f: ahead(o.p) })).filter((x) => x.f > fwd[1] + 50);
   const near = chosen.map((o, i) => ({ o, i, f: ahead(o.p) })).filter((x) => x.f < fwd[0] - 50);
-  if (anyPost) rows.push(far.length ? { name: 'Posts forward', st: 'warn', reason: `${far.map((x) => `${label(x.i)} ${fmtM(x.f)}`).join(', ')} forward (wants ${fmtM(fwd[0])}-${fmtM(fwd[1])}, E)`, detail: { head: 'Further forward than needed', why: 'A screen goes only as far forward as is necessary to deny the En observation of the main posn (IC p378); further out it is cut off and its way back is long.', fix: ['Pull the post back to ground nearer the main posn', 'A standing patrol out there instead'] } }
-    : near.length ? { name: 'Posts forward', st: 'warn', reason: `${near.map((x) => `${label(x.i)} ${fmtM(x.f)}`).join(', ')} forward (wants ${fmtM(fwd[0])} or more, E)`, detail: { head: 'Too close to the main posn', why: 'The En fire on the screen falls on the main posn too, and the screen does not keep the En recce off it.', fix: ['Push the post forward onto the ground the En would watch from'] } }
-      : { name: 'Posts forward', st: 'pass', reason: chosen.length ? `${chosen.map((o, i) => `${label(i)} ${fmtM(ahead(o.p))}`).join(', ')} forward (IC p378: no further than needed)` : 'no posts' });
+  if (anyPost) rows.push(far.length ? { name: 'Posts forward', st: 'warn', reason: `${far.map((x) => `${label(x.i)} ${fmtM(x.f)}`).join(', ')} forward (AMP p 1.2: ${fmtM(fwd[0])}-${fmtM(fwd[1])})`, detail: { head: 'Further forward than needed', why: 'A screen goes only as far forward from the main posn as is necessary to deny the En observation and recce of it (IC s73 para 10 p 377); AMP p 1.2 puts screens 1-1.5 km ahead of the FDLs. Further out it is cut off and its way back is long.', fix: ['Pull the post back to ground nearer the main posn', 'A standing patrol out there instead'] } }
+    : near.length ? { name: 'Posts forward', st: 'warn', reason: `${near.map((x) => `${label(x.i)} ${fmtM(x.f)}`).join(', ')} forward: nearer than AMP p 1.2 (${fmtM(fwd[0])}-${fmtM(fwd[1])}); IC s73 para 11 p 377 has a screen on a knoll about 600 m out (books differ)`, detail: { head: 'Nearer than AMP p 1.2: the books differ', items: near.map((x) => `${label(x.i)}: ${fmtM(x.f)} forward`), why: 'AMP p 1.2: "Put screens 1 - 1.5 kms ahead of FDLs". IC s73 para 10 p 377: screens only as far forward from the main posns as is necessary to deny the En observation and recce of them; para 11 p 377 gives an isolated knoll about 600 m from the FDLs, held by a reinforced Pl with minefields, as an example. This post was kept because it watches the ground the En would see the main posn from.', fix: ['Keep it where it denies the En that ground, strengthened with mines (IC s73 paras 11, 15 pp 377, 379)', `Or push it out to ${fmtM(fwd[0])}-${fmtM(fwd[1])} (AMP p 1.2)`] } }
+      : { name: 'Posts forward', st: 'pass', reason: chosen.length ? `${chosen.map((o, i) => `${label(i)} ${fmtM(ahead(o.p))}`).join(', ')} forward (AMP p 1.2: ${fmtM(fwd[0])}-${fmtM(fwd[1])}; IC s73 para 10 p 377: no further than needed)` : 'no posts' });
   if (chosen.length > 1) {
     const span = across(chosen[chosen.length - 1].p) - across(chosen[0].p);
     let apart = Infinity;
     for (let i = 0; i < chosen.length; i++) for (let j = i + 1; j < chosen.length; j++) apart = Math.min(apart, groundDist(chosen[i].p, chosen[j].p));
     const bunched = span < front * one(doc, 'smallOps.screen.spanShare', 0.4);
     rows.push({ name: 'Laterally', st: bunched || apart < apartM ? 'warn' : 'pass', reason: `the posts span ${fmtM(span)} of the ${fmtM(front)} front, ${fmtM(apart)} apart at the closest (wants ${apartM} m, E)`,
-      detail: bunched || apart < apartM ? { head: bunched ? 'Posts bunched' : 'Posts close', why: bunched ? 'Screens are laid laterally with intervals (IC p378): bunched posts leave an approach unwatched.' : 'One shell or one burst finds two posts.', fix: ['Spread them across the front', 'Sections are not split to stretch the screen (IC p380): take more posts instead'] } : undefined });
+      detail: bunched || apart < apartM ? { head: bunched ? 'Posts bunched' : 'Posts close', why: bunched ? 'Screens are laid laterally with intervals (IC s73 para 10 p 377): bunched posts leave an approach unwatched.' : 'One shell or one burst finds two posts.', fix: ['Spread them across the front', 'Sections are not split to stretch the screen (IC s73 para 16 p 379): take more posts instead'] } : undefined });
   }
   const open = chosen.map((o, i) => ({ o, i })).filter(({ o }) => !o.cover && o.rise < 5);
-  if (anyPost) rows.push({ name: 'Post ground', st: open.length ? 'warn' : 'pass', reason: open.length ? `${open.map(({ i }) => label(i)).join(', ')} on open flat ground` : 'each post on high ground or in cover (defensible: IC p378)',
-    detail: open.length ? { head: 'Posts in the open', why: 'A screen is sited on defensible ground (IC p378); open flat ground is found and pinned.', fix: ['Dig it in with alternative fire trenches (IC p380)', 'Move it up onto higher ground nearby'] } : undefined });
+  if (anyPost) rows.push({ name: 'Post ground', st: open.length ? 'warn' : 'pass', reason: open.length ? `${open.map(({ i }) => label(i)).join(', ')} on open flat ground` : 'each post on high ground or in cover (defensible: IC s73 para 10 p 377)',
+    detail: open.length ? { head: 'Posts in the open', why: 'A screen is sited on defensible ground (IC s73 para 10 p 377); open flat ground is found and pinned.', fix: ['Dig it in with alternative fire trenches (IC s73 para 16 p 379)', 'Move it up onto higher ground nearby'] } : undefined });
   const routeSeen = one(doc, 'smallOps.screen.routeSeenPct', 30);
   const noRoute = routes.map((r, i) => (r.out ? -1 : i)).filter((i) => i >= 0);
   const seenRt = routes.map((r, i) => ({ i, seen: r.met.seen })).filter((x) => routes[x.i].out && x.seen > routeSeen);
   if (anyPost) rows.push(noRoute.length ? { name: 'Withdrawal', st: dr ? 'unchecked' : 'fail', reason: dr ? `no way back drawn from ${noRoute.map((i) => label(i)).join(', ')}` : `no way back on foot from ${noRoute.map((i) => label(i)).join(', ')}`, detail: { head: 'No way back', why: 'NO-GO on foot between the post and the main posn.', fix: ['Move the post', 'Move the RV'] } }
-    : seenRt.length ? { name: 'Withdrawal', st: 'warn', reason: `${seenRt.map((x) => `${label(x.i)} ${x.seen} %`).join(', ')} of the way back in the En's view (wants ${routeSeen} % or less, E)`, detail: { head: 'Way back in view', why: 'The withdrawal is along a covered route (IC p381); open ground facing the En on the way back costs the screen as it leaves.', fix: ['Bend the way back into the dead ground', 'Smoke and covering fire from the main posn for the withdrawal', 'Withdraw by night'] } }
-      : { name: 'Withdrawal', st: 'pass', reason: `each way back ${routeSeen} % or less in the En's view (covered: IC p381)` });
+    : seenRt.length ? { name: 'Withdrawal', st: 'warn', reason: `${seenRt.map((x) => `${label(x.i)} ${x.seen} %`).join(', ')} of the way back in the En's view (wants ${routeSeen} % or less, E)`, detail: { head: 'Way back in view', why: 'The withdrawal is along a covered route (IC s73 para 18 p 380); open ground facing the En on the way back costs the screen as it leaves.', fix: ['Bend the way back into the dead ground', 'Smoke and covering fire from the main posn for the withdrawal', 'Withdraw by night'] } }
+      : { name: 'Withdrawal', st: 'pass', reason: `each way back ${routeSeen} % or less in the En's view (covered: IC s73 para 18 p 380)` });
   const times = cards.map((cd, i) => (cd ? `${label(i)} ${fmtM(cd.lengthM)}, ${fmtMin(cd.minDay)} by day / ${fmtMin(cd.minNight)} by night` : null)).filter(Boolean) as string[];
   if (times.length) rows.push({ name: 'Time back', st: 'pass', reason: times.join('; ') });
   const confirm = [
-    ...chosen.map((_, i) => `${label(i)}: the view to the front by day and with NVD by night; alternative fire trenches to switch fire (IC p380); a way back unseen`),
-    'Withdrawal only on the order of the commander who ordered the screen; comms lost: on 50 % casualties or when the time to stay is up (IC p381)',
-    'Mines in front and on the flanks of the screen, if time and mines allow (IC p380)',
-    'Arty / mortar observer and comms with the screen (IC p379); sections not split (IC p380)',
+    ...chosen.map((_, i) => `${label(i)}: the view to the front by day and with NVD by night; alternative fire trenches to switch fire (IC s73 para 16 p 379); a way back unseen`),
+    'Withdrawal only on the order of the commander who ordered the screen; comms lost: on 50 % casualties or when the time to stay is up (IC s73 para 18 p 380)',
+    'Mines in front and on the flanks of the screen, if time and mines allow (IC s73 para 15 p 379)',
+    'Arty / mortar observer and comms with the screen (IC s73 para 14 p 378); sections not split (IC s73 para 16 p 379)',
   ];
   const fails = rows.filter((x) => x.st === 'fail').length, warns = rows.filter((x) => x.st === 'warn').length;
   return {
@@ -1033,6 +1113,23 @@ function readScreen(c: Ctx): SmallRead {
  * patrol's Obj or a recce's NAI) stretches the plan; the click is its pivot and never moves. Without the ground (no
  * Movement Guide reader or rules) the geometry stands, its ground rows grey.
  */
+/**
+ * A minor operation in the desert (DW s8 para 2 pp 28-30): the wider gaps ease infiltration; hideouts for small groups;
+ * targets farther off limit what goes on foot, so wheels or mechanised transport move and place the troops, helicopters
+ * insert and extricate; by night, the critical phases at least; direction keeping; the FOO and FAC with the party;
+ * self-sufficient. When the patrol's Time row already runs past the night, the row warns with those fixes.
+ */
+export function desertMinorOpRow(rows: Check[]): Check {
+  const rules = 'hideouts for the small groups (DW p 29 b); by night, the critical phases at least (p 29 f); direction keeping (p 29 d); the FOO and FAC go with the party (p 29 h); self-sufficient administratively (p 29 j); wider gaps ease infiltration (p 28 a)';
+  const long = rows.find((r) => r.name === 'Time' && r.st === 'warn');
+  if (!long) return { name: 'Desert', st: 'pass', reason: `${rules}; targets farther off limit operations on foot: wheels or helicopters where it is far (DW pp 29-30)` };
+  return {
+    name: 'Desert', st: 'warn',
+    reason: `longer than the night on foot: in the desert targets lie farther off, which limits the range and scope of operations on foot (DW s8 para 2 c p 29); ${rules}`,
+    detail: { head: 'Too far on foot for the desert', why: 'Targets for minor operations are normally at greater distances in the desert, limiting what is done on foot; the open ground and early detection favour darkness (DW s8 para 2 c, f p 29).', fix: ['Wheels or mechanised transport to move and place the party (DW p 30 k)', 'Helicopters to insert and extricate it (p 29 e)', 'A hideout on the way, out one night and back the next (p 29 b)'] },
+  };
+}
+
 export function fitSmallOp(inp: FitLayoutInput): FittedLayout | null {
   const { recipe, ctx, ground } = inp;
   const k = kOf(inp.anchor.y);
@@ -1048,7 +1145,12 @@ export function fitSmallOp(inp: FitLayoutInput): FittedLayout | null {
   const read = c ? (recipe.task === 'ambush' ? readAmbush(c) : recipe.task === 'patrol' ? readPatrol(c) : recipe.layout === 'screen' ? readScreen(c) : readRecce(c)) : null;
   const aimGeomNow = aimGeom(recipe, ctx.doc, aimM && aimM > 50 ? aimM : null);
   const raw = read ? solveRecipe(recipe, ctx, { ...inp.opts, geom: { ...aimGeomNow, ...read.geom }, extraPoints: read.extra }) : base;
-  const rows = read ? read.rows : base.rows;
+  const rows = read ? [...read.rows] : base.rows;
+  // the desert (DW s8 pp 28-30): the ground read where it rests, unless set in the tab
+  if (read && (recipe.task === 'patrol' || recipe.task === 'ambush' || recipe.task === 'recce')) {
+    const kindT = inp.terrain && inp.terrain !== 'auto' ? inp.terrain : detectTerrain(ground, frame, raw, recipe, ctx.doc)?.kind ?? null;
+    if (kindT === 'desert') rows.push(desertMinorOpRow(rows));
+  }
   const fails = rows.filter((r) => r.st === 'fail').length, warns = rows.filter((r) => r.st === 'warn').length;
   const fit: FitResult = {
     nudges: {}, slides: [], killingGr: null, slots: {}, rows, approaches: [],
@@ -1078,7 +1180,7 @@ export function checkSmallOp(inp: FitLayoutInput, drawn: Drawn): SmallCheck | nu
   inp.begin?.();
   const c: Ctx = { recipe, doc: ctx.doc, frame, mov, R, inp, base, drawn };
   const read = recipe.task === 'ambush' ? readAmbush(c) : recipe.task === 'patrol' ? readPatrol(c) : recipe.layout === 'screen' ? readScreen(c) : readRecce(c);
-  const need = recipe.task === 'ambush' ? ['kz', 'amb', 'stop1', 'stop2', 'rv', ...(recipe.layout === 'area' ? ['out1', 'out2'] : [])] : recipe.task === 'patrol' ? ['sp', 'obj', 'frv', 'out', 'in'] : recipe.layout === 'screen' ? ['rv', 'nai', 'op1', 'op2'] : ['sp', 'nai', 'op1'];
+  const need = recipe.task === 'ambush' ? ['kz', 'amb', 'stop1', 'stop2', 'rv', ...(recipe.slots.some((s) => s.role === 'res') ? ['res'] : []), ...(recipe.slots.some((s) => s.role === 'cov') ? ['cov'] : []), ...(recipe.layout === 'area' ? ['out1', 'out2'] : [])] : recipe.task === 'patrol' ? ['sp', 'obj', 'frv', 'out', 'in'] : recipe.layout === 'screen' ? ['rv', 'nai', 'op1', 'op2'] : ['sp', 'nai', 'op1'];
   // a slot with no label of its own (a fire line, a route) is named by its group's, or by what it is
   const PLAIN: Record<string, string> = { wdr: 'Wdr route', kzTgt: 'KZ centre', out: 'Route out', in: 'Route in', scr: 'Screen' };
   const names = (r: string) => recipe.slots.find((s) => s.role === r)?.label || (recipe.slots.find((s) => s.role === `${r}Gp`)?.label ? `${recipe.slots.find((s) => s.role === `${r}Gp`)!.label} fire line` : '') || PLAIN[r] || (/^rt\d$/.test(r) ? `Route to ${recipe.slots.find((s) => s.role === `op${r.slice(2)}`)?.label ?? r}` : r);

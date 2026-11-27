@@ -166,7 +166,7 @@ const xs = base.slots.filter((s) => s.kind === 'fwd');
 const lx = Math.min(...xs.map((s) => s.centre.x - s.wM / 2)), rx = Math.max(...xs.map((s) => s.centre.x + s.wM / 2));
 const horseshoe = inW({ kind: 'area', pts: [{ x: lx - 1500, y: frontY - 1500 }, { x: lx - 600, y: frontY - 1500 }, { x: lx - 600, y: frontY + 1500 }, { x: rx + 600, y: frontY + 1500 }, { x: rx + 600, y: frontY - 1500 }, { x: rx + 1500, y: frontY - 1500 }, { x: rx + 1500, y: frontY + 5000 }, { x: lx - 1500, y: frontY + 5000 }] });
 const fitH = F.fitPlan({ res: base, recipe: r2, doc, frame: fr, ground: open, threat: null, front: horseshoe, checkOnly: true });
-check('his area level with the FDL beside both flanks: the plan in a salient (MW p 126 para 3 c)', /salient of the En front/.test(row(fitH.rows, 'En front')?.reason ?? '') && row(fitH.rows, 'En front').st === 'warn', row(fitH.rows, 'En front')?.reason);
+check('his area level with the FDL beside both flanks: the plan in a salient, own ground projecting into the En line (MW p 124 para 2 a; p 126 para 3 c)', /in a salient, own ground projecting into the En line \(MW p 124 para 2 a\)/.test(row(fitH.rows, 'En front')?.reason ?? '') && row(fitH.rows, 'En front').st === 'warn', row(fitH.rows, 'En front')?.reason);
 check('the area\'s depth opposite the plan is read', /deep opposite/.test(row(fitK.rows, 'En front')?.reason ?? ''), row(fitK.rows, 'En front')?.reason);
 void area;
 

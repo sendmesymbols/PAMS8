@@ -100,9 +100,9 @@ import { checkSpacing, echelonCodeOf, footprintDims, frontBlocks, planFootprint,
 import { GroundGuideIndicators } from './GroundGuideIndicators';
 import { buildGridRect, mPerPx, mercToPx, pxToMerc, sightTables, sightTo, visibilityAt, weaponOf, type OcokaGrid } from './GroundGuideOcoka';
 import { IPB, WHY, codeIpb, ipbMoverOf, ipbReasonsAt, ipbRulesFrom, ipbSummaryText, type IpbCoding, type IpbMover, type IpbReason, type IpbStats } from './GroundGuideIpb';
-import { annexA, decide, decRatesFrom, type DecAaIn, type DecArgs, type DecCls } from './GroundGuideIpbDecision';
+import { annexA, decide, decRatesFrom, mountainWxNotes, type DecAaIn, type DecArgs, type DecCls } from './GroundGuideIpbDecision';
 import { GroundGuideIpbMap } from './GroundGuideIpbMap';
-import { arrowHeadFrac, arrowTail, attackArrow, findCorridors, simplifyLine, type IpbAa, type IpbFrame } from './GroundGuideIpbCorridors';
+import { arrowHeadFrac, arrowTail, attackArrow, findCorridors, mountainApproach, mtnApchRulesFrom, mtnHardestIndex, simplifyLine, type IpbAa, type IpbFrame, type MtnApch } from './GroundGuideIpbCorridors';
 import { assaultFrontage, echelonUp, groundKindAt, groundTestsFrom, objectiveFrontage, type AssaultFrontage, type ObjFrontage } from './GroundGuideFrontage';
 import { ipbAreas } from './GroundGuideIpbShapes';
 import { fireCoverage } from './GroundGuideIpbFire';
@@ -2466,6 +2466,10 @@ export default class GroundGuide {
       })(),
     });
     const toM = (x: number, y: number): MercXY => pxToMerc(grid.px0 + coding.x0 + x, grid.py0 + coding.y0 + y, z, ts);
+    // On mountain ground (IpbTemplates mountainTest) each approach is typed from the 30 m elevation across it: valley,
+    // nullah, ridge line or side slope, with what the book says of each (MW s7 para 4 a p 78; IpbDoctrine mountainApproach).
+    const mtnArea = this._ipbMountain({ view: base as unknown as IpbApchView, coding, grid });
+    const mtnOf = mtnArea ? this._mtnApchFn(grid, coding, fr.side) : null;
     const pairs = (f: Float32Array): MercXY[] => {
       const out: MercXY[] = [];
       for (let i = 0; i + 1 < f.length; i += 2) out.push(toM(f[i], f[i + 1]));
@@ -2514,6 +2518,7 @@ export default class GroundGuide {
         ...(a.onto
           ? { onto: a.onto, ontoLabel: ontoLabel(a.onto), fupAt: a.fup ? toM(a.fup[0], a.fup[1]) : undefined, hitAt: a.hit ? toM(a.hit[0], a.hit[1]) : undefined, assaultM: a.assaultM, assaultNogoPct: a.assaultNogoPct }
           : {}),
+        ...(() => { const m = mtnOf ? mtnOf(a) : undefined; return m ? { mtn: m } : {}; })(),
       };
     };
     // How each approach comes onto the objective, in the reader's words: the en's onto your flanks, yours onto his.
@@ -2557,7 +2562,7 @@ export default class GroundGuide {
     const LET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
     let aas: IpbApchAa[];
     const notes = [...r.notes, ...(fr.note ? [fr.note] : []), ...(fr.moverNote ? [fr.moverNote] : [])];
-    // The obstacles read, who each stops, and (own obstacles, the en's options) whether own fire covers it (ATP 4-14).
+    // The obstacles read, who each stops, and (own obstacles, the en's options) whether own fire covers it (ATP para 4-47 p 4-15).
     const obsView = this._ipbObstacleNotes(fr, base);
     if (obsView.note) notes.push(obsView.note);
     if (end === 'through' || !ob) {
@@ -2571,6 +2576,8 @@ export default class GroundGuide {
       aas = [...book, ...onto.map((v, i) => ({ ...v, id: LET[book.length + i] ?? `Z${i}` }))];
       notes.unshift(...r.ontoNotes);
     }
+    // The difficult approach of those read (MW p 79: normally lightly held or unoccupied by the En).
+    if (mtnOf) this._mtnHardest(aas, fr.side);
     const objRing = ob && r.objective ? r.objective.map(([x, y]) => toM(x, y)) : null;
     const view: IpbApchView = {
       ...base,
@@ -2772,7 +2779,7 @@ export default class GroundGuide {
       console.warn('[Ground Guide] ipb decision for a host', err);
     }
     try {
-      view.wx = this._ipbWxFor(view);
+      view.wx = this._ipbWxFor(view, a);
     } catch (err) {
       console.warn('[Ground Guide] ipb weather for a host', err);
     }
@@ -3387,7 +3394,7 @@ export default class GroundGuide {
     const fire = this._ipbFireFor({ view: v, grid: a.grid }, defender);
     v.fire = ip.fire ? fire : undefined;
     v.decision = ip.decision ? this._ipbDecisionFor(a) : undefined;
-    v.wx = this._ipbWxFor(v);
+    v.wx = this._ipbWxFor(v, a);
     v.air = ip.air ? this._ipbAirFor(a) : undefined;
     if (v.air && ip.airspace) v.air.airspace = this._ipbAirspaceFor(v);
     if (v.air) this._ipbAirWind(v.air, v.wx?.wind ?? null);
@@ -3671,7 +3678,8 @@ export default class GroundGuide {
     const ip = this._opts.extended.ipb;
     const D: any = IPB_DOCTRINE;
     const mountain = this._ipbMountain(a);
-    const rates = decRatesFrom(D, v.mover, { mountain });
+    // the En's avenues: his own day march rate (IC s113 para 20 c p 664, OcokaDoctrine enemyMarch), faster than IPB's
+    const rates = decRatesFrom(D, v.mover, { mountain, enemyFootDayKmh: v.side === 'enemy' ? Number((OCOKA_DOCTRINE as any).enemyMarch?.footKmhDay?.value) || null : null });
     const tAt = this._opts.extended.threat === 'point' ? this._threatMerc() : null;
     const along = new Map<string, ReturnType<GroundGuide['_aaAlong']>>();
     for (const aa of v.aas) along.set(aa.id, this._aaAlong(a, aa));
@@ -3838,6 +3846,56 @@ export default class GroundGuide {
         if (cls.has(k)) des++;
       }
     return all > 0 && des / all >= Number(T.share ?? 0.5);
+  }
+
+  /**
+   * The mountain approach type for each approach of a reading (MW s7 para 4 a p 78): `mountainApproach` on the grid's
+   * elevation under the coding, labelled, with what the book says of it (IpbDoctrine `mountainApproach`, page cited).
+   * The listening posts (MW p 52) are named on the valley and ridge approaches of the En's options against you.
+   */
+  private _mtnApchFn(grid: OcokaGrid, coding: IpbCoding, side: 'enemy' | 'own'): (a: IpbAa) => NonNullable<IpbApchAa['mtn']> | undefined {
+    const MA: any = (IPB_DOCTRINE as any).mountainApproach ?? {};
+    const R = mtnApchRulesFrom(IPB_DOCTRINE);
+    const elevAt = (x: number, y: number): number => {
+      const gx = Math.floor(x) + coding.x0, gy = Math.floor(y) + coding.y0;
+      return gx < 0 || gy < 0 || gx >= grid.w || gy >= grid.h ? NaN : grid.elev[gy * grid.w + gx];
+    };
+    const W: Record<string, string> = { valley: 'valley', nullah: 'nullah', ridge: 'ridge line', slope: 'side slope' };
+    const book = (k: string, pg: string): string | null => (MA[k]?.text ? `${MA[k].text} (MW p ${pg})` : null);
+    return (a: IpbAa) => {
+      const m: MtnApch | null = mountainApproach(a.line, elevAt, coding.res, R);
+      if (!m) return undefined;
+      const floor = m.kind === 'valley' || m.kind === 'nullah';
+      const pct = floor ? m.shares.valley + m.shares.nullah : m.kind === 'mixed' ? m.shares[m.top[0]] : m.shares[m.kind];
+      const label = m.kind === 'mixed' ? `Mixed: ${W[m.top[0]]}${m.top[1] ? ` / ${W[m.top[1]]}` : ''}` : m.kind === 'slope' ? 'Side slope' : `${W[m.kind][0].toUpperCase()}${W[m.kind].slice(1)} Apch`;
+      const say: string[] = [];
+      say.push(m.kind === 'mixed'
+        ? `${m.shares[m.top[0]]} % on a ${W[m.top[0]]}${m.top[1] ? `, ${m.shares[m.top[1]]} % on a ${W[m.top[1]]}` : ''}`
+        : `${pct} % of its length on a ${W[m.kind]}${floor && m.floorM !== null ? `, the floor about ${Math.max(50, Math.round(m.floorM / 50) * 50)} m wide where the sides rise ${R.riseM} m` : ''}`);
+      const kinds = m.kind === 'mixed' ? m.top.filter((k): k is 'valley' | 'nullah' | 'ridge' | 'slope' => !!k) : [m.kind];
+      for (const k of kinds) {
+        const t = k === 'slope' ? book('alongRidges', '79; p 46') : book(k, '78');
+        if (t) say.push(t);
+      }
+      if (side === 'enemy' && kinds.some((k) => k === 'valley' || k === 'ridge')) { const t = book('listeningPosts', '52'); if (t) say.push(t); }
+      return { kind: m.kind, label, top: m.top, shares: m.shares, floorM: m.floorM, say };
+    };
+  }
+
+  /**
+   * The difficult approach of those read (IpbDoctrine `mountainApproach.hardest`, E): the most hours along it at the book's
+   * day rates, else the least GO, of two or more approaches typed in mountains; MW p 79 says it is normally lightly held.
+   */
+  private _mtnHardest(aas: IpbApchAa[], side: 'enemy' | 'own'): void {
+    const MA: any = (IPB_DOCTRINE as any).mountainApproach ?? {};
+    const typed = aas.filter((a) => a.viable && a.mtn);
+    const h = mtnHardestIndex(typed);
+    if (!h) return;
+    const byHours = h.byHours;
+    const worst = typed[h.index];
+    const why = byHours ? `the most hours along it at the book's day rates (${(worst.hoursDay as number).toFixed(1)} h)` : `the least GO (${Math.round(worst.goPct)} %)`;
+    const text = MA.lightlyHeld?.text ? `${MA.lightlyHeld.text} (MW p 79)` : 'The difficult approach is normally lightly held (MW p 79)';
+    worst.mtn = { ...worst.mtn!, hardest: true, say: [...worst.mtn!.say, side === 'enemy' ? `The difficult approach of those read, ${why}: ${text}: he may come this way for surprise: guard it` : `The difficult approach of those read, ${why}: ${text}: likely lightly held`] };
   }
 
   /**
@@ -4122,6 +4180,7 @@ export default class GroundGuide {
         points: q.points,
         slopeDeg: q.slopeDeg,
         mountain: q.mountain,
+        elevM: q.elevM,
         caution: q.caution,
         seenP: q.seenP,
         distObjM: q.distObjM,
@@ -4165,8 +4224,11 @@ export default class GroundGuide {
     };
   }
 
-  /** Annex A for the area's middle and the month, from the bundle's visibility and climate grids. */
-  private _ipbWxFor(v: IpbApchView): IpbWxView | null {
+  /**
+   * Annex A for the area's middle and the month, from the bundle's visibility and climate grids. With the area's grid
+   * and coding (`a`), on mountain ground MW's weather notes for the month and the area's height ride with it (`mtn`).
+   */
+  private _ipbWxFor(v: IpbApchView, a?: { coding: IpbCoding | null; grid: OcokaGrid | null } | null): IpbWxView | null {
     const xs = v.frame.map((p) => p[0]), ys = v.frame.map((p) => p[1]);
     if (!xs.length) return null;
     const [lon, lat] = mercatorToLngLat((Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2);
@@ -4181,7 +4243,21 @@ export default class GroundGuide {
       clim: cl ? { tmin: cl.tmin, tmax: cl.tmax, wind: cl.wind, prec: cl.prec } : null,
       wind,
     });
-    return { month, rows, stationKm: vr?.stationKm ?? null, wind };
+    return { month, rows, stationKm: vr?.stationKm ?? null, wind, mtn: this._ipbMtnWx(v, a ?? null, month) };
+  }
+
+  /** MW's mountain weather notes for the area read (its middle's height from the grid), null off the mountains. */
+  private _ipbMtnWx(v: IpbApchView, a: { coding: IpbCoding | null; grid: OcokaGrid | null } | null, month: number): IpbWxView['mtn'] {
+    if (!a?.coding || !a.grid || !this._manifest) return null;
+    if (!this._ipbMountain({ view: v, coding: a.coding, grid: a.grid })) return null;
+    const g = a.grid, m = this._manifest;
+    const xs = v.frame.map((p) => p[0]), ys = v.frame.map((p) => p[1]);
+    const mid: MercXY = xs.length ? [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2] : v.anchor;
+    const [px, py] = mercToPx(mid[0], mid[1], m.zoom.max, m.tileSize);
+    const gx = Math.floor(px - g.px0), gy = Math.floor(py - g.py0);
+    const e = gx >= 0 && gy >= 0 && gx < g.w && gy < g.h ? g.elev[gy * g.w + gx] : NaN;
+    const elevM = e === e ? Math.round(e) : null;
+    return { elevM, notes: mountainWxNotes(IPB_DOCTRINE, { month, elevM, mountain: true }) };
   }
 
   /** The month's wind (ERA5 normal) at a point; null with extended.ipb.wind off, no wind grid, or while it loads. */
@@ -4203,7 +4279,8 @@ export default class GroundGuide {
         const t = dzWind(w, this._windRules);
         z.wind = t ? { text: t, fit: 'drift' } : null;
       } else {
-        const r = lzWind(z.approaches, w, this._windRules);
+        // in mountains: take off into the wind, less power and more payload (MW p 255)
+        const r = lzWind(z.approaches, w, this._windRules, z.mountain);
         z.wind = r ? { text: r.text, fit: r.fit } : null;
       }
     }
@@ -7552,6 +7629,11 @@ export default class GroundGuide {
     const found = catKey ? this._rangeLookup(catKey) : null;
     const weapon = weaponOf(found?.rng);
     const cands = this._opts.itg.enabled && this._features ? this._features.candidatesNear(at, o.radiusKm * 1000, 4, 1) : { list: [], pending: false };
+    // water points round the point (the card's water kinds plus wells, pumps and tanks): weighed as key ground on desert
+    // ground only (DW pp 7, 38; readOcoka keeps them only there)
+    const wKinds = new Set<string>([...((this._rules?.grotbc as any)?.water?.kinds ?? ['tube_well', 'well_lined', 'well_unlined', 'spring', 'tank_perennial', 'karez']), 'well', 'hand_pump', 'tank_overhead', 'tank_seasonal']);
+    const wq = this._features ? this._features.nearestOfKinds(at, o.radiusKm * 1000, wKinds, 12) : null;
+    const water = (wq?.list ?? []).map((h) => ({ kindLabel: h.kindLabel, name: h.name, distanceM: h.distanceM, compass: h.compass, at: h.at }));
     const r = readOcoka({
       grid,
       ox: cx - grid.px0,
@@ -7569,8 +7651,10 @@ export default class GroundGuide {
       month,
       night,
       candidates: cands.list,
-      candidatesPending: cands.pending,
+      // the water points still loading: the reading is not kept for the cell, read again when they arrive
+      candidatesPending: cands.pending || !!wq?.pending,
       visibility: this._visibility?.get() ?? null,
+      water,
       picture,
     });
     if (r && !r.pending) this._extLive.remember(key, r);
@@ -8628,7 +8712,7 @@ export default class GroundGuide {
     // The weather grids load on first use: Annex A is read again when one arrives (a lookup, no tiles).
     const av = this._apch?.view;
     if (av?.wx && av.wx.rows.some((r) => r.status === 'na' && /no (visibility|climate) data/.test(r.value))) {
-      const wx = this._ipbWxFor(av);
+      const wx = this._ipbWxFor(av, this._apch);
       if (wx && wx.rows.filter((r) => r.status === 'na').length < av.wx.rows.filter((r) => r.status === 'na').length) {
         av.wx = wx;
         this._refreshLive();

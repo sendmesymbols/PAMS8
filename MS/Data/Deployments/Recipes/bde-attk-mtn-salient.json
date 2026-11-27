@@ -1,0 +1,410 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "bde-attk-mtn-salient",
+  "family": "bde-attk-mtn",
+  "layout": "salient",
+  "echelon": "18",
+  "unit": "inf-bde",
+  "basis": "D",
+  "task": "attack",
+  "name": "Bde Attk (Mtn): reduction of a salient, the base from both flanks",
+  "frontageRow": "Brigade, night attack in plains, two battalions up",
+  "assaultRow": "Battalion, night attack, two companies up",
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "The En's salient projects toward us (an enclave for us, MW s9 para 2 a p 124). Its approaches are few, obvious and strongly held, so frontal attacks astride them are very costly: take the tactically important features from the flanks or rear (para 4 a p 127) and pull his reserves forward ahead of its base (para 4 b). Laid on MW Figure 4 (p 131): the En fixed from the front while his base is attacked by envelopment combined with infiltration (para 5 a p 128); if the shoulders cannot be assailed, penetrate a shoulder with infiltration instead (para 5 b). The Left Bn makes the main attack onto the base at the L shoulder from the left flank, the Right Bn the secondary attack onto the R shoulder, the third Bn less two Coys fixes the arch, its A Coy with the Bde's commando Pls infiltrates to the base to block his reinforcement and withdrawal (para 10 p 132), its C Coy the Bde reserve on the main axis (a central reserve is of little value, MW s7 para 9 p 82); each assaulting Bn keeps its own reserve Coy. The force assembles at more than one place (para 8 b, d p 130). Deception on a broad front with the opening artillery weight away from the points of attack (para 12 pp 132-133); the artillery split across the prongs and the DAA in two (paras 13-14 p 133). Each prong is a Bn attack (no brigaded FUP: the prongs are wide apart on exterior lines, para 11 p 132); the frontage row is the plains Bde row, which mountains narrow (GSP 1947 s19 para 12 e p 87).",
+  "slots": [
+    {
+      "role": "obj",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ A (L shoulder)",
+      "order": 1,
+      "shape": {
+        "rect": {
+          "acrossM": -3000,
+          "backM": -4500,
+          "wM": 1500,
+          "hM": 1000
+        }
+      }
+    },
+    {
+      "role": "objTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "",
+      "order": 1,
+      "shape": {
+        "at": [
+          -3000,
+          -4500
+        ]
+      }
+    },
+    {
+      "role": "assy",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy (Left Bn)",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": -6500,
+          "backM": 1500,
+          "wM": 1500,
+          "hM": 1000
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ],
+        "prefer": [
+          "roadAccess"
+        ]
+      }
+    },
+    {
+      "role": "fup",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -5300,
+            -4100
+          ],
+          [
+            -4900,
+            -4600
+          ]
+        ]
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "sl",
+      "kind": "line",
+      "sym": "25140303",
+      "label": "SL",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -4800,
+            -4100
+          ],
+          [
+            -4800,
+            -4800
+          ]
+        ]
+      },
+      "terrainRule": {
+        "onGround": "linearFeature"
+      }
+    },
+    {
+      "role": "axis",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -4800,
+            -4450
+          ],
+          [
+            -3800,
+            -4500
+          ]
+        ],
+        "widthM": 450
+      }
+    },
+    {
+      "role": "bnMain",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Left Bn (Main Attk)",
+      "echelon": "16",
+      "order": 3,
+      "shape": {
+        "at": [
+          -5400,
+          -4350
+        ]
+      }
+    },
+    {
+      "role": "objS",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ B (R shoulder)",
+      "order": 1,
+      "shape": {
+        "rect": {
+          "acrossM": 3000,
+          "backM": -4500,
+          "wM": 1500,
+          "hM": 1000
+        }
+      }
+    },
+    {
+      "role": "assyS",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy (Right Bn)",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 6500,
+          "backM": 1500,
+          "wM": 1500,
+          "hM": 1000
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ],
+        "prefer": [
+          "roadAccess"
+        ]
+      }
+    },
+    {
+      "role": "fupS",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            4900,
+            -4600
+          ],
+          [
+            5300,
+            -4100
+          ]
+        ]
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "axisS",
+      "kind": "area",
+      "sym": "25151404",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            4800,
+            -4450
+          ],
+          [
+            3800,
+            -4500
+          ]
+        ],
+        "widthM": 450
+      }
+    },
+    {
+      "role": "bnSec",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Right Bn (Sp Attk)",
+      "echelon": "16",
+      "order": 3,
+      "shape": {
+        "at": [
+          5400,
+          -4350
+        ]
+      }
+    },
+    {
+      "role": "fix",
+      "kind": "line",
+      "sym": "25341100",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            0,
+            -200
+          ],
+          [
+            0,
+            -1300
+          ]
+        ]
+      }
+    },
+    {
+      "role": "bnFix",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Depth Bn less A, C Coys (fixes the arch)",
+      "echelon": "16",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          300
+        ]
+      }
+    },
+    {
+      "role": "assyF",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy (Depth Bn)",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": 2000,
+          "wM": 1500,
+          "hM": 1000
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ],
+        "prefer": [
+          "roadAccess"
+        ]
+      }
+    },
+    {
+      "role": "infilLane",
+      "kind": "line",
+      "sym": "25140800",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "pts": [
+          [
+            -4300,
+            -2500
+          ],
+          [
+            -1600,
+            -3800
+          ],
+          [
+            -300,
+            -5700
+          ]
+        ]
+      }
+    },
+    {
+      "role": "infil",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "A Coy (Depth Bn) + Cdo Pls: infiltrate, block the base",
+      "echelon": "15",
+      "order": 4,
+      "shape": {
+        "at": [
+          0,
+          -6000
+        ]
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "C Coy (Depth Bn): Bde Res, main axis",
+      "echelon": "15",
+      "order": 4,
+      "shape": {
+        "at": [
+          -5600,
+          -3400
+        ]
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bde HQ",
+      "order": 4,
+      "shape": {
+        "at": [
+          -2500,
+          1800
+        ]
+      }
+    },
+    {
+      "role": "loe",
+      "kind": "line",
+      "sym": "25140900",
+      "label": "LOE",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            -4500,
+            -5600
+          ],
+          [
+            4500,
+            -5600
+          ]
+        ]
+      }
+    }
+  ],
+  "checks": [
+    "fupDistance",
+    "assaultFrontage",
+    "reserveReach",
+    "approaches"
+  ]
+}

@@ -160,7 +160,7 @@ check('attack: no trigger table (defence only)', at.whatIf.triggers.length === 0
   const mFlat = W.enemyMinutesTo(f0, doc, path, 100, T0, infE, 'mountain'), mUp = W.enemyMinutesTo(f0, doc, path, 100, T0, infE, 'mountain', { g: rising });
   check('Mountains: his infantry pay 30-60 min per 300 m of climb (MW p 81): 3 km at 3 km/h and 300 m up = 60 + 45 min', mFlat === 60 && mUp === 105, `${mFlat} without the climb, ${mUp} with it`);
   check('...his vehicles do not (they keep to their rates, as the own mounted moves do)', W.enemyMinutesTo(f0, doc, path, 100, T0, mechE, 'mountain', { g: rising }) === W.enemyMinutesTo(f0, doc, path, 100, T0, mechE, 'mountain'));
-  check('...nor his infantry on plains ground (the climb figure is the mountains\')', W.enemyMinutesTo(f0, doc, path, 100, T0, infE, 'plains', { g: rising }) === 45);
+  check('...nor his infantry on plains ground (the climb figure is the mountains\')', W.enemyMinutesTo(f0, doc, path, 100, T0, infE, 'plains', { g: rising }) === 40, '3 km at the En 4.5 km/h of IC s113 p 664 = 40 min');
   const hill = (g) => ({ ...g, elev: (x, y) => 200 + Math.max(0, 3000 - y) * 0.1 });
   const up = (() => { const i = { ...inp(hill(ground())), terrain: 'mountain', enemy: infE }; return W.withMoves(F.fitLayout(i), i); })();
   check('...and the plan says so: the Moves row names it', up.whatIf.enemyClimbs && /En infantry pay the climb as Own troops do \(MW p 81\)/.test(up.res.rows.find((r) => r.name === 'Moves in time')?.reason ?? ''), up.res.rows.find((r) => r.name === 'Moves in time')?.reason);
@@ -189,7 +189,19 @@ check('attack: no trigger table (defence only)', at.whatIf.triggers.length === 0
   check('...one with a point of its own in NO-GO is not', onIt.route.blocked);
   // enemyMinutesTo itself: the pad adds his way back to the FUP at his rates
   const m0 = W.enemyMinutesTo(f0, doc, path, 100, T0, infE, 'plains'), m1 = W.enemyMinutesTo(f0, doc, path, 100, T0, infE, 'plains', { padM: 1000 });
-  check('enemyMinutesTo: 3 km at 4 km/h = 45 min; 1 km of pad adds 15', m0 === 45 && m1 === 60, `${m0}, ${m1}`);
+  // IC review (27 Nov 2026): En infantry in the plains at the En's own 4.5 km/h by day (IC s113 para 20 c (1) p 664), faster
+  // than IPB p 18's 4 (it drives, safety first); the desert keeps IBB's 3
+  check('enemyMinutesTo: 3 km at the En 4.5 km/h (IC s113 p 664) = 40 min; 1 km of pad adds 13', m0 === 40 && m1 === 53, `${m0}, ${m1}`);
+  check('...IPB 4 km/h told beside it; in the desert the ground 3 km/h stands (the IC figure is for the plains); vehicles at IPB 24', /IPB p 18 4 km\/h beside/.test(W.enemyRate(doc, 'inf', 'plains').goSrc) && W.enemyRate(doc, 'inf', 'desert').go === 3 && W.enemyRate(doc, 'mech', 'plains').go === 24);
+  // IC16: from the En FUP on, 2 min per 100 m drives (the fastest IC gives); 4 against a well-prepared defence, timed beside
+  const fast = W.enemyMinutesTo(f0, doc, path, 100, T0, infE, 'plains', { fupAtM: 2000 }), prep = W.enemyMinutesTo(f0, doc, path, 100, T0, infE, 'plains', { fupAtM: 2000, assaultMin: 4 });
+  check('IC16: 2 km at 4.5 km/h then 1 km at 2 min per 100 m = 47 min; at 4 min per 100 m (prepared defence, IC s114 para 35 k p 684) = 67', fast === 47 && prep === 67, `${fast}, ${prep}`);
+  // IC17: the En quick attack by own drills (MIB p 89) drives; IC s113 para 20 b (3) p 664 (a Foxland Bn, 2-3 h) beside
+  const qa = W.quickAttackRow({ enemyToFdlMin: 40 }, { echelon: '16', type: 'mech', source: 'default' }, doc);
+  check('IC17: the En Bn quick attack 60-100 min (MIB p 89) drives; the Foxland 2-3 h told beside (IC s113 para 20 b (3) p 664), its H 160-220 min', /60-100 min/.test(qa?.reason ?? '') && /IC s113 para 20 b \(3\) p 664/.test(qa?.reason ?? '') && /H about 160-220 min/.test(qa?.reason ?? '') && !/IC s113/.test(W.quickAttackRow({ enemyToFdlMin: 40 }, { echelon: '15', type: 'inf', source: 'user' }, doc)?.reason ?? ''), qa?.reason);
+  const plainInf = (() => { const i = { ...inp(ground()), terrain: 'plains', enemy: infE }; return W.withMoves(F.fitLayout(i), i); })();
+  const pRow = plainInf.res.rows.find((r) => r.name === 'Moves in time');
+  check('IC16: En infantry on the plains: the FDL time at the prepared-defence pace is timed beside (longer), and any Why names 2 min as the hasty-defence pace, 4 against a well-prepared one', plainInf.whatIf.enemyToFdlPreparedMin > plainInf.whatIf.enemyToFdlMin && (!pRow?.detail?.why || (/hastily prepared defence/.test(pRow.detail.why) && /no faster than 100 m in 4 min/.test(pRow.detail.why) && !/in a deliberate attack\)/.test(pRow.detail.why))), `${plainInf.whatIf.enemyToFdlMin} / ${plainInf.whatIf.enemyToFdlPreparedMin} min; ${pRow?.detail?.why ?? pRow?.reason}`);
 }
 
 console.log(`\n${n} checks, ${fails} failed`);

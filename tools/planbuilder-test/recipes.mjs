@@ -71,7 +71,9 @@ check('PlanDoctrine: every book reference was found on its page (tools/doctrine-
 const undecided = figs.filter(([, f]) => f.basis === 'E' && !f.decided).map(([p]) => p);
 check('PlanDoctrine: no figure is left an open proposal (each E records its decision and search)', undecided.length === 0, undecided.join(', '));
 check('PlanDoctrine: bases are the codes the file declares', figs.every(([, f]) => f.basis in doc.plan.basisCodes), [...new Set(figs.filter(([, f]) => !(f.basis in doc.plan.basisCodes)).map(([, f]) => f.basis))].join(', '));
-check('PlanDoctrine: own figures do not rest on the Foxland (enemy) rows of IC s113-114 unless the figure is the enemy\'s or says so', !figs.some(([p, f]) => /IC s113/.test(f.src ?? '') && !/Foxland|enemy|his |\bEn\b/i.test(f.src ?? '') && !p.startsWith('enemy.')), figs.filter(([p, f]) => /IC s113/.test(f.src ?? '') && !/Foxland|enemy|his |\bEn\b/i.test(f.src ?? '') && !p.startsWith('enemy.')).map(([p]) => p).join(', '));
+// IC s113 and s114 are both Foxland (the En): s114 caught too (IC_Review IC1, IC18: the 400 m row and the 4 min pace)
+const FOX = /IC s11[34]/;
+check('PlanDoctrine: own figures do not rest on the Foxland (enemy) rows of IC s113-114 unless the figure is the enemy\'s or says so', !figs.some(([p, f]) => FOX.test(f.src ?? '') && !/Foxland|enemy|his |\bEn\b/i.test(f.src ?? '') && !p.startsWith('enemy.')), figs.filter(([p, f]) => FOX.test(f.src ?? '') && !/Foxland|enemy|his |\bEn\b/i.test(f.src ?? '') && !p.startsWith('enemy.')).map(([p]) => p).join(', '));
 for (const k of ['frontage', 'fieldOfFire', 'standoffRows']) {
   const from = doc.plan[k]?.from?.replace(/^OcokaDoctrine\./, '');
   check(`PlanDoctrine: ${k} points at OcokaDoctrine.${from}`, !!from && doc.ocoka[from] != null);
@@ -97,6 +99,26 @@ for (const f of files) {
   const fam = index.families.find((x) => x.recipes.includes(r.id));
   check(`${r.id}: family / task / echelon / unit agree with index.json`, !!fam && fam.id === r.family && fam.task === r.task && fam.echelon === r.echelon && (fam.unit === r.unit || (r.forCoys != null && !!r.unit)));
 }
+// own recipes never lay out on a Foxland (En) row: the frontage rows they name (frontageRow, assaultRow, subRow,
+// depthRow) must not rest on IC s113 / s114 unless the row is the En's, and a note citing IC s113 / s114 says it is the En's
+const foxlandIn = (r) => {
+  const out = [];
+  for (const k of ['frontageRow', 'assaultRow', 'subRow', 'depthRow']) {
+    const row = r[k] ? (doc.ocoka.frontage?.rows ?? []).find((x) => x.unit === r[k]) : null;
+    if (row && FOX.test(row.src ?? '') && !/^En/.test(row.unit) && !/^En/.test(r.name ?? '')) out.push(`${k} "${r[k]}" is a Foxland row (${row.src})`);
+  }
+  for (const part of String(r.note ?? '').split(/[;.]s/)) if (FOX.test(part) && !/Foxland|enemy|En/i.test(part)) out.push(`note cites ${part.match(FOX)[0]} as own: "${part.slice(0, 80)}"`);
+  return out;
+};
+for (const r of recipes) { const fx = foxlandIn(r); check(`${r.id}: no Foxland (IC s113-114) row or figure taken as own`, !fx.length, fx.join('; ')); }
+{
+  const fox = structuredClone(recipes.find((r) => r.id === 'bn-attk-frontal'));
+  fox.frontageRow = 'Battalion, set-piece attack in plains';
+  fox.note = 'the assault 400 m wide (IC s113 set-piece row)';
+  check('catches: an own recipe on the Foxland set-piece row (IC s113) and a note citing it as own', foxlandIn(fox).length === 2, foxlandIn(fox).join('; '));
+  fox.frontageRow = null; fox.note = 'the assault pace 100 m in 4 min (IC s114 para 35 k p 684)';
+  check('catches: a note citing IC s114 as own', foxlandIn(fox).length === 1, foxlandIn(fox).join('; '));
+}
 const famIssues = R.validateFamilies(recipes);
 check('families agree on task and echelon, no layout twice', !famIssues.length, famIssues.map((i) => i.msg).join('; '));
 
@@ -110,7 +132,10 @@ for (const r of recipes) for (const s of r.slots) {
     // three Pl localities of 600 m 300 m apart, 500 m deep (Annex U App 7 p 482)
     const obstacle = (R.isCanalLayout(r.layout) || r.layout === 'ditch') && s.kind === 'fwd';
     const extended = s.pls === 'three-up';
-    if (obstacle) check(`${r.id} ${s.role}: Coy on the obstacle, narrower than 1500 m (Annex V)`, !!z && z.wM <= 1500 && z.wM >= 900 && z.hM === 700, JSON.stringify(z));
+    // a BUA locality is 'of a limited size' (IC s52 para 1 c p 203): bua.locality (E), not the open-ground Coy posn
+    const buaLoc = r.layout === 'bua' && r.task === 'defence';
+    if (buaLoc) check(`${r.id} ${s.role}: Coy locality in a BUA, bua.locality 400 x 300 m (IC s52 para 1 c p 203: limited size)`, !!z && z.wM === 400 && z.hM === 300, JSON.stringify(z));
+    else if (obstacle) check(`${r.id} ${s.role}: Coy on the obstacle, narrower than 1500 m (Annex V)`, !!z && z.wM <= 1500 && z.wM >= 900 && z.hM === 700, JSON.stringify(z));
     else if (extended) check(`${r.id} ${s.role}: Coy of three Pls up, 2400 x 500 m (Annex U App 7)`, !!z && z.wM === 2400 && z.hM === 500, JSON.stringify(z));
     else check(`${r.id} ${s.role}: Coy posn 1500 x 700 m`, !!z && (turned ? z.hM === 1500 && z.wM === 700 : z.wM === 1500 && z.hM === 700), JSON.stringify(z));
   }

@@ -82,7 +82,7 @@ const O = centre(it(base, 'obj').pts), F0 = centre(it(base, 'fup').pts);
   const g = { ...flatG, cls: (x, y) => (Math.abs(L({ x, y }).y - (nearEdge - 500)) < 25 ? 34 : 2) };
   const fl = F.fitLayout(inpOf(front, g));
   const sc = centre(it(fl.raw, 'sl').pts);
-  check('SL finder: not on a feature inside the last fire lift (the SL at least 600 m out: IC s66 p305 + 150 m)', nearEdge - sc.y >= 600 && row(fl.res.rows, 'SL finder')?.st === 'warn', `SL ${Math.round(nearEdge - sc.y)} m from the Obj`);
+  check('SL finder: not on a feature inside the last fire lift (the SL at least 600 m out: IC s66 para 7 e (1) pp 304-305 + 150 m)', nearEdge - sc.y >= 600 && row(fl.res.rows, 'SL finder')?.st === 'warn', `SL ${Math.round(nearEdge - sc.y)} m from the Obj`);
 }
 
 // ── the BOF siter ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -128,12 +128,22 @@ const O = centre(it(base, 'obj').pts), F0 = centre(it(base, 'fup').pts);
   check('H-hour sum: leave the Assy Area before H; H = crossing the SL', hd.leaveBeforeH > 30 && hd.steps.find((s) => s.label.startsWith('Assault')).at === 0, A.hRelText(-hd.leaveBeforeH));
   check('...by night the approach is slower (IBB p 18: 4 against 3 km/h)', hn.leaveBeforeH > hd.leaveBeforeH, `${hn.leaveBeforeH} against ${hd.leaveBeforeH} min`);
   const lifts = hd.lifts.map((l) => l.at);
-  check('...the fire lifts in order as the assault closes (450, 360, 275, 180 m: IC s66 p305)', lifts.every((t, i) => !i || t >= lifts[i - 1]) && hd.lifts[0].rM === 450 && hd.lifts[3].rM === 180, hd.lifts.map((l) => `${l.rM} m ${A.hRelText(l.at)}`).join(', '));
+  check('...the fire lifts in order as the assault closes (450, 360, 275, 180 m: IC s66 para 7 e (1) pp 304-305)', lifts.every((t, i) => !i || t >= lifts[i - 1]) && hd.lifts[0].rM === 450 && hd.lifts[3].rM === 180, hd.lifts.map((l) => `${l.rM} m ${A.hRelText(l.at)}`).join(', '));
   check('...on the Obj after the last lift, the LOE after that', hd.objAt >= lifts[3] && hd.loeAt > hd.objAt, `Obj ${A.hRelText(hd.objAt)}, LOE ${A.hRelText(hd.loeAt)}`);
   const slowG = { ...flatG, cls: () => 15 };   // rocky ground: SLOW-GO on foot
   const hs = F.fitLayout(inpOf(front, slowG)).fit.attack.hSum;
   check('...SLOW-GO on the axis slows the assault (the ground sets the pace)', hs.objAt > hd.objAt && hs.paceMinPer100m > hd.paceMinPer100m, `${hs.paceMinPer100m} against ${hd.paceMinPer100m} min a 100 m`);
   check('...an H-hour row in the checks', /fire lifts/.test(row(day.res.rows, 'H-hour sum')?.reason ?? ''));
+  // IC18: the own assault pace, 100 m in 3 min (Understanding Aprc p 20), not the Foxland 4 min (IC s114 p 684)
+  check('...the assault at the own pace, 100 m in 3 min on GO (Understanding Aprc p 20)', hd.paceMinPer100m === 3, `${hd.paceMinPer100m} min a 100 m`);
+  // IC4: the fighting on the last Obj and the reorganisation; by night H against first light (IC s68 para 13 b p 334)
+  check('...the op done and reorganised after the Obj: fighting 90 min (Ph 1) and the final reorg 40 min (Understanding Aprc pp 21, 24)', hd.fightMin === 90 && hd.reorgMin === 40 && hd.doneAt >= hd.objAt + 130, `fight ${hd.fightMin}, reorg ${hd.reorgMin}, done ${A.hRelText(hd.doneAt)}`);
+  const rd = row(day.res.rows, 'H-hour sum'), rn = row(night.res.rows, 'H-hour sum');
+  check('...by day the row passes and says when the op is done', rd?.st === 'pass' && /done and reorganised H\+/.test(rd.reason), rd?.reason);
+  check('...by night it is not a pass: the latest H against first light, set H (IC s68 para 13 b p 334)', rn?.st === 'unchecked' && /no later than first light less/.test(rn.reason) && /IC s68 para 13 b p 334/.test(rn.reason), rn?.reason);
+  const long = A.hSumRow({ ...hn, leaveBeforeH: 9 * 60 }, doc);
+  check('...by night a march and attack longer than the night warns (IC s68 para 11 f p 331)', long.st === 'warn' && /more than a 10 h night/.test(long.reason) && !!long.detail?.fix?.length, long.reason);
+  check('...the Aprc still reads the row times (hSumFromText patterns kept)', /leave the Assy Area H-/.test(rn.reason) && /on the Obj H\+/.test(rn.reason));
   const geo = A.attackTimes(S.solveRecipe(front, ctx, {}), null, null, doc, 'plains', false, null);
   check('...without the ground: straight lines at the march rate', geo && geo.leaveBeforeH > 0 && geo.lifts.length === 4);
 }
@@ -230,9 +240,26 @@ const O = centre(it(base, 'obj').pts), F0 = centre(it(base, 'fup').pts);
 
 // ── a Coy attack: the Bn layout's FUP laid farther out than 1.2 km from a Pl locality is pulled in to the band ──────
 {
-  const fl = F.fitLayout(inpOf(rec('coy-attk-right-flank'), flatG));
+  // IC3: the 1000-1200 m band is a night figure (IC s68 para 12 e (1) p 333; IBB S44 para 5 h p 201): pulled in by night only
+  const fl = F.fitLayout(inpOf(rec('coy-attk-right-flank'), flatG, { night: true, nmRules: nm }));
   const fu = row(fl.res.rows, 'FUP from the Obj'), fd = row(fl.res.rows, 'FUP finder'), af = row(fl.res.rows, 'Assault frontage');
-  check('Coy Attk: the FUP pulled in to 1.0-1.2 km off the Pl Obj (IBB p201), the finder names the pull', fu?.st === 'pass' && /in to 1\.0 km-1\.2 km off the Obj/.test(fd?.reason ?? ''), `${fu?.reason} | ${fd?.reason}`);
+  check('Coy Attk by night: the FUP pulled in to 1.0-1.2 km off the Pl Obj (IC s68 para 12 e (1) p 333), the finder names the pull', fu?.st === 'pass' && /by night/.test(fu.reason) && /in to 1\.0 km-1\.2 km off the Obj/.test(fd?.reason ?? ''), `${fu?.reason} | ${fd?.reason}`);
+  const fday = F.fitLayout(inpOf(rec('coy-attk-right-flank'), flatG));
+  const fuD = row(fday.res.rows, 'FUP from the Obj'), fdD = row(fday.res.rows, 'FUP finder');
+  check('Coy Attk by day: no band (a covered FUP, IC s66 para 8 c pp 307-308): not pulled in, the row says so', fuD?.st === 'pass' && /by day no distance is printed/.test(fuD.reason) && !/in to 1\.0 km-1\.2 km/.test(fdD?.reason ?? '') && (fuD.m ?? 0) > 1250, `${fuD?.reason} | ${fdD?.reason}`);
+  // IC2: by night the SL at the FUP forward edge, never nearer the Obj than the night band
+  const slN = row(fl.res.rows, 'SL finder'), slD = row(fday.res.rows, 'SL finder');
+  // along the axis (FUP centre to the Obj centre): the SL at the FUP's forward edge, its distance to the Obj's edge on that line
+  const oC = centre(it(fl.raw, 'obj').pts), fupC = it(fl.raw, 'fup').pts, fC = centre(fupC), slC = centre(it(fl.raw, 'sl').pts);
+  const uA = { x: (oC.x - fC.x) / dist(oC, fC), y: (oC.y - fC.y) / dist(oC, fC) };
+  const along = (p) => (p.x - fC.x) * uA.x + (p.y - fC.y) * uA.y;
+  const fupFwd = Math.max(...fupC.map(along));
+  const ob = it(fl.raw, 'obj').pts, ox0 = Math.min(...ob.map((p) => p.x)), ox1 = Math.max(...ob.map((p) => p.x)), oy0 = Math.min(...ob.map((p) => p.y)), oy1 = Math.max(...ob.map((p) => p.y));
+  const inObj = (t) => { const p = { x: fC.x + uA.x * t, y: fC.y + uA.y * t }; return p.x >= ox0 && p.x <= ox1 && p.y >= oy0 && p.y <= oy1; };
+  let tEdge = 0; while (!inObj(tEdge) && tEdge < 5000) tEdge += 5;
+  const slGap = tEdge - along(slC);
+  check('SL by night: at the FUP forward edge (IC s68 para 13 a p 334), 1000 m or more from the Obj along the axis (para 12 e (1) p 333)', slN?.st === 'pass' && /by night at the FUP forward edge/.test(slN.reason) && Math.abs(along(slC) - fupFwd) < 30 && slGap >= 990, `SL ${Math.round(slGap)} m from the Obj, ${Math.round(along(slC) - fupFwd)} m off the FUP edge; ${slN?.reason}`);
+  check('SL by day: walked forward (as close to the En as possible, IC s66 para 8 d p 308)', /^by day|no linear feature/.test(slD?.reason ?? ''), slD?.reason);
   check('...the assault frontage judged on the Company row (IBB S47 para 17 a p 248: 250 m by night), not the Bn one', /Company, night attack: IBB S47 para 17 a p 248/.test(af?.reason ?? ''), af?.reason);
   const bde = F.fitLayout(inpOf(rec('bde-attk-two-up'), flatG));
   check('Bde Attk: the assault frontage judged on the Brigade row (GSP p 86)', /Brigade, night attack in plains, two battalions up/.test(row(bde.res.rows, 'Assault frontage')?.reason ?? ''), row(bde.res.rows, 'Assault frontage')?.reason);

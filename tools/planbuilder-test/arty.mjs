@@ -180,5 +180,26 @@ check('the ground reads the Gun Position going (rules.json profiles.gun), not th
   check('...the En FUP 15 km out: past the Fd Regts\' reach, Arty groups warns with a fix', row(far, 'Arty groups')?.st === 'warn' && row(far, 'Arty groups').detail?.fix?.length === 2, row(far, 'Arty groups')?.reason);
 }
 
+// ── mountains: towed guns by section (MW s22 para 5 b p 240, para 6 a (1) p 244; GunDoctrine mountains.bySection) ──────
+{
+  const light = GR.mountains.lightIds;
+  check('by section on the plan: the towed Fd Regt yes; the SP Med Regt no; the Mtn Regt by its gun (Pack How = light, MW p 241)', A.goesBySectionOnPlan(fd, light) && !A.goesBySectionOnPlan(T_('arty-regt-med-sp'), light) && A.goesBySectionOnPlan(T_('arty-regt-mtn'), light) === !light.includes(T_('arty-regt-mtn').weapon.id), T_('arty-regt-mtn').weapon.id);
+  const gaRow = { name: 'Gun area', st: 'fail', reason: '40 % of it is ground a gun position may take' };
+  const m0 = A.mountainGunRows([gaRow], aDef, 'mountain', light, null)[0];
+  check('mountains, towed, before G: the conventional area\'s room test set aside (not checked, never a fail), MW pp 240, 244 named, G offered', m0.st === 'unchecked' && /MW s22 para 5 b p 240, para 6 a \(1\) p 244/.test(m0.reason) && /G sites the Bty by sections/.test(m0.reason) && /40 % of it/.test(m0.reason), m0.reason);
+  const sitedRow = { name: 'Gun site', st: 'warn', reason: 'x' };
+  const m1 = A.mountainGunRows([gaRow], aDef, 'mountain', light, sitedRow)[0];
+  check('...after G: the Gun area row takes the sections\' verdict and points at Gun site, recce named', m1.st === 'warn' && /by sections \(G\)/.test(m1.reason) && /recce/.test(m1.reason));
+  check('...plains, or an SP gun in the mountains: the row as it was', A.mountainGunRows([gaRow], aDef, 'plains', light, null)[0] === gaRow && A.mountainGunRows([gaRow], A.artyOnPlan(T_('arty-regt-med-sp'), 'defence', ad), 'mountain', light, null)[0] === gaRow);
+  const res = S.solveRecipe(A.withArty(rec('bn-def-two-up'), doc, aBty), ctx, {});
+  const ring = (cx) => [{ x: cx - 100, y: -3000 }, { x: cx + 100, y: -3000 }, { x: cx + 100, y: -2900 }, { x: cx - 100, y: -2900 }];
+  const out = A.withGunSections(res, [{ role: 'gunArea', name: 'Fd Bty', rings: [ring(0), ring(600), ring(1200)] }]);
+  const ga = out.items.filter((i) => /^gunArea/.test(i.role));
+  check('withGunSections: three section outlines, Sec 1 on the gun area\'s own item, Sec 2 and 3 added with the same symbol', ga.length === 3 && ga[0].label === 'Fd Bty Sec 1' && ga[1].role === 'gunAreaS2' && ga[2].label === 'Fd Bty Sec 3' && ga.every((i) => i.key === ga[0].key) && new Set(ga.map((i) => i.id)).size === 3, ga.map((i) => `${i.role} ${i.label}`).join(' | '));
+  check('...the result passed in unchanged; no sections, the same result back', res.items.filter((i) => /^gunArea/.test(i.role)).length === 1 && A.withGunSections(res, []) === res);
+  const doc1 = S.toPlanDocument(out, (pid, ov, id, de) => ({ id, de }), (pid, ov, name, seq, syms) => ({ ov, syms }));
+  check('...Create on Map gets one PAA per section (the plan document)', doc1.doc.poObj.plnOrdrOverlay.flatMap((o) => o.syms).filter((x) => /Sec \d/.test(String(x.de.AMPLIFIER?.UNIQUE_DESIG ?? ''))).length === 3);
+}
+
 console.log(`\n${n} checks, ${fails} failed`);
 process.exit(fails ? 1 : 0);

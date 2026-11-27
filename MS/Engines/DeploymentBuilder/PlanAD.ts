@@ -14,7 +14,7 @@
  * No ArcGIS, no DOM, so Node can test it.
  */
 import type { DoctrineSet, Recipe } from './PlanRecipes';
-import { doctrineAt, footprints } from './PlanRecipes';
+import { SMALL_TASKS, doctrineAt, footprints } from './PlanRecipes';
 import type { Check, CheckState, XY } from './PlanSolve';
 import type { OrbatSet } from './PlanOrbat';
 
@@ -131,6 +131,8 @@ function centreOf(s: Recipe['slots'][number]): [number, number] | null {
 export function vpsOf(r: Recipe, doc: DoctrineSet, ground: string | null = null): { role: string; what: string; pri: number; x: number; y: number }[] {
   const fp = footprints(doc, r);
   const out: { role: string; what: string; pri: number; x: number; y: number }[] = [];
+  // an ambush, patrol or recce has no VP: its reserve (role res, IC s44 para 8 c p 149) is a party, not a Bn reserve
+  if (SMALL_TASKS.includes(r.task)) return out;
   for (const s of r.slots) {
     const v = vpOf(s.role, ground);
     if (!v) continue;
@@ -213,6 +215,27 @@ export function adRows(items: { role: string; pts: XY[] }[], recipe: Pick<Recipe
   const ranges = [...new Set(a.fus.flatMap((f) => f.weapons).map((w) => `${w.name} ${fmtM(w.effM)}`))].join(', ');
   const fix = st === 'pass' ? '' : `; more fire units (${a.unit === 'bty' ? 'a Regt, or a second Bty' : 'a second Regt'}) or a longer reach (RBS-70 Bolide 8 km, 57 mm 6 km: p 317)`;
   return [{ name: 'AD cover', st, reason: `${a.name} (${a.fus.length} fire units; ${ranges} slant), the FUs that engage ${fmtM(a.releaseM)} out: ${parts.join('; ')}; ${a.minFus} wanted over ${gk === 'desert' ? 'the reserve and the bridges (desert: reserves first, then HQs, then gun areas, DW p 63; crossing sites highest, DW p 64)' : gk === 'mountain' ? 'the bridges and gun areas; in the mountains the AD is concentrated on the defiles on the main axis, the gun areas and the logistic installations (MW p 247)' : 'the bridges and gun areas'}${fix}${a.assumedNote ? `; ${a.assumedNote}` : ''}. Clear arcs, the radar's cover and the early warning: on the ground` }];
+}
+
+/**
+ * AD on the defiles in the mountains (MW s22 para 7 p 247: the AD is concentrated on the defiles on the main axis, the gun
+ * areas and the logistic installations): each narrow on the attack's route (the avenue finder's chokes, plan metres)
+ * against the FUs that engage `releaseM` beyond it. Warns when a defile has none. Empty with no AD or no defile.
+ */
+export function adDefileRows(items: { role: string; pts: XY[] }[], recipe: Pick<Recipe, 'ad'>, defiles: { at: XY; widthM: number; label?: string }[]): Check[] {
+  const a = recipe.ad as AdOnPlan | undefined;
+  if (!a || !defiles.length) return [];
+  const fus = a.fus.map((f, i) => ({ f, it: items.find((x) => x.role === `ad${i + 1}` && x.pts.length) })).filter((x) => !!x.it).map((x) => ({ f: x.f, c: centre(x.it!.pts) }));
+  if (!fus.length) return [];
+  const read = defiles.map((d) => ({ d, n: fus.filter((u) => u.f.effM - Math.hypot(u.c.x - d.at.x, u.c.y - d.at.y) >= a.releaseM).length }));
+  const bare = read.filter((r) => !r.n);
+  const parts = read.map((r) => `${r.d.label ? `${r.d.label}, ` : ''}${fmtM(r.d.widthM)} wide: ${r.n} FU${r.n === 1 ? '' : 's'}`);
+  const rule = 'in the mountains the AD is concentrated on the defiles on the main axis, the gun areas and the logistic installations (MW s22 para 7 p 247)';
+  return [bare.length ? {
+    name: 'AD on defiles', st: 'warn',
+    reason: `${read.length} defile${read.length === 1 ? '' : 's'} on the route to the FUP (${parts.join('; ')}), ${bare.length} with no FU engaging ${fmtM(a.releaseM)} beyond it: ${rule}`,
+    detail: { head: `${bare.length} defile${bare.length === 1 ? '' : 's'} on the axis without AD`, why: 'Air interdiction in the mountains goes for the defiles (MW p 93) and the bridges, with land slides set off to block the roads (p 257); a column held in a defile under air attack blocks the whole axis.', fix: ['Site a fire unit on a dominating feature over each defile (MW p 247)', 'Move through the defiles by night', 'More fire units (a second Bty / Regt)'] },
+  } : { name: 'AD on defiles', st: 'pass', reason: `${parts.join('; ')}: each defile on the route to the FUP under at least one FU; ${rule}` }];
 }
 
 /**

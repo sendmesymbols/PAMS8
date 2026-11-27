@@ -175,8 +175,12 @@ export interface LzWind {
   text: string;
 }
 
-/** Landing and taking off into the wind, read on the LZ's approaches clear by 10 : 1 (outward bearings, 45° steps). */
-export function lzWind(approaches: number[], w: WindReading | null, R: WindRules): LzWind | null {
+/**
+ * Landing and taking off into the wind, read on the LZ's approaches clear by 10 : 1 (outward bearings, 45° steps). On
+ * mountain ground (`mountain`) the line adds MW p 255: helicopters hover and take off into the wind with less power,
+ * hence more payload (the thin air of the heights takes payload away).
+ */
+export function lzWind(approaches: number[], w: WindReading | null, R: WindRules, mountain = false): LzWind | null {
   if (!w) return null;
   const h = w.all;
   if (w.variable || h.fromDeg === null) return { runIn: null, leave: null, fit: 'variable', text: `Wind ${windWords(h, R)}: keep two opposite approaches clear` };
@@ -193,7 +197,8 @@ export function lzWind(approaches: number[], w: WindReading | null, R: WindRules
     out: `run in from ${compass8(runIn)} not clear by 10 : 1; leave to ${compass8(leave)} clear: land across the wind or choose another LZ`,
     neither: `neither the run-in from ${compass8(runIn)} nor the way out to ${compass8(leave)} is clear: land across the wind or choose another LZ`,
   }[fit];
-  return { runIn, leave, fit, text: `${lead}: ${t}${w.turns ? ` (it turns: by night ${windWords(w.night, R)})` : ''}` };
+  const mtn = mountain && fit === 'both' ? `; in mountains take off into the wind (to ${compass8(leave)}): less power, more payload (MW p 255)` : mountain ? '; in mountains a take-off into the wind gives more payload (MW p 255): leave room to turn into it' : '';
+  return { runIn, leave, fit, text: `${lead}: ${t}${w.turns ? ` (it turns: by night ${windWords(w.night, R)})` : ''}${mtn}` };
 }
 
 /** Jumpers drift downwind: the release point lies upwind of the DZ. */

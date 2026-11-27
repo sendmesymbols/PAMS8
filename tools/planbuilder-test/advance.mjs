@@ -65,33 +65,42 @@ check('the fit lays the plan where it was clicked, the SP at the anchor; mode te
 const f5 = F.fitLayout(inp(mk(() => open)));
 check('PlanFit.fitLayout hands an advance to fitAdvance', !!f5 && !!row(f5.res.rows, 'Going on the axis'));
 
-// ── the axis routed, its crossings and report lines ─────────────────────────────────────────────────────────────────
+// ── the axis routed, its crossings, bounds and report lines ─────────────────────────────────────────────────────────────────
 {
   const CANAL = 20, BR60 = 39, BR_LIGHT = 41;
   // a canal 60 Mercator m wide 2000 m ahead, a bridge across it on the axis (40 m wide)
   const bridged = (br) => (x, y) => (y > A.y + 2000 && y < A.y + 2060 ? (Math.abs(x - A.x) < 20 ? br : CANAL) : open);
   const b60 = V.fitAdvance(inp(mk(bridged(BR60))));
   check('a canal crossed on a Cl 60+ bridge: Crossings on the axis passes, the canal named 1.7 km ahead of the SP', row(b60.res.rows, 'Crossings on the axis')?.st === 'pass' && /class 20 1\.7 km ahead of the SP: a Cl 60\+ bridge/.test(row(b60.res.rows, 'Crossings on the axis').reason), row(b60.res.rows, 'Crossings on the axis')?.reason);
-  const rl = b60.raw.items.find((i) => i.role === 'rl1');
-  check('...RL 1 laid on it across the axis (1.5 km long), labelled for the water; RL 2-4 not laid', !!rl && /^RL 1 /.test(rl.label) && Math.abs(Math.hypot(rl.pts[1].x - rl.pts[0].x, rl.pts[1].y - rl.pts[0].y) - 1500) < 2 && !b60.raw.items.some((i) => /^rl[234]$/.test(i.role)), rl ? `${rl.label} ${rl.pts.map((q) => `${Math.round(q.x)},${Math.round(q.y)}`).join(' ')}` : 'none');
-  check('...Report lines passes, the bound SP to RL 1 1.7 km', row(b60.res.rows, 'Report lines')?.st === 'pass' && /Bounds: SP to RL 1 1\.7 km/.test(row(b60.res.rows, 'Report lines').reason), row(b60.res.rows, 'Report lines')?.reason);
+  const rl = b60.raw.items.find((i) => i.role === 'bd1');
+  check('...Bd 1 laid on it across the axis (1.5 km long), labelled for the water (a bound: a tactical feature, IC s58 para 4 p 242); Bd 2-4 and no report line laid', !!rl && /^Bd 1 /.test(rl.label) && Math.abs(Math.hypot(rl.pts[1].x - rl.pts[0].x, rl.pts[1].y - rl.pts[0].y) - 1500) < 2 && !b60.raw.items.some((i) => /^(bd[234]|rl\d)$/.test(i.role)), rl ? `${rl.label} ${rl.pts.map((q) => `${Math.round(q.x)},${Math.round(q.y)}`).join(' ')}` : 'none');
+  check('...Bounds passes, SP to Bd 1 1.7 km, the troops halt there (IC s58 para 4 p 242); Report lines not checked (no lateral road)', row(b60.res.rows, 'Bounds')?.st === 'pass' && /Bounds: SP to Bd 1 1\.7 km/.test(row(b60.res.rows, 'Bounds').reason) && /IC s58 para 4 p 242/.test(row(b60.res.rows, 'Bounds').reason) && row(b60.res.rows, 'Report lines')?.st === 'unchecked', row(b60.res.rows, 'Bounds')?.reason);
   const bl = V.fitAdvance(inp(mk(bridged(BR_LIGHT))));
   check('...the bridge below Cl 50: Crossings on the axis fails', row(bl.res.rows, 'Crossings on the axis')?.st === 'fail' && /below Cl 50/.test(row(bl.res.rows, 'Crossings on the axis').reason));
   const nb = V.fitAdvance(inp(mk((x, y) => (y > A.y + 2000 && y < A.y + 2060 ? CANAL : open))));
   check('...no bridge on the axis: fail, the way to fix it said', row(nb.res.rows, 'Crossings on the axis')?.st === 'fail' && /no bridge on the axis/.test(row(nb.res.rows, 'Crossings on the axis').reason));
   const band = (y, y0) => y > A.y + y0 && y < A.y + y0 + 60;
   const two = V.fitAdvance(inp(mk((x, y) => (band(y, 2000) || band(y, 2400) || band(y, 4500) ? (Math.abs(x - A.x) < 20 ? BR60 : CANAL) : open))));
-  const rls = two.raw.items.filter((i) => /^rl\d$/.test(i.role));
-  check('three canals ahead, two of them 340 m apart: two report lines (1 km apart at least), the bounds between them', rls.length === 2 && /RL 1 to RL 2 [123]\.\d km/.test(row(two.res.rows, 'Report lines').reason), row(two.res.rows, 'Report lines')?.reason);
+  const rls = two.raw.items.filter((i) => /^bd\d$/.test(i.role));
+  check('three canals ahead, two of them 340 m apart: two bounds (1 km apart at least), the stretch between them', rls.length === 2 && /Bd 1 to Bd 2 [123]\.\d km/.test(row(two.res.rows, 'Bounds').reason), row(two.res.rows, 'Bounds')?.reason);
   const DIST = 21;
   const dc = V.fitAdvance(inp(mk((x, y) => (band(y, 2000) ? (Math.abs(x - A.x) < 20 ? BR60 : DIST) : band(y, 2400) ? (Math.abs(x - A.x) < 20 ? BR60 : CANAL) : open))));
-  check('a distributary then a canal 400 m on: one report line, on the canal (the bigger obstacle wins within the spacing)', dc.raw.items.filter((i) => /^rl\d$/.test(i.role)).length === 1 && /RL 1 \(class 20\)/.test(row(dc.res.rows, 'Report lines').reason), row(dc.res.rows, 'Report lines')?.reason.slice(0, 80));
+  check('a distributary then a canal 400 m on: one bound, on the canal (the bigger obstacle wins within the spacing)', dc.raw.items.filter((i) => /^bd\d$/.test(i.role)).length === 1 && /Bd 1 \(class 20\)/.test(row(dc.res.rows, 'Bounds').reason), row(dc.res.rows, 'Bounds')?.reason.slice(0, 80));
   // the same rank (permanent water, a canal): the wider on the axis wins (seen on the ground west of Lahore: a bridged
   // pond 700 m short of a wider canal took RL 1)
   const PERM = 4, wide = (y) => y > A.y + 2400 && y < A.y + 2560;
   const pw = V.fitAdvance(inp(mk((x, y) => (band(y, 2000) ? (Math.abs(x - A.x) < 20 ? BR60 : PERM) : wide(y) ? (Math.abs(x - A.x) < 20 ? BR60 : CANAL) : open))));
-  check('permanent water 60 m, then a canal 160 m wide 400 m on: one report line, on the wider canal', pw.raw.items.filter((i) => /^rl\d$/.test(i.role)).length === 1 && /RL 1 \(class 20\)/.test(row(pw.res.rows, 'Report lines').reason), row(pw.res.rows, 'Report lines')?.reason.slice(0, 80));
-  check('no water ahead: Report lines not checked, set by eye', row(f1.res.rows, 'Report lines')?.st === 'unchecked');
+  check('permanent water 60 m, then a canal 160 m wide 400 m on: one bound, on the wider canal', pw.raw.items.filter((i) => /^bd\d$/.test(i.role)).length === 1 && /Bd 1 \(class 20\)/.test(row(pw.res.rows, 'Bounds').reason), row(pw.res.rows, 'Bounds')?.reason.slice(0, 80));
+  check('no water ahead: Bounds not checked, set by eye; no lateral road: Report lines not checked', row(f1.res.rows, 'Bounds')?.st === 'unchecked' && row(f1.res.rows, 'Report lines')?.st === 'unchecked');
+  // report lines on the lateral roads and railways (IC s58 para 6 p 243: no tactical significance, report but do not halt)
+  const RAIL = 28, ROAD = 34;
+  const lat = V.fitAdvance(inp(mk((x, y) => (band(y, 2000) ? ROAD : band(y, 3500) ? RAIL : open))));
+  const latRl = lat.raw.items.filter((i) => /^rl\d$/.test(i.role));
+  check('a lateral road 1.7 km and a railway 3 km ahead: RL 1 road, RL 2 railway, no bound; Report lines passes citing IC s58 para 6 p 243', latRl.length === 2 && /^RL 1 road/.test(latRl[0].label) && /^RL 2 railway/.test(latRl[1].label) && !lat.raw.items.some((i) => /^bd\d$/.test(i.role)) && row(lat.res.rows, 'Report lines')?.st === 'pass' && /IC s58 para 6 p 243/.test(row(lat.res.rows, 'Report lines').reason) && row(lat.res.rows, 'Bounds')?.st === 'unchecked', `${latRl.map((i) => i.label).join(', ')} | ${row(lat.res.rows, 'Report lines')?.reason?.slice(0, 120)}`);
+  const along = V.fitAdvance(inp(mk((x) => (Math.abs(x - A.x) < 40 ? ROAD : open))));
+  check('...a road the axis runs along (not across): no report line on it', !along.raw.items.some((i) => /^rl\d$/.test(i.role)) && row(along.res.rows, 'Report lines')?.st === 'unchecked');
+  const latNi = V.fitAdvance({ ...inp(mk((x, y) => (band(y, 2000) ? (Math.abs(x - A.x) < 20 ? BR60 : CANAL) : open))), recipe: { ...rec, advance: { rlApartM: 1000, hAt: 'last' } } });
+  check('...by night: Bounds says bounds and report lines at shorter intervals (IC s64 para 6 g (3) p 281)', /shorter intervals \(IC s64 para 6 g \(3\) p 281/.test(row(latNi.res.rows, 'Bounds')?.reason ?? ''), row(latNi.res.rows, 'Bounds')?.reason?.slice(-200));
   check('no route reader: Axis route not checked, the straight line read; none of it on a road', row(f1.res.rows, 'Axis route')?.st === 'unchecked' && /straight line/.test(row(f1.res.rows, 'Axis route').reason));
   // a reader that routes: a dog-leg 1.5 km east between the two ends, a road along part of it
   const road = 34;
@@ -109,9 +118,9 @@ check('PlanFit.fitLayout hands an advance to fitAdvance', !!f5 && !!row(f5.res.r
   // rear leg is straight, and the row says so
   const half = V.fitAdvance(inp({ ...mk(() => open), avenues: (a, b) => (Math.hypot(b.x - A.x, b.y - A.y) < 200 ? [] : dog(1500)(a, b)) }));
   check('...the rear leg with no way, the forward leg routed: the row names the rear leg as the straight one', row(half.res.rows, 'Axis route')?.st === 'unchecked' && /no way for tracks found from the Main Body to the SP/.test(row(half.res.rows, 'Axis route').reason) && /that leg read on the straight line, the other along its way/.test(row(half.res.rows, 'Axis route').reason), row(half.res.rows, 'Axis route')?.reason?.slice(0, 200));
-  // a bridge whose water the bundle does not show beside it: still an obstacle crossed, a report line on it
+  // a bridge whose water the bundle does not show beside it: still an obstacle crossed, a bound on it
   const deck = V.fitAdvance(inp(mk((x, y) => (band(y, 2000) && Math.abs(x - A.x) < 300 ? BR60 : open))));
-  check('a bridge with no water read beside it: named water under a bridge, RL 1 on the bridge', /water under a bridge 1\.7 km ahead of the SP: a Cl 60\+ bridge/.test(row(deck.res.rows, 'Crossings on the axis')?.reason ?? '') && /RL 1 \(bridge\)/.test(row(deck.res.rows, 'Report lines')?.reason ?? ''), `${row(deck.res.rows, 'Crossings on the axis')?.reason?.slice(0, 90)} | ${row(deck.res.rows, 'Report lines')?.reason?.slice(0, 40)}`);
+  check('a bridge with no water read beside it: named water under a bridge, Bd 1 on the bridge', /water under a bridge 1\.7 km ahead of the SP: a Cl 60\+ bridge/.test(row(deck.res.rows, 'Crossings on the axis')?.reason ?? '') && /Bd 1 \(bridge\)/.test(row(deck.res.rows, 'Bounds')?.reason ?? ''), `${row(deck.res.rows, 'Crossings on the axis')?.reason?.slice(0, 90)} | ${row(deck.res.rows, 'Bounds')?.reason?.slice(0, 40)}`);
   // the line 40 m beside the bridge (a drawn axis, a raster cell): the bridge is taken as the one used
   const beside = V.fitAdvance(inp(mk((x, y) => (band(y, 2000) ? (x > A.x + 30 && x < A.x + 70 ? BR60 : CANAL) : open))));
   check('the axis passing 30-70 m beside the bridge: the bridge found, not "no bridge"', row(beside.res.rows, 'Crossings on the axis')?.st === 'pass', row(beside.res.rows, 'Crossings on the axis')?.reason?.slice(0, 120));
@@ -122,20 +131,22 @@ check('PlanFit.fitLayout hands an advance to fitAdvance', !!f5 && !!row(f5.res.r
   const dp = {};
   for (const i of fp.raw.items) { if (dp[i.role]) continue; dp[i.role] = { pts: i.pts.map((p) => { const w = F.toWorld(fp.frame, p); return [w.x, w.y]; }) }; }
   check('a canal just past the C Tps, under the arrow\'s head: neither the build nor Check my plan reads it', row(fp.res.rows, 'Crossings on the axis')?.st === 'pass' && row(V.checkAdvance(inp(mk(past)), dp).rows, 'Crossings on the axis')?.st === 'pass', `${row(fp.res.rows, 'Crossings on the axis')?.reason?.slice(0, 60)} | ${row(V.checkAdvance(inp(mk(past)), dp).rows, 'Crossings on the axis')?.reason?.slice(0, 60)}`);
-  // Check my plan reads the axis and RL 1 as drawn
+  // Check my plan reads the axis and Bd 1 as drawn
   const dd = {};
   for (const i of b60.raw.items) { if (dd[i.role]) continue; dd[i.role] = { pts: i.pts.map((p) => { const w = F.toWorld(b60.frame, p); return [w.x, w.y]; }) }; }
   const cc = V.checkAdvance(inp(mk(bridged(BR60))), dd);
-  check('Check my plan: RL 1 read as drawn (about 1.7 km ahead), the crossing on the Cl 60+ bridge', /RL 1 1\.[67] km ahead of the SP/.test(row(cc.rows, 'Report lines')?.reason ?? '') && row(cc.rows, 'Crossings on the axis')?.st === 'pass', `${row(cc.rows, 'Report lines')?.reason?.slice(0, 80)} | ${row(cc.rows, 'Crossings on the axis')?.st}`);
+  check('Check my plan: Bd 1 read as drawn (about 1.7 km ahead), the crossing on the Cl 60+ bridge', /Bd 1 1\.[67] km ahead of the SP/.test(row(cc.rows, 'Bounds')?.reason ?? '') && row(cc.rows, 'Crossings on the axis')?.st === 'pass', `${row(cc.rows, 'Bounds')?.reason?.slice(0, 80)} | ${row(cc.rows, 'Crossings on the axis')?.st}`);
   // the axis as drawn is not a way searched (seen in the app: the build's straight fallback read back as 'the least-cost way')
   check('...Axis route says the axis as drawn, never the least-cost way', /^the axis as drawn/.test(row(cc.rows, 'Axis route')?.reason ?? '') && !/least-cost/.test(row(cc.rows, 'Axis route')?.reason ?? ''), row(cc.rows, 'Axis route')?.reason?.slice(0, 80));
-  // report lines as drawn, checked against the spacing set (seen in the app: Check my plan quoted the default 1 km, E,
-  // whatever was set): an RL 2 drawn 600 m beyond RL 1
-  const rl1 = b60.raw.items.find((i) => i.role === 'rl1');
-  const d2 = { ...dd, rl2: { pts: rl1.pts.map((p) => { const w = F.toWorld(b60.frame, { x: p.x, y: p.y + 600 }); return [w.x, w.y]; }) } };
-  const rlDef = row(V.checkAdvance(inp(mk(bridged(BR60))), d2).rows, 'Report lines');
-  check('...RL 2 drawn 600 m beyond RL 1, no spacing set: read as drawn, warns against the default 1 km', rlDef?.st === 'warn' && /read as drawn, at least 1\.0 km apart wanted: the default, E; RL 1 to RL 2 only [56]\d0 m/.test(rlDef.reason), rlDef?.reason?.slice(0, 160));
-  const rlSet = row(V.checkAdvance({ ...inp(mk(bridged(BR60))), recipe: { ...rec, advance: { rlApartM: 500 } } }, d2).rows, 'Report lines');
+  // bounds as drawn, checked against the spacing set (seen in the app: Check my plan quoted the default 1 km, E,
+  // whatever was set): a Bd 2 drawn 600 m beyond Bd 1
+  const rl1 = b60.raw.items.find((i) => i.role === 'bd1');
+  const d2 = { ...dd, bd2: { pts: rl1.pts.map((p) => { const w = F.toWorld(b60.frame, { x: p.x, y: p.y + 600 }); return [w.x, w.y]; }) } };
+  const rlDef = row(V.checkAdvance(inp(mk(bridged(BR60))), d2).rows, 'Bounds');
+  check('...Bd 2 drawn 600 m beyond Bd 1, no spacing set: read as drawn, warns against the default 1 km', rlDef?.st === 'warn' && /read as drawn, at least 1\.0 km apart wanted: the default, E; Bd 1 to Bd 2 only [56]\d0 m/.test(rlDef.reason), rlDef?.reason?.slice(0, 160));
+  const rlSet = row(V.checkAdvance({ ...inp(mk(bridged(BR60))), recipe: { ...rec, advance: { rlApartM: 500 } } }, d2).rows, 'Bounds');
+  const asRl = row(V.checkAdvance(inp(mk(bridged(BR60))), { ...dd, rl1: d2.bd2 }).rows, 'Report lines');
+  check('...an RL drawn: read as a report line, apart from the bounds', asRl?.st === 'pass' && /^RL 1 /.test(asRl.reason), asRl?.reason?.slice(0, 120));
   check('...with 500 m set: passes, the spacing quoted as set', rlSet?.st === 'pass' && /at least 0.5 km apart wanted: as set/.test(rlSet.reason), rlSet?.reason?.slice(0, 160));
 }
 
@@ -153,26 +164,26 @@ check('PlanFit.fitLayout hands an advance to fitAdvance', !!f5 && !!row(f5.res.r
   const rm = { ...rec, march: m };
   const fm = V.fitAdvance({ ...inp(gnd), recipe: rm });
   const mr = row(fm.res.rows, 'March');
-  check('March row: H at first light; each serial\'s column and time past a point; heads at RL 1, RL 2 and the C Tps\' line', !!mr && /first light/.test(mr.reason) && /Adv Gd \(Armr Regt gp\): 116 vehicles/.test(mr.reason) && /at RL 1 H\+0:\d\d, at RL 2 H\+0:\d\d, at the C Tps' line H\+0:\d\d/.test(mr.reason) && /min past a point/.test(mr.reason), mr?.reason.slice(0, 700));
+  check('March row: H at first light; each serial\'s column and time past a point; heads at Bd 1, Bd 2 and the C Tps\' line', !!mr && /first light/.test(mr.reason) && /Adv Gd \(Armr Regt gp\): 116 vehicles/.test(mr.reason) && /at Bd 1 H\+0:\d\d, at Bd 2 H\+0:\d\d, at the C Tps' line H\+0:\d\d/.test(mr.reason) && /min past a point/.test(mr.reason), mr?.reason.slice(0, 700));
   check('...the Main Body\'s head at the SP after the Adv Gd\'s (6.5 km back at 25 km/h: about H+0:16)', /Main Body: 510 vehicles.*its head at SP H\+0:1[5-7]/.test(mr.reason), mr.reason.match(/Main Body: .{0,400}/)?.[0]);
   check('...the Armr Regt as one road column is 10.0 km long by day (116 at 20 a km plus 2 min a 25 vehicles at 25 km/h): longer than the 8 km to the Main Body, warn', mr.st === 'warn' && /Adv Gd .*10\.0 km long by day/.test(mr.reason) && /Main Body closes on it/.test(mr.reason), mr.st);
   const small = { ...m, serials: [{ ...m.serials[0], vehicles: 60 }, m.serials[1]] };
   const sr = row(V.fitAdvance({ ...inp(gnd), recipe: { ...rec, march: small } }).res.rows, 'March');
   check('...an Adv Gd of 60 vehicles (5.5 km): under the 8 km, pass', sr?.st === 'pass', sr?.reason.match(/Adv Gd[^;]*long by day/)?.[0]);
   const has = fm.raw.items.filter((i) => /^ha\d$/.test(i.role));
-  const rl1 = fm.raw.items.find((i) => i.role === 'rl1');
+  const rl1 = fm.raw.items.find((i) => i.role === 'bd1');
   // on bare open ground both sides score alike: the first tried (right, no shift) stays; no tree cover in it, so it warns (IBB p 160)
-  check('halting areas: HA 1, HA 2, one a report line, 1 km short of it, beside the axis on the right; on bare ground no cover: warn', has.length === 2 && has[0].label === 'HA 1' && rl1 && Math.abs((has[0].pts.reduce((s, p) => s + p.y, 0) / 4) - (rl1.pts[0].y + rl1.pts[1].y) / 2 + 1000) < 5 && has[0].pts.every((p) => p.x > 0) && row(fm.res.rows, 'Halting areas')?.st === 'warn' && /0 % under trees/.test(row(fm.res.rows, 'Halting areas').reason), has.map((h) => `${h.label} ${Math.round(h.pts[0].x)},${Math.round(h.pts[0].y)}`).join(' '));
+  check('halting areas: HA 1, HA 2, one a bound, 1 km short of it, beside the axis on the right; on bare ground no cover: warn', has.length === 2 && has[0].label === 'HA 1' && rl1 && Math.abs((has[0].pts.reduce((s, p) => s + p.y, 0) / 4) - (rl1.pts[0].y + rl1.pts[1].y) / 2 + 1000) < 5 && has[0].pts.every((p) => p.x > 0) && row(fm.res.rows, 'Halting areas')?.st === 'warn' && /0 % under trees/.test(row(fm.res.rows, 'Halting areas').reason), has.map((h) => `${h.label} ${Math.round(h.pts[0].x)},${Math.round(h.pts[0].y)}`).join(' '));
   const big = { ...m, serials: [{ ...m.serials[0], vehicles: 400 }, m.serials[1]] };
   check('an Adv Gd of 400 vehicles: its column longer than 8 km, the Main Body closes on it: warn', row(V.fitAdvance({ ...inp(gnd), recipe: { ...rec, march: big } }).res.rows, 'March')?.st === 'warn');
   // the settings from the tab: report lines 3 km apart, H at last light
   const gnd3 = mk((x, y) => (band(y, 2000) || band(y, 4500) || band(y, 6000) ? (Math.abs(x - A.x) < 20 ? BR60 : CANAL) : open));
   const r1 = V.fitAdvance({ ...inp(gnd3), recipe: { ...rec, march: m } }), r3 = V.fitAdvance({ ...inp(gnd3), recipe: { ...rec, march: m, advance: { rlApartM: 3000, hAt: 'first' } } });
-  const nRl = (f) => f.raw.items.filter((i) => /^rl\d$/.test(i.role)).length;
-  check('RL apart set to 3 km: fewer report lines than at the 1 km default, the row says "as set"', nRl(r3) < nRl(r1) && /at least 3\.0 km apart: as set/.test(row(r3.res.rows, 'Report lines').reason) && /the default, E/.test(row(r1.res.rows, 'Report lines').reason), `${nRl(r1)} at 1 km, ${nRl(r3)} at 3 km`);
+  const nRl = (f) => f.raw.items.filter((i) => /^bd\d$/.test(i.role)).length;
+  check('RL apart set to 3 km: fewer bounds than at the 1 km default, the row says "as set"', nRl(r3) < nRl(r1) && /at least 3\.0 km apart: as set/.test(row(r3.res.rows, 'Bounds').reason) && /the default, E/.test(row(r1.res.rows, 'Bounds').reason), `${nRl(r1)} at 1 km, ${nRl(r3)} at 3 km`);
   const last = V.fitAdvance({ ...inp(gnd), recipe: { ...rec, march: m, advance: { rlApartM: 1000, hAt: 'last' } } });
   check('H at last light: the March row says a night advance; the Main Body (43 km) runs on into the day: warn, past first light', /at last light today there \(civil twilight, as set: a night advance\)/.test(row(last.res.rows, 'March').reason), row(last.res.rows, 'March')?.reason.slice(0, 160));
-  check('no march on the recipe (no ORBAT): no March row; no report lines, no halting areas', !row(f1.res.rows, 'March') && !f1.raw.items.some((i) => /^ha\d$/.test(i.role)));
+  check('no march on the recipe (no ORBAT): no March row; no bounds, no halting areas', !row(f1.res.rows, 'March') && !f1.raw.items.some((i) => /^ha\d$/.test(i.role)));
 }
 
 // ── Check my plan as drawn ───────────────────────────────────────────────────────────────────────────────────────────
@@ -188,6 +199,24 @@ check('...the C Tps dragged 4 km further out (10 km): Covering troops warns', ro
 const { flankL, flankR, ...noFlanks } = drawn;
 const c3 = V.checkAdvance(inp(mk(() => open)), noFlanks);
 check('...without the flank guards drawn: they are listed missing, no Flank guards row', c3.missing.length === 2 && !row(c3.rows, 'Flank guards'), c3.missing.join(', '));
+
+// ── the Bn Adv Gd by day and by night: IC beside IBB (IC s61 para 7 p 261; s64 para 6 b, c p 280) ────────────────────
+{
+  const rb = json('MS/Data/Deployments/Recipes/bn-advance-one-up.json');
+  const sv = S.solveRecipe(rb, ctx, {});
+  const day = V.advanceRows(sv.items, doc, 'first'), night = V.advanceRows(sv.items, doc, 'last');
+  check('Bn Adv Gd by day: the Vanguard judged on IC\'s day length (leading Coy up to 1100-1400 m on the road, IC s61 para 7 p 261), Fig 12 named as the night formation', row(day, 'Vanguard')?.st === 'pass' && /1\.1 km-1\.4 km \(IC s61 para 7 p 261/.test(row(day, 'Vanguard').reason) && /night formation/.test(row(day, 'Vanguard').reason), row(day, 'Vanguard')?.reason);
+  check('...Bn spread by day within 3-5 km (IC s61 para 7 p 261)', row(day, 'Bn spread')?.st === 'pass' && /3\.0 km-5\.0 km at most \(IC s61 para 7 p 261\)/.test(row(day, 'Bn spread').reason), row(day, 'Bn spread')?.reason);
+  check('...no Bn spread row by night; the night Vanguard on Fig 12 with IC\'s 450 m beside it', !row(night, 'Bn spread') && /IBB Fig 12 p 150/.test(row(night, 'Vanguard')?.reason ?? '') && /450 m or so \(s64 para 6 b p 280\)/.test(row(night, 'Vanguard')?.reason ?? ''), row(night, 'Vanguard')?.reason);
+  const mv = (roles, y) => sv.items.map((i) => (roles.includes(i.role) ? { ...i, pts: i.pts.map((p) => ({ x: p.x, y })) } : i));
+  const long = V.advanceRows(mv(['vanGd'], -900), doc, 'first');
+  check('...the vanguard strung 1.8 km by day: past 1400 m, warns with a fix', row(long, 'Vanguard')?.st === 'warn' && row(long, 'Vanguard').detail?.fix?.length === 1, row(long, 'Vanguard')?.reason?.slice(-120));
+  const far = V.advanceRows(mv(['mainGd'], -6000), doc, 'first');
+  check('...the main guard 6 km back by day: Bn spread past 5 km, warns', row(far, 'Bn spread')?.st === 'warn', row(far, 'Bn spread')?.reason);
+  const gap350 = row(V.advanceRows(mv(['bnHq', 'mor', 'mainGd'], -900), doc, 'last'), 'Main Gd');
+  check('...by night the main guard 350 m behind the vanguard: within IBB\'s 300-400 m but under IC\'s 400-450 m: warns, both cited (safety first)', gap350?.st === 'warn' && /IBB p 149 para 4 d \(4\)/.test(gap350.reason) && /400-450 m \(s64 para 6 c p 280\)/.test(gap350.reason), gap350?.reason?.slice(0, 260));
+  check('...by night the flank clearance names IC\'s villages searched and Coy-level flanking on dark nights', /IC s64 para 15 p 284/.test(row(night, 'Flank clearance')?.reason ?? '') && /IC s64 para 11 p 283/.test(row(night, 'Flank clearance')?.reason ?? ''));
+}
 
 console.log(`\n${n} checks, ${fails} failed`);
 process.exit(fails ? 1 : 0);

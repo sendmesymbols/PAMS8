@@ -22,6 +22,13 @@
  *            building (BHU, RHC, hospital, school, rest house);
  *   People   people per km² on the area.
  *
+ * On mountain ground (the site finders' test, SiteScan.mountainGround: the ground within 5 km rises 400 m or more) the
+ * MW checks are added (MW s25 para 3 pp 264-265): Slides (no slope steep enough to slide above the area, p 281), Part
+ * way up the slope (not the valley floor where the nullahs flood, p 9, nor the top, p 264), Helipad Gr (a helipad or
+ * airfield recorded, or a level patch of 4° or less, within reach, p 265 / p 256), Rock / gravel (p 265), Water for
+ * every kind (p 264; p 266), and the room row cites p 265. The downwind side and defensible ground are named in the
+ * notes to confirm on the ground: the bundle does not read them.
+ *
  * The best areas are returned ranked (at least an area's size apart), each with its rows (value, tone, why) and fixes.
  */
 
@@ -33,9 +40,13 @@ import {
   km,
   lattice,
   metres,
+  mountainGround,
+  offsetPt,
   pct,
   pickRoad,
   readSite,
+  reliefAround,
+  areaSamples,
   rectRing,
   spreadPick,
   worstTone,
@@ -106,6 +117,74 @@ export interface AdminRules {
   checks: { minKnownShare: Fig; firmWarnShare: Fig; marginalWeight: Fig; roadFailX: Fig; peopleWarnKm2: Fig; mainRoadSrc: string };
   scan: { keep: number; maxSites: number; note: string; gunGateFrac: Fig; roomGateX: Fig; wetGateX: Fig; minKnownGate: Fig };
   order: { note: string; toneScore: Record<Tone, number>; toneSrc: string; weightsSrc: string; pre: Record<string, number>; preSrc: string };
+  /** Mountain ground (AdminDoctrine.json mountains; MW s25 para 3 pp 264-265). */
+  mountains: AdminMtnRules;
+}
+
+/** A book rule with no figure of its own (its refs), as AdminDoctrine.json holds it. */
+export interface BookRule { basis: string; src: string; refs?: any[] }
+
+export interface AdminMtnRules {
+  /** The mountain test (as GunDoctrine mountains.bySection and the Plan Builder's Auto ground). */
+  detectRiseM: Fig;
+  detectWithinM: Fig;
+  /** Slides: a slope above the area steeper than slideDeg fails; steeper than freshSnowDeg warns where and when snow lies. */
+  slideDeg: Fig;
+  freshSnowDeg: Fig;
+  snowAboveM: Fig;
+  snowMonths: { value: number[]; basis: string; src: string; searched?: string[]; decided?: string };
+  slideReachM: Fig;
+  /** Part way up: the place's height between the lowest and highest ground within partWayWithinM. */
+  partWayWithinM: Fig;
+  partWayLow: Fig;
+  partWayHigh: Fig;
+  partWayMinReliefM: Fig;
+  /** Helipad ground within helipadM: a recorded helipad / airfield, or a patch helipadSideM across at helipadDeg or less. */
+  helipadM: Fig;
+  helipadDeg: Fig;
+  helipadSideM: Fig;
+  helipadKinds: string[];
+  /** Rock / gravel: the share of the area on these classes. */
+  rockClasses: number[];
+  rockShare: Fig;
+  /** Book rules cited by rows that have no figure of their own. */
+  water: BookRule;
+  room: BookRule;
+  confirm: BookRule;
+  floods: BookRule;
+  helipadWork: BookRule;
+  stocks: BookRule;
+}
+
+const bookRule = (v: any, src: string): BookRule => ({ basis: String(v?.basis ?? 'E'), src: String(v?.src ?? src), refs: Array.isArray(v?.refs) ? v.refs : undefined });
+
+function mtnRulesFrom(m: any): AdminMtnRules {
+  const sm = m?.snowMonths;
+  return {
+    detectRiseM: fig(m?.detectRiseM, 400, 'M'),
+    detectWithinM: fig(m?.detectWithinM, 5000, 'M'),
+    slideDeg: fig(m?.slideDeg, 35, 'R'),
+    freshSnowDeg: fig(m?.freshSnowDeg, 25, 'R'),
+    snowAboveM: fig(m?.snowAboveM, 2000, 'R'),
+    snowMonths: { value: Array.isArray(sm?.value) ? sm.value.map(Number) : [11, 12, 1, 2, 3, 4], basis: String(sm?.basis ?? 'E'), src: String(sm?.src ?? ''), ...figExtra(sm) },
+    slideReachM: fig(m?.slideReachM, 500),
+    partWayWithinM: fig(m?.partWayWithinM, 1500),
+    partWayLow: fig(m?.partWayLow, 0.15, 'M'),
+    partWayHigh: fig(m?.partWayHigh, 0.85, 'M'),
+    partWayMinReliefM: fig(m?.partWayMinReliefM, 100, 'M'),
+    helipadM: fig(m?.helipadM, 3000),
+    helipadDeg: fig(m?.helipadDeg, 4, 'R'),
+    helipadSideM: fig(m?.helipadSideM, 80),
+    helipadKinds: Array.isArray(m?.helipadKinds) ? m.helipadKinds.map(String) : ['40', '41', '42', '43', '44', '45', '46', '47'],
+    rockClasses: Array.isArray(m?.rockClasses) ? m.rockClasses.map(Number) : [15],
+    rockShare: fig(m?.rockShare, 0.3, 'M'),
+    water: bookRule(m?.water, 'MW p 264: proximity to a stream or lake for water'),
+    room: bookRule(m?.room, 'MW p 265: an area of sufficient size to allow proper dispersion'),
+    confirm: bookRule(m?.confirm, 'MW p 264: the downwind side of hills; terrain which lends itself to defence'),
+    floods: bookRule(m?.floods, 'MW p 9: flash floods in nullahs'),
+    helipadWork: bookRule(m?.helipadWork, 'MW p 248: engineers build air strips and helipads'),
+    stocks: bookRule(m?.stocks, 'MW p 265: stocks distributed to each sector'),
+  };
 }
 
 /** A figure's working (calc), where a decision was looked for (searched) and when it was decided. */
@@ -212,7 +291,8 @@ export function adminRulesFrom(doc: any): AdminRules {
       pre: { room: 2, firm: 2, wet: -4, floodWet: -2, floodDry: -0.5, concealDiv: 1.5, bua: -1, ...Object.fromEntries(Object.entries(d.order?.pre ?? {}).filter(([, v]) => typeof v === 'number')) } as Record<string, number>,
       preSrc: String(d.order?.pre?.src ?? 'finer reading'),
     },
-    weights: { beyond: 3, behind: 2, firm: 2, wet: 3, room: 2, air: 2, road: 2, avoid: 1, water: 1, buildings: 1, people: 1, ...(d.weights ?? {}) },
+    weights: { beyond: 3, behind: 2, firm: 2, wet: 3, room: 2, air: 2, road: 2, avoid: 1, water: 1, buildings: 1, people: 1, slides: 3, partway: 1, helipad: 1, rock: 1, ...(d.weights ?? {}) },
+    mountains: mtnRulesFrom(d.mountains),
   };
 }
 
@@ -282,6 +362,10 @@ export interface AdminTask {
   inputs?: { threat?: string; front?: string; gun?: string };
   seasonWhy?: string;
   wetFromMm?: number;
+  /** 1-12: the month (snow on the slopes above in the winter months); undefined = any month (safety first). */
+  month?: number;
+  /** Mountain ground: true / false as known (the Plan Builder's ground), undefined / null = read at the centre. */
+  mountain?: boolean | null;
 }
 
 export interface AdminRow {
@@ -333,6 +417,8 @@ export interface AdminResult {
   kindRefs: RuleRef[];
   /** How the list is ordered and which places were tried (proposals). */
   orderRules: RuleRef[];
+  /** Mountain ground: the MW checks were added (MW s25 para 3 pp 264-265). */
+  mountain: boolean;
 }
 
 export interface AdminWhyNot {
@@ -491,7 +577,107 @@ function adminScorer(probe: SiteProbe, rules: any, task: AdminTask, R: AdminRule
   };
   const P = R.order.pre;
   const pre = (r: SiteRead) => (1 - r.nogo) * P.room + (1 - r.softNogo) * P.firm + r.wetBad * P.wet + r.floodProne * (task.season === 'wet' ? P.floodWet : P.floodDry) + (r.concealMean ?? 0) / P.concealDiv + r.bua * P.bua;
-  const wantWater = K.needs.includes('water');
+  // ── mountain ground (MW s25 para 3 pp 264-265): the test as the gun finder's (SiteScan.mountainGround) ─────────────
+  const M = R.mountains;
+  const mtn = task.mountain ?? mountainGround(probe, task.centre, M.detectRiseM.value, M.detectWithinM.value) ?? false;
+  const snowy = (e0: number) => e0 >= M.snowAboveM.value && (task.month === undefined || M.snowMonths.value.includes(task.month));
+  const mRefs = {
+    slides: [
+      ...figRefs(M.slideDeg, `A slope over ${M.slideDeg.value}° above the area fails`, S),
+      ...figRefs(M.freshSnowDeg, `Over ${M.freshSnowDeg.value}° warns where snow lies`, S),
+      ...figRefs(M.snowAboveM, `Snow lies above ${M.snowAboveM.value} m`, S),
+      ...figRefs(M.snowMonths, `Snow months ${M.snowMonths.value.join(', ')}`, S),
+      ...figRefs(M.slideReachM, `Slopes read ${M.slideReachM.value} m beyond the area`, S),
+      ...figRefs(M.confirm, 'Part way up the slope, free of danger from slides', S),
+      ...dat('elev', 'Heights round the area (slope above it)'),
+    ],
+    partway: [
+      ...figRefs(M.partWayWithinM, `Lowest and highest Gr within ${km(M.partWayWithinM.value)}`, S),
+      ...figRefs(M.partWayLow, `Under ${pctV(M.partWayLow.value)} of the way up: the valley floor`, S),
+      ...figRefs(M.partWayHigh, `Over ${pctV(M.partWayHigh.value)} of the way up: the top`, S),
+      ...figRefs(M.partWayMinReliefM, `Under ${M.partWayMinReliefM.value} m of relief: level, not judged`, S),
+      ...figRefs(M.confirm, 'Part way up the slope', S),
+      ...figRefs(M.floods, 'Flash floods in nullahs', S),
+      ...dat('elev', 'Heights round the place'),
+    ],
+    helipad: [
+      ...figRefs(M.helipadM, `Helipad Gr within ${km(M.helipadM.value)}`, S),
+      ...figRefs(M.helipadDeg, `A helipad ${M.helipadDeg.value}° or less`, S),
+      ...figRefs(M.helipadSideM, `A landing point ${M.helipadSideM.value} m across`, S),
+      ...figRefs(M.confirm, 'Near terrain for an all season airstrip / helipads', S),
+      ...figRefs(M.helipadWork, 'Engineers build helipads', S),
+      ...dat('features', 'Helipads, airfields, landing grounds recorded'),
+      ...dat('elev', 'Heights (slope of the patch)'),
+    ],
+    rock: [...figRefs(M.rockShare, `Rock / stony Gr on ${pctV(M.rockShare.value)} or more of the area`, S), ...figRefs(M.confirm, 'Good soil conditions (rock, or gravel)', S), ...dat('class', 'Rocky Gr / scree / stony waste class')],
+    water: figRefs(M.water, 'Water: a stream or lake near; seldom on the heights', S),
+    room: figRefs(M.room, 'Room to disperse', S),
+  };
+  /** The steepest slope above the area, ground rising outward from it and standing above it, read 60 m at a time. */
+  const slideRead = (p: XY): { deg: number; distM: number; brg: number; e0: number } | null => {
+    const e0 = probe.elev(p[0], p[1]);
+    if (!Number.isFinite(e0)) return null;
+    const reach = M.slideReachM.value + Math.hypot(frontM, depthM) / 2;
+    const step = 60;
+    let worst = { deg: 0, distM: 0, brg: 0 }, known = 0;
+    for (let b = 0; b < 16; b++) {
+      const brg = b * 22.5;
+      let prev = e0;
+      for (let d = step; d <= reach + 1e-6; d += step) {
+        const q = offsetPt(p[0], p[1], brg, d);
+        const e = probe.elev(q[0], q[1]);
+        if (!Number.isFinite(e)) { prev = NaN; continue; }
+        known++;
+        if (Number.isFinite(prev) && e > prev && e > e0) {
+          const deg = (Math.atan2(e - prev, step) * 180) / Math.PI;
+          if (deg > worst.deg) worst = { deg, distM: d, brg };
+        }
+        prev = e;
+      }
+    }
+    return known ? { ...worst, e0 } : null;
+  };
+  /** Where the place stands between the lowest and highest ground round it (0 the floor, 1 the top). */
+  const partRead = (p: XY): { f: number; reliefM: number; minM: number; maxM: number } | null => {
+    const e0 = probe.elev(p[0], p[1]);
+    const rel = reliefAround(probe, p, M.partWayWithinM.value);
+    if (!Number.isFinite(e0) || !rel) return null;
+    const relief = rel.maxM - rel.minM;
+    return { f: relief > 0 ? (e0 - rel.minM) / relief : 0.5, reliefM: relief, minM: rel.minM, maxM: rel.maxM };
+  };
+  /** A recorded helipad / airfield within reach, else the nearest level patch (rings 150 m apart, 24 bearings). */
+  const heliRead = (p: XY): { rec: { label: string; name: string | null; distM: number; brg: number } | null; patch: { distM: number; deg: number; brg: number } | null; known: boolean } => {
+    const f = probe.features(p[0], p[1], M.helipadM.value, new Set(M.helipadKinds))[0];
+    if (f) return { rec: { label: f.label, name: f.name, distM: f.distM, brg: bearingOf(p, [f.x, f.y]) }, patch: null, known: true };
+    const half = M.helipadSideM.value / 2, tanD = Math.tan((M.helipadDeg.value * Math.PI) / 180);
+    let known = false;
+    for (let r = 0; r <= M.helipadM.value + 1e-6; r += 150) {
+      const nb = r ? 24 : 1;
+      for (let b = 0; b < nb; b++) {
+        const c: XY = r ? offsetPt(p[0], p[1], b * 15, r) : p;
+        const es = [c, offsetPt(c[0], c[1], 0, half), offsetPt(c[0], c[1], 90, half), offsetPt(c[0], c[1], 180, half), offsetPt(c[0], c[1], 270, half)].map((q) => probe.elev(q[0], q[1]));
+        if (es.some((e) => !Number.isFinite(e))) continue;
+        known = true;
+        const g = Math.hypot((es[1] - es[3]) / (2 * half), (es[2] - es[4]) / (2 * half));
+        const cl = probe.cls(c[0], c[1]);
+        if (g <= tanD && !(cl !== null && rule.nogo[cl])) return { rec: null, patch: { distM: r, deg: (Math.atan(g) * 180) / Math.PI, brg: b * 15 }, known };
+      }
+    }
+    return { rec: null, patch: null, known };
+  };
+  /** The share of the area on rocky / stony ground (rules.json class), of the samples whose class is known. */
+  const rockRead = (ring: XY[]): { share: number; known: number } => {
+    const pts = areaSamples(ring, 60, 200);
+    let k = 0, rock = 0;
+    for (const q of pts) {
+      const cl = probe.cls(q.x, q.y);
+      if (cl === null) continue;
+      k++;
+      if (M.rockClasses.includes(cl)) rock++;
+    }
+    return { share: k ? rock / k : 0, known: k };
+  };
+  const wantWater = K.needs.includes('water') || mtn;
   const wantBld = K.needs.includes('buildings');
   const wantEvac = K.needs.includes('evacRoad');
 
@@ -551,7 +737,7 @@ function adminScorer(probe: SiteProbe, rules: any, task: AdminTask, R: AdminRule
       tone: unknownGround ? 'unknown' : r.nogo > R.ground.maxNogoShare.value || (r.tiltDeg ?? 0) > R.ground.maxTiltDeg.value ? 'warn' : 'ok',
       why: `room to disperse at ${R.vehPerKm2.value} veh per km²: ${K.label} ${metres(frontM)} x ${metres(depthM)}`,
       fix: r.nogo > R.ground.maxNogoShare.value ? 'Split the area or take the next site' : undefined,
-      rules: uniqRefs([...refs.size, ...figRefs(R.vehPerKm2, `${R.vehPerKm2.value} veh per km² (dispersion)`, S), ...refs.room, ...refs.nogo, ...refs.known]),
+      rules: uniqRefs([...refs.size, ...figRefs(R.vehPerKm2, `${R.vehPerKm2.value} veh per km² (dispersion)`, S), ...refs.room, ...refs.nogo, ...refs.known, ...(mtn ? mRefs.room : [])]),
     });
     const cm = r.concealMean;
     rows.push({
@@ -590,6 +776,57 @@ function adminScorer(probe: SiteProbe, rules: any, task: AdminTask, R: AdminRule
       fix: buaBad || lm.length ? 'Shift the area away from the Br / junction / BUA' : undefined,
       rules: refs.avoid,
     });
+    if (mtn) {
+      // Slides (MW p 264 para 3 c: free of danger from slides; p 281: most dangerous over 35°, deep new snow over 25°)
+      const sl = slideRead(c.at);
+      const snow = sl ? snowy(sl.e0) : false;
+      const slBad = !!sl && sl.deg > M.slideDeg.value, slWarn = !!sl && !slBad && sl.deg > M.freshSnowDeg.value && snow;
+      rows.push({
+        key: 'slides',
+        label: 'Slides',
+        value: !sl ? 'not read' : sl.deg > M.freshSnowDeg.value ? `slope ${Math.round(sl.deg)}° above it, ${metres(sl.distM)} ${compass(sl.brg)}` : `nothing over ${M.freshSnowDeg.value}° above it`,
+        tone: !sl ? 'unknown' : slBad ? 'bad' : slWarn ? 'warn' : 'ok',
+        why: `free of danger from slides (MW p 264); snow slides are most dangerous on slopes over ${M.slideDeg.value}°, and deep new snow slides on slopes over ${M.freshSnowDeg.value}° for 2-3 days after a fall (p 281)${sl && sl.deg > M.freshSnowDeg.value && !slBad ? (snow ? `; at ${Math.round(sl.e0)} m snow lies here in the winter months` : '; below the snow, or out of the snow months: a warning only after a fall') : ''}`,
+        fix: slBad ? 'Away from the foot of the steep slope: a spur or a gentler hillside, the area clear of the run-out' : slWarn ? 'Watch the slope after a snowfall: keep the area clear for 2-3 days, or site it away from the slope' : undefined,
+        rules: uniqRefs(mRefs.slides),
+      });
+      // Part way up the slope (p 264), not the valley floor where the nullahs flood (p 9), nor the top
+      const pw = partRead(c.at);
+      const level = !!pw && pw.reliefM < M.partWayMinReliefM.value;
+      const low = !!pw && !level && pw.f < M.partWayLow.value, high = !!pw && !level && pw.f > M.partWayHigh.value;
+      rows.push({
+        key: 'partway',
+        label: 'Part way up',
+        value: !pw ? 'not read' : level ? `level Gr (${Math.round(pw.reliefM)} m of relief within ${km(M.partWayWithinM.value)})` : `${pct(pw.f)} of the way up (${Math.round(pw.minM)}-${Math.round(pw.maxM)} m within ${km(M.partWayWithinM.value)})`,
+        tone: !pw ? 'unknown' : low || high ? 'warn' : 'ok',
+        why: low ? 'on the valley floor: flash floods run in the nullahs (MW p 9); the book wants part way up the slope (p 264)' : high ? 'on the top: the book wants the downwind side of the hill and part way up the slope (p 264)' : 'part way up the slope, on the downwind side of the hill (MW p 264)',
+        fix: low ? 'Up the side of the valley, clear of the nullah bed and its flood line' : high ? 'Down the downwind side, part way up the slope' : undefined,
+        rules: uniqRefs(mRefs.partway),
+      });
+      // Rock or gravel (p 265)
+      const rk = rockRead(rectRing(c.at, c.axis, frontM, depthM));
+      const firmOk = r.soilKnown > 0 && r.softNogo === 0 && r.softSlow * C.marginalWeight.value <= C.firmWarnShare.value;
+      rows.push({
+        key: 'rock',
+        label: 'Rock / gravel',
+        value: !rk.known ? 'not read' : rk.share >= M.rockShare.value ? `rocky / stony Gr ${pct(rk.share)}` : `rocky Gr ${pct(rk.share)}${firmOk ? '; firm soil on the cone index' : ''}`,
+        tone: !rk.known && r.soilKnown === 0 ? 'unknown' : rk.share >= M.rockShare.value || firmOk ? 'ok' : 'warn',
+        why: 'good soil conditions: rock or gravel (MW p 265); firm soil on the cone index stands in for it',
+        fix: rk.share < M.rockShare.value && !firmOk ? 'Hard standing: rock or gravel patches, or lay it' : undefined,
+        rules: uniqRefs([...mRefs.rock, ...refs.firm]),
+      });
+      // Helipad Gr within reach (p 265 para 3 g; helipads 4° or less, p 256)
+      const hl = heliRead(c.at);
+      rows.push({
+        key: 'helipad',
+        label: 'Helipad Gr',
+        value: hl.rec ? `${hl.rec.label}${hl.rec.name ? ` ${hl.rec.name}` : ''} ${metres(hl.rec.distM)} ${compass(hl.rec.brg)}` : hl.patch ? `level patch ${hl.patch.deg.toFixed(0)}° ${hl.patch.distM ? `${metres(hl.patch.distM)} ${compass(hl.patch.brg)}` : 'on the area'}` : hl.known ? `no patch of ${M.helipadDeg.value}° or less within ${km(M.helipadM.value)}` : 'not read',
+        tone: hl.rec || hl.patch ? 'ok' : hl.known ? 'warn' : 'unknown',
+        why: `near terrain for an all season airstrip / helipads (MW p 265); a helipad ${M.helipadDeg.value}° or less, a landing point ${M.helipadSideM.value} m across${hl.patch ? ': the patch read from the 30 m elevation, confirm it on the ground' : ''}`,
+        fix: !hl.rec && !hl.patch && hl.known ? 'Engineers build a helipad (MW p 248), or take a site nearer level ground' : undefined,
+        rules: uniqRefs(mRefs.helipad),
+      });
+    }
     if (wantWater) {
       const w = probe.features(c.at[0], c.at[1], R.needs.waterM.value, new Set(R.needs.waterKinds))[0] ?? null;
       rows.push({
@@ -597,9 +834,9 @@ function adminScorer(probe: SiteProbe, rules: any, task: AdminTask, R: AdminRule
         label: 'Water',
         value: w ? `${w.label} ${metres(w.distM)} ${compass(bearingOf(c.at, [w.x, w.y]))}` : `none recorded within ${km(R.needs.waterM.value)}`,
         tone: w ? 'ok' : 'warn',
-        why: `a water point within ${km(R.needs.waterM.value)}`,
-        fix: w ? undefined : 'Plan water by bowser; recce wells',
-        rules: refs.water,
+        why: `a water point within ${km(R.needs.waterM.value)}${mtn ? '; in mountains near a stream or lake (MW p 264), water being seldom found on the heights (p 266)' : ''}`,
+        fix: w ? undefined : mtn ? 'Near a stream or lake; water by mule or porter to the heights' : 'Plan water by bowser; recce wells',
+        rules: mtn ? uniqRefs([...refs.water, ...mRefs.water]) : refs.water,
       });
     }
     if (wantBld) {
@@ -642,7 +879,7 @@ function adminScorer(probe: SiteProbe, rules: any, task: AdminTask, R: AdminRule
     return { rank: 0, at: c.at, axisDeg: c.axis, ring: rectRing(c.at, c.axis, frontM, depthM), score, tone, verdict, rows, read: r, road, threatM: c.tM, frontM: c.fM, fixes: rows.filter((x) => x.fix).map((x) => `${x.label}: ${x.fix}`), why: [] };
   };
 
-  return { K, frontM, depthM, refs, gates, read, readFails, pre, build, reach };
+  return { K, frontM, depthM, refs, gates, read, readFails, pre, build, reach, mtn, mRefs };
 }
 
 /** Why each site stands where it does (as GunDeploymentFind.explainOrder). */
@@ -742,7 +979,14 @@ export function findAdminSites(probe: SiteProbe, rules: any, task: AdminTask, R:
     .sort((a, b) => b.count - a.count);
   if (!picked.length) notes.push(`No ${K.short} site in this circle${rejectedWhy.length ? `: ${rejectedWhy.map((r) => `${pct(r.share)} ${GATE_TEXT[r.gate]}`).join(', ')}` : ''}. Look further back or widen the circle.`);
   if (!task.threat?.length) notes.push('No threat place: distance from his guns not checked (mark the threat or pick it on the map).');
-  return { sites: picked, tried: pts.length, rejected, rejectedWhy, notes, frontM, depthM, rule: K, kindRefs: A.refs.kind, orderRules: adminOrderRefs(R) };
+  if (A.mtn) notes.unshift(mountainNote(R));
+  return { sites: picked, tried: pts.length, rejected, rejectedWhy, notes, frontM, depthM, rule: K, kindRefs: A.refs.kind, orderRules: adminOrderRefs(R), mountain: A.mtn };
+}
+
+/** What mountain ground adds, and what the bundle cannot read (MW s24-25 pp 263-265). */
+export function mountainNote(R: AdminRules): string {
+  const M = R.mountains;
+  return `Mountain ground (within ${km(M.detectWithinM.value, 0)} the ground rises ${M.detectRiseM.value} m or more): the checks for admin areas in mountains are added: slides, part way up the slope, rock or gravel, helipad Gr and water (MW s25 para 3 pp 264-265). Confirm on the ground the downwind side of the hill and terrain that lends itself to defence (para 3 c, d): the terrain data does not read them. Where the sectors give no mutual support, stocks go to each sector with mobile log elements (para 4 p 265); from the road head animal transport takes over, portering the last resort (s24 para 12 pp 263-264).`;
 }
 
 /** "Why not here?": the place read with the same gates and checks as the search, set against the first site. */

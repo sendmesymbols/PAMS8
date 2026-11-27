@@ -36,6 +36,7 @@ import {
   metres,
   mils,
   offsetPt,
+  mountainGround,
   pct,
   pickRoad,
   readSite,
@@ -84,8 +85,35 @@ export interface GunAreaSize {
   depthM: Fig;
 }
 
+/**
+ * Towed guns on mountain ground (GunDoctrine mountains.bySection, MW s22 pp 240-244): a Bty by sections in two or three
+ * places, each a section site (areas.sec) near a road or track; light guns keep the conventional layout.
+ */
+export interface GunMountainRules {
+  /** Section sites a Bty stands in: [min, max] (MW p 244: two / three places); the Fig for its refs. */
+  sitesMin: number;
+  sitesMax: number;
+  sitesPerBty: Fig;
+  /** The sections of one Bty at least this far apart (centre to centre). */
+  minApartM: Fig;
+  /** Every section of a Bty within this of its first section. */
+  maxSpreadM: Fig;
+  /** Only towed guns go by section (p 240); light guns keep the conventional layout (p 241). */
+  towedOnly: Fig;
+  /** ORBAT weapon ids of the light (mule-packed) guns. */
+  lightIds: string[];
+  light: Fig;
+  /** Gun areas picked off the map confirmed by recce (p 240): cited on the Bty row. */
+  recce: Fig;
+  /** The panel's mountain test: the ground within detectWithinM of the centre rises detectRiseM or more. */
+  detectRiseM: Fig;
+  detectWithinM: Fig;
+  note: string;
+}
+
 export interface GunRules {
-  areas: Record<'bty' | 'regt', GunAreaSize>;
+  areas: Record<'bty' | 'regt' | 'sec', GunAreaSize>;
+  mountains: GunMountainRules;
   /** Alternate positions at least this far from the primary (also the spacing of the ranked list). */
   altMinM: Fig;
   /** Distance of the gun area behind the front, by task: [min, max] metres, or a fraction of the planning range. */
@@ -125,7 +153,7 @@ const fig = (v: any, value: number, basis = 'E', src = 'default in GunDeployment
 /** GunDoctrine.json -> rules, every figure kept with its basis and source; missing figures fall back to marked defaults. */
 export function gunRulesFrom(doc: any): GunRules {
   const d = doc ?? {};
-  const area = (k: 'bty' | 'regt', f: number, dp: number, label: string): GunAreaSize => ({
+  const area = (k: 'bty' | 'regt' | 'sec', f: number, dp: number, label: string): GunAreaSize => ({
     label: String(d.areas?.[k]?.label ?? label),
     frontM: fig(d.areas?.[k]?.frontM, f),
     depthM: fig(d.areas?.[k]?.depthM, dp),
@@ -136,8 +164,27 @@ export function gunRulesFrom(doc: any): GunRules {
     note: String(d.front?.[k]?.note ?? ''),
   });
   const s = d.scan ?? {};
+  const bs = d.mountains?.bySection ?? {};
+  const spb = Array.isArray(bs.sitesPerBty?.value) ? bs.sitesPerBty.value.map(Number).filter(Number.isFinite) : [2, 3];
+  const sitesMin = Math.max(1, Math.min(...spb)), sitesMax = Math.max(sitesMin, ...spb);
+  // a figure whose value is not a number (a range, a list, true): its basis, source and refs kept, its value given
+  const figOf = (v: any, value: number, src: string): Fig => ({ ...fig(null, value, 'E', src), ...(v && typeof v === 'object' ? { basis: String(v.basis ?? 'E'), src: String(v.src ?? src), refs: Array.isArray(v.refs) ? v.refs : undefined, ...figExtra(v) } : {}) });
   return {
-    areas: { bty: area('bty', 400, 300, 'Bty gun area'), regt: area('regt', 1500, 800, 'Regt gun area') },
+    areas: { bty: area('bty', 400, 300, 'Bty gun area'), regt: area('regt', 1500, 800, 'Regt gun area'), sec: area('sec', 200, 100, 'Section gun site') },
+    mountains: {
+      sitesMin,
+      sitesMax,
+      sitesPerBty: figOf(bs.sitesPerBty, sitesMax, 'MW p 244: a Bty by sections in two or three places'),
+      minApartM: fig(bs.minApartM, 300),
+      maxSpreadM: fig(bs.maxSpreadM, 2000),
+      towedOnly: figOf(bs.towedOnly, 1, 'MW pp 240-241: towed guns by section; light guns in the conventional layout'),
+      lightIds: Array.isArray(bs.lightWeapons?.value) ? bs.lightWeapons.value.map(String) : ['105-mm-pack-how'],
+      light: figOf(bs.lightWeapons, 1, 'MW p 244: light weapons which can be mule packed'),
+      recce: figOf(bs.recce, 1, 'MW p 240: gun areas picked off the map confirmed by recce'),
+      detectRiseM: fig(bs.detectRiseM, 400, 'M'),
+      detectWithinM: fig(bs.detectWithinM, 5000, 'M'),
+      note: String(bs.note ?? d.mountains?.note ?? ''),
+    },
     altMinM: fig(d.altMinM, 400),
     front: { def: frontOf('def', 1500, 0.5), attk: frontOf('attk', 1000, 0.4) },
     planFrac: fig(d.planFrac, 0.9),
@@ -408,6 +455,8 @@ export interface GunTask {
   front: Front | null;
   weapon: GunWeapon;
   unit: GunUnit;
+  /** 'sec': read section sites (areas.sec) instead of the unit's gun area: towed guns on mountain ground (gunTaskFor). */
+  area?: 'sec';
   op: GunOp;
   season: Season;
   /** Month 1-12, for what stands on the ground (crops). */
@@ -471,6 +520,18 @@ export interface GunResult {
   area: GunAreaSize;
   /** How the list is ordered and which places were tried, as references (proposals). */
   orderRules: RuleRef[];
+  /** By sections (towed guns on mountain ground, findGunSections): each Bty's section sites; `sites` holds them in order. */
+  btys?: GunBtyGroup[];
+}
+
+/** A Bty by sections (MW p 244): its section sites (best first), how far they spread, and its row. */
+export interface GunBtyGroup {
+  label: string;
+  sites: GunSite[];
+  /** The greatest distance between two of its sections, metres. */
+  spreadM: number;
+  tone: Tone;
+  row: { label: string; value: string; tone: Tone; why: string; fix?: string; rules: RuleRef[] };
 }
 
 /** "Why not here?": a place the user picked, read with the same gates and checks. */
@@ -535,7 +596,7 @@ interface Cand {
  * place is judged the same way whichever asks.
  */
 function gunScorer(probe: SiteProbe, rules: any, task: GunTask, R: GunRules, standing: StandingFn | null) {
-  const area = R.areas[task.unit];
+  const area = R.areas[task.area ?? task.unit];
   const frontM = area.frontM.value, depthM = area.depthM.value;
   const rule: GroundRule = goingRule(rules, 'gun', task.season);
   if (task.weapon.sp) rule.soil = goingRule(rules, 'tracked', task.season).soil;
@@ -915,6 +976,153 @@ export function findGunAreas(probe: SiteProbe, rules: any, task: GunTask, R: Gun
   return { sites: picked, tried: pts.length, rejected, rejectedWhy, pending: false, notes, area: G.area, orderRules: orderRefs(R) };
 }
 
+// ── mountains: towed guns by section (MW s22 pp 240-244) ────────────────────────────────────────────────────────────
+
+/**
+ * Mountain ground round a point: the ground within `detectWithinM` (5 km) rises `detectRiseM` (400 m) or more, the
+ * test the Plan Builder's Auto ground and the Ground Guide's mountain template use. Null when too little of it is read.
+ */
+export function mountainAt(probe: SiteProbe, c: XY, R: GunRules): boolean | null {
+  // the site finders' shared test (SiteScan.mountainGround; the Admin Area finder reads the same)
+  return mountainGround(probe, c, R.mountains.detectRiseM.value, R.mountains.detectWithinM.value);
+}
+
+/** Whether a weapon goes by section on mountain ground: towed (not SP) and not a light, mule-packed gun (MW pp 240-241, 244). */
+export function goesBySection(W: GunWeapon, R: GunRules): boolean {
+  return !W.sp && !R.mountains.lightIds.includes(W.id);
+}
+
+/**
+ * The task as the finder should read it: by section sites (`area: 'sec'`) for towed guns on mountain ground, else as
+ * given. `mountain`: the caller's reading of the ground (the Plan Builder's ground kind); undefined = read it here
+ * (mountainAt round the search centre).
+ */
+export function gunTaskFor(probe: SiteProbe, task: GunTask, R: GunRules, mountain?: boolean | null): GunTask {
+  if (!goesBySection(task.weapon, R)) return task.area ? { ...task, area: undefined } : task;
+  const m = mountain ?? mountainAt(probe, task.centre, R);
+  return m ? { ...task, area: 'sec' } : task.area ? { ...task, area: undefined } : task;
+}
+
+/** Gun areas, or section sites when the task says so (gunTaskFor): the one entry point for the panel and the Plan Builder. */
+export function findGunSites(probe: SiteProbe, rules: any, task: GunTask, R: GunRules, standing: StandingFn | null = null): GunResult {
+  return task.area === 'sec' ? findGunSections(probe, rules, task, R, standing) : findGunAreas(probe, rules, task, R, standing);
+}
+
+/**
+ * Towed guns on mountain ground (MW s22 para 5 b p 240, para 6 a (1) p 244): gun areas near the roads are scarce and too
+ * small for the conventional layout, so towed guns go a single weapon or a section near the hairpin bends, and a Bty
+ * deploys by sections in two or three places under its CP. Every lattice point is read as a section site (areas.sec)
+ * with the same gates and checks as a gun area; then each Bty (a Regt: three) takes the best site left and the best
+ * others at least `minApartM` from every section taken and within `maxSpreadM` of its first, up to `sitesMax`. A Bty
+ * with fewer than `sitesMin` sites warns. The hairpin bends themselves are not read from the data: the Access row says
+ * how near a road or track each site is, and the recce confirms the sites (p 240).
+ */
+export function findGunSections(probe: SiteProbe, rules: any, task: GunTask, R: GunRules, standing: StandingFn | null = null): GunResult {
+  const t: GunTask = { ...task, area: 'sec' };
+  const G = gunScorer(probe, rules, t, R, standing);
+  const M = R.mountains, S = R.sources;
+  const notes: string[] = [];
+  const rejected = { nogo: 0, side: 0, range: 0, front: 0, room: 0 };
+  const firstRule: Partial<Record<GateFail['gate'], GateFail>> = {};
+  const pts = lattice(t.centre, t.radiusM, R.scan.stepM);
+  const cands: Cand[] = [];
+  for (const p of pts) {
+    const g = G.gates(p);
+    if (g.fails.length) {
+      rejected[g.fails[0].gate]++;
+      firstRule[g.fails[0].gate] ??= g.fails[0];
+      continue;
+    }
+    const read = G.read(p, g.axis);
+    const rf = G.roomFail(read);
+    if (rf) {
+      rejected.room++;
+      firstRule.room ??= rf;
+      continue;
+    }
+    cands.push({ at: p, axis: g.axis, read, pre: G.pre(read), tT: g.tT, tF: g.tF });
+  }
+  cands.sort((a, b) => b.pre - a.pre);
+  const apart = M.minApartM.value, spread = M.maxSpreadM.value;
+  const nBty = t.unit === 'regt' ? 3 : 1;
+  // enough read in full for every Bty's sections, a site per section's spacing
+  const top = spreadPick(cands, Math.max(R.scan.stepM, apart / 2), Math.max(R.scan.keep, nBty * M.sitesMax * 8));
+  const read = top.map((c) => G.build(c));
+  read.sort(bySiteOrder);
+  const taken: GunSite[] = [];
+  const clear = (s: GunSite) => taken.every((o) => groundDist(o.at, s.at) >= apart);
+  const btys: GunBtyGroup[] = [];
+  const btyRules = uniqRefs([
+    ...figRefs(M.sitesPerBty, `A Bty by sections in ${M.sitesMin} or ${M.sitesMax} places`, S),
+    ...figRefs(M.towedOnly, 'Towed guns by section near the roads and tracks; light guns in the conventional layout', S),
+    ...figRefs(M.minApartM, `Sections at least ${Math.round(apart)} m apart`, S),
+    ...figRefs(M.maxSpreadM, `Every section within ${km(spread)} of the Bty's first`, S),
+    ...figRefs(R.areas.sec.frontM, `Section site ${Math.round(R.areas.sec.frontM.value)} m across`, S),
+    ...figRefs(R.areas.sec.depthM, `Section site ${Math.round(R.areas.sec.depthM.value)} m deep`, S),
+    ...figRefs(M.recce, 'Sites picked off the map confirmed by recce', S),
+  ]);
+  for (let b = 0; b < nBty; b++) {
+    const first = read.find((s) => clear(s));
+    if (!first) break;
+    const group = [first];
+    taken.push(first);
+    for (const s of read) {
+      if (group.length >= M.sitesMax) break;
+      if (taken.includes(s) || !clear(s) || groundDist(first.at, s.at) > spread) continue;
+      group.push(s);
+      taken.push(s);
+    }
+    const label = nBty > 1 ? `Bty ${b + 1}` : 'The Bty';
+    let far = 0;
+    for (const p of group) for (const q of group) far = Math.max(far, groundDist(p.at, q.at));
+    const worst = worstTone(group.map((s) => s.tone));
+    const short = group.length < M.sitesMin;
+    const tone: Tone = short ? (worst === 'bad' ? 'bad' : 'warn') : worst;
+    const where = group.map((s, i) => `Sec ${i + 1} ${s.road.road ? `${metres(s.road.road.distM)} off ${s.road.label}` : 'no Rd near'}`).join(', ');
+    btys.push({
+      label,
+      sites: group,
+      spreadM: far,
+      tone,
+      row: {
+        label: 'By sections',
+        value: `${label}: ${group.length} section site${group.length === 1 ? '' : 's'}${group.length > 1 ? ` within ${km(far)}` : ''}`,
+        tone,
+        why: `${where}. In mountains gun areas near the roads and tracks are scarce and too small for the conventional layout, so towed guns go a single weapon or a section in small areas near the hairpin bends (MW p 240), and a Bty deploys by sections in two or three places under its CP (MW p 244); sections ${Math.round(apart)} m or more apart, within ${km(spread)} of the first. The bends themselves are not read from the data: confirm the sites by recce (MW p 240)`,
+        fix: short ? `Only ${group.length} section site${group.length === 1 ? '' : 's'} here: widen the search, take a site by a hairpin bend found on recce, or put a section on a site that needs work` : undefined,
+        rules: btyRules,
+      },
+    });
+  }
+  const sites = btys.flatMap((g) => g.sites);
+  sites.forEach((s, i) => (s.rank = i + 1));
+  for (const g of btys) {
+    g.sites.forEach((s, i) => {
+      s.why = [`${g.label}, section ${i + 1} of ${g.sites.length}${i === 0 ? ': the best section site left' : `: the best site left at least ${Math.round(apart)} m from every section taken and within ${km(spread)} of Sec 1`}. ${s.verdict}.`];
+    });
+  }
+  const tot = pts.length || 1;
+  const GATE_TEXT: Record<GateFail['gate'], string> = {
+    nogo: 'the centre is on Gr a gun cannot stand on',
+    range: `the target is out of ${t.weapon.name}'s range`,
+    side: "on the target's side of the front",
+    front: 'too near the front',
+    room: `no room for a ${G.area.label.toLowerCase()}`,
+  };
+  const rejectedWhy = (Object.keys(rejected) as Array<GateFail['gate']>)
+    .filter((k) => rejected[k] > 0)
+    .map((k) => ({ gate: k, count: rejected[k], share: rejected[k] / tot, text: `${rejected[k]} of ${pts.length} places: ${GATE_TEXT[k]}${firstRule[k] ? ` (e.g. ${firstRule[k]!.text})` : ''}`, rules: firstRule[k]?.rules ?? [] }))
+    .sort((a, b) => b.count - a.count);
+  notes.push(`Mountain ground, towed ${t.weapon.name}: by sections, ${nBty > 1 ? 'each of three Btys' : 'the Bty'} in ${M.sitesMin} or ${M.sitesMax} section sites near the roads and tracks (MW pp 240, 244); confirm them by recce (p 240).`);
+  if (btys.some((g) => g.sites.length < M.sitesMin)) notes.push(`Too few section sites for ${btys.filter((g) => g.sites.length < M.sitesMin).map((g) => g.label).join(', ')}${btys.length < nBty ? `; ${nBty - btys.length} Bty with none` : ''}: widen the circle or recce the hairpin bends.`);
+  else if (btys.length < nBty) notes.push(`${nBty - btys.length} of ${nBty} Btys found no section site in this circle: widen it.`);
+  if (!pts.length) notes.push('No search circle.');
+  if (!sites.length) notes.push(`No section site in this circle${rejectedWhy.length ? `: ${rejectedWhy.map((r) => `${pct(r.share)} ${GATE_TEXT[r.gate]}`).join(', ')}` : ''}. Look elsewhere or widen the circle.`);
+  if (!t.target) notes.push('No target: range and crest not checked.');
+  if (!t.front) notes.push('No front: distance behind the FDL not checked (draw the FDL or mark the threat).');
+  return { sites, tried: pts.length, rejected, rejectedWhy, pending: false, notes, area: G.area, orderRules: orderRefs(R), btys };
+}
+
 /** "Why not here?": the place read with the same gates and checks as the search, and set against the first site. */
 export function gunWhyNot(probe: SiteProbe, rules: any, task: GunTask, R: GunRules, at: XY, best: GunSite | null, standing: StandingFn | null = null): GunWhyNot {
   const G = gunScorer(probe, rules, task, R, standing);
@@ -949,7 +1157,7 @@ export function citeList(rows: Array<{ rules: RuleRef[] }>): RuleRef[] {
 /** The decision record: every site with its checks and the rules behind them, the order, the places left out. */
 export function gunLines(res: GunResult, task: GunTask, grid: (p: XY) => string, dataLine = '', whyNot: GunWhyNot | null = null): string[] {
   const L: string[] = [];
-  const all = citeList([{ rules: res.orderRules }, ...res.sites.flatMap((s) => s.rows), ...res.rejectedWhy, ...(whyNot ? [...whyNot.gates, ...(whyNot.site?.rows ?? [])] : [])]);
+  const all = citeList([{ rules: res.orderRules }, ...(res.btys ?? []).map((g) => g.row), ...res.sites.flatMap((s) => s.rows), ...res.rejectedWhy, ...(whyNot ? [...whyNot.gates, ...(whyNot.site?.rows ?? [])] : [])]);
   const num = (r: RuleRef) => all.indexOf(r) + 1;
   const cites = (rs: RuleRef[]) => {
     const n = [...new Set(uniqRefs(rs).map((r) => all.findIndex((x) => x.figure === r.figure && x.book === r.book && x.page === r.page && x.quote === r.quote && (x.note ?? '') === (r.note ?? '')) + 1))].filter((x) => x > 0);
@@ -960,6 +1168,7 @@ export function gunLines(res: GunResult, task: GunTask, grid: (p: XY) => string,
   if (task.front) L.push(`Front: ${task.front.label}`);
   if (dataLine) L.push(`Data: ${dataLine}`);
   L.push(`Order: the worst check first, then the weighted checks, then the finer reading${cites(res.orderRules)}`);
+  for (const g of res.btys ?? []) L.push(`${g.row.value}${g.row.tone === 'ok' ? '' : ` [${g.row.tone === 'bad' ? 'FAIL' : g.row.tone === 'warn' ? 'check' : 'not read'}]`}: ${g.row.why}${cites(g.row.rules)}${g.row.fix ? `. Fix: ${g.row.fix}` : ''}`);
   L.push('');
   for (const s of res.sites) {
     L.push(`${s.rank}. ${grid(s.at)}  ${s.verdict}  (facing ${compass(s.axisDeg)}, ${Math.round(s.axisDeg * 17.778)} mils)`);

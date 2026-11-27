@@ -1590,7 +1590,7 @@ export function writeTimeCalcAttk(hHour: string | null, h: AprcHSumIn | null): A
     row('SL to Obj Phase 2')[3] = when(h.obj2Min);
   }
   const basis: AprcBasis[] = [input(`H: ${hHour || 'not set'} on D Day`)];
-  if (h) basis.push(calc("From the plan's H-hour sum: the march at day / night rates (IBB p 18), forming up, the assault at its pace, the fire lifting at each ring (IC s66 p 305)"));
+  if (h) basis.push(calc("From the plan's H-hour sum: the march at day / night rates (IBB p 18), forming up, the assault at its pace, the fire lifting at each ring (IC s66 para 7 e (1) pp 304-305)"));
   return { patches: [{ id: 'ts.calc', draft: '', state: 'judge', table: { head: ['Ser', 'Events', 'Time Req', 'Running Time'], rows, widths: [0.08, 0.5, 0.2, 0.22] }, basis }], confirm: [] };
 }
 

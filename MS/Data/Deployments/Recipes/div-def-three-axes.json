@@ -14,7 +14,7 @@
   "name": "Div Def: three Bdes up on three axes (extended frontage)",
   "frontageRow": "Infantry division, two to three axes",
   "subRow": null,
-  "note": "An Inf Div on an extended frontage, every Bde committed on an independent axis (OoW Vol I Annex D p 105: a Bde of 10-12 km on each axis, 4-6 km deep; \"all integral brigades may have to be committed to look after an independent axis each\"). The Div reserve then is most of the armour retained in hand, the absolute minimum of infantry committed on each axis, the depth troops of each Bde earmarked as part of the Div reserve (lifted only if the axis permits), and the engineers and other Div troops (Annex D para 1 a-d); in extreme cases Corps / Army may help (para 2). Larger gaps between the Bdes are accepted where the Div reserve can close them (IBB S59 para 6 d p 327); the Div Arty reinforced by at least one Med / Hy Regt deploys in groups covering the major approaches (OOW1 p 83). Plan metres from the Div centre, y toward the enemy. The Bde seeds 12 km apart (three axes of 10-12 km: 30-36 km, the OoW Vol I row) and the armour 4 km back are decisions (E): the books give no spacing. AT Res (OOW1 s13 p 45: all formations facing a major tank threat create a well-balanced and mobile AT reserve; s6 p 26: a substantial portion of the AT weapons earmarked for the En tanks that bypass the main defences and hit the depth): laid beside the reserve, on the side away from the HQ (the place a decision, E).",
+  "note": "An Inf Div on an extended frontage, every Bde committed on an independent axis (OoW Vol I Annex D p 105: a Bde of 10-12 km on each axis, 4-6 km deep; \"all integral brigades may have to be committed to look after an independent axis each\"). The Div reserve then is most of the armour retained in hand, the absolute minimum of infantry committed on each axis, the depth troops of each Bde earmarked as part of the Div reserve (lifted only if the axis permits), and the engineers and other Div troops (Annex D para 1 a-d); in extreme cases Corps / Army may help (para 2). Larger gaps between the Bdes are accepted where the Div reserve can close them (IBB S59 para 6 d p 327); the Div Arty reinforced by at least one Med / Hy Regt deploys in groups covering the major approaches (OOW1 p 83). Plan metres from the Div centre, y toward the enemy. The Bde seeds 12 km apart (three axes of 10-12 km: 30-36 km, the OoW Vol I row) and the armour 4 km back are decisions (E): the books give no spacing. AT Res (OOW1 s13 p 45: all formations facing a major tank threat create a well-balanced and mobile AT reserve; s6 p 26: a substantial portion of the AT weapons earmarked for the En tanks that bypass the main defences and hit the depth): laid beside the reserve, on the side away from the HQ (the place a decision, E). GSP 1947 Inf Div in Battle agrees and adds: on a ditch cum bund all three Bdes are deployed three up, depth from their own resources (s26 para 8 b pp 120-121), a Bde up to 8000-10000 m there, and a Div should normally not be asked to defend more than two divisional-size major approaches unless it is allocated additional resources (para 5 p 119); the Div reserve an Inf Bde or elements of it, the Armd Regt or its bulk and the LAT Bn (s27 para 3 p 122). The three echelons (s23 paras 5-13 pp 104-106; OoW Vol I Annex A p 102): protective detachments as covering troops and screens (p 105 para 7 c), a C Tps group on each axis 4 km ahead of the FDL (Demo2 1-4 km ahead of the FDL minefields, basis O) inside a Security Zone 10 km deep (PlanDoctrine securityZone.divOnIbM, O, its lower end), the screens the Bdes' own (p 106 para 11); counter-penetration posns planned and prepared at the outset and occupied when the threat warrants (pp 108-109 paras 20-22), one behind each outer Bde 1 km behind its rear edge (cpen.behindFwdM.bde, E), the armour in hand behind the centre; their number and size a decision (E: p 109 prints none).",
   "slots": [
     {
       "role": "fwdL",
@@ -142,12 +142,101 @@
       "role": "atRes",
       "kind": "point",
       "sym": "15111200",
-      "label": "AT Res",
+      "label": "AT Res (LAT Bn)",
       "order": 6,
       "shape": {
         "at": [
           3000,
           4000
+        ]
+      }
+    },
+    {
+      "role": "cpenL",
+      "kind": "cpen",
+      "sym": "25151200",
+      "label": "C Pen 1",
+      "echelon": "16",
+      "order": 3,
+      "planned": true,
+      "size": {
+        "doctrine": "size.bn"
+      },
+      "seed": {
+        "acrossM": -12000,
+        "backM": 2250
+      }
+    },
+    {
+      "role": "cpenR",
+      "kind": "cpen",
+      "sym": "25151200",
+      "label": "C Pen 2",
+      "echelon": "16",
+      "order": 3,
+      "planned": true,
+      "size": {
+        "doctrine": "size.bn"
+      },
+      "seed": {
+        "acrossM": 12000,
+        "backM": 2250
+      }
+    },
+    {
+      "role": "sz",
+      "kind": "area",
+      "sym": "00000161",
+      "label": "SZ",
+      "order": 6,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -11000,
+          "wM": 35000,
+          "hM": 10000
+        }
+      }
+    },
+    {
+      "role": "ctpsL",
+      "kind": "point",
+      "sym": "10121300",
+      "label": "C Tps",
+      "echelon": "16",
+      "order": 6,
+      "shape": {
+        "at": [
+          -12000,
+          -9500
+        ]
+      }
+    },
+    {
+      "role": "ctpsC",
+      "kind": "point",
+      "sym": "10121300",
+      "label": "C Tps",
+      "echelon": "16",
+      "order": 6,
+      "shape": {
+        "at": [
+          0,
+          -9500
+        ]
+      }
+    },
+    {
+      "role": "ctpsR",
+      "kind": "point",
+      "sym": "10121300",
+      "label": "C Tps",
+      "echelon": "16",
+      "order": 6,
+      "shape": {
+        "at": [
+          12000,
+          -9500
         ]
       }
     },

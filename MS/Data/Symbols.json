@@ -1773,7 +1773,7 @@
     },
     "10120410": {
         "Mover": "foot",
-        "Rng": {"at": [0, 275, 500], "b": "D", "s": "IC s46.6b-c (RPG-7 / Energa)"},
+        "Rng": {"at": [0, 275, 500], "b": "D", "s": "IC s46 para 6 b p 168: a well-concealed RPG-7 destroys any tank up to 180 to 275 m (the 275); para 6 c: the Energa rifle grenade 70-120 m. The 500 m is not in IC: it is the RPG-7's range in WeaponEqptV3.json (15111700 Anti Tank Rocket Launcher)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - LAT/Light Anti Tank",
@@ -5941,7 +5941,7 @@
         "Grp": ["Land Eqpt","Anti Tank Rocket Launcher" ]
     },
     "15111701": {
-        "Rng": {"at": [0, 90, 120], "b": "D", "s": "IC s46.6c (Energa 70-90 m moving, 90-120 m stationary tank)"},
+        "Rng": {"at": [0, 90, 120], "b": "D", "s": "IC s46 para 6 c p 168: Energa 70-90 m at a moving, 90-120 m at a stationary tank. Note: the Energa (Rifle Anti-Tank Grenade No 94) is a rifle grenade, not a rocket launcher; its figures stand on this AT RL Light symbol as the Pl's light AT weapon"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Rocket Launcher - Light",

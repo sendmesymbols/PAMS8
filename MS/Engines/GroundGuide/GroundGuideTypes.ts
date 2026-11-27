@@ -526,6 +526,8 @@ export interface IpbAirZone {
   points: number;
   slopeDeg: number;
   mountain: boolean;
+  /** The square's mean height above sea level, metres (null: no elevation). */
+  elevM?: number | null;
   caution: string[];
   seenP: number | null;
   distObjM: number | null;
@@ -584,6 +586,8 @@ export interface IpbWxView {
   stationKm: number | null;
   /** The month's wind over the area (ERA5 normal), when the wind grid is in. */
   wind?: import('./GroundGuideWind').WindReading | null;
+  /** Mountain ground (IpbTemplates mountainTest): the area's height and MW's weather notes for the month (IpbDoctrine coding.season.mountainWx). */
+  mtn?: { elevM: number | null; notes: Array<{ id: string; for: Array<'fire' | 'mnvr' | 'air'>; text: string }> } | null;
 }
 
 /** Fire on the IPB avenues from the other side's Posns (extended.ipb.fire), Web Mercator. */
@@ -669,6 +673,20 @@ export interface IpbApchAa {
   /** The assault from the FUP, metres, and how much of it is NO-GO, %. */
   assaultM?: number;
   assaultNogoPct?: number;
+  /**
+   * On mountain ground only: how it runs, read from the 30 m elevation across it (MW s7 para 4 a p 78; IpbDoctrine
+   * `mountainApproach`): its type, the shares, the floor width, what the book says of it (`say`, page cited) and whether
+   * it is the difficult approach of those read (MW p 79: normally lightly held).
+   */
+  mtn?: {
+    kind: 'valley' | 'nullah' | 'ridge' | 'slope' | 'mixed';
+    label: string;
+    top: ['valley' | 'nullah' | 'ridge' | 'slope', 'valley' | 'nullah' | 'ridge' | 'slope' | null];
+    shares: Record<'valley' | 'nullah' | 'ridge' | 'slope', number>;
+    floorM: number | null;
+    say: string[];
+    hardest?: boolean;
+  };
 }
 
 /** The IPB mobility corridors and avenues of approach over the area read (Extended View, `extended.ipb.apchs`). */
@@ -1464,6 +1482,16 @@ export interface GroundGuideOcoka {
   light: { night: boolean; level: 'day' | 'moonlight' | 'starlight'; moonlitShare: number | null; moonIllum: number | null };
   /** The weapon's night sight on an ordinary day of the month, a haze day and a fog day; null when it has none. */
   nightSight: { deviceM: number; ordinaryM: number; hazeDayM: number; fogDayM: number; thermal: boolean } | null;
+  /**
+   * The desert round the point (half or more of the ground read is bare desert, sand, dunes or salt pan: IpbTemplates
+   * desertTest's classes and share): how far movement is seen there and what limits it (OcokaDoctrine observation.desert,
+   * DW pp 7, 61). Null off the desert. Optional: readings built before it are read as null.
+   */
+  desert?: {
+    sharePct: number; detectKm: [number, number]; text: string; src: string;
+    /** The nearest water points read (up to 8): in the desert ground of tactical importance and objectives (DW pp 7, 38). */
+    water?: Array<{ kindLabel: string; name: string | null; distanceM: number; compass: string; at: MercXY }>;
+  } | null;
   /** Set while the Ground Detail is open: the viewshed for its picture. */
   picture: OcokaPicture | null;
   /** Set once the map products for this spot are worked out (a moment after the cursor rests). */

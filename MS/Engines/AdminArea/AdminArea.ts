@@ -380,6 +380,8 @@ export default class AdminArea {
       },
       seasonWhy: this._season.why,
       wetFromMm: WET_FROM_MM,
+      // the month the snow on the slopes above is judged in (mountain ground: MW p 281); the ground read at the centre
+      month,
     };
     b.begin();
     let res: AdminResult | null = null;

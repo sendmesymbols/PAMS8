@@ -475,6 +475,40 @@ export function atgmPairs(b: UnitBrief | null): number {
 }
 
 /**
+ * Second-line troops laid as the plan's unit (GSP 1947 Inf Div in Battle s17 paras 12-18 pp 72-74, Annexes E-G pp
+ * 201-202). A Mjd Bn supplements regular infantry in thickening up the relatively less important areas and, in an
+ * offensive, forms part of the base of fire and protects the attacking formations (para 13 a, c p 73). The Rangers and FC
+ * Wings hold no anti-tank weapons of their own (para 17 a p 74: Corps holds 6 x 75 mm RR to sub-allot) and are used only
+ * to augment regular infantry in defensive operations, in the less threatened sectors against purely infantry
+ * operations (para 18 p 74). Null for any other unit, and for an ambush, patrol or recce.
+ */
+export function secondLineRow(unit: UnitBrief | null, task: string, enType: EnemyType | null): Check | null {
+  if (!unit || ['ambush', 'patrol', 'recce'].includes(task)) return null;
+  // the Wing or Mjd Bn itself, or its rifle Coy / Pl taken for a Coy or Pl plan
+  const wing = /^inf-(wing|coy|pl)-(rangers|fc)\b/.test(unit.id), mjd = /^inf-(bn|coy|pl)-mjd\b/.test(unit.id);
+  if (!wing && !mjd) return null;
+  const name = 'Second-line troops';
+  const offensive = ['attack', 'crossing', 'advance'].includes(task);
+  if (offensive) {
+    return wing
+      ? { name, st: 'warn', reason: `${unit.name}: a Rangers or FC Wing is used only to augment regular infantry in defensive operations (GSP 1947 Inf Div in Battle s17 para 18 p 74)`, detail: { head: 'A Wing in an offensive', why: 'A Rangers or FC Wing augments regular infantry in defensive operations only, and holds no AT weapons, few officers and vehicles, no assault pioneers and no night vision devices (GSP 1947 Inf Div in Battle s17 paras 17-18 p 74).', fix: ['A regular Bn for the attack, the Wing to hold ground it frees', 'The Wing in the base of fire or the firm base only'] } }
+      : { name, st: 'warn', reason: `${unit.name}: in an offensive a Mjd Bn forms part of the base of fire and assists in protecting the attacking formations (GSP 1947 Inf Div in Battle s17 para 13 c p 73), not the assault`, detail: { head: 'A Mjd Bn in the assault', why: 'In an offensive a Mjd Bn forms part of the base of fire; lack of unit cohesion, standard of leadership and interrupted training limit it (GSP 1947 Inf Div in Battle s17 para 13 p 73).', fix: ['A regular Bn for the assault', 'The Mjd Bn as the base of fire or flank protection'] } };
+  }
+  const armour = enType === 'mech' || enType === 'armd';
+  const en = enType === 'armd' ? 'an armd En' : 'a mech En';
+  if (wing) {
+    const at = unit.atgm.length + unit.rr.length > 0;
+    if (!armour) return { name, st: 'pass', reason: `${unit.name}: against purely infantry operations, the sector a Rangers or FC Wing may hold (GSP 1947 Inf Div in Battle s17 para 18 p 74)` };
+    return at
+      ? { name, st: 'pass', reason: `${unit.name}: AT weapons grouped to it; the Wing holds none of its own (GSP s17 para 17 a p 74), and is for the less threatened sectors (para 18)` }
+      : { name, st: 'warn', reason: `${unit.name} against ${en}: the Wing holds no AT weapons of its own (GSP 1947 Inf Div in Battle s17 para 17 a p 74, Annexes F-G) and is for the less threatened sectors against purely infantry operations (para 18)`, detail: { head: 'No AT weapons against armour', why: 'The Wing holds no AT weapons of its own and is for the less threatened sectors against purely infantry operations (GSP 1947 Inf Div in Battle s17 paras 17 a, 18 p 74; Annexes F-G).', fix: ['An AT group to it (the AT group row: LAT / HAT Coys), or the Corps\' 75 mm RRs sub-allotted (para 17 a)', 'A regular Bn on the tank approach, the Wing on a less threatened sector'] } };
+  }
+  return armour
+    ? { name, st: 'warn', reason: `${unit.name} against ${en}: Mjd Bns supplement regular infantry in thickening up the relatively less important areas (GSP 1947 Inf Div in Battle s17 para 13 a p 73)`, detail: { head: 'A Mjd Bn against armour', why: 'Mjd Bns thicken up the relatively less important areas; lack of unit cohesion, standard of leadership and interrupted training limit them (GSP 1947 Inf Div in Battle s17 para 13 a p 73).', fix: ['The Mjd Bn on a less important sector, a regular Bn on the main approach', 'Cross-grouped with regular infantry sub units (para 13 a)'] } }
+    : { name, st: 'pass', reason: `${unit.name}: holding a less important area against infantry, the Mjd Bn's task (GSP 1947 Inf Div in Battle s17 para 13 a p 73)` };
+}
+
+/**
  * The protective minefield along the front in time (engr.json p 439: an Engr Pl lays 780 mixed clusters in 24 h, an
  * Inf Pl half; a mixed field 1 ATM and 1 APM a metre of front, E reading) against the time to be ready.
  */
@@ -483,12 +517,15 @@ export function minefieldRow(o: OrbatSet, doc: DoctrineSet, frontageM: number, o
   const row = t?.rows?.find((r: any) => r.Condition === 'Engr Pl' && /mixed/i.test(String(r.Cluster)));
   const perPl = Number(row?.['Max in 24 hrs']);
   if (!perPl || !(frontageM > 0)) return null;
-  const ready = resolveRange(doc, doctrineAt(doc, 'readyBy.coyPosnH')) ?? [24, 36];
+  // the time to be ready: a Bn (or bigger) needs a minimum of 36 working hours (OOW1 s8 para 7 p 39, readyBy.bnPosnH); a
+  // Coy 24-36 h depending on the degree of En interference (IC s75 para 1 p 399, readyBy.coyPosnH)
+  const bnUp = Number(own?.echelon) >= 16;
+  const ready = (bnUp ? resolveRange(doc, doctrineAt(doc, 'readyBy.bnPosnH')) : null) ?? resolveRange(doc, doctrineAt(doc, 'readyBy.coyPosnH')) ?? [24, 36];
   const clusters = Math.round(frontageM);
   const rifles = own ? Math.max(1, Math.round(own.coys * (own.plsPerCoy ?? 3))) : 0;
   const ownH = rifles ? Math.round((clusters / (rifles * perPl * 0.5)) * 24) : null;
   const ownPart = ownH !== null ? `; the ${rifles} rifle Pls alone, at half that, about ${ownH} h` : '';
-  const readyPart = `posns ready in ${ready[0]}-${ready[1]} h (IBB)`;
+  const readyPart = bnUp && ready[0] === ready[1] ? `posns ready in ${ready[0]} h at the least (a Bn, OOW1 p 39)` : `posns ready in ${ready[0]}-${ready[1]} h (a Coy, depending on the degree of En interference: IC s75 para 1 p 399)`;
   const head = `protective minefield along ${(frontageM / 1000).toFixed(1)} km of front, about ${clusters.toLocaleString('en-GB')} mixed clusters`;
   if (engr) {
     // the engineers grouped to the plan (ORBAT): their Pls by hand and, with a set of 6 MMLs, the ATMs by machine
@@ -497,7 +534,9 @@ export function minefieldRow(o: OrbatSet, doc: DoctrineSet, frontageM: number, o
     const st = best !== null && best <= ready[1] ? 'pass' : 'warn';
     const hand = m.handH !== null ? `by hand with its ${engr.pls} Pls (${perPl} mixed clusters a Pl in 24 h, SO's Hbk p 439) about ${m.handH} h` : 'no engineer Pls that lay mines';
     const mech = m.mechH !== null ? `; with its MMLs laying ATMs alongside the Pls (a set of 6: 9000 m in 24 h, p 439, ideal conditions, under trial; ${m.sets} set${m.sets > 1 ? 's' : ''}, the rest in reserve) about ${m.mechH} h (an AT belt by machine, E)` : engr.mml ? `; ${engr.mml} MML, short of a set of 6` : '';
-    return { name: 'Mines in time', st, reason: `${head}: the ${engr.name} ${hand}${mech}${ownPart}; ${readyPart}${st === 'warn' ? ': more engineers, or the Div\'s Engr Bn with its MMLs' : ''}` };
+    // m: the hours by hand alone (9999: no Pls that lay), limitM: the hours to be ready, for the ground to judge again
+    // (PlanContext.groundNotes: in the desert the MMLs lay only on the dhars, DW p 65)
+    return { name: 'Mines in time', st, m: m.handH ?? 9999, limitM: ready[1], reason: `${head}: the ${engr.name} ${hand}${mech}${ownPart}; ${readyPart}${st === 'warn' ? ': more engineers, or the Div\'s Engr Bn with its MMLs' : ''}` };
   }
   const coyH = Math.round((clusters / (3 * perPl)) * 24);
   const st = coyH <= ready[1] ? 'pass' : 'warn';

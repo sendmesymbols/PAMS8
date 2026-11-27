@@ -23,7 +23,7 @@ import { findPhase2, goingRow, type Phase2Find, findPhaseN } from './PlanPhase';
 import { addTankTimes, defTankRows, findTankSpots, type TankFind, type TankMode, tankFupVsEnAtgm } from './PlanTanks';
 import { artyRows } from './PlanArty';
 import { attackFrontRows, fdlCurve, frontEdges, frontLocal, frontRows, frontValid, nearestOnFront, rayAhead, readFront, shapeToFront, standDist, type EnFront, type FrontEdges, type FrontShape, type LocalFront } from './PlanEnFront';
-import { adMountainRows, adRows } from './PlanAD';
+import { adDefileRows, adMountainRows, adRows } from './PlanAD';
 import type { ForceSides } from './PlanContext';
 import { fitSmallOp, type Mover, type SmallProbe, type SmallReading } from './PlanSmallOps';
 import { canalPrep, fitCrossing, type CrossingReading, type Light } from './PlanCrossing';
@@ -213,26 +213,69 @@ function readGround(g: PlanGround, f: FitFrame, b: Box, going: { nogo: ReadonlyS
  * The fit's thresholds, read from PlanDoctrine.json `fit.*` (the figures the code always used are the fallbacks, basis E
  * until the doctrine file cites them): set at the start of each fit.
  */
-const TH = { nogoFail: 0.3, nogoWarn: 0.1, buaWarn: 0.3, fofWantM: 270, overlookM: 10, killBand: [400, 1000] as [number, number], chokeM: 300, deadWarnPct: 40, mgReachM: 457, fupSnapM: 400 };
+const TH = { nogoFail: 0.3, nogoWarn: 0.1, buaWarn: 0.3, fofWantM: 270, fofMinCoyM: 100, overlookM: 10, killBand: [400, 1000] as [number, number], killBandCoy: [300, 500] as [number, number], chokeM: 300, deadWarnPct: 40, mgReachM: 457, fupSnapM: 400 };
 function readThresholds(doc: DoctrineSet): void {
   const one = (p: string, fb: number) => { const r = resolveRange(doc, doctrineAt(doc, p)); return r ? (r[0] + r[1]) / 2 : fb; };
   const two = (p: string, fb: [number, number]) => resolveRange(doc, doctrineAt(doc, p)) ?? fb;
   TH.nogoFail = one('fit.ground.nogoFailShare', 0.3); TH.nogoWarn = one('fit.ground.nogoWarnShare', 0.1); TH.buaWarn = one('fit.ground.buaWarnShare', 0.3);
   TH.fofWantM = one('fit.fieldOfFire.wantM', 270); TH.overlookM = one('fit.overlookedM', 10);
   TH.killBand = two('fit.killingGr.aheadM', [400, 1000]); TH.chokeM = one('fit.killingGr.chokeM', 300);
+  // a Coy or Pl plan: IC's figures (fields of fire 100 m minimum, s72 para 6 b p 372; killing range 300 m, Pl field of
+  // fire up to 400 m, s77 para 2 p 425; LMGs open at the 500 m line, s76 para 11 e p 417)
+  TH.fofMinCoyM = one('fieldOfFire.minimumCoyM', 100); TH.killBandCoy = two('fit.killingGr.aheadCoyM', [300, 500]);
   TH.deadWarnPct = one('fit.deadGroundWarnPct', 40); TH.mgReachM = one('fit.mgReachM', 457); TH.fupSnapM = one('fit.enFupSnapM', 400);
 }
 
-function groundCheck(g: PlanGround, gr: GroundRead, kind: string): Check {
+function groundCheck(g: PlanGround, gr: GroundRead, kind: string, buaMin: number | null = null): Check {
   if (!gr.known) return { name: 'Ground', st: 'unchecked', reason: 'no ground data here' };
   const share = (n: number) => Math.round((100 * n) / gr.known);
   const top = gr.top !== null ? g.label(gr.top) : 'unknown';
   if (gr.centreNogo || gr.nogo / gr.known > TH.nogoFail) return { name: 'Ground', st: 'fail', reason: `${share(gr.nogo)} % NO-GO on foot (${top}): move it` };
   if (gr.nogo / gr.known > TH.nogoWarn) return { name: 'Ground', st: 'warn', reason: `${share(gr.nogo)} % NO-GO on foot at its edge (${top})` };
-  if (gr.bua / gr.known > TH.buaWarn && (kind === 'fwd' || kind === 'round')) return { name: 'Ground', st: 'warn', reason: `${share(gr.bua)} % built-up: short fields of fire, but cover; in a built-up area a Pl holds 100 m at most, ideally one house (IC s55), so the posn's frontage shrinks: hold the edge that covers the approach` };
+  // the BUA layout (buaMin set, bua.buaShareMin): the locality held in the buildings; mostly outside them it is larger
+  // than the BUA there can hold (IC s52 para 1 c p 203); built-up ground is what it wants, never a warning
+  if (buaMin !== null && ['fwd', 'round', 'depth', 'res'].includes(kind)) {
+    if (gr.bua / gr.known < buaMin) return { name: 'Ground', st: 'warn', reason: `only ${share(gr.bua)} % built-up (${top}): the locality reaches outside the BUA, larger than the built-up area here can hold; a locality in a BUA is of a limited size, in the buildings (IC s52 para 1 c p 203; ${Math.round(buaMin * 100)} % built-up wanted, E): draw it on the blocks of the main route in` };
+    return { name: 'Ground', st: 'pass', reason: `${share(gr.bua)} % built-up: the locality in the buildings, fields of fire about 50-100 m (IC s52 para 4 a (3) p 204)` };
+  }
+  if (gr.bua / gr.known > TH.buaWarn && (kind === 'fwd' || kind === 'round')) return { name: 'Ground', st: 'warn', reason: `${share(gr.bua)} % built-up: short fields of fire (about 50-100 m in a BUA, IC s52 para 4 a (3) p 204), but cover; a locality in a built-up area is of a limited size (IC s52 para 1 c p 203: no figure printed; the 100 m a Pl of IC s55 para 17 a p 229 is the attack's), so the posn's frontage shrinks: hold the edge that covers the approach` };
   if (gr.slow / gr.known > 0.5) return { name: 'Ground', st: 'warn', reason: `${share(gr.slow)} % SLOW-GO on foot (${top})` };
   return { name: 'Ground', st: 'pass', reason: `mostly ${top}` };
 }
+/**
+ * The BUA defence's field of fire at a posn (IC s52 para 4 a (3) p 204: a building for defence 'should have a clear field
+ * of fire and observation (approximately from 50 to 100 metres)'): the clear distance on five rays across its front in
+ * 25 m steps to the upper figure, the median; under the lower figure it warns (the bundle reads buildings as a density,
+ * not walls: confirm). Stands in for the open-ground check (IBB p 279's 200 m) on the BUA layout only.
+ */
+function buaFofCheck(sight: (a: XY, b: XY) => number | null, front: XY, turn: number, want: [number, number]): Check {
+  const clear: number[] = [];
+  for (const da of [-30, -15, 0, 15, 30]) {
+    const a = ((turn + da) * Math.PI) / 180;
+    let reach = 0, ok = true;
+    for (let d = 25; d <= want[1] + 1; d += 25) {
+      const p = sight(front, P(front.x + d * Math.sin(a), front.y + d * Math.cos(a)));
+      if (p === null) { ok = false; break; }
+      if (p < 0.5) break;
+      reach = d;
+    }
+    if (ok) clear.push(reach);
+  }
+  if (clear.length < 3) return { name: 'Fd of fire', st: 'unchecked', reason: 'the ground in front is not loaded' };
+  clear.sort((x, y) => x - y);
+  const med = clear[Math.floor(clear.length / 2)];
+  const st: CheckState = med >= want[0] ? 'pass' : 'warn';
+  return { name: 'Fd of fire', st, reason: `about ${med >= want[1] ? `${want[1]} m or more` : `${med} m`} clear across its front: in a BUA a building for defence should have a clear field of fire and observation of approximately ${want[0]}-${want[1]} m (IC s52 para 4 a (3) p 204), not the 200 m of open ground (IBB p 279)${st === 'warn' ? ': the En can get close under cover, and such a building may have to be rejected (IC s52 para 2 p 204); the bundle reads buildings as a density, not walls: confirm on the ground' : ''}` };
+}
+
+/** The BUA defence's Fields of fire plan row, on IC's 50-100 m (replaces the open-ground row in place). */
+function buaFofRow(rows: Check[], fof: Check[], want: [number, number]): void {
+  const r = rows.find((x) => x.name === 'Fields of fire');
+  if (!r || r.st === 'unchecked' || !fof.length) return;
+  r.st = fof.some((c) => c.st === 'fail') ? 'fail' : fof.some((c) => c.st === 'warn') ? 'warn' : 'pass';
+  r.reason = `${fof.filter((c) => c.st === 'pass').length} of ${fof.length} forward localities clear ${want[0]} m or more: about ${want[0]}-${want[1]} m in a BUA (IC s52 para 4 a (3) p 204); fighting is largely at close quarter, mutual support between posts difficult, hence localities of a limited size (IC s52 para 1 c p 203)`;
+}
+
 const spotCost = (gr: GroundRead) => (gr.known ? (gr.centreNogo ? 2 : 0) + gr.nogo / gr.known * 3 + gr.slow / gr.known * 0.5 : 5);
 
 // ── the fit ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -529,10 +572,14 @@ export function fitPlan(inp: FitInput): FitResult {
   const fofMin = num('fieldOfFire.minimumM', 200); // IBB p279 (PlanDoctrine.fieldOfFire.minimumM once added)
   let deadShare: number[] = [];
   let overlooked: string[] = [];
+  // the BUA defence's own guard (IC s52): the localities in the buildings, fields of fire about 50-100 m
+  const buaDef = recipe.layout === 'bua' && recipe.task === 'defence';
+  const buaFof: [number, number] = resolveRange(doc, doctrineAt(doc, 'bua.fofM')) ?? [50, 100];
+  const buaMin = buaDef ? num('bua.buaShareMin', 0.5) : null;
   for (const b of boxes) {
     const checks: Check[] = [];
     const gr = readGround(g, f, b, foot);
-    const gc = groundCheck(g, gr, b.kind);
+    const gc = groundCheck(g, gr, b.kind, buaMin);
     const slid = out.slides.find((s) => s.role === b.role);
     const it = out.itg?.[b.role];
     if (slid && gc.st !== 'fail' && !(it && it.distM)) gc.reason += slid.why === 'high' ? `; moved ${fmtM(slid.distM)} up to ground ${slid.riseM} m higher, confirm on the ground` : `; slid ${fmtM(slid.distM)} out of NO-GO, confirm on the ground`;
@@ -561,8 +608,12 @@ export function fitPlan(inp: FitInput): FitResult {
         if (known >= 3) {
           clear.sort((x, y) => x - y);
           const med = clear[Math.floor(clear.length / 2)];
-          const st: CheckState = med >= TH.fofWantM ? 'pass' : med >= fofMin ? 'warn' : 'fail';
-          checks.push({ name: 'Fd of fire', st, reason: `about ${med >= 500 ? '500 m or more' : fmtM(med)} clear across its front (IBB p279: ${fofMin} m minimum; IC s72: 270-500 m wanted)` });
+          // a Coy or Pl plan: IC's 100 m minimum acceptable (s72 para 6 b p 372) beside IBB's 200 m (p 279): the books
+          // differ, so 100-199 m warns there, never fails (a Bn plan and up keeps IBB's)
+          const coyPl = !bn && Number.isFinite(TH.fofMinCoyM) && TH.fofMinCoyM < fofMin;
+          const st: CheckState = med >= TH.fofWantM ? 'pass' : med >= fofMin ? 'warn' : coyPl && med >= TH.fofMinCoyM ? 'warn' : 'fail';
+          checks.push({ name: 'Fd of fire', st, reason: `about ${med >= 500 ? '500 m or more' : fmtM(med)} clear across its front (${coyPl ? `IC s72 para 6 b p 372: ${TH.fofMinCoyM} m minimum acceptable, 270-500 m desirable; IBB p279 asks ${fofMin} m` : `IBB p279: ${fofMin} m minimum; IC s72 para 6 b p 372: 270-500 m wanted`})` });
+          if (buaDef) checks[checks.length - 1] = buaFofCheck(sight, front, b.turn, buaFof);
           // dead ground 300-1200 m out
           let seen = 0, n = 0;
           for (const da of [-25, 0, 25]) for (const d of [300, 700, 1200]) {
@@ -641,13 +692,14 @@ export function fitPlan(inp: FitInput): FitResult {
     const cap = (a: FitApproach) => (!en ? '' : a.full ? `, takes an en ${echelonLabel(doc, en.echelon)}` : a.carries ? `, narrow: an en ${echelonLabel(doc, a.carries)} at most` : ', narrower than a Coy corridor (single file through a gap)');
     out.rows.push({ name: 'Approaches covered', st, reason: out.approaches.map((a) => `${a.id}${a.main ? ' (main)' : ''} ${a.coveredBy.length ? `under fire from ${a.coveredBy.map(lab).join(', ')}` : `NOT under direct fire within ${fmtM(reach)}`}${cap(a)}, ${Math.round(a.goPct)} % GO, narrowest ${fmtM(narrowOf(a) ?? a.minWidthM)}`).join('; ') + (en ? ` (${moverWord} going; an en ${echelonLabel(doc, en.echelon)} attacks on ${fmtM(corridor)} corridors, IPB p 7)` : '') + (out.fromAssumed ? ' (enemy start assumed along the front)' : '') });
     if (en && !out.approaches.some((a) => a.full)) out.rows.push({ name: 'Approach capacity', st: 'pass', reason: `no approach here is ${fmtM(corridor)} wide at its narrowest: an en ${echelonLabel(doc, en.echelon)} must come on a narrower front or file through the chokepoints, where fire and obstacles hurt the En most` });
-    // killing ground: on the main approach, 400-1000 m ahead of the FDL, inside the forward posns' reach
+    // killing ground: on the main approach, 400-1000 m ahead of the FDL (a Coy / Pl plan: IC's 300-500 m), inside the forward posns' reach
+    const kb = bn ? TH.killBand : TH.killBandCoy;
     const main = out.approaches.find((a) => a.main) ?? out.approaches[0];
     let best: { p: XY; score: number } | null = null;
     for (const w of main.path) {
       const l = toLocal(f, w);
       const ahead = l.y - frontY;
-      if (ahead < TH.killBand[0] || ahead > TH.killBand[1]) continue;
+      if (ahead < kb[0] || ahead > kb[1]) continue;
       const inRange = fwdBoxes.filter((b) => boxDist(b, l) <= reach).length;
       if (!inRange) continue;
       const choke = main.chokes.some((c) => Math.hypot(c.at.x - w.x, c.at.y - w.y) / f.k < TH.chokeM) ? 1 : 0;
@@ -655,6 +707,57 @@ export function fitPlan(inp: FitInput): FitResult {
       if (!best || sc > best.score) best = { p: l, score: sc };
     }
     out.killingGr = best?.p ?? null;
+  }
+
+  // 3b. the main approach the responsibility of one forward posn: "responsibility of defending an approach is not divided
+  // between two platoons" (IC s74 para 4 a (1) p 382; between two Coys, MIB p 171 para 23 c). Where it comes in is read
+  // 150-600 m in front of the FDL (the path's last stretch bends to the FDL's middle, the point it is searched to; M).
+  // The layout stays as the annex draws it: the row warns and says how far a shift of the whole plan takes it in
+  {
+    const fwOnly = boxes.filter((b) => b.kind === 'fwd');
+    if (fwOnly.length >= 2 && !boxes.some((b) => b.kind === 'round')) {
+      const hw = (b: Box) => (turned(b) ? b.h : b.w) / 2;
+      const fw = fwOnly.map((b) => ({ b, x0: b.c.x - hw(b), x1: b.c.x + hw(b) })).sort((a, b) => a.x0 - b.x0);
+      const mainR = out.approaches.find((a) => a.main) ?? null;
+      const NAME = 'Approach responsibility', RULE = 'IC s74 para 4 a (1) p 382; MIB p 171 para 23 c';
+      if (!mainR) out.rows.push({ name: NAME, st: 'unchecked', reason: 'needs the approaches: no main approach read here' });
+      else {
+        const loc = mainR.path.map((w) => toLocal(f, w));
+        const band = loc.filter((l) => l.y >= frontY + 150 && l.y <= frontY + 600);
+        const beyond = loc.filter((l) => l.y > frontY + 150).sort((a, b) => a.y - b.y)[0];
+        const x = band.length ? band.reduce((a, l) => a + l.x, 0) / band.length : beyond ? beyond.x : null;
+        const frontW = fw[fw.length - 1].x1 - fw[0].x0;
+        if (x === null) out.rows.push({ name: NAME, st: 'unchecked', reason: `${mainR.id} does not run 150-600 m in front of the FDL here: judge on the ground which posn holds it` });
+        // open ground: the approach as wide as the whole front is no one line to give a posn (its path only runs to the
+        // FDL's middle because that is where it was searched to)
+        else if (mainR.minWidthM >= frontW) out.rows.push({ name: NAME, st: 'unchecked', reason: `${mainR.id} (main) is ${fmtM(mainR.minWidthM)} wide at its narrowest, wider than the ${fmtM(frontW)} front: no one line to give a posn; on the ground, give each approach into the area to one posn (${RULE})` });
+        else {
+          const inside = fw.find((p) => x >= p.x0 && x <= p.x1);
+          let gapAt = -1;
+          for (let i = 1; i < fw.length; i++) if (x > fw[i - 1].x1 && x < fw[i].x0) gapAt = i;
+          if (inside) out.rows.push({ name: NAME, st: 'pass', reason: `${mainR.id} (main) comes in on ${inside.b.label}'s front: one posn holds it (${RULE})` });
+          else if (gapAt < 0) {
+            const lt = x < fw[0].x0, p = lt ? fw[0] : fw[fw.length - 1];
+            out.rows.push({ name: NAME, st: 'pass', reason: `${mainR.id} (main) comes in beyond the ${lt ? 'Lt' : 'Rt'} flank, ${fmtM(Math.abs(x - (lt ? p.x0 : p.x1)))} out: ${p.b.label} is responsible for it (${RULE})` });
+          } else {
+            const a = fw[gapAt - 1], b = fw[gapAt];
+            const toA = x - a.x1, toB = b.x0 - x, inM = 100;
+            out.rows.push({
+              name: NAME, st: 'warn',
+              reason: `${mainR.id} (main) comes in through the gap between ${a.b.label} and ${b.b.label} (${fmtM(toA)} from ${a.b.label}, ${fmtM(toB)} from ${b.b.label}): the responsibility for defending it is divided between two posns (${RULE})`,
+              detail: {
+                head: `${mainR.id} on the gap between ${a.b.label} and ${b.b.label}`,
+                why: 'An approach split between two posns is held by neither: each covers it at the edge of its arcs, and the En meets the seam between them (IC s74 para 4 a (1) p 382).',
+                fix: [
+                  `Shift the whole plan ${fmtM(toA + inM)} Rt so the approach lies inside ${a.b.label}'s frontage, or ${fmtM(toB + inM)} Lt for ${b.b.label}'s (the layout stays as drawn)`,
+                  `Or name ${toA <= toB ? a.b.label : b.b.label} responsible for it: its arcs, the mines and a DF on the approach, the other posn in support`,
+                ],
+              },
+            });
+          }
+        }
+      }
+    }
   }
 
   // the enemy's FUP: drawn, or the likely one on the main approach at his FUP distance (IBB p201 inf, p214 tanks)
@@ -708,13 +811,16 @@ export function fitPlan(inp: FitInput): FitResult {
     const dead = deadShare.length ? Math.round((100 * deadShare.reduce((a, b) => a + b, 0)) / deadShare.length) : null;
     out.rows.push({ name: 'Fields of fire', st: worst === 'pass' && dead !== null && dead > TH.deadWarnPct ? 'warn' : worst, reason: `${fof.filter((c) => c.st === 'pass').length} of ${fof.length} forward posns clear ${fmtM(TH.fofWantM)} or more${dead !== null ? `; about ${dead} % of the ground 300-1200 m out is dead ground: cover it with DF and patrols` : ''}` });
   } else out.rows.push({ name: 'Fields of fire', st: 'unchecked', reason: 'the ground in front is not loaded' });
+  // the BUA defence: its plan row on IC's 50-100 m, no dead-ground warning (fighting at close quarter, IC s52 para 1 c)
+  if (buaDef) buaFofRow(out.rows, fof, buaFof);
   out.rows.push(overlooked.length
     ? { name: 'Exposure', st: 'warn', reason: `${overlooked.join(', ')} overlooked from the front` }
     : { name: 'Exposure', st: fwdBoxes.some((b) => Number.isFinite(readGround(g, f, b, foot).elev)) ? 'pass' : 'unchecked', reason: 'not overlooked from 0.5-1.5 km in front (30 m elevation: ditches and bunds do not show)' });
   // on an obstacle: each forward posn has it under its MGs (IBB Annex V App 9: three up on the higher bank)
   if (kindT === 'obstacle' && fwdBoxes.length) {
     const cls = new Set<number>(((doctrineAt(doc, 'terrain.detect.obstacle.classes') as number[]) ?? [20, 21, 22, 24, 25]));
-    const band = resolveRange(doc, doctrineAt(doc, 'terrain.kinds.obstacle.tieInM')) ?? [250, 700];
+    // a Coy / Pl plan: IC's band (100 m minimum field of fire, s72 para 6 b p 372; the LMGs' 500 m line, s76 para 11 e p 417)
+    const band = (!bn ? resolveRange(doc, doctrineAt(doc, 'checkBands.fieldOfFireToObstacleCoyM')) : null) ?? resolveRange(doc, doctrineAt(doc, 'terrain.kinds.obstacle.tieInM')) ?? [250, 700];
     const far: string[] = [], none: string[] = [], at: string[] = [];
     let known = false;
     for (const b of fwdBoxes) {
@@ -735,16 +841,17 @@ export function fitPlan(inp: FitInput): FitResult {
       else at.push(`${b.label} ${fmtM(best)}${top !== null ? ` (${g.label(top)})` : ''}`);
     }
     out.rows.push(!known ? { name: 'Obstacle tie-in', st: 'unchecked', reason: 'the ground in front is not loaded' }
-      : far.length || none.length ? { name: 'Obstacle tie-in', st: 'warn', reason: `${[...far.map((x) => `${x} back from the obstacle`), ...none.map((x) => `${x}: no obstacle within 1.5 km in front`)].join('; ')}: beyond the posn's MGs (${fmtM(band[1])}, E); move up to the home bank or hold it with a mask posn (IBB Annex V App 9)` }
+      : far.length || none.length ? { name: 'Obstacle tie-in', st: 'warn', reason: `${[...far.map((x) => `${x} back from the obstacle`), ...none.map((x) => `${x}: no obstacle within 1.5 km in front`)].join('; ')}: beyond the posn's MGs (${fmtM(band[1])}, ${bn ? 'E' : 'the LMGs\' 500 m line, IC s76 para 11 e p 417'}); move up to the home bank or hold it with a mask posn (IBB Annex V App 9)` }
       : { name: 'Obstacle tie-in', st: 'pass', reason: `the obstacle under the forward posns' fire: ${at.join(', ')}` });
   }
-  // in the mountains: the forward posns dominate the main approach (MW pp 147-179)
+  // in the mountains: the forward posns dominate the main approach (MW s12 para 2 p 147)
   if (kindT === 'mountain' && fwdBoxes.length) {
     const want = num('terrain.kinds.mountain.holdHeights.aboveApchM', 30);
     const main = out.approaches.find((a) => a.main);
     if (!main) out.rows.push({ name: 'Dominates the approach', st: 'unchecked', reason: 'needs the approaches' });
     else {
       const low: string[] = [], high: string[] = [];
+      const angs: { label: string; dh: number; dM: number; deg: number }[] = [];
       let known = false;
       for (const b of fwdBoxes) {
         const e0 = readGround(g, f, b, foot).elev;
@@ -753,16 +860,45 @@ export function fitPlan(inp: FitInput): FitResult {
         if (!Number.isFinite(e0) || !Number.isFinite(eAp)) continue;
         known = true;
         (e0 - eAp >= want ? high : low).push(`${b.label} ${Math.round(e0 - eAp)} m`);
+        // the angle the posn's weapons fire down (+) or up (-) onto the approach, from its edge (at least 50 m)
+        const dM = Math.max(50, bd);
+        angs.push({ label: b.label, dh: e0 - eAp, dM, deg: (Math.atan2(e0 - eAp, dM) * 180) / Math.PI });
       }
       out.rows.push(!known ? { name: 'Dominates the approach', st: 'unchecked', reason: 'no elevation along the main approach in front' }
-        : low.length ? { name: 'Dominates the approach', st: 'warn', reason: `${low.join(', ')} above ${main.id} where it passes in front (wants ${want} m or more, E): hold the dominating features astride and on the flanks of the axis (MW pp 147-179)` }
-        : { name: 'Dominates the approach', st: 'pass', reason: `${high.join(', ')} above ${main.id} where it passes in front (MW pp 147-179)` });
+        : low.length ? { name: 'Dominates the approach', st: 'warn', reason: `${low.join(', ')} above ${main.id} where it passes in front (wants ${want} m or more, E): hold the dominating features astride and on the flanks of the axis (MW s12 para 2 p 147)` }
+        : { name: 'Dominates the approach', st: 'pass', reason: `${high.join(', ')} above ${main.id} where it passes in front (MW s12 para 2 p 147)` });
+      // uphill / downhill fire (MW s18): a MG on its mount elevates 6 deg and depresses 8.5 deg, the 75 mm RR elevates
+      // 30 deg and depresses 5 deg (p 221); sited on heights the RR has a pronounced dead arc downhill (p 224), so it goes
+      // in the foothills on the lower spurs and ridges of the approaches (p 225)
+      if (angs.length) {
+        const wa = (k: string, fb: number) => num(`terrain.kinds.mountain.weaponAngles.${k}`, fb);
+        const mgDep = wa('mgDepressDeg', 8.5), mgElev = wa('mgElevateDeg', 6), rrDep = wa('rrDepressDeg', 5), rrElev = wa('rrElevateDeg', 30);
+        const bad: string[] = [], ok: string[] = [];
+        for (const a of angs) {
+          const at = `${a.label} ${a.deg >= 0 ? `${a.deg.toFixed(1)}° down` : `${(-a.deg).toFixed(1)}° up`} onto ${main.id} (${Math.round(Math.abs(a.dh))} m in ${fmtM(a.dM)})`;
+          if (a.deg > mgDep) bad.push(`${at}: beyond the MG's ${mgDep}° and the RR's ${rrDep}° depression`);
+          else if (a.deg > rrDep) bad.push(`${at}: beyond the RR's ${rrDep}° depression (its dead arc)`);
+          else if (-a.deg > rrElev) bad.push(`${at}: beyond the MG's ${mgElev}° and the RR's ${rrElev}° elevation`);
+          else if (-a.deg > mgElev) bad.push(`${at}: beyond the MG's ${mgElev}° elevation on its mount`);
+          else ok.push(at);
+        }
+        const rule = `a MG on its mount elevates ${mgElev}° and depresses ${mgDep}°, the 75 mm RR elevates ${rrElev}° and depresses ${rrDep}° (MW s18 p 221)`;
+        out.rows.push(bad.length ? {
+          name: 'Weapon angles', st: 'warn',
+          reason: `${bad.join('; ')}${ok.length ? `; ${ok.join(', ')} within the limits` : ''}: ${rule}`,
+          detail: {
+            head: `${bad.length} posn${bad.length === 1 ? '' : 's'} fire${bad.length === 1 ? 's' : ''} beyond the weapons' angles onto ${main.id}`,
+            why: `Sited on heights the RR has a very pronounced dead arc firing downhill, its depression being ${rrDep}° only (MW p 224); ${rule}. Uphill and downhill the rounds strike high, and beyond 200 m on slopes steeper than 25° the range must be corrected (pp 215, 225).`,
+            fix: ['Site the RRs in the foothills on the lower spurs and ridges of the approach (MW p 225)', 'Fire the RR or RL from the shoulder for the steep shots, not beyond 400 m (MW p 223)', 'Lower the MG mount\'s front leg, sandbags on the rear legs (MW p 224), or use the AA mount uphill (p 222)', 'Range cards with the angle and the range for each target (MW p 225)'],
+          },
+        } : { name: 'Weapon angles', st: 'pass', reason: `${ok.join(', ')}: within the weapons' angles; ${rule}; range cards carry the angle and the range (p 225)` });
+      }
     }
   }
   if (recipe.slots.some((s) => s.role === 'killingGr')) {
     out.rows.push(out.killingGr
-      ? { name: 'Killing Gr', st: 'pass', reason: 'on the main approach 400-1000 m in front, inside the forward posns\' reach' }
-      : { name: 'Killing Gr', st: out.approaches.length ? 'warn' : 'unchecked', reason: out.approaches.length ? 'no stretch of the main approach 400-1000 m out is in reach: site it on the ground' : 'needs the approaches' });
+      ? { name: 'Killing Gr', st: 'pass', reason: `on the main approach ${(bn ? TH.killBand : TH.killBandCoy).join('-')} m in front, inside the forward posns' reach` }
+      : { name: 'Killing Gr', st: out.approaches.length ? 'warn' : 'unchecked', reason: out.approaches.length ? `no stretch of the main approach ${(bn ? TH.killBand : TH.killBandCoy).join('-')} m out is in reach: site it on the ground` : 'needs the approaches' });
   }
 
   // 4b. the En front or area marked: what it is against the plan, each forward posn's stand-off, what moved to keep it
@@ -979,14 +1115,31 @@ export function mergeChecks(res: SolveResult, fit: FitResult): { rows: Check[]; 
  * Auto's order (PlanBuilder_Plan.md 7.4): fewest fails, then fewest warnings, then the higher weighted score; a tie
  * goes to the layout listed first in the family (the safer, doctrinal default).
  */
-export function rankFits<T extends { fit: FitResult; recipe?: Recipe }>(list: T[]): T[] {
+export function rankFits<T extends { fit: FitResult; recipe?: Recipe; res?: { frontageM: number } }>(list: T[], opts: { holdM?: number | null } = {}): T[] {
   // an attack (user, 14 Nov 2026): frontal only if unavoidable, so a feasible flank (no fail) comes before it whatever
   // its warnings; then the weighed factors (the score already counts the warnings' weight)
   const frontal = (x: T) => (x.recipe?.task === 'attack' && x.recipe.layout === 'frontal' ? 1 : 0);
   const attack = (x: T) => x.recipe?.task === 'attack';
-  return list.map((x, i) => ({ x, i })).sort((a, b) => a.x.fit.fails - b.x.fit.fails
+  const out = list.map((x, i) => ({ x, i })).sort((a, b) => a.x.fit.fails - b.x.fit.fails
     || (attack(a.x) && attack(b.x) ? frontal(a.x) - frontal(b.x) || b.x.fit.score - a.x.fit.score : a.x.fit.warns - b.x.fit.warns || b.x.fit.score - a.x.fit.score)
     || a.i - b.i).map((e) => e.x);
+  // a Coy defence: two up, one in depth, normally; three up only "if the frontages are over extended" (IC s74 para 11 p
+  // 391), so three up ranks after the family's two up, unless two up fails more, or the frontage to hold (opts.holdM,
+  // when the caller knows it) is wider than two up's
+  const coyDef = (x: T, lay: string) => x.recipe?.task === 'defence' && x.recipe.echelon === '15' && x.recipe.layout === lay;
+  for (let guard = 0; guard < out.length; guard++) {
+    const i3 = out.findIndex((x) => coyDef(x, 'three-up'));
+    if (i3 < 0) break;
+    const fam = out[i3].recipe!.family;
+    const i2 = out.findIndex((x, j) => j > i3 && coyDef(x, 'two-up') && x.recipe!.family === fam);
+    if (i2 < 0) break;
+    const two = out[i2];
+    const overExtended = opts.holdM != null && two.res?.frontageM != null && opts.holdM > two.res.frontageM + 1;
+    if (two.fit.fails > out[i3].fit.fails || overExtended) break;
+    out.splice(i2, 1);
+    out.splice(i3, 0, two);
+  }
+  return out;
 }
 
 /** The score card's rows, in the order Compare shows them, and how each is read from the merged checks. */
@@ -1145,7 +1298,8 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   inp.begin?.();
   // an attack's axis laid on the ground: round NO-GO on foot from its tail to the Obj, a curve through CTRL_PTS
   // an attack: the finders first (FUP, SL, BOF, Assy Area on the ground), then the axis from the SL laid round NO-GO
-  const find: AttackFind | null = recipe.task === 'attack' ? findAttackSpots(base, frame, ground, ctx.doc) : null;
+  // by night the FUP band and the SL at the FUP forward edge (IC s68 paras 12 e (1), 13 a pp 333-334); by day neither
+  const find: AttackFind | null = recipe.task === 'attack' ? findAttackSpots(base, frame, ground, ctx.doc, !!inp.night) : null;
   let paths: Record<string, XY[]> | undefined;
   let fitBase = base;
   let ph2: Phase2Find | null = null;
@@ -1207,7 +1361,7 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   const terrain: TerrainSpec = inp.terrain && inp.terrain !== 'auto'
     ? { kind: inp.terrain, source: 'user' }
     : detected ?? { kind: 'plains', source: 'assumed', why: 'the ground round it is not loaded yet' };
-  // the default enemy in the mountains is infantry (MW pp 238-239); one the user set is kept
+  // the default enemy in the mountains is infantry (MW p 2 para 6: only the infantry can occupy the vital high ground; armour confined to roads and tracks, p 238); one the user set is kept
   const mtnType = doctrineAt(ctx.doc, 'terrain.kinds.mountain.enemyType');
   const enemy: EnemySpec | null = inp.enemy && inp.enemy.source === 'default' && terrain.kind === 'mountain' && recipe.task !== 'attack' && typeof mtnType === 'string'
     ? { ...inp.enemy, type: mtnType as EnemySpec['type'] }
@@ -1246,6 +1400,8 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   // an attack: the finders' rows, the H-hour sum, his MSR choke, the night march, the factors that score it
   if (find) {
     const route = find.route;
+    // in the mountains: AD over the defiles on the route to the FUP (MW p 247)
+    if (recipe.ad && terrain.kind === 'mountain' && find.routeChokes?.length) merged.rows.push(...adDefileRows(raw.items, recipe, find.routeChokes));
     const h = attackTimes(raw, frame, ground, ctx.doc, terrain.kind, !!inp.night, route, ph2?.route ?? null, ph3?.route ?? null);
     const choke = findMsrChoke(raw, frame, ground, ctx.doc);
     // tanks in the H-hour sum (before its row is written) and their rows, in place of the solver's unread ones
@@ -1283,7 +1439,9 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
     fit.score = af.score;
   }
   // a mountain layout's own rows (MW, PlanMountain), on the fitted posns
-  for (const r of layoutRows(raw.items, recipe, ctx.doc)) { const i = merged.rows.findIndex((m) => m.name === r.name); if (i >= 0) merged.rows[i] = r; else merged.rows.push(r); }
+  // the strong points and the Obj read on the elevation (MW s12 para 9 p 152; s7 para 3 p 78)
+  const elevAt = (p: XY) => { const w = toWorld(frame, p); return ground.elev(w.x, w.y); };
+  for (const r of layoutRows(raw.items, recipe, ctx.doc, elevAt)) { const i = merged.rows.findIndex((m) => m.name === r.name); if (i >= 0) merged.rows[i] = r; else merged.rows.push(r); }
   // what the ground's books add to the rows (mountains, desert, night: PlanContext.groundNotes)
   merged.rows = groundNotes(merged.rows, ctx.doc, terrain.kind, recipe.task, recipe.echelon, recipe.task === 'attack' ? !!inp.night : null);
   // Auto ranks on every check the plan shows, the geometry ones (frontage, depth, gaps) as well as the ground's
@@ -1308,8 +1466,10 @@ const atgmRangeOf = (doc: DoctrineSet, unit: UnitBrief | null) => unit?.atgm.fin
  * approach where it closes on the FDL, 500-600 m behind the forward edge in the depth localities (IBB S54 para 20 a
  * p 295: behind the 106/75 RRs, giving depth to the short-range AT; atFramework.atgmBehindRrM), the two launchers 450 m
  * apart across it (IBB 400-500 m);
- * an approach the posted ATGMs do not reach first, then the main one (OOW1 pp 25, 44: AT density on the main tank
- * approaches). Without approaches, on the flanks of the FDL. Plan metres.
+ * an approach the posted ATGMs do not reach first, then every pair left on the main one: concentrated on the most
+ * threatened tank approach, not dissipated (DW s16 para 4 b-c p 58; IBB S17 para 12 p 73: densest at the most vital
+ * area, never spread evenly; OOW1 pp 25, 44: AT density on the main tank approaches). Only without approaches (or when
+ * the main one does not reach the FDL), on the flanks of the FDL. Plan metres.
  */
 export function atgmExtras(res: SolveResult, recipe: Recipe, unit: UnitBrief | null, approaches: FitApproach[] | null, f: FitFrame | null, doc: DoctrineSet): { role: string; key: string; label: string; at: XY }[] {
   const have = res.items.filter((i) => isAtgmItem(i.role)).length;
@@ -1329,7 +1489,12 @@ export function atgmExtras(res: SolveResult, recipe: Recipe, unit: UnitBrief | n
       return best && bd < 600 ? best.x : null;
     };
     const covered = (a: FitApproach) => a.path.some((w) => { const l = toLocal(f, w); return l.y >= fr.y - 200 && l.y <= fr.y + range && posted.some((p) => Math.hypot(p.x - l.x, p.y - l.y) <= range); });
-    const order = [...approaches.filter((a) => !covered(a)), ...approaches.filter((a) => a.main), ...approaches.filter((a) => !a.main)];
+    // every approach in ATGM reach first, then the rest concentrated on the main approach (was: one more to the main, one
+    // to each other approach, the rest to the open flanks: spread evenly, which DW p 58 and IBB p 73 rule out)
+    const unc = approaches.filter((a) => !covered(a));
+    const mainA = approaches.find((a) => a.main) ?? approaches[0];
+    const order = [...unc];
+    while (order.length < unc.length + extra) order.push(mainA);
     for (const a of order) { const x = crossX(a); if (x !== null) sites.push({ x, why: a.id }); if (sites.length >= extra) break; }
   }
   // no approaches (or too few): the open flanks of the FDL, left then right
@@ -1366,9 +1531,11 @@ export function atCoverRow(res: SolveResult, recipe: Recipe, unit: UnitBrief | n
   const posts = res.items.filter((i) => isAtgmItem(i.role)).map((i) => i.pts[0]);
   const parts: string[] = [];
   let worst: CheckState = 'pass';
+  const counts: { a: FitApproach; n: number }[] = [];
   for (const a of approaches) {
     const near = a.path.map((w) => toLocal(f, w)).filter((l) => l.y >= fr.y - 200 && l.y <= fr.y + atgm);
     const byAtgm = posts.filter((p) => near.some((l) => Math.hypot(p.x - l.x, p.y - l.y) <= atgm)).length;
+    counts.push({ a, n: byAtgm });
     const byRr = !rr ? [] : fr.fwd.filter((s) => near.some((l) => Math.hypot(Math.max(0, Math.abs(l.x - s.centre.x) - s.wM / 2), Math.max(0, Math.abs(l.y - s.centre.y) - s.hM / 2)) <= rr)).map((s) => s.label);
     if (byAtgm) parts.push(`${a.id}${a.main ? ' (main)' : ''}: ${byAtgm} ATGM${byRr.length ? ` + RR of ${byRr.join(', ')}` : ''}`);
     else if (byRr.length) { parts.push(`${a.id}${a.main ? ' (main)' : ''}: RR of ${byRr.join(', ')} only (${rr} m)`); if (worst === 'pass') worst = 'warn'; }
@@ -1377,6 +1544,17 @@ export function atCoverRow(res: SolveResult, recipe: Recipe, unit: UnitBrief | n
   // the books' AT rules beside the reach: more AT weapons than the expected tanks, densest at the vital area, few in the
   // FDLs in the plains (some in the desert), tank-hunting parties at the hull-down sites (IBB S17 p 73, S54 pp 294-295)
   const rules = '. The AT weapons should be more than the expected number of En tanks, without denuding the main defences (IBB p 294 para 18): count them against the threat; densest at the most vital area, never spread evenly (IBB p 73 para 12); in the Punjab plains few in the FDLs, in the desert some (p 73 para 13); ATGM 500-600 m behind the RR in the depth localities (p 295); tank-hunting parties at the hull-down sites (p 294 para 19)';
+  // the main approach the densest: the ATGMs concentrated on the most threatened tank approach, not spread evenly
+  // (DW s16 para 4 b-c p 58; IBB S17 para 12 p 73); measured as the launchers in reach of each approach
+  const main = counts.find((c) => c.a.main);
+  const denser = main ? counts.filter((c) => c !== main && c.n > main.n) : [];
+  if (main && denser.length && main.n > 0 && worst === 'pass') {
+    return {
+      name: 'AT cover', st: 'warn',
+      reason: `${parts.join('; ')}: ${denser.map((c) => c.a.id).join(', ')} has more ATGM in reach than the main approach ${main.a.id} (DW p 58: concentrate on the most threatened approach; IBB p 73: densest at the most vital area) (ATGM ${(atgm / 1000).toFixed(1)} km${rr ? `, RR ${rr} m` : ''})${held}${rules}`,
+      detail: { head: `Main approach ${main.a.id} not the densest`, why: 'The ATGMs should be able to concentrate on the most threatened tank approach and not be dissipated (DW s16 para 4 b-c p 58); AT weapons densest at the most vital area, never spread evenly (IBB S17 para 12 p 73).', items: counts.map((c) => `${c.a.id}${c.a.main ? ' (main)' : ''}: ${c.n} ATGM in reach`), fix: [`Move pairs from ${denser.map((c) => c.a.id).join(', ')} to cover ${main.a.id}`, 'Keep alternate posns on the other approaches so the ATGMs can switch to them'] },
+    };
+  }
   return { name: 'AT cover', st: worst, reason: `${parts.join('; ')} (ATGM ${(atgm / 1000).toFixed(1)} km${rr ? `, RR ${rr} m` : ""})${held}${rules}` };
 }
 

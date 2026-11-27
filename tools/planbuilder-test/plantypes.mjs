@@ -213,6 +213,32 @@ for (const [id, sub, div] of [['bde-wdr-night', 'Bn', false], ['div-wdr-night', 
   const def = solved('bn-def-bua');
   check('BUA defence: localities, a screen in front, strong points in depth, barricades, a mobile reserve (IBB S58)', ['Localities', 'Screen', 'Strong points', 'Barricades', 'Reserve'].every((x) => row(def.rows, x)?.st === 'pass'), def.rows.map((x) => `${x.name} ${x.st}`).join(', '));
   check('...the screen taken away: warns', row(M.layoutRows(def.res.items.filter((i) => i.role !== 'scr'), def.r, doc), 'Screen')?.st === 'warn');
+  // IC review (27 Nov 2026): IC10 / IC11 and the BUA rows IC adds
+  {
+    const B = await import('../../MS/Engines/DeploymentBuilder/PlanBua.ts');
+    const pf = row(atk.rows, 'Pl frontage');
+    check('IC11: the foothold 400 m over the Pls actually up (two Coys, two up each = 4), 100 m a Pl (IC s55 para 17 a p 229)', pf?.st === 'pass' && /for 4 Pls up/.test(pf.reason) && /IC s55 para 17 a p 229/.test(pf.reason) && /IC s54 para 8 p 224/.test(pf.reason), pf?.reason);
+    const three = B.buaAttackRows(atk.res.items, { ...atk.r, slots: atk.r.slots.map((s) => (s.role === 'asltL' ? { ...s, pls: 'three-up' } : s)) }, doc);
+    check('...a Coy slot marked three-up counts three: 5 Pls up, 80 m a Pl', /for 5 Pls up/.test(row(three, 'Pl frontage')?.reason ?? '') && /80 m a Pl/.test(row(three, 'Pl frontage').reason), row(three, 'Pl frontage')?.reason);
+    check('BUA attack: a fighting patrol to the rear, Rear / cut-off passes (IC s55 para 16 p 229, s57 para 12 b (1) p 241)', row(atk.rows, 'Rear / cut-off')?.st === 'pass' && /IC s55 para 16 p 229/.test(row(atk.rows, 'Rear / cut-off').reason), row(atk.rows, 'Rear / cut-off')?.reason);
+    const noRear = M.layoutRows(atk.res.items.filter((i) => i.role !== 'cutOff'), atk.r, doc);
+    check('...without it: warns with a fix', row(noRear, 'Rear / cut-off')?.st === 'warn' && row(noRear, 'Rear / cut-off').detail?.fix?.length === 3);
+    check('...time in the BUA a note (a few hundred metres in 24 hours, IC s51 para 4 k p 199; a village short, s55 para 4 a p 226), grey', row(atk.rows, 'Time in the BUA')?.st === 'unchecked' && /IC s51 para 4 k p 199/.test(row(atk.rows, 'Time in the BUA').reason));
+    const lc = row(def.rows, 'Localities');
+    check('IC10: BUA localities 400 x 300 m (limited size, IC s52 para 1 c p 203), the row passes', lc?.st === 'pass' && /400 m x 300 m/.test(lc.reason) && /IC s52 para 1 c p 203/.test(lc.reason), lc?.reason?.slice(0, 160));
+    const bigDef = M.layoutRows(def.res.items.map((i) => (i.role === 'fwdL' ? { ...i, pts: i.pts.map((p) => ({ x: p.x * 3, y: p.y })) } : i)), def.r, doc);
+    check('...a locality stretched past 500 m: Localities warns (larger than a sub-unit can hold in a BUA)', row(bigDef, 'Localities')?.st === 'warn' && row(bigDef, 'Localities').detail?.items?.length === 1, row(bigDef, 'Localities')?.reason?.slice(-120));
+    check('...AT on the edge a thing to confirm (IC s57 paras 4, 12 a pp 238-240)', row(def.rows, 'AT on the edge')?.st === 'unchecked' && /IC s57 para 4 b-d p 238/.test(row(def.rows, 'AT on the edge').reason));
+    // PlanFit's BUA guard: built-up ground wanted (no > 30 % warning), fields of fire 50-100 m (IC s52 para 4 a (3) p 204)
+    const town = (sightM) => ({ ...ground(), cls: () => 3, sight(ox, oy, e, tx, ty) { return Math.hypot(tx - ox, ty - oy) <= sightM ? 0.9 : 0.1; } });
+    const fitIn = (g) => ({ recipe: def.r, ctx, opts: {}, ground: g, anchor: { x: 0, y: 0 }, bearing: 0, threat: null, terrain: null, cursor: null });
+    const ft = F.fitLayout(fitIn(town(80)));
+    const gA = ft.fit.slots.fwdL?.find((c) => c.name === 'Ground'), fA = ft.fit.slots.fwdL?.find((c) => c.name === 'Fd of fire');
+    check('PlanFit, BUA layout in a town: the locality in the buildings passes (no > 30 % built-up warning); Fd of fire 75 m passes on IC\'s 50-100 m', gA?.st === 'pass' && fA?.st === 'pass' && /IC s52 para 4 a \(3\) p 204/.test(fA.reason) && row(ft.fit.rows, 'Fields of fire')?.st === 'pass' && /forward localities/.test(row(ft.fit.rows, 'Fields of fire').reason), `${gA?.st} ${gA?.reason} | ${fA?.st} ${fA?.reason?.slice(0, 80)}`);
+    const fo = F.fitLayout(fitIn({ ...town(30), cls: () => 2 }));
+    const gO = fo.fit.slots.fwdL?.find((c) => c.name === 'Ground'), fO = fo.fit.slots.fwdL?.find((c) => c.name === 'Fd of fire');
+    check('...on open ground the locality reaches outside the BUA: Ground warns; 25 m clear: Fd of fire warns (never the open-ground fail)', gO?.st === 'warn' && /outside the BUA/.test(gO.reason) && fO?.st === 'warn', `${gO?.reason?.slice(0, 80)} | ${fO?.st} ${fO?.reason?.slice(0, 60)}`);
+  }
   const fx = solved('mib-def-fixing');
   check('MIB fixing force: strong points in depth, the killing zone between the groups, APCs, a mounted counter-attack force, within 6 x 10 km (MIB s23, Annex P)', ['Strong points', 'Killing zone', 'APCs in locality', 'Counter-attack', 'Gp area'].every((x) => row(fx.rows, x)?.st === 'pass') && row(fx.rows, 'Prerequisites')?.st === 'unchecked', fx.rows.map((x) => `${x.name} ${x.st}: ${x.reason.slice(0, 50)}`).join(' | '));
   {

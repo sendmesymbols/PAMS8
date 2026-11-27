@@ -14,7 +14,7 @@
   "needs": {
     "terrain": false
   },
-  "note": "An Armd Bde leading an Armd Div's advance to contact (OoW Vol II s4 paras 1-5 pp 9-11, Fig 2 p 9). Plan metres from the SP (the click: the Van Gd's head crosses it first), y back from the direction of advance (the aim). Covering troops (the Recce Regt / LAT Bn as mobile troops) 4-8 km ahead (6 km); the Advance Guard an Armr Regt group: its Van Gd (the leading Sqn group, FOO, Regt Tac) 3500 m deep, then the Main Gd 3000 m (Bde Tac within it, Fig 2); the Main Body (the Cbt Gps, ADS, Div Tac) straight behind it, its head 6.5 km back, 6 km deep; the Armd Div's flank guards 15-20 km out (17.5 km). Figures read off the rendered scan of Fig 2 (pdf 15; some labels are in the image only) (PlanDoctrine.advance). With the terrain the axis is routed for tracks over the bundle's going, its water crossings read with their bridge classes, report lines (RL 1-4) and halting areas (HA 1-4) placed only on the ground, the march timed by the Move Planner's road engine, and the flank guards' ground read.",
+  "note": "An Armd Bde leading an Armd Div's advance to contact (OoW Vol II s4 paras 1-5 pp 9-11, Fig 2 p 9). Plan metres from the SP (the click: the Van Gd's head crosses it first), y back from the direction of advance (the aim). Covering troops (the Recce Regt / LAT Bn as mobile troops) 4-8 km ahead (6 km); the Advance Guard an Armr Regt group: its Van Gd (the leading Sqn group, FOO, Regt Tac) 3500 m deep, then the Main Gd 3000 m (Bde Tac within it, Fig 2); the Main Body (the Cbt Gps, ADS, Div Tac) straight behind it, its head 6.5 km back, 6 km deep; the Armd Div's flank guards 15-20 km out (17.5 km). Figures read off the rendered scan of Fig 2 (pdf 15; some labels are in the image only) (PlanDoctrine.advance). With the terrain the axis is routed for tracks over the bundle's going, its water crossings read with their bridge classes, bounds on the water (Bd 1-4: a tactical feature where the troops halt and secure it, IC s58 para 4 p 242), report lines on the lateral roads and railways (RL 1-4: no tactical significance, report but do not halt, para 6 p 243) and halting areas short of the bounds (HA 1-4) placed only on the ground, the march timed by the Move Planner's road engine, and the flank guards' ground read.",
   "pivot": "sp",
   "slots": [
     { "role": "sp", "kind": "point", "sym": "25131600", "label": "SP", "order": 1, "shape": { "at": [0, 0] } },
@@ -25,14 +25,18 @@
     { "role": "vanGd", "kind": "point", "sym": "10120500", "label": "Van Gd", "echelon": "15", "order": 2, "shape": { "at": [0, 1750] } },
     { "role": "mainGd", "kind": "point", "sym": "10120500", "label": "Main Gd", "echelon": "16", "order": 2, "shape": { "at": [0, 5000] } },
     { "role": "advGdEnd", "kind": "line", "sym": "25140300", "label": "Adv Gd", "order": 3, "drawType": 1, "shape": { "pts": [[-700, 6500], [700, 6500]] } },
-    { "role": "rl1", "kind": "line", "sym": "25140300", "label": "RL 1", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
-    { "role": "rl2", "kind": "line", "sym": "25140300", "label": "RL 2", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
-    { "role": "rl3", "kind": "line", "sym": "25140300", "label": "RL 3", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
-    { "role": "rl4", "kind": "line", "sym": "25140300", "label": "RL 4", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
-    { "role": "ha1", "kind": "area", "sym": "25150200", "label": "HA 1", "order": 3, "drawType": 2, "terrainOnly": true, "terrainRule": { "on": "axis.shortOfReportLine" } },
-    { "role": "ha2", "kind": "area", "sym": "25150200", "label": "HA 2", "order": 3, "drawType": 2, "terrainOnly": true, "terrainRule": { "on": "axis.shortOfReportLine" } },
-    { "role": "ha3", "kind": "area", "sym": "25150200", "label": "HA 3", "order": 3, "drawType": 2, "terrainOnly": true, "terrainRule": { "on": "axis.shortOfReportLine" } },
-    { "role": "ha4", "kind": "area", "sym": "25150200", "label": "HA 4", "order": 3, "drawType": 2, "terrainOnly": true, "terrainRule": { "on": "axis.shortOfReportLine" } },
+    { "role": "bd1", "kind": "line", "sym": "25140300", "label": "Bd 1", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
+    { "role": "bd2", "kind": "line", "sym": "25140300", "label": "Bd 2", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
+    { "role": "bd3", "kind": "line", "sym": "25140300", "label": "Bd 3", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
+    { "role": "bd4", "kind": "line", "sym": "25140300", "label": "Bd 4", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
+    { "role": "rl1", "kind": "line", "sym": "25140300", "label": "RL 1", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "lateral.acrossAxis" } },
+    { "role": "rl2", "kind": "line", "sym": "25140300", "label": "RL 2", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "lateral.acrossAxis" } },
+    { "role": "rl3", "kind": "line", "sym": "25140300", "label": "RL 3", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "lateral.acrossAxis" } },
+    { "role": "rl4", "kind": "line", "sym": "25140300", "label": "RL 4", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "lateral.acrossAxis" } },
+    { "role": "ha1", "kind": "area", "sym": "25150200", "label": "HA 1", "order": 3, "drawType": 2, "terrainOnly": true, "terrainRule": { "on": "axis.shortOfBound" } },
+    { "role": "ha2", "kind": "area", "sym": "25150200", "label": "HA 2", "order": 3, "drawType": 2, "terrainOnly": true, "terrainRule": { "on": "axis.shortOfBound" } },
+    { "role": "ha3", "kind": "area", "sym": "25150200", "label": "HA 3", "order": 3, "drawType": 2, "terrainOnly": true, "terrainRule": { "on": "axis.shortOfBound" } },
+    { "role": "ha4", "kind": "area", "sym": "25150200", "label": "HA 4", "order": 3, "drawType": 2, "terrainOnly": true, "terrainRule": { "on": "axis.shortOfBound" } },
     { "role": "mainBody", "kind": "point", "sym": "10120500", "label": "Main Body", "order": 2, "shape": { "at": [0, 6500] } }
   ]
 }

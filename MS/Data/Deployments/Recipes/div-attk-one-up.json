@@ -1,0 +1,366 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "div-attk-one-up",
+  "family": "div-attk",
+  "layout": "one-up",
+  "echelon": "21",
+  "unit": "inf-div",
+  "basis": "D",
+  "task": "attack",
+  "name": "Div Attk: one Bde up (mountains)",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "An Inf Div attacking one Bde up, the formation more applicable to attack in mountains: it gives the attack the most depth, keeps the initiative, gives flexibility, enhances security and is the easiest to control; the follow-up Bdes move through or round the leading Bde to keep the momentum or meet a threat to either flank; but deploying is time consuming and the penetration is more easily blocked (GSP 1947 Inf Div in Battle s19 para 11 b pp 85-86). In mountains the plan is the seizure of the dominant features as the initial and final objectives, the effort along the ridges avoiding the natural corridors, the approach by night so that the attack goes in at first light, and the reorganisation well forward of the ridge line (s39 para 3 a pp 174-175). Here the leading Bde takes OBJ A (the initial objective), the follow-up Bde goes round its right flank onto OBJ B, the final objective in depth, and the third Bde is the Div reserve; OBJ B 3 km beyond OBJ A and the follow-up axis 1.5 km off the leading one are decisions (E: no figure printed). The frontage is narrow and compact (p 87 para 12 e: no figure). Thinking two down (para 13 b (3)-(4), (6) p 88), the leading Bde's two assault Bns and its reserve Bn are drawn. Option: the preliminary operation on his outposts (para 13 d p 89). Each Bde's own attack plan is built as a Bde plan (Bn Attk (Mtn) for the Bns).",
+  "slots": [
+    {
+      "role": "obj",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ A",
+      "order": 1,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -1700,
+          "wM": 1500,
+          "hM": 1000
+        }
+      }
+    },
+    {
+      "role": "objTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          -1700
+        ]
+      }
+    },
+    {
+      "role": "assy",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy (1 Bde)",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": 4500,
+          "wM": 2000,
+          "hM": 1500
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ],
+        "prefer": [
+          "roadAccess"
+        ]
+      }
+    },
+    {
+      "role": "fup",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -700,
+            200
+          ],
+          [
+            700,
+            -200
+          ]
+        ]
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "sl",
+      "kind": "line",
+      "sym": "25140303",
+      "label": "SL",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -750,
+            -250
+          ],
+          [
+            750,
+            -250
+          ]
+        ]
+      },
+      "terrainRule": {
+        "onGround": "linearFeature"
+      }
+    },
+    {
+      "role": "axis",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            0,
+            -250
+          ],
+          [
+            0,
+            -1300
+          ]
+        ],
+        "widthM": 1300
+      }
+    },
+    {
+      "role": "bde",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "1 Bde (Lead)",
+      "echelon": "18",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          2200
+        ]
+      }
+    },
+    {
+      "role": "asltL",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Lt Bn",
+      "echelon": "16",
+      "order": 3,
+      "shape": {
+        "at": [
+          -350,
+          0
+        ]
+      }
+    },
+    {
+      "role": "asltR",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Rt Bn",
+      "echelon": "16",
+      "order": 3,
+      "shape": {
+        "at": [
+          350,
+          0
+        ]
+      }
+    },
+    {
+      "role": "bnRes",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Res Bn",
+      "echelon": "16",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          1200
+        ]
+      }
+    },
+    {
+      "role": "objF",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ B",
+      "order": 1,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -4700,
+          "wM": 1500,
+          "hM": 1000
+        }
+      }
+    },
+    {
+      "role": "axisF",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            1500,
+            1500
+          ],
+          [
+            1500,
+            -2700
+          ],
+          [
+            300,
+            -4000
+          ]
+        ],
+        "widthM": 1300
+      }
+    },
+    {
+      "role": "assyF",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy (2 Bde)",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 1500,
+          "backM": 6500,
+          "wM": 2000,
+          "hM": 1500
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ],
+        "prefer": [
+          "roadAccess"
+        ]
+      }
+    },
+    {
+      "role": "bdeF",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "2 Bde (Follow-up)",
+      "echelon": "18",
+      "order": 3,
+      "shape": {
+        "at": [
+          1500,
+          3000
+        ]
+      }
+    },
+    {
+      "role": "assyR",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy (3 Bde)",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": -1000,
+          "backM": 9000,
+          "wM": 2000,
+          "hM": 1500
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ],
+        "prefer": [
+          "roadAccess"
+        ]
+      }
+    },
+    {
+      "role": "divRes",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "3 Bde (Div Res)",
+      "echelon": "18",
+      "order": 4,
+      "shape": {
+        "at": [
+          -1000,
+          9000
+        ]
+      }
+    },
+    {
+      "role": "divTac",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Div Tac",
+      "order": 4,
+      "shape": {
+        "at": [
+          -1500,
+          3000
+        ]
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Div HQ",
+      "order": 4,
+      "shape": {
+        "at": [
+          0,
+          11500
+        ]
+      }
+    },
+    {
+      "role": "loe",
+      "kind": "line",
+      "sym": "25140900",
+      "label": "LOE",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            -1500,
+            -6200
+          ],
+          [
+            1500,
+            -6200
+          ]
+        ]
+      }
+    }
+  ],
+  "checks": [
+    "fupDistance",
+    "assaultFrontage",
+    "fireLift",
+    "approaches"
+  ],
+  "assaultRow": "Brigade, night attack in plains, two battalions up"
+}

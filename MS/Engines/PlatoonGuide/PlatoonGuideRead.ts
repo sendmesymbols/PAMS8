@@ -91,6 +91,12 @@ export interface PlProbe extends MovProbe {
 export type Rules = Record<string, any>;
 
 /** The doctrine file with every value it leaves out filled in from the defaults below. */
+/** A leg's paces: `per100` paces a 100 m, rounded to the nearest `roundTo` (IC s40 para 23 p 116: fifty), never 0 for a leg. */
+export function plPaces(distM: number, per100: number, roundTo = 1): number {
+  const raw = (distM / 100) * per100;
+  const q = roundTo > 1 ? roundTo : 1;
+  return raw > 0 ? Math.max(q, Math.round(raw / q) * q) : 0;
+}
 export function plRulesFrom(doc: unknown): Rules {
   const d: Rules = (doc && typeof doc === 'object' ? doc : {}) as Rules;
   const out: Rules = {};
@@ -112,7 +118,7 @@ const DEFAULTS: Rules = {
   help: { radiusKm: 30, kinds: ['post', 'fort', 'border_post', 'cantonment', 'police_station'], supplyKinds: ['petrol_pump', 'rest_house'], commsKinds: ['post_office', 'telephone_exchange', 'wireless_station'], commsKm: 30, relayKm: 3, valleyRiseM: 100 },
   stop: { gridM: 100, minConcealment: 2, villageM: 1000, roadM: 300, waterKm: 2, waysOutMin: 2, maxCandidates: 600, opCandidates: 12, opRadiusM: 1000, opRiseM: 5, buaDensityMin: 4 },
   side: { ownCountry: 'Pakistan', nearLineM: 1000, onLineM: 100, searchKm: 70 },
-  patrol: { pacesPer100m: 120, boundM: 650, fmpM: 450, legFeatureM: 150, legFeatureKinds: ['bridge', 'tomb', 'mosque', 'peak', 'hill'], stationM: 50, classGround: {}, roadClasses: [34, 35, 36, 37, 38] },
+  patrol: { pacesPer100m: 120, pacesRoundTo: 50, boundM: 650, fmpM: 450, legFeatureM: 150, legFeatureKinds: ['bridge', 'tomb', 'mosque', 'peak', 'hill'], stationM: 50, classGround: {}, roadClasses: [34, 35, 36, 37, 38] },
 };
 
 // ── geometry ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -1832,7 +1838,8 @@ export function patrolCard(probe: PlProbe, R: Rules, path: MercXY[], ctx: { foot
       bearingDeg: brg,
       gridDeg: plGridDeg(brg, plConvergence(probe, a).deg),
       distM: L,
-      paces: Math.round((L / 100) * P.pacesPer100m),
+      // legs measured from the map to the nearest fifty paces (IC s40 para 23 p 116: patrol.pacesRoundTo)
+      paces: plPaces(L, P.pacesPer100m, P.pacesRoundTo),
       minDay: Math.round(tDay),
       minNight: Math.round(tNight),
       climbM: Math.round(climb),

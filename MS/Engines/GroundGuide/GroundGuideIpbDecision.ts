@@ -8,7 +8,9 @@
  * Time along an avenue (book p 18): GO, SLOW-GO and NO-GO stretches at the book's rates for the mover (vehicles 24 / 16
  * / 1 km/h by day; foot 4 / 2.4 / 1), from the enemy's start (the threat marker's place, else the area's edge). Two
  * times for every place, so the defender never counts on the enemy being slower than he may be: EARLIEST at day rates
- * with ground the book could not assess taken as GO, LATEST at night rates with it taken as SLOW-GO.
+ * with ground the book could not assess taken as GO, LATEST at night rates with it taken as SLOW-GO. En infantry on foot in
+ * the plains march at his own 4.5 km/h by day (IC s113 para 20 c (1) p 664) when the caller passes it (`decRatesFrom`
+ * `enemyFootDayKmh`): faster than IPB's 4, so it drives his EARLIEST time, IPB beside.
  * Event template (pp 23-28): NAIs where the enemy shows himself: where an avenue enters the area, its narrows and
  * crossings, where it meets another (crossover). Decision support (pp 28-32): TAIs are NAIs where interdiction would make
  * him abandon the avenue or need unusual engineer support (a crossing; a narrows narrower than a corridor); a DECISION
@@ -40,11 +42,21 @@ export interface DecRates {
   nogo: [number, number];
   /**
    * Men on foot pay the climb (MW p 81: 30-60 min per 300 m of ascent): minutes per 300 m [earliest, latest]; null for
-   * vehicles. The same figure the Intelligent Deployment tab's moves pay (PlanDoctrine terrain.kinds.mountain).
+   * vehicles. The same figure the Intelligent Deployment tab's moves pay (PlanDoctrine terrain.kinds.mountain). The books
+   * differ: IC s113 para 20 c (2) p 664 adds one hour per 300 m of ascent for the Foxland (En) infantry, the same as MW's
+   * latest; MW's 30 min stays the earliest (the faster, safety first for the En's times).
    */
   climbMinPer300?: [number, number] | null;
-  /** Men on foot pay the descent too (MW p 81: 30-60 min per 600 m): [earliest, latest]; null for vehicles. */
+  /**
+   * Men on foot pay the descent too (MW p 81: 30-60 min per 600 m): [earliest, latest]; null for vehicles. IC s113 para
+   * 20 c (2) p 664 adds one hour per 450 m of descent for the En infantry: slower than MW's, told beside, never driving.
+   */
   descentMinPer600?: [number, number] | null;
+  /**
+   * The GO day rate was raised to the En infantry's own march rate (IC s113 para 20 c (1) p 664: 4.5 km/h in the plains by
+   * day), faster than IPB p 18's 4: the En's earliest time is never later than his own doctrine allows. Null: IPB's stands.
+   */
+  enemyDayKmh?: { kmh: number; ipbKmh: number } | null;
   /** The GO rates are MW's mountain rates (3 km/h by day, 0.5 by night), SLOW-GO / NO-GO capped at them. */
   mountain?: boolean;
 }
@@ -154,7 +166,14 @@ export interface DecResult {
  * (`opts.mountain`) men on foot move at MW's rates (p 81: 3 km/h by day, 0.5-1 by night; the latest takes 0.5), and no
  * worse going is faster than the GO rate; they pay the climb and the descent everywhere.
  */
-export function decRatesFrom(doc: any, mover: 'armour' | 'mech' | 'dismounted', opts: { mountain?: boolean } = {}): DecRates {
+/**
+ * The rates for the mover (IPB p 18; MW p 81 in the mountains). `enemyFootDayKmh`: when the avenues are the En's and he is
+ * on foot in the plains, his own day march rate (IC s113 para 20 c (1) p 664, 4.5 km/h; OcokaDoctrine
+ * `enemyMarch.footKmhDay`) raises the GO day rate when faster than IPB's (safety first: his earliest time); IPB is kept
+ * beside in `enemyDayKmh`. The caller passes it only for the En's avenues; never in the mountains (IC's figure is the
+ * plains', MW's mountain rates stand).
+ */
+export function decRatesFrom(doc: any, mover: 'armour' | 'mech' | 'dismounted', opts: { mountain?: boolean; enemyFootDayKmh?: number | null } = {}): DecRates {
   const r = doc?.rates ?? {};
   const t = mover === 'dismounted' ? (r.footKmh ?? { go: [4, 3.2], slow: [2.4, 1.6], nogo: [1, [0.1, 0.5]] }) : (r.vehicleKmh ?? { go: [24, 24], slow: [16, 8], nogo: [1, [0.1, 0.5]] });
   const pair = (v: any, d: [number, number]): [number, number] => {
@@ -175,8 +194,14 @@ export function decRatesFrom(doc: any, mover: 'armour' | 'mech' | 'dismounted', 
     slow = [Math.min(slow[0], day), Math.min(slow[1], night)];
     nogo = [Math.min(nogo[0], day), Math.min(nogo[1], night)];
   }
+  let enemyDayKmh: DecRates['enemyDayKmh'] = null;
+  const fox = Number(opts.enemyFootDayKmh);
+  if (foot && !mtn && Number.isFinite(fox) && fox > go[0]) {
+    enemyDayKmh = { kmh: fox, ipbKmh: go[0] };
+    go = [fox, go[1]];
+  }
   return {
-    go, slow, nogo,
+    go, slow, nogo, enemyDayKmh,
     climbMinPer300: foot ? [Number(climb[0]) || 30, Number(climb[1]) || 60] : null,
     descentMinPer600: foot ? [Number(desc[0]) || 30, Number(desc[1]) || 60] : null,
     mountain: mtn,
@@ -222,9 +247,11 @@ export function decide(a: DecArgs): DecResult {
         const len = Math.min(alongM, g.toM) - g.fromM;
         t += (len / 1000) / speed(g.cls, late);
         // The climb inside the stretch (its share, when the stretch is only partly covered): 30 min per 300 m at his
-        // earliest, 60 at his latest (MW p 81), on foot only.
+        // earliest, 60 at his latest (MW p 81), on foot only; IC s113 para 20 c (2) p 664 gives the En infantry 1 h per
+        // 300 m (MW's latest): the faster MW figure stays his earliest, safety first.
         if (climb && g.riseM) t += ((g.riseM * (len / Math.max(1e-6, g.toM - g.fromM))) / 300) * (climb[late ? 1 : 0] / 60);
-        // The descent likewise: 30 min per 600 m at his earliest, 60 at his latest (MW p 81).
+        // The descent likewise: 30 min per 600 m at his earliest, 60 at his latest (MW p 81); IC p 664's 1 h per 450 m is
+        // slower and is not used.
         if (desc && g.fallM) t += ((g.fallM * (len / Math.max(1e-6, g.toM - g.fromM))) / 600) * (desc[late ? 1 : 0] / 60);
       }
       return t;
@@ -427,6 +454,33 @@ function judge(v: number, go: string, marginal: string): WxStatus {
   const b = band(marginal);
   if (b && v >= b[0] && v <= b[1]) return 'marg';
   return 'unfav';
+}
+
+/** One of MW's mountain weather notes for the month and height (IpbDoctrine coding.season.mountainWx). */
+export interface MountainWxNote { id: string; for: Array<'fire' | 'mnvr' | 'air'>; text: string }
+
+/**
+ * MW's weather and snow notes on mountain ground (IpbDoctrine `coding.season.mountainWx`): the fog in the valleys till
+ * 0900-1000 (p 229), poor visibility above 2000 m (pp 229-230), snow hiding the tracks above 2500 m in winter (p 298),
+ * how snow slides start (pp 69, 71), flash floods in the nullahs (p 9), weather from the west (pp 10, 288). An item with
+ * `aboveM` needs the area that high (an unknown height keeps it out); one with `winter` needs a winter month. None off
+ * the mountains. Notes only: nothing here codes GO / NO-GO.
+ */
+export function mountainWxNotes(doc: any, o: { month: number; elevM: number | null; mountain: boolean }): MountainWxNote[] {
+  if (!o.mountain) return [];
+  const W = doc?.coding?.season?.mountainWx ?? {};
+  const items: any[] = Array.isArray(W.items) ? W.items : [];
+  const winter: number[] = Array.isArray(W.winterMonths?.value) ? W.winterMonths.value.map(Number) : [11, 12, 1, 2, 3, 4];
+  const out: MountainWxNote[] = [];
+  for (const it of items) {
+    if (!it?.text) continue;
+    const above = Number(it.aboveM);
+    if (Number.isFinite(above) && !(o.elevM !== null && o.elevM >= above)) continue;
+    if (it.winter && !winter.includes(o.month)) continue;
+    const uses = (Array.isArray(it.for) ? it.for : ['mnvr']).filter((u: string): u is 'fire' | 'mnvr' | 'air' => u === 'fire' || u === 'mnvr' || u === 'air');
+    out.push({ id: String(it.id ?? ''), for: uses, text: String(it.text) });
+  }
+  return out;
 }
 
 /** Annex A rows coded from what the bundle has for the month and place; the rest "get from Met" or not in the bundle. */

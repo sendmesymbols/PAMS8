@@ -137,6 +137,8 @@ export interface OcokaReadArgs {
   candidates: GroundGuideItgCandidate[];
   candidatesPending: boolean;
   visibility: VisibilityGrid | null;
+  /** Water points near the point (wells, tube wells, tanks, springs, karez: rules grotbc.water.kinds), for the desert reading. */
+  water?: Array<{ kindLabel: string; name: string | null; distanceM: number; compass: string; at: MercXY }>;
   /** Also trace the viewshed for the Detail's picture. */
   picture: boolean;
   doctrine?: any;
@@ -207,6 +209,9 @@ export function readOcoka(a: OcokaReadArgs): GroundGuideOcoka | null {
 
   const crop = cropShares(doctrine, a.month);
   const weather = a.visibility ? visibilityAt(a.visibility, a.lngLat[0], a.lngLat[1], a.month) : null;
+  const dSight = desertSight(g, a.ox, a.oy, radiusM, doctrine);
+  // the desert's water sources, ground of tactical importance and objectives there (DW s4 para 2 e p 7; s12 para 3 p 38)
+  const desert = dSight ? { ...dSight, water: (a.water ?? []).slice().sort((p, q) => p.distanceM - q.distanceM).slice(0, 8) } : null;
   const night = a.night ? nightOf(a.now ?? new Date(), a.lngLat[1], a.lngLat[0]) : null;
   const nv = wp.nv;
   const device = nv ? (nv.ti ?? (night && night.level === 'starlight' ? nv.star : nv.moon) ?? nv.moon ?? nv.star ?? 0) : 0;
@@ -244,7 +249,39 @@ export function readOcoka(a: OcokaReadArgs): GroundGuideOcoka | null {
     light: { night: a.night, level: night ? night.level : 'day', moonlitShare: night ? night.moonlitShare : null, moonIllum: night ? night.moonIllum : null },
     nightSight: reach ? { ...reach, thermal: !!nv?.ti } : null,
     picture,
+    desert,
   };
+}
+
+/** The desert classes and share when OcokaDoctrine gives none (IpbTemplates desertTest; PlanDoctrine terrain.detect.desert). */
+const DESERT_CLASSES = [12, 13, 14, 16];
+const DESERT_SHARE = 0.5;
+
+/**
+ * The desert round the point: the share of the ground read (a 30 m grid sampled every few cells inside the reading's
+ * radius) that is bare desert, sand, dunes or salt pan. From half of it the reading carries the desert's observation rule
+ * (OcokaDoctrine observation.desert: movement seen from a vantage point 5-20 km off by the visibility, haze by day,
+ * parallel dunes blocking ground OPs, night visibility better; DW pp 7, 61); else null.
+ */
+export function desertSight(g: OcokaGrid, ox: number, oy: number, radiusM: number, doctrine: any): GroundGuideOcoka['desert'] {
+  const d = doctrine?.observation?.desert;
+  if (!d) return null;
+  const classes = new Set<number>(Array.isArray(d.classes) ? d.classes : DESERT_CLASSES);
+  const share = typeof d.share === 'number' ? d.share : DESERT_SHARE;
+  const rPx = radiusM / g.res, step = Math.max(1, Math.round(rPx / 40));
+  let n = 0, des = 0;
+  for (let y = Math.max(0, Math.floor(oy - rPx)); y <= Math.min(g.h - 1, Math.ceil(oy + rPx)); y += step) {
+    for (let x = Math.max(0, Math.floor(ox - rPx)); x <= Math.min(g.w - 1, Math.ceil(ox + rPx)); x += step) {
+      if ((x - ox) * (x - ox) + (y - oy) * (y - oy) > rPx * rPx) continue;
+      const c = g.cls[y * g.w + x];
+      if (c === 255) continue;
+      n++;
+      if (classes.has(c)) des++;
+    }
+  }
+  if (n < 20 || des / n < share) return null;
+  const km = Array.isArray(d.detectKm) ? d.detectKm : [5, 20];
+  return { sharePct: Math.round((100 * des) / n), detectKm: [km[0], km[1]], text: String(d.text ?? ''), src: String(d.src ?? 'DW pp 7, 61') };
 }
 
 /**

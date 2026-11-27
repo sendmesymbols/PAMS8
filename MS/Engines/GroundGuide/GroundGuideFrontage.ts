@@ -11,8 +11,10 @@
  *     in the plains (IBB S53 para 4 c p 277), IBB's extended two-up row in the desert and the mountains (DW pp 24, 56;
  *     MW pp 148, 150: extended ground, no figure printed), IBB Annex V on a canal or ditch; a Bde 10-12 km (OOW1), 8-10 km
  *     on a ditch cum bund (GSP p 119);
- *   - En: his own figures (IDD p 3 on the bund; IC s113 Foxland elsewhere), the own row standing in (and saying so) where
- *     none is printed for him;
+ *   - En: his own figures (IDD p 3 on the bund; IC s113 / s114 Foxland elsewhere: the Sec, Pl, Coy and Bde normal
+ *     frontages of s114 para 7 p 670; the Bn and Div of s113 (para 20 a (4) p 663, para 4 c p 658), denser than s114's
+ *     7-10 km / 80-120 km and held against a deliberate attack: within IC the two differ, the denser taken, safety first),
+ *     the own row standing in (and saying so) where none is printed for him;
  *   - the assault: the books' figures are night figures (IBB S47 para 17 a p 248; GSP p 86; IC s114 p 684); by day wider
  *     with no figure (OOW2 s9 para 2 c p 36), twice in the desert (DW s12 para 18 a p 47), narrower in mountains (MW p 79).
  * The ground at the objective is read in the order mountains, an obstacle in front, desert, plains (IpbTemplates
@@ -166,7 +168,13 @@ const rowOf = (ocoka: any, unit: string): any => (ocoka?.frontage?.rows ?? []).f
 
 /** Why this row on this ground, in a line with the rule, book and page. */
 function whyOf(whose: FrontageSide, ech: string, kind: GroundKind, standIn: boolean): string {
-  if (whose === 'en') return standIn ? `no En ${ECH_WORD[ech] ?? ech} frontage is printed${kind === 'obstacle' ? '' : ' off the bund'}: the own row stands in` : kind === 'obstacle' ? 'his defence on the bund (IDD p 3)' : kind === 'mountain' && ech === '16' ? 'his mountain Bn (IC s113 p 665, Foxland)' : 'his figures (IDD p 3; IC s113, Foxland)';
+  if (whose === 'en') {
+    if (standIn) return `no En ${ECH_WORD[ech] ?? ech} frontage is printed${kind === 'obstacle' ? '' : ' off the bund'}: the own row stands in`;
+    if (kind === 'obstacle') return ech === '21' ? 'his Div on an anti-tank obstacle, 60-80 km (IC s113 para 4 c (2) p 658, Foxland)' : ech === '16' ? 'his Bn on the bund (IDD p 3; IC s113 para 20 a (5) p 663: up to 6000 m; IC s114 para 22 b pp 676-677: 5, 5.5 or 7-10 km by pattern)' : 'his defence on the bund (IDD p 3)';
+    if (ech === '16') return kind === 'mountain' ? 'his mountain Bn (IC s113 para 21 a (1) p 665, Foxland)' : 'his Bn against a deliberate attack (IC s113 para 20 a (4) p 663, Foxland); IC s114 para 7 p 670 prints his normal Bn frontage 7-10 km: within IC the two differ, the denser taken (safety first)';
+    if (ech === '21') return 'his compact Div sector (IC s113 para 4 c (1) p 658, Foxland); IC s114 para 7 p 670 prints 80-120 km: within IC the two differ, the denser taken (safety first)';
+    return `his normal ${ECH_WORD[ech] ?? ech} frontage (IC s114 para 7 p 670, Foxland)`;
+  }
   if (ech === '13' || ech === '14' || ech === '15') return `a ${ECH_WORD[ech]} frontage is never extended, on any ground (IBB S59 para 6 b p 326)`;
   if (ech === '16') {
     if (kind === 'desert') return 'the desert is extended ground (DW p 24, p 56): IBB\'s extended two-up row, no desert figure printed';

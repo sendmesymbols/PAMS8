@@ -178,6 +178,8 @@ export interface AorDefLine {
   lateral: boolean;
   /** Metres behind the border (or the AOR's front) on the approaches, null for Z. */
   depthM: number | null;
+  /** In a desert AOR, why it stands: the canals of the green belt and the villages of the desert belt are lines of defence (DW s2 para 2 b p 4). */
+  desert?: string;
 }
 
 export interface AorReading {
@@ -689,18 +691,33 @@ export function readAor(inp: AorInput): AorReading {
   // ── lines of def ──
   const PERP: AorXY = RIGHT;
   const defLines: AorDefLine[] = [];
+  // a desert AOR (country group 2 over 30 % of it, the share 'Desert' is called by below): there the canals of the green
+  // belt and the villages of the desert belt are lines of defence (DW s2 para 2 b p 4), so a canal across two approaches
+  // stands as a line by itself, the villages being few
+  let dIn = 0, dDes = 0;
+  for (let i = 0; i < W * H; i++) {
+    if (!inAor[i] || g.cls[i] === 255) continue;
+    dIn++;
+    if (tables.country[g.cls[i]] === 2) dDes++;
+  }
+  const desertAor = dIn > 0 && dDes / dIn > 0.3;
   if (apchs.length >= 2) {
     const ordered = [...apchs].sort((x, y) => SIDES.indexOf(x.side) - SIDES.indexOf(y.side));
     const entry = ordered.map((a) => a.lengthM - a.pastM);
     const dmax = Math.min(...ordered.map((a) => a.pastM)) - 2500;
     type Cand = { d: number; pts: AorXY[]; buas: Array<{ name: string; d: number; people: number } | null>; obstacle: string | null; lateral: boolean; score: number };
     const cands: Cand[] = [];
+    const waterNames = new Set<string>();
     const xings = ordered.map((a) => {
       const pb = boxOf(a.path, 0);
       const out: Array<{ name: string; atM: number }> = [];
       for (const ol of [...waterLines, ...ridgeLines]) {
         if (!overlaps(ol.box, pb)) continue;
-        for (const x of crossings(a.path, ol.p)) out.push({ name: ol.name ?? (ol.key === 'ridgeline' ? 'Ridge' : 'Water ch'), atM: x.atM });
+        for (const x of crossings(a.path, ol.p)) {
+          const nm = ol.name ?? (ol.key === 'ridgeline' ? 'Ridge' : 'Water ch');
+          if (ol.key !== 'ridgeline') waterNames.add(nm);
+          out.push({ name: nm, atM: x.atM });
+        }
       }
       return out;
     });
@@ -725,7 +742,6 @@ export function readAor(inp: AorInput): AorReading {
           }
         }
       }
-      if (buas.filter(Boolean).length < 2) continue;
       let bscore = 0;
       for (const b of buas) if (b) bscore += (b.d <= 400 ? 1 : 0.5) * (b.people >= 1000 ? 1 : 0.6);
       // A water line or ridge crossing two or more approaches within 500 m of the cut.
@@ -741,6 +757,8 @@ export function readAor(inp: AorInput): AorReading {
       let obstacle: string | null = null, on = 0;
       for (const [nm, n] of hits) if (n > on) ((obstacle = nm), (on = n));
       if (on < 2) obstacle = null;
+      // two BUAs astride the approaches make a line; in a desert AOR a water line across two of them does too (DW p 4)
+      if (buas.filter(Boolean).length < 2 && !(desertAor && obstacle && waterNames.has(obstacle))) continue;
       let lateral = false;
       const cb = boxOf(pts, 400);
       for (const r of metalled) {
@@ -777,6 +795,7 @@ export function readAor(inp: AorInput): AorReading {
         obstacle: c.obstacle,
         lateral: c.lateral,
         depthM: c.d,
+        ...(desertAor && (c.obstacle || named.length >= 2) ? { desert: c.obstacle ? 'canals in the green belt are lines of defence (DW p 4)' : 'villages in the desert belt are a line of defence (DW p 4)' } : {}),
       });
     });
   }

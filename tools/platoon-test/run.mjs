@@ -259,7 +259,7 @@ const footSpeeds = { ground: F.ground, road: F.road.track, toblerA: F.slope.a[0]
 const pctx = { foot, speeds: footSpeeds, classLabel, scanRoad: (path, sight, threat) => footScanner.scan(path, probe, { going: foot, sight, borders, threat }) };
 const card = P.patrolCard(probe, R, [O, at(800, 0), at(800, 800)], pctx);
 check('two legs', card.legs.length === 2);
-check('leg 1: 090°, 800 m, 960 paces', Math.round(card.legs[0].bearingDeg) === 90 && Math.abs(card.legs[0].distM - 800) < 1 && card.legs[0].paces === 960, `${card.legs[0].bearingDeg.toFixed(1)} ${card.legs[0].distM.toFixed(0)} ${card.legs[0].paces}`);
+check('leg 1: 090°, 800 m, 950 paces (960 to the nearest 50: IC s40 para 23 p 116)', Math.round(card.legs[0].bearingDeg) === 90 && Math.abs(card.legs[0].distM - 800) < 1 && card.legs[0].paces === 950, `${card.legs[0].bearingDeg.toFixed(1)} ${card.legs[0].distM.toFixed(0)} ${card.legs[0].paces}`);
 check('leg 2: 000°', Math.round(card.legs[1].bearingDeg) % 360 === 0);
 check('leg 1 time ~12 min by day, longer by night', card.legs[0].minDay >= 12 && card.legs[0].minDay <= 14 && card.legs[0].minNight > card.legs[0].minDay, `${card.legs[0].minDay} / ${card.legs[0].minNight}`);
 check('bounds every 650 m and a final meeting point', card.bounds.length === 2 && !!card.fmp && Math.abs(card.fmp.chainM - 1150) < 1);

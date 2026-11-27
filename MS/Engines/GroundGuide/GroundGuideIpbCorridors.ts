@@ -1217,3 +1217,135 @@ export function simplifyLine(pts: Array<[number, number]>, tol: number): Array<[
   }
   return pts.filter((_, k) => keep[k]);
 }
+
+// ── mountain approaches (MW s7 para 4 a p 78) ────────────────────────────────────────────────────────────────────────
+
+/**
+ * How an approach runs in mountains, read across it from the elevation: along a valley floor, a nullah, a ridge line,
+ * or a side slope (MW s7 para 4 a p 78: river / valley, nullah and ridge-line approaches).
+ */
+export type MtnApchKind = 'valley' | 'nullah' | 'ridge' | 'slope';
+/** The reading's settings (IpbDoctrine.json `mountainApproach.read`, basis E). */
+export interface MtnApchRules {
+  /** Samples along the approach, metres apart. */
+  stepM: number;
+  /** Steps across it, metres, out to `reachM` each side. */
+  crossStepM: number;
+  reachM: number;
+  /** A floor is looked for this far out each side (a broad valley's sides may stand farther than `reachM`); a fall
+   *  beyond `reachM` does not make a ridge. */
+  floorReachM: number;
+  /** A side rises (or falls) where it first stands this much above (below) the way, metres. */
+  riseM: number;
+  /** A floor whose two rises are this far apart or less is a nullah; wider, a valley. */
+  nullahMaxM: number;
+  /** The share of samples a type needs to name the approach; less, it is 'mixed'. */
+  majority: number;
+}
+export interface MtnApch {
+  /** The type of `majority` of its samples, else 'mixed'. */
+  kind: MtnApchKind | 'mixed';
+  /** The two most common types, most common first (the second null when one type holds every sample). */
+  top: [MtnApchKind, MtnApchKind | null];
+  /** Share of the samples of each type, %. */
+  shares: Record<MtnApchKind, number>;
+  /** Median width of the floor where it runs on one (valley or nullah), metres; null when it never does. */
+  floorM: number | null;
+  samples: number;
+}
+
+export const MTN_APCH_DEFAULTS: MtnApchRules = { stepM: 100, crossStepM: 100, reachM: 1500, floorReachM: 5000, riseM: 30, nullahMaxM: 500, majority: 0.5 };
+
+/** The reading's settings from IpbDoctrine.json (`mountainApproach.read`), the defaults for any missing. */
+export function mtnApchRulesFrom(doc: any): MtnApchRules {
+  const r = doc?.mountainApproach?.read ?? {};
+  const pos = (v: unknown, fb: number): number => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : fb);
+  const D = MTN_APCH_DEFAULTS;
+  return { stepM: pos(r.stepM, D.stepM), crossStepM: pos(r.crossStepM, D.crossStepM), reachM: pos(r.reachM, D.reachM), floorReachM: Math.max(pos(r.floorReachM, D.floorReachM), pos(r.reachM, D.reachM)), riseM: pos(r.riseM, D.riseM), nullahMaxM: pos(r.nullahMaxM, D.nullahMaxM), majority: pos(r.majority, D.majority) };
+}
+
+/**
+ * The type of an approach in mountains from the elevation across it (MW s7 para 4 a p 78). Every `stepM` along its line
+ * the ground is read square to the way, both sides, `crossStepM` at a time out to `reachM`: a side 'rises' where it first
+ * stands `riseM` above the way, 'falls' where it first stands `riseM` below (the first met counts), else neither; past
+ * `reachM`, out to `floorReachM`, only a rise counts (a broad valley floor), a fall there leaving the side neither. Both
+ * sides rise: a floor, a nullah when the two rises are `nullahMaxM` apart or less, else a valley; both fall: a ridge
+ * line; anything else a side slope. The approach takes the type of `majority` of its samples, else 'mixed'.
+ * `line`: grid cells [x0, y0, x1, y1, ...] in the direction of movement; `elevAt(x, y)`: the height at a grid cell
+ * (NaN off the grid or without data); `resM`: metres a cell. Null when the line is too short or has no heights.
+ */
+export function mountainApproach(line: ArrayLike<number>, elevAt: (x: number, y: number) => number, resM: number, R: MtnApchRules = MTN_APCH_DEFAULTS): MtnApch | null {
+  const n = Math.floor(line.length / 2);
+  if (n < 2 || !(resM > 0)) return null;
+  const cum = [0];
+  for (let i = 1; i < n; i++) cum.push(cum[i - 1] + Math.hypot(line[2 * i] - line[2 * i - 2], line[2 * i + 1] - line[2 * i - 1]) * resM);
+  const total = cum[n - 1];
+  if (!(total > 0)) return null;
+  const counts: Record<MtnApchKind, number> = { valley: 0, nullah: 0, ridge: 0, slope: 0 };
+  const floors: number[] = [];
+  let samples = 0;
+  const steps = Math.max(1, Math.round(total / R.stepM));
+  let i = 1;
+  for (let k = 0; k < steps; k++) {
+    const d = ((k + 0.5) * total) / steps;
+    while (i < n - 1 && cum[i] < d) i++;
+    const x0 = line[2 * i - 2], y0 = line[2 * i - 1], x1 = line[2 * i], y1 = line[2 * i + 1];
+    const L = cum[i] - cum[i - 1];
+    const hl = Math.hypot(x1 - x0, y1 - y0);
+    if (!(L > 0) || !(hl > 0)) continue;
+    const t = Math.max(0, Math.min(1, (d - cum[i - 1]) / L));
+    const px = x0 + (x1 - x0) * t, py = y0 + (y1 - y0) * t;
+    const ax = -(y1 - y0) / hl, ay = (x1 - x0) / hl;
+    const e0 = elevAt(px, py);
+    if (!(e0 === e0)) continue;
+    // out to `reachM` the first rise or fall counts; beyond it, out to `floorReachM`, only a rise (the far side of a
+    // broad valley floor), a fall there leaving the side 'none'
+    const side = (sg: number): { what: 'up' | 'down' | 'none'; atM: number } => {
+      for (let q = R.crossStepM; q <= R.floorReachM + 1e-6; q += R.crossStepM) {
+        const c = q / resM;
+        const e = elevAt(px + sg * ax * c, py + sg * ay * c);
+        if (!(e === e)) return { what: 'none', atM: q };
+        if (e - e0 >= R.riseM) return { what: 'up', atM: q };
+        if (e0 - e >= R.riseM) return q <= R.reachM + 1e-6 ? { what: 'down', atM: q } : { what: 'none', atM: q };
+      }
+      return { what: 'none', atM: R.floorReachM };
+    };
+    const l = side(1), r = side(-1);
+    let kind: MtnApchKind;
+    if (l.what === 'up' && r.what === 'up') {
+      const w = l.atM + r.atM;
+      floors.push(w);
+      kind = w <= R.nullahMaxM ? 'nullah' : 'valley';
+    } else if (l.what === 'down' && r.what === 'down') kind = 'ridge';
+    else kind = 'slope';
+    counts[kind]++;
+    samples++;
+  }
+  if (!samples) return null;
+  const order = (Object.keys(counts) as MtnApchKind[]).sort((a, b) => counts[b] - counts[a]);
+  const shares = { valley: 0, nullah: 0, ridge: 0, slope: 0 } as Record<MtnApchKind, number>;
+  for (const k of order) shares[k] = Math.round((100 * counts[k]) / samples);
+  floors.sort((a, b) => a - b);
+  const floorM = floors.length ? floors[floors.length >> 1] : null;
+  // A floor that is a valley in places and a nullah in others is still a floor: typed by its median width.
+  const kind: MtnApchKind | 'mixed' =
+    counts[order[0]] / samples >= R.majority ? order[0]
+    : floorM !== null && (counts.valley + counts.nullah) / samples >= R.majority ? (floorM <= R.nullahMaxM ? 'nullah' : 'valley')
+    : 'mixed';
+  return { kind, top: [order[0], counts[order[1]] ? order[1] : null], shares, floorM, samples };
+}
+
+/**
+ * The difficult approach of two or more read (MW p 79: normally lightly held; IpbDoctrine `mountainApproach.hardest`,
+ * E): the most hours along it at the book's day rates when every one has them, else the least GO. Null for fewer than two.
+ */
+export function mtnHardestIndex(items: ReadonlyArray<{ hoursDay?: number | null; goPct: number }>): { index: number; byHours: boolean } | null {
+  if (items.length < 2) return null;
+  const byHours = items.every((a) => typeof a.hoursDay === 'number' && Number.isFinite(a.hoursDay));
+  let index = 0;
+  for (let i = 1; i < items.length; i++) {
+    const a = items[i], w = items[index];
+    if (byHours ? (a.hoursDay as number) > (w.hoursDay as number) : a.goPct < w.goPct) index = i;
+  }
+  return { index, byHours };
+}

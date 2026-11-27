@@ -2,7 +2,11 @@
  * PlanTanks.ts — PURE. Tanks with the Bn attack: tank FUPs for armour-heavy attacks (PlanBuilder_Plan.md §9.2).
  *
  * IBB S44 para 16 a (pp 213-216): his ATGMs reach 1500-3500 m and stand 500-1000 m deep, so the tanks form up 2500-3000
- * m out and a common FUP with the infantry is no longer feasible. Two ways to use them:
+ * m out and a common FUP with the infantry is no longer feasible. The books differ: IC s105 para 21 a pp 554-555 still
+ * gives three techniques, the same FUP and axis, parallel axes from FUPs close together, or converging axes from FUPs wide
+ * apart, arriving almost together; IBB's (the later reasoning against En ATGMs) is kept. Tank light, when the gunner can
+ * first / last recognise targets, is usually 20-30 min after first light and before last light (IC s105 para 2 l p 551):
+ * a day attack's tank timings fall inside it. Two ways to use them:
  * - **Fire sp** (infantry heavy, the fire support role, option a): the Sqn waits at FUP (Tks) out of his ATGM and NVD
  *   reach and moves to fire positions by the BOF so as to arrive as the assaulting infantry come as close to the Obj;
  *   at night its main gun reaches 800 m with NVD, 1600 m with registration.
@@ -220,7 +224,7 @@ export function findTankSpots(res: SolveResult, f: FitFrame, g: PlanGround, doc:
   const gapF = boxGap(o1, F1);
   out.rows.push(!best
     ? { name: 'Tank FUP', st: 'warn', reason: `no ground 2.5-3 km out where tracks go: FUP (Tks) left ${fmtM(gapF)} out, recce one` }
-    : { name: 'Tank FUP', st: best.seen === null ? 'unchecked' : best.seen < 0.5 && !best.nogo ? 'pass' : 'warn', reason: `${fmtM(gapF)} from the Obj (IBB p214: ${fmtM(band[0])}-${fmtM(band[1])}, outside the En ATGMs' reach; no common FUP with the infantry), ${best.seen === null ? 'its view from the Obj not read' : best.seen < 0.5 ? 'likely hidden from the Obj' : `${Math.round(best.seen * 100)} % likely seen from the Obj: hull down or smoke (IBB p215)`}${best.nogo ? ', part of it NO-GO for tracks' : ''}` });
+    : { name: 'Tank FUP', st: best.seen === null ? 'unchecked' : best.seen < 0.5 && !best.nogo ? 'pass' : 'warn', reason: `${fmtM(gapF)} from the Obj (IBB p214: ${fmtM(band[0])}-${fmtM(band[1])}, outside the En ATGMs' reach; no common FUP with the infantry; IC s105 para 21 a pp 554-555 also allows the same or a parallel FUP: the books differ), ${best.seen === null ? 'its view from the Obj not read' : best.seen < 0.5 ? 'likely hidden from the Obj' : `${Math.round(best.seen * 100)} % likely seen from the Obj: hull down or smoke (IBB p215)`}${best.nogo ? ', part of it NO-GO for tracks' : ''}` });
   // ── Fire sp: the fire posns follow the BOF; the Sqn's way to them on tracks ──
   const bof = item('bof'), fire = item('tkFire');
   if (mode === 'fire' && bof && fire) {
@@ -367,7 +371,7 @@ export function addTankTimes(h: HSum, res: SolveResult, f: FitFrame | null, g: P
     steps.push({ label: `Tanks leave FUP (Tks) for the fire posns${night ? ' (night)' : ''}`, distM: Math.round(w.goM + w.slowM), min: travel, at: leave });
     steps.push({ label: `Tanks firing from ${fmtM(dF)} out`, distM: 0, min: Math.max(0, h.objAt - tF), at: tF });
     h.tanks = { mode, leaveAt: leave, atAt: tF, onObjAt: null, lengthM: Math.round(w.goM + w.slowM) };
-    rows.push({ name: 'Tank timing', st: 'pass', reason: `${sqnWord} leaves FUP (Tks) ${hRelText(leave)}, ${fmtM(w.goM + w.slowM)} in ${travel} min${night ? ' by night' : ''}, at its fire posns ${hRelText(tF)} as the infantry come ${fmtM(dF)} from the Obj (IBB p214 option a), shooting them on until they are on it ${hRelText(h.objAt)}${leave < 0 ? '; it moves before H: cover its noise with the deception plan (IBB p215)' : ''}` });
+    rows.push({ name: 'Tank timing', st: 'pass', reason: `${sqnWord} leaves FUP (Tks) ${hRelText(leave)}, ${fmtM(w.goM + w.slowM)} in ${travel} min${night ? ' by night' : ''}, at its fire posns ${hRelText(tF)} as the infantry come ${fmtM(dF)} from the Obj (IBB p214 option a), shooting them on until they are on it ${hRelText(h.objAt)}${leave < 0 ? '; it moves before H: cover its noise with the deception plan (IBB p215)' : ''}${night ? '' : '; by day within tank light, 20-30 min after first light to 20-30 min before last light (IC s105 para 2 l p 551)'}` });
     const nightM = num(doc, 'attack.tanks.nightFireM', 800), regM = num(doc, 'attack.tanks.registeredFireM', 1600);
     rows.push({
       name: 'Tank fire range', st: dF <= (night ? nightM : regM) ? 'pass' : 'warn',

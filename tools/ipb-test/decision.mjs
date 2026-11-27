@@ -138,5 +138,16 @@ check('hPlus: H+1:25, H-0:40', hPlus(1 + 25 / 60) === 'H+1:25' && hPlus(-40 / 60
   const c = decide(args([aa('A', [[0, 24000, 'go']], [], { depthM: 20000 })], { catkMin: 60, catkCues: doc.decisionPoints.counterAttack.indicators.value }));
   check('the counter-attack DP names the main-effort cues (OoW Vol I p 54)', c.dps.some((d) => d.kind === 'catk' && /frontage and momentum/.test(d.decision)));
 }
+// IC review (27 Nov 2026): the En's own day march on foot in the plains (IC s113 para 20 c (1) p 664, 4.5 km/h) raises the
+// GO day rate when passed for his avenues; IPB kept beside; never in the mountains, never for vehicles
+{
+  const oc = JSON.parse(readFileSync(resolve(here, '../../MS/Data/OcokaDoctrine.json'), 'utf8'));
+  const fox = Number(oc.enemyMarch.footKmhDay.value);
+  const enF = decRatesFrom(doc, 'dismounted', { enemyFootDayKmh: fox });
+  check('En on foot, plains: GO by day 4.5 km/h (IC s113 p 664), IPB 4 kept beside; night and SLOW-GO unchanged', enF.go[0] === 4.5 && enF.enemyDayKmh?.ipbKmh === foot.go[0] && enF.go[1] === foot.go[1] && enF.slow[0] === foot.slow[0]);
+  check('...not in the mountains (MW rates stand), nor for vehicles', decRatesFrom(doc, 'dismounted', { mountain: true, enemyFootDayKmh: fox }).go[0] === decRatesFrom(doc, 'dismounted', { mountain: true }).go[0] && decRatesFrom(doc, 'armour', { enemyFootDayKmh: fox }).go[0] === veh.go[0]);
+  const r0 = decide(args([aa('A', [[0, 9000, 'go']])], { rates: foot })), r1 = decide(args([aa('A', [[0, 9000, 'go']])], { rates: enF }));
+  check('...his earliest across 9 km of GO: 2 h at 4.5 against 2.25 h at IPB 4 km/h; the latest unchanged', near(prof(r1, 'A').endH[0], 2) && near(prof(r0, 'A').endH[0], 2.25) && near(prof(r1, 'A').endH[1], prof(r0, 'A').endH[1]));
+}
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

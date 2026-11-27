@@ -1,0 +1,289 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "bde-def-dcb",
+  "family": "bde-def",
+  "layout": "ditch",
+  "echelon": "18",
+  "unit": "inf-bde",
+  "basis": "D",
+  "task": "defence",
+  "name": "Bde Def: three Bns up on a ditch cum bund",
+  "frontageRow": "Brigade on a ditch cum bund",
+  "subRow": null,
+  "depthRow": "Battalion along an anti-tank ditch",
+  "needs": {
+    "terrain": false
+  },
+  "pivot": "xTgt",
+  "note": "A Bde defending a ditch cum bund (DCB), GSP 1947 Inf Div in Battle s26 pp 118-121: normally all three Bns are deployed three up and the depth is given from within their own resources (para 8 b pp 120-121); a Bde may be assigned up to 8000-10000 m depending on the terrain and the allotment of second line troops (para 5 p 119). The Bns are laid as a Bn along an AT ditch is (IBB Annex V App 9 p 485: 2750-4115 m, the lower end here, 1850 m deep, each with its own depth Coy and second line force; built as Bn plans with the Bn Def AT ditch layout), 450 m apart (the App 9 gap between Coys; no gap between Bns is printed, E), so the Bde holds 9.15 km of the obstacle. The gaps are covered by artillery fire, automatics, AT fire, mines and patrols (para 8 c p 121): mines in each gap and on the far side of the ditch (App 9). Because of the extended frontage, prepared contingency (counter-penetration) posns are made in depth astride his major axes (para 8 f p 121): two, behind the gaps, drawn planned (dashed), 1 km behind the Bns (cpen.behindFwdM.bde, E); with the terrain they belong astride the approaches. Surveillance and protective elements are sited ahead of the obstacle if the terrain and space permit (para 6 p 120): a screen 1.5 km ahead of the ditch (E: DCBs lie 1-6 km from the border, p 118). Strong mobile reserves for counter-penetration and counter-attack are the Div's (para 6 p 120; para 8 g p 121), not the Bde's. He assaults a DCB at two or three points, aiming to finish in one night or at most two (para 8 d-e p 121). The ditch is the ground's, never drawn: click the point on the ditch in front of the centre and aim across it. Bde HQ centrally in depth and an AT Res between the contingency posns (OOW1 s13 p 45), both places E.",
+  "slots": [
+    {
+      "role": "xTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          -1095
+        ]
+      }
+    },
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Left Bn",
+      "echelon": "16",
+      "order": 1,
+      "size": {
+        "wM": 2750,
+        "hM": 1850
+      },
+      "seed": {
+        "acrossM": -3200,
+        "backM": 0
+      },
+      "rule": {
+        "side": "L"
+      }
+    },
+    {
+      "role": "fwdC",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Centre Bn",
+      "echelon": "16",
+      "order": 1,
+      "size": {
+        "wM": 2750,
+        "hM": 1850
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": 0
+      },
+      "rule": {
+        "side": "C"
+      },
+      "terrainRule": {
+        "across": "approach.main"
+      }
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Right Bn",
+      "echelon": "16",
+      "order": 1,
+      "size": {
+        "wM": 2750,
+        "hM": 1850
+      },
+      "seed": {
+        "acrossM": 3200,
+        "backM": 0
+      },
+      "rule": {
+        "side": "R"
+      }
+    },
+    {
+      "role": "cpL",
+      "kind": "cpen",
+      "sym": "25151200",
+      "label": "C Pen 1",
+      "echelon": "15",
+      "order": 2,
+      "planned": true,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": -1600,
+        "backM": 2275
+      }
+    },
+    {
+      "role": "cpR",
+      "kind": "cpen",
+      "sym": "25151200",
+      "label": "C Pen 2",
+      "echelon": "15",
+      "order": 2,
+      "planned": true,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 1600,
+        "backM": 2275
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bde HQ",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          3275
+        ]
+      }
+    },
+    {
+      "role": "atRes",
+      "kind": "point",
+      "sym": "15111200",
+      "label": "AT Res",
+      "order": 6,
+      "shape": {
+        "at": [
+          0,
+          2275
+        ]
+      }
+    },
+    {
+      "role": "killingGr",
+      "kind": "area",
+      "sym": "25242300",
+      "label": "K1",
+      "order": 3,
+      "terrainOnly": true,
+      "rule": {
+        "inRangeOf": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main.chokepoint"
+      }
+    },
+    {
+      "role": "mfFar",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -1345,
+          "wM": 9150,
+          "hM": 200
+        }
+      }
+    },
+    {
+      "role": "mfGapL",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": -1600,
+          "backM": -725,
+          "wM": 400,
+          "hM": 200
+        }
+      }
+    },
+    {
+      "role": "mfGapR",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": 1600,
+          "backM": -725,
+          "wM": 400,
+          "hM": 200
+        }
+      }
+    },
+    {
+      "role": "fdl",
+      "kind": "line",
+      "sym": "25140400",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "joins": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ],
+        "edge": "front"
+      }
+    },
+    {
+      "role": "scr",
+      "kind": "line",
+      "sym": "25342203",
+      "label": "",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            -4575,
+            -2595
+          ],
+          [
+            0,
+            -1895
+          ],
+          [
+            4575,
+            -2595
+          ]
+        ]
+      }
+    },
+    {
+      "role": "dfTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "DF Tgt",
+      "count": {
+        "doctrine": "df.perBn"
+      },
+      "order": 7,
+      "rule": {
+        "ahead": {
+          "doctrine": "df.closeMinFromFdlM.medium"
+        },
+        "of": [
+          "fwdL",
+          "fwdC",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main"
+      }
+    }
+  ],
+  "alternates": [],
+  "supplementary": "perSecondaryApproach",
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "gaps",
+    "depth",
+    "flanks",
+    "exposure",
+    "killingGr",
+    "dfMinRange"
+  ]
+}

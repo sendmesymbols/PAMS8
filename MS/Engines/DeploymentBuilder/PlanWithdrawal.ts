@@ -1,16 +1,18 @@
 /**
- * PlanWithdrawal -- a Bn withdrawal by night laid on the ground (IC s91-93 pp 481-491; IBB s72-76 pp 366-386).
+ * PlanWithdrawal -- a Bn withdrawal by night laid on the ground (IC s90-93 pp 472-490; IBB s72-76 pp 366-386).
  *
  * The frame of a withdrawal recipe points the way the Bn goes: y is the direction of withdrawal (the aim), the enemy lies
  * at -y, the old posn round the pivot (the Bn HQ). The rules as written: control points (Coy and Bn checkpoints and RVs,
  * the embussing point) on the routes back (IC s92 paras 7-8 pp 486-487); Coy embussing points about 1500-2000 m behind the
  * old posn on the Coy routes where parallel routes allow, else one Bn embussing point behind the Bn RV (IBB s75 para 20
  * p 383); a platoon of the depth Coys covers the Bn embussing point (IBB p 379); rear parties, a platoon from each
- * forward Coy with part of the weapons, stay to the time of abandonment (IC s92 para 13 p 488); the intermediate posn,
+ * forward Coy with part of the weapons, stay to the time of abandonment (IC s92 paras 13-14 p 488), with their own RV and a
+ * separate embussing point near it, well forward (IC s92 para 8 c p 487, para 14 p 488); the intermediate posn,
  * held by a Coy group, far enough back that the En must at least move En field artillery before the En can range the next posn,
- * behind a natural obstacle if available (IBB s74 para 4 e p 373; IC s91 para 3 p 482); part of the artillery
+ * behind a natural obstacle if available (IBB s74 para 4 e p 373; IC s91 para 3 b, e pp 481-482); part of the artillery
  * repositioned 5000-6000 m back before the posn is abandoned (IBB s76 para 5 p 385); the programme from last light to the
- * time of denial (IBB s75 para 11 pp 379-380).
+ * time of denial (IBB s75 para 11 pp 379-380), with the thinning out a few minutes before the time of denial and the time
+ * before which no rearward move may take place (IC s90 para 15 pp 478-479).
  *
  * Pure: plan metres through the FitFrame onto the ground (PlanGround). Geometry only lays the control points by the
  * figures; on the ground the routes go round NO-GO on foot, the embussing points slide onto a track, the intermediate
@@ -42,6 +44,30 @@ const P = (x: number, y: number): XY => ({ x, y });
 const num = (doc: DoctrineSet, path: string, fb: number) => { const r = resolveRange(doc, doctrineAt(doc, path)); return r ? (r[0] + r[1]) / 2 : fb; };
 const rng = (doc: DoctrineSet, path: string, fb: [number, number]) => resolveRange(doc, doctrineAt(doc, path)) ?? fb;
 const fmtM = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`);
+
+/**
+ * The desert withdrawal (DW s9 pp 32-33): no withdrawal on foot for any distance, transport to lift all the men; as many
+ * routes as possible, cross-country too; a clean break to the next main posn, no running fight; covering troops and flank
+ * guards armour based. The longest walk from a posn to its embussing point (the routes back) is judged against
+ * withdrawal.desertWalkMaxM (E: the Coy RV distance, IBB p 381; DW prints no distance).
+ */
+function desertWdrRow(routes: { label: string; lengthM: number }[], doc: DoctrineSet, intPosn: boolean): Check {
+  const lim = rng(doc, 'withdrawal.desertWalkMaxM', [457, 457])[1];
+  const base = `transport to lift all the men, on as many routes as possible including cross-country (${routes.length} route${routes.length === 1 ? '' : 's'} back laid); ${intPosn ? 'a clean break to the next main posn where a stand can be made, no running fight: an intermediate posn only on a feature with delay potential (DW p 32 paras 1-2)' : 'a clean break to the next main posn where a stand can be made (DW p 32 para 1)'}; covering troops and flank guards armour based with APC infantry, ATGM / LAT, RR and MGs, FOOs from the medium Regts (DW pp 32-33 paras 3-4)`;
+  if (!routes.length) return { name: 'Desert', st: 'unchecked', reason: `in the desert no withdrawal on foot for any distance: no route back laid to measure the walk to the vehicles; ${base}` };
+  const longest = routes.reduce((m, r) => (r.lengthM > m.lengthM ? r : m), routes[0]);
+  if (longest.lengthM <= lim + 1) return { name: 'Desert', st: 'pass', reason: `the longest walk to the vehicles ${fmtM(longest.lengthM)} (${longest.label}), within ${fmtM(lim)}: in the desert no withdrawal on foot for any distance (DW s9 para 1 p 32); ${base}` };
+  return {
+    name: 'Desert', st: 'warn',
+    reason: `${longest.label} walks ${fmtM(longest.lengthM)} to its embussing point: in the desert the withdrawing unit cannot be expected to withdraw any distance on foot, and if made to, mobile En troops cut it off (DW s9 para 1 p 32); ${base}`,
+    detail: {
+      head: `A ${fmtM(longest.lengthM)} walk back in the desert`,
+      why: 'The withdrawing unit cannot be expected to withdraw any distance on foot and if made to do so, will be quickly cut off by mobile enemy troops: adequate transport to lift all personnel (DW s9 para 1 p 32). IBB\'s Coy embussing points 1500-2000 m back (s75 para 20 a p 383) are not for the desert: the books differ.',
+      items: routes.filter((r) => r.lengthM > lim + 1).map((r) => `${r.label}: ${fmtM(r.lengthM)} on foot`),
+      fix: [`Bring the transport forward to the Coy RVs, within ${fmtM(lim)} of the posns (IBB s75 para 14 a p 381), and embus there`, 'Mounted covering troops (armour, APC infantry) to hold the En off the embussing (DW p 32 para 3)'],
+    },
+  };
+}
 const dist = (a: XY, b: XY) => Math.hypot(a.x - b.x, a.y - b.y);
 const centre = (pts: XY[]): XY => P(pts.reduce((a, p) => a + p.x, 0) / pts.length, pts.reduce((a, p) => a + p.y, 0) / pts.length);
 const lenOf = (pts: XY[]) => { let L = 0; for (let i = 1; i < pts.length; i++) L += dist(pts[i - 1], pts[i]); return L; };
@@ -88,14 +114,15 @@ function bnWdrGeom(recipe: Recipe, doc: DoctrineSet, aimM: number | null): Recor
 /**
  * The new main posn against the intermediate posn: the clean break (cleanBreakMinM, E) is the floor; the hop itself must
  * also force the En to move his field artillery before he can range the next position (IBB s74 para 4 e (2) p 373, s73
- * para 5 b (7) p 369: every rearward hop), "depending on the type of ground and the space available" (p 373).
+ * para 5 b (7) p 369: every rearward hop; IC s91 para 3 b p 481: "sufficiently far apart to force the enemy to move his
+ * artillery"), "depending on the type of ground and the space available" (p 373).
  */
 export function newMainRow(doc: DoctrineSet, backM: number, gap: number, arty: number, artySrc: string): Check {
   const clean = num(doc, 'withdrawal.cleanBreakMinM', 2000);
   const head = `${fmtM(backM)} behind the old posn, ${fmtM(gap)} beyond the intermediate posn`;
   const keep = 'no posn is abandoned until the next is organised and at least partially manned (IBB s74 para 21 p 378)';
   if (gap < clean) return { name: 'New main posn', st: 'warn', reason: `${head} (wants ${fmtM(clean)} for a clean break, E); ${keep}` };
-  if (gap >= arty - 1) return { name: 'New main posn', st: 'pass', reason: `${head}: the En must move the field artillery again (${artySrc}) before ranging it (IBB p 373, p 369); ${keep}` };
+  if (gap >= arty - 1) return { name: 'New main posn', st: 'pass', reason: `${head}: the En must move the field artillery again (${artySrc}) before ranging it (IBB p 373, p 369; IC s91 para 3 b p 481); ${keep}` };
   return {
     name: 'New main posn', st: 'warn', reason: `${head}: inside the reach of En field artillery (${artySrc}) sited to engage the intermediate posn; IBB p 373 wants each posn far enough from the next that the En must move the guns first, space allowing; ${keep}`,
     detail: { head: `Hop of ${fmtM(gap)} against En guns of ${fmtM(arty)}`, why: 'The En guns that support the attack on the intermediate posn can range the new main posn without moving: the hop gains no delay from them (IBB s73 para 5 b (7) p 369).', fix: [`Site the new main posn ${fmtM(arty)} or more beyond the intermediate posn`, 'Or hold a second intermediate posn between them (OOW3 Annex P draws two)', 'Where the space is not there (IBB p 373: depending on the ground and the space available), say so in the plan'] },
@@ -163,6 +190,41 @@ export function coyRvRow(items: { role: string; label?: string; pts: XY[] }[], d
   };
 }
 
+/**
+ * The rear parties' own RV and embussing point (IC s92 para 8 c p 487: "A separate embussing point is established for the
+ * rear parties near their own RV"; para 14 p 488: their checkpoints / RVs and embussing point "should be well forward"):
+ * both drawn, the EP within `withdrawal.rpEpNearM` (E) of the RV, and ahead of (nearer the old posn than) the Bn and Coy
+ * EPs. `onGround` slides the EP onto a track where one is near (null: geometry only); returns the row and the EP's nudge.
+ * Null row when the plan has no rear parties.
+ */
+export function rearPartyRvRow(items: { role: string; label?: string; pts: XY[] }[], doc: DoctrineSet, onGround: ((at: XY) => { at: XY; onTrack: boolean } | null) | null): { row: Check | null; nudge: XY | null } {
+  const rps = items.filter((i) => /^rp[A-Z]$/.test(i.role) && i.pts.length);
+  if (!rps.length) return { row: null, nudge: null };
+  const rv = items.find((i) => i.role === 'rvRp' && i.pts.length), ep0 = items.find((i) => i.role === 'epRp' && i.pts.length);
+  const rule = 'a separate embussing point for the rear parties near their own RV (IC s92 para 8 c p 487), well forward (para 14 p 488): they leave last, at the time of final abandonment, and are not to march back past the main body';
+  if (!rv || !ep0) {
+    const what = !rv && !ep0 ? 'no rear party RV or EP' : !rv ? 'no rear party RV' : 'no rear party EP';
+    return { row: { name: 'Rear party RV / EP', st: 'warn', reason: `${what}: ${rule}`, detail: { head: what, why: 'The rear parties leave last, under pressure; without their own RV and vehicles well forward they march the whole way back after the main body has gone (IC s92 para 14 p 488).', fix: ['Mark a rear party RV behind the rear parties, on their way back', 'A separate embussing point near it, with vehicles waiting (IC s92 para 8 c p 487)'] } }, nudge: null };
+  }
+  const read = onGround ? onGround(ep0.pts[0]) : null;
+  const ep = read ? read.at : ep0.pts[0];
+  const nudge = read && (read.at.x !== ep0.pts[0].x || read.at.y !== ep0.pts[0].y) ? P(read.at.x - ep0.pts[0].x, read.at.y - ep0.pts[0].y) : null;
+  const near = num(doc, 'withdrawal.rpEpNearM', 300);
+  const d = dist(rv.pts[0], ep);
+  // y grows toward the rear: "well forward" = nearer the old posn than every other embussing point
+  const others = items.filter((i) => (/^ep[A-Z]$/.test(i.role) || i.role === 'epBn') && i.pts.length);
+  const ahead = others.every((o) => ep.y < o.pts[0].y - 1);
+  const behindRps = Math.max(...rps.map((r) => r.pts[0].y));
+  const back = ep.y - behindRps;
+  const track = read ? (read.onTrack ? ', on a track' : `, no track within ${fmtM(num(doc, 'withdrawal.epRoadM', 300))}`) : '';
+  const ok = d <= near + 25 && ahead && back > 0 && (!read || read.onTrack);
+  const parts = `the rear party EP ${fmtM(d)} from their RV (near: ${fmtM(near)} or less, E)${track}, ${fmtM(Math.max(0, back))} behind the rear parties, ${ahead ? 'ahead of' : 'not ahead of'} the Coy and Bn EPs`;
+  return {
+    row: { name: 'Rear party RV / EP', st: ok ? 'pass' : 'warn', reason: `${parts}: ${rule}`, detail: ok ? undefined : { head: 'Rear party EP not near their RV and well forward', why: 'The rear parties hold to the time of final abandonment; their vehicles must wait near their RV, well forward, so they break clean without a march past the Bn EP (IC s92 paras 8 c, 14 pp 487-488).', fix: [`Move the EP within ${fmtM(near)} of the rear party RV`, 'Keep it ahead of the Bn and Coy EPs, behind the rear parties', ...(read && !read.onTrack ? ['Recce a track for the vehicles the map does not show'] : [])] } },
+    nudge,
+  };
+}
+
 export function findWithdrawal(res: SolveResult, f: FitFrame, g: PlanGround, doc: DoctrineSet, opts: { enFieldArtyM?: number | null; enFieldArtySrc?: string | null; threat?: XY | null; terrain?: 'plains' | 'obstacle' | 'desert' | 'mountain' } = {}): WithdrawalFind {
   const out: WithdrawalFind = { nudges: {}, geom: {}, paths: {}, rows: [], confirm: [], times: [], routes: [] };
   const item = (role: string) => res.items.find((i) => i.role === role);
@@ -183,6 +245,15 @@ export function findWithdrawal(res: SolveResult, f: FitFrame, g: PlanGround, doc
   const epRoadM = num(doc, 'withdrawal.epRoadM', 300);
   const epWords: string[] = [];
   let epOnTrack = 0, epOff = 0;
+  /** The nearest track within reach of a place (plan metres), or null. */
+  const trackNear = (at: XY): XY | null => {
+    let best: XY | null = null, bd = Infinity;
+    for (let dx = -epRoadM; dx <= epRoadM; dx += 30) for (let dy = -epRoadM; dy <= epRoadM; dy += 30) {
+      const q = P(at.x + dx, at.y + dy), k = clsAt(q);
+      if (k !== null && ROADS.has(k)) { const d = Math.hypot(dx, dy); if (d < bd) { bd = d; best = q; } }
+    }
+    return best;
+  };
   for (const ep of eps) {
     const coy = fwd.find((c) => c.label && ep.label?.endsWith(c.label.split(' ')[0])) ?? fwd[eps.indexOf(ep)] ?? fwd[0];
     const behind = ep.pts[0].y - centre(coy.pts).y;
@@ -190,11 +261,7 @@ export function findWithdrawal(res: SolveResult, f: FitFrame, g: PlanGround, doc
     const k0 = clsAt(at);
     if (k0 !== null && !ROADS.has(k0)) {
       // the nearest track within reach, keeping the distance behind the posn inside the band
-      let best: XY | null = null, bd = Infinity;
-      for (let dx = -epRoadM; dx <= epRoadM; dx += 30) for (let dy = -epRoadM; dy <= epRoadM; dy += 30) {
-        const q = P(at.x + dx, at.y + dy), k = clsAt(q);
-        if (k !== null && ROADS.has(k)) { const d = Math.hypot(dx, dy); if (d < bd) { bd = d; best = q; } }
-      }
+      const best = trackNear(at);
       if (best) { out.nudges[ep.role] = P(best.x - at.x, best.y - at.y); at = best; epOnTrack++; }
       else epOff++;
     } else if (k0 !== null) epOnTrack++;
@@ -202,8 +269,8 @@ export function findWithdrawal(res: SolveResult, f: FitFrame, g: PlanGround, doc
     if (behind < epBand[0] - 50 || behind > epBand[1] + 50) out.rows.push({ name: 'Embussing points', st: 'warn', reason: `${ep.label} ${fmtM(behind)} behind the old posn; IBB s75 para 20 p 383 wants ${fmtM(epBand[0])}-${fmtM(epBand[1])} on the Coy routes` });
   }
   if (eps.length) out.rows.push(epOff && !epOnTrack
-    ? { name: 'Embussing points', st: 'warn', reason: `${epWords.join('; ')}: no track for the vehicles`, detail: { head: 'No track at the Coy embussing points', why: 'Coy embussing points save marching time only where parallel routes let the vehicles come up (IBB p 383 a); with none, one Bn embussing point behind the Bn RV (p 383 b).', fix: ['Use the Bn embussing point (EP) behind the Bn RV and bring the Bn RV well forward', 'Recce a track the map does not show'] } }
-    : { name: 'Embussing points', st: 'pass', reason: `${epWords.join('; ')} (IBB s75 para 20 p 383: 1500-2000 m behind the old position on the Coy routes)` });
+    ? { name: 'Embussing points', st: 'warn', reason: `${epWords.join('; ')}: no track for the vehicles`, detail: { head: 'No track at the Coy embussing points', why: 'Coy embussing points save marching time only where parallel routes let the vehicles come up (IBB p 383 a; IC s92 para 8 c p 487); with none, one Bn embussing point at or behind the Bn RV (IBB p 383 b; IC p 486: normally one for a Bn).', fix: ['Use the Bn embussing point (EP) behind the Bn RV and bring the Bn RV well forward', 'Recce a track the map does not show'] } }
+    : { name: 'Embussing points', st: 'pass', reason: `${epWords.join('; ')} (IBB s75 para 20 p 383: 1500-2000 m behind the old position on the Coy routes; IC s92 para 8 c pp 486-487 makes one Bn embussing point the normal case, more than one well in the rear on the Coy routes only where the Coys are spread out and parallel routes allow: the books differ on which is normal)` });
 
   // ── routes back on foot: Coy -> Coy RV -> embussing point, round NO-GO; En view along them ──────────────────────
   const night = day ? num(doc, 'moves.footKmh.go', 4) : num(doc, `attack.nightFootKmh.${opts.terrain ?? 'plains'}`, 3);
@@ -239,11 +306,11 @@ export function findWithdrawal(res: SolveResult, f: FitFrame, g: PlanGround, doc
     const pct = seenN ? Math.round((100 * seenAll) / seenN) : null;
     out.rows.push(pct === null ? { name: 'Routes hidden', st: 'unchecked', reason: g.sight ? (unknown ? 'the ground along the routes is still loading' : 'no sight read') : 'no sight data' }
       : { name: 'Routes hidden', st: pct <= seenPctMax ? 'pass' : 'warn', reason: `${pct} % of the routes back in En view from ${opts.threat ? 'the threat marker' : `${fmtM(num(doc, 'withdrawal.hisStandoffM', 1500))} in front`} (wants ${seenPctMax} % or less)`,
-        detail: pct <= seenPctMax ? undefined : { head: `${pct} % of the routes seen`, why: 'A clean break needs covered routes back (IC s92 para 3 p 485; IBB p 367: good covered lines of withdrawal); open ground the En sees invites fire on the thinning-out.', fix: day ? ['Bend the routes into dead ground (a nullah, the far side of a bund)', 'Smoke and fire support over the open stretches (OOW3 p 43 para 8)', 'Covered and concealed routes of withdrawal are a test of the posn itself (MIB p 237 b (2))'] : ['Bend the routes into dead ground (a nullah, the far side of a bund)', 'Withdraw after last light; harassing fire to cover the noise', 'Rear parties hold until the companies are clear'] } });
+        detail: pct <= seenPctMax ? undefined : { head: `${pct} % of the routes seen`, why: 'A clean break needs covered routes back (IC s92 para 3 p 484; IBB p 367: good covered lines of withdrawal); open ground the En sees invites fire on the thinning-out.', fix: day ? ['Bend the routes into dead ground (a nullah, the far side of a bund)', 'Smoke and fire support over the open stretches (OOW3 p 43 para 8)', 'Covered and concealed routes of withdrawal are a test of the posn itself (MIB p 237 b (2))'] : ['Bend the routes into dead ground (a nullah, the far side of a bund)', 'Withdraw after last light; harassing fire to cover the noise', 'Rear parties hold until the companies are clear'] } });
     out.rows.push({ name: 'Routes', st: 'pass', reason: out.routes.map((r) => `${r.label} ${fmtM(r.lengthM)}, ${r.min} min ${byWord}`).join('; ') + ` (${night} km/h, ${rateSrc})` });
   }
 
-  // ── the intermediate posn: beyond En field artillery, behind an obstacle if there is one (IBB p 373; IC p 482) ──
+  // ── the intermediate posn: beyond En field artillery, behind an obstacle if there is one (IBB p 373; IC pp 481-482) ──
   const ip = item('intPosn');
   if (ip && ip.pts.length >= 3) {
     const c = centre(ip.pts);
@@ -251,8 +318,8 @@ export function findWithdrawal(res: SolveResult, f: FitFrame, g: PlanGround, doc
     const arty = opts.enFieldArtyM ?? num(doc, 'withdrawal.intermediateMinM', 17200);
     const artySrc = opts.enFieldArtySrc ?? 'the En 105 mm IFG, 17.2 km (ORBAT weapons.json en-105-mm-ifg-lfg)';
     out.rows.push(back >= arty - 1
-      ? { name: 'Intermediate posn', st: 'pass', reason: `${fmtM(back)} behind the old posn: the En must move En field artillery (${artySrc}) before the En can range it (IBB s74 para 4 e p 373)` }
-      : { name: 'Intermediate posn', st: 'warn', reason: `${fmtM(back)} behind the old posn: inside the reach of En field artillery (${artySrc}); IBB s74 para 4 e p 373 wants the En to at least move En guns first`,
+      ? { name: 'Intermediate posn', st: 'pass', reason: `${fmtM(back)} behind the old posn: the En must move En field artillery (${artySrc}) before the En can range it (IBB s74 para 4 e p 373; IC s91 para 3 b p 481)` }
+      : { name: 'Intermediate posn', st: 'warn', reason: `${fmtM(back)} behind the old posn: inside the reach of En field artillery (${artySrc}); IBB s74 para 4 e p 373 and IC s91 para 3 b p 481 want the En to at least move En guns first`,
         detail: { head: `Intermediate posn ${fmtM(back)} back, En guns reach ${fmtM(arty)}`, why: 'The En guns in their present areas range it: no delay is forced on the En while the En attacks it.', fix: [`Put it ${fmtM(arty)} or more back`, 'Or make it a delaying posn for the covering troops only'] } });
     // an obstacle between: water across the way, from the old posn to the intermediate posn
     // the class grid sampled every 15 m (a canal or drain is one or two 30 m cells) on three lines across the posn's width,
@@ -288,7 +355,7 @@ export function findWithdrawal(res: SolveResult, f: FitFrame, g: PlanGround, doc
     const obstWord = named && obstY === named.y ? `${named.name}${named.wM ? ` (${Math.round(named.wM)} m wide)` : ''}` : 'water';
     out.rows.push(!known ? { name: 'Behind an obstacle', st: 'unchecked', reason: 'the ground between is still loading' }
       : obstY !== null ? { name: 'Behind an obstacle', st: 'pass', reason: `${obstWord} ${fmtM(c.y - obstY)} in front of the intermediate posn (IC s91 para 3 e p 482: behind a natural obstacle, if available)` }
-        : { name: 'Behind an obstacle', st: 'warn', reason: 'no water between the old posn and the intermediate posn (IC s91 para 3 e p 482: behind a natural obstacle, if available)', detail: { head: 'No obstacle in front of it', why: 'Without an obstacle the En closes on the intermediate posn without pause; it is held by a Coy group with less depth than a normal posn (IBB p 373 d).', fix: ['Move it behind the nearest canal, river or ditch', 'Demolitions and mines on the roads in front (IC s93 para 3 p 490)'] } });
+        : { name: 'Behind an obstacle', st: 'warn', reason: 'no water between the old posn and the intermediate posn (IC s91 para 3 e p 482: behind a natural obstacle, if available)', detail: { head: 'No obstacle in front of it', why: 'Without an obstacle the En closes on the intermediate posn without pause; it is held by a Coy group with less depth than a normal posn (IBB p 373 d).', fix: ['Move it behind the nearest canal, river or ditch', 'Demolitions and mines in front of it: engineer tasks in a withdrawal (IC s93 para 3 b p 489)'] } });
     // its view to the front and its flanks (OOW3 s6 para 16 b-c p 33: obstacles in front and on the flanks; high ground
     // with good observation and long fields of fire); the view read as a delaying posn's is (withdrawal.delay.viewM / viewPct)
     const x0 = Math.min(...ip.pts.map((p) => p.x)), x1 = Math.max(...ip.pts.map((p) => p.x)), yF = Math.min(...ip.pts.map((p) => p.y)), yR = Math.max(...ip.pts.map((p) => p.y));
@@ -334,7 +401,9 @@ export function findWithdrawal(res: SolveResult, f: FitFrame, g: PlanGround, doc
     const r2 = delay ? delayRows(res.items, res.recipe, doc) : byDayRows(res.items, res.recipe);
     out.rows.push(...r2.rows);
     if (delay) out.rows.push(...delayGroundRows(res.items, res.recipe, doc, g.sight ? (a, b) => { const p = W(a), q = W(b); return g.sight!(p.x, p.y, 2, q.x, q.y, 2); } : null, clsAt, WATER));
-    if (opts.terrain === 'desert') out.rows.push({ name: 'Desert', st: 'pass', reason: 'in the desert no withdrawal on foot for any distance: transport to lift all the men, on as many routes as possible including cross-country; covering troops and flank guards armour based with ATGM / LAT and FOOs from the medium Regts (DW s9 pp 32-33)' });
+    if (opts.terrain === 'desert') out.rows.push(delay
+      ? { name: 'Desert', st: 'pass', reason: 'in the desert the covering troops fight from successive delaying posns or leap-frog back from alternate posns, deflecting the En from his axis or canalising him into a killing ground (DW s7 para 9 b p 25); armour based, mounted: no move back on foot for any distance (DW s9 pp 32-33)' }
+      : desertWdrRow(out.routes, doc, !!item('intPosn')));
     out.confirm.push(...r2.confirm);
     if (byDay) out.confirm.push('Bridges on the routes back: reserve demolitions, specifically controlled, with demolition guards and firing parties, fired only after the last troops are over, covered by the artillery (OOW3 pp 55, 63-64); AD, AT and a security detachment at the defiles and bridges on the routes back (OOW3 pp 12, 28)', 'The intermediate posn: a complete Coy group under one commander, AT weapons and some armour if available (IBB s74 para 4 b-c p 373)');
     return out;
@@ -345,8 +414,20 @@ export function findWithdrawal(res: SolveResult, f: FitFrame, g: PlanGround, doc
   const fmn = isFmnWithdrawal(res.recipe), sub = res.recipe.echelon === '21' ? 'Bdes' : 'Bns';
   out.rows.push(fmn
     ? { name: 'Rear parties', st: rps.length >= fwd.length ? 'pass' : 'warn', reason: `${rps.length} rear part${rps.length === 1 ? 'y' : 'ies'} for ${fwd.length} forward ${sub}: the formations and units in contact leave a portion to remain in contact, deny the En knowledge of the withdrawal and protect it (OOW3 s9 para 5 p 45), holding till the prescribed time (p 44 para 2 e); they must cover the different approaches to the posns (p 27)` }
-    : { name: 'Rear parties', st: rps.length >= fwd.length ? 'pass' : 'warn', reason: `${rps.length} rear part${rps.length === 1 ? 'y' : 'ies'} for ${fwd.length} forward Coys: a platoon from each with part of the weapon section, under one commander, holding to the time of abandonment (IC s92 paras 13-14 pp 488-489)` });
-  if (item('covPl')) out.rows.push({ name: 'Covering Pl', st: 'pass', reason: 'a platoon of the depth Coys covers the Bn embussing point and withdraws after the Bn has embussed (IBB s75 para 11 d, g pp 379-380)' });
+    : { name: 'Rear parties', st: rps.length >= fwd.length ? 'pass' : 'warn', reason: `${rps.length} rear part${rps.length === 1 ? 'y' : 'ies'} for ${fwd.length} forward Coys: a platoon from each with part of the weapon section, under one commander, holding to the time of abandonment (IC s92 paras 13-14 p 488)` });
+  if (item('covPl')) out.rows.push({ name: 'Covering Pl', st: 'pass', reason: 'a platoon of the depth Coys covers the Bn embussing point and withdraws after the Bn has embussed (IBB s75 para 11 d, g pp 379-380); the depth Coys send troops back early to protect the Bn RV / embussing points, withdrawing after these close (IC s92 para 11 p 487)' });
+  // the rear parties' own RV and embussing point, well forward (IC s92 para 8 c p 487, para 14 p 488)
+  if (!fmn) {
+    const rr = rearPartyRvRow(res.items, doc, (at) => {
+      const k0 = clsAt(at);
+      if (k0 === null) return null;
+      if (ROADS.has(k0)) return { at, onTrack: true };
+      const best = trackNear(at);
+      return best ? { at: best, onTrack: true } : { at, onTrack: false };
+    });
+    if (rr.nudge) out.nudges.epRp = rr.nudge;
+    if (rr.row) out.rows.push(rr.row);
+  }
   // the En approaches onto the old posn: each must meet a rear party's weapons where it reaches the front (OOW3 p 27)
   if (rps.length && g.avenues) {
     const reach = num(doc, 'withdrawal.rearPartyReachM', 457);
@@ -374,23 +455,33 @@ export function findWithdrawal(res: SolveResult, f: FitFrame, g: PlanGround, doc
   const prog = (doctrineAt(doc, 'withdrawal.programmeMin') as Record<string, number>) ?? { echelons: 15, controlPoints: 105, depthWithdraw: 135, rearPartyIn: 165, denial: 180 };
   const src = 'IBB s75 para 11 pp 379-380';
   const T = (label: string, atMin: number) => out.times.push({ label, atMin, src });
+  const thin = num(doc, 'withdrawal.thinOutBeforeDenialMin', 10);
   T('Last light', 0);
   T('Recce parties to the new main posn (by day, before)', -600);
+  // the essential timing before which no rearward move may take place, except by the recce parties (IC s90 para 15 a (2)
+  // p 478): the first rearward move of the programme, the echelons and the non-essential stores after last light
+  out.times.push({ label: 'No rearward move before this, except by the recce parties: an essential timing the Comd lays down (IC s90 para 15 a (2) p 478)', atMin: prog.echelons, src: 'IC s90 para 15 a (2) p 478' });
   T('AD deployed at the points likely to be attacked by En air: the defiles and bridges on the routes back (OOW3 p 44 para 2 b; p 28)', Math.max(0, prog.echelons - 15));
-  T('A and B echelons withdraw in small packets', prog.echelons);
+  T('A and B echelons withdraw in small packets; non-essential stores and personnel soon after last light (IC s92 para 9 p 487)', prog.echelons);
   T('Checkpoints, RVs and embussing points manned; a Pl of the depth Coys covers the Bn EP', prog.controlPoints);
   T('Depth Coys and Bn HQ (less the CP) withdraw; rear parties take over from the forward Coys', prog.depthWithdraw);
   T('Rear parties in position', prog.rearPartyIn);
-  T('Time of denial: Bn Comd hands over to the rear party Comd; mortars and CP withdraw; forward Coys begin to withdraw', prog.denial);
+  // thinning out: normally a few minutes before the time of denial; the depth Pl and Coy HQ (less the Coy Comd, his set and
+  // runner) of each forward Coy leave first, at it (IC s90 para 15 b (1) p 479; s92 para 12 p 488)
+  out.times.push({ label: `Forward Coys thin out: the depth Pl and Coy HQ less the Coy Comd, set and runner leave (IC s90 para 15 b (1) p 479: normally a few minutes before the time of denial; s92 para 12 p 488; ${thin} min taken, E)`, atMin: prog.denial - thin, src: 'IC s90 para 15 b (1) p 479; s92 para 12 p 488' });
+  // the mortars: IBB withdraws the Bn mortars with the CP at the time of denial (s75 para 11 g p 380); IC keeps them able to
+  // fire until the last possible moment and supporting the rear parties till the last minute (s92 paras 1, 13 pp 484, 488):
+  // the books differ, so a part of the mortars stays with the rear parties to the time of final abandonment
+  T('Time of denial: Bn Comd hands over to the rear party Comd; CP and the Bn mortars less a part withdraw (IBB p 380), the part kept answering calls for fire for the rear parties till the last minute (IC s92 paras 1, 13 pp 484, 488); forward Pls less the rear parties begin to withdraw (IC s92 para 12 p 488)', prog.denial);
   const longest = Math.max(0, ...out.routes.map((r) => r.min));
   if (longest) T('Forward Coys clear of their embussing points', prog.denial + longest);
   if (item('bl')) T('All troops clear of the BL (OOW3 p 19 para 17 c: so the artillery and air may engage)', prog.denial + longest);
   T('Rear parties thin out (MIB p 223: about 30 min before the time of final abandonment)', prog.denial + longest);
-  T('Rear parties leave at the time of final abandonment (laid down by Bde); the covering Pl withdraws after the Bn has embussed', prog.denial + longest + 30);
-  out.rows.push({ name: 'Timings', st: 'pass', reason: `${fmn ? `each forward ${sub.slice(0, -1)}'s programme in the pattern of a Bn's, ` : ''}the programme from last light: echelons L+${prog.echelons} min, control points manned L+${prog.controlPoints}, depth Coys out L+${prog.depthWithdraw}, rear parties in L+${prog.rearPartyIn}, denial L+${prog.denial}${longest ? `; the forward Coys clear their EPs L+${prog.denial + longest}` : ''} (${src}: a guide; Bde lays down the denial time, the no-move-before time and the clear-line time, s74 para 17 p 377)` });
-  if (opts.terrain === 'desert') out.rows.push({ name: 'Desert', st: 'pass', reason: 'in the desert no withdrawal on foot for any distance: transport to lift all the men, on as many routes as possible including cross-country, a clean break to the next main posn where a stand can be made; covering troops and flank guards armour based with ATGM / LAT and FOOs from the medium Regts (DW s9 pp 32-33)' });
+  T('Rear parties leave at the time of final abandonment (laid down by Bde; IC s90 para 15 b (2) p 479), with the mortars kept for them, to their own RV and embussing point well forward (IC s92 paras 8 c, 14 pp 487-488); the covering Pl withdraws after the Bn has embussed', prog.denial + longest + 30);
+  out.rows.push({ name: 'Timings', st: 'pass', reason: `${fmn ? `each forward ${sub.slice(0, -1)}'s programme in the pattern of a Bn's, ` : ''}the programme from last light: echelons L+${prog.echelons} min, control points manned L+${prog.controlPoints}, depth Coys out L+${prog.depthWithdraw}, rear parties in L+${prog.rearPartyIn}, denial L+${prog.denial}${longest ? `; the forward Coys clear their EPs L+${prog.denial + longest}` : ''} (${src}: a guide; Bde lays down the denial time, the no-move-before time and the clear-line time, s74 para 17 p 377; IC s90 para 15 pp 478-479 the same essential timings); no rearward move before L+${prog.echelons} except by the recce parties (IC p 478); thinning out L+${prog.denial - thin}, a few minutes before the time of denial (IC p 479; ${thin} min, E); a part of the mortars stays with the rear parties to the end (IC s92 paras 1, 13; IBB p 380 withdraws them with the CP at denial: the books differ)` });
+  if (opts.terrain === 'desert') out.rows.push(desertWdrRow(out.routes, doc, !!item('intPosn')));
   if (opts.terrain === 'mountain') out.rows.push({ name: 'By day?', st: 'pass', reason: 'difficult ground (bog, thickly wooded areas and hills) may make a daylight withdrawal the only practical means (OOW3 s2 pp 8-9); not one under the En air superiority (OOW3 p 15)' });
-  out.confirm.push('Routes back walked by day by the Coy / Pl Comds and memorised; Coy RVs and the Bn checkpoint recognisable at night (IC s91 para 5 b p 483)', 'Normal activity, wireless traffic and harassing fire kept up to the last (IC s91 paras 7-9 p 484); the line left intact to the end', 'Non-essential stores and personnel out soon after last light under the CQMH (IC s91 para 6 p 484)', 'Demolitions, nuisance mines and booby traps on the roads in front (IC s93 para 3 p 490); bridges to prepare', 'The intermediate posn: a complete Coy group under one commander, AT weapons and some armour if available (IBB s74 para 4 b-c p 373)', 'Bridges on the routes back: reserve demolitions, specifically controlled, with demolition guards and firing parties, fired only after the last troops are over, covered by the artillery (OOW3 pp 55, 63-64); AD, AT and a security detachment at the defiles and bridges on the routes back (OOW3 pp 12, 28)', 'The withdrawal finishes before daylight: the hours of darkness used for the main body\'s move (OOW3 p 44 para 1)', 'Routes converging on the axes of withdrawal from the outer flanks protected; which routes to block and which to keep open (OOW3 s2 para 5 a p 8)', 'With tanks or APCs: the mech elements leave together; by night the tanks first against an infantry threat, last against armour; ATGM first against infantry, second last against armour; mortars until the posn is abandoned; MGs last (MIB pp 225-228); mounted, only RVs, no checkpoints (MIB pp 225, 230-231)');
+  out.confirm.push('Routes back walked by day by the Coy / Pl Comds and memorised; Coy RVs and the Bn checkpoint recognisable at night (IC s91 para 5 b p 483)', 'Normal activity, wireless traffic and harassing fire kept up to the last (IC s91 paras 7-9 p 483); the line left intact to the end', 'Non-essential stores and personnel out soon after last light under the CQMH (IC s91 para 6 p 483)', 'Demolitions and mines (engineers), the abandoned posns booby trapped (IC s93 para 3 b, e p 489); bridges to prepare', 'The intermediate posn: a complete Coy group under one commander, AT weapons and some armour if available (IBB s74 para 4 b-c p 373)', 'Bridges on the routes back: reserve demolitions, specifically controlled, with demolition guards and firing parties, fired only after the last troops are over, covered by the artillery (OOW3 pp 55, 63-64); AD, AT and a security detachment at the defiles and bridges on the routes back (OOW3 pp 12, 28)', 'The withdrawal finishes before daylight: the hours of darkness used for the main body\'s move (OOW3 p 44 para 1)', 'Routes converging on the axes of withdrawal from the outer flanks protected; which routes to block and which to keep open (OOW3 s2 para 5 a p 8)', 'With tanks or APCs: the mech elements leave together; by night the tanks first against an infantry threat, last against armour; ATGM first against infantry, second last against armour; mortars until the posn is abandoned; MGs last (MIB pp 225-228); mounted, only RVs, no checkpoints (MIB pp 225, 230-231)', 'MGs forward as long as possible; some AT guns in position until shortly before it is abandoned; the FOO with the Coys (IC s92 para 1 p 484)');
   return out;
 }
 
@@ -438,10 +529,13 @@ export function withdrawalGeometryRows(items: { role: string; label: string; pts
     return { rows: [...rows, ...fr.rows], confirm: fr.confirm, grey: [['Routes hidden', 'the routes back in the En view from the threat marker'], ['Behind an obstacle', 'water between the old posn and Int Posn 1']] };
   }
   rows.push({ name: 'Rear parties', st: rps.length >= fwd.length ? 'pass' : 'warn', reason: `${rps.length} for ${fwd.length} forward Coys: a platoon from each with part of the weapon section (IC s92 para 13 p 488)` });
-  if (item('covPl')) rows.push({ name: 'Covering Pl', st: 'pass', reason: 'a platoon of the depth Coys covers the Bn embussing point (IBB s75 para 11 d p 379)' });
+  if (item('covPl')) rows.push({ name: 'Covering Pl', st: 'pass', reason: 'a platoon of the depth Coys covers the Bn embussing point (IBB s75 para 11 d p 379; IC s92 para 11 p 487)' });
+  const rr = rearPartyRvRow(items, doc, null).row;
+  if (rr) rows.push(rr);
   const prog = (doctrineAt(doc, 'withdrawal.programmeMin') as Record<string, number>) ?? { echelons: 15, controlPoints: 105, depthWithdraw: 135, rearPartyIn: 165, denial: 180 };
-  rows.push({ name: 'Timings', st: 'pass', reason: `from last light: echelons L+${prog.echelons} min, control points manned L+${prog.controlPoints}, depth Coys out L+${prog.depthWithdraw}, rear parties in L+${prog.rearPartyIn}, denial L+${prog.denial} (IBB s75 para 11 pp 379-380, a guide; the march to the EPs is read with the terrain)` });
-  return { rows, confirm: ['Routes back walked by day; Coy RVs and the Bn checkpoint recognisable at night (IC s91 para 5 b p 483)', 'Normal activity and harassing fire kept up to the last; the line left intact to the end (IC s91 paras 7-9 p 484)', 'Demolitions and mines on the roads in front of the intermediate posn (IC s93 para 3 p 490)'] };
+  const thin = num(doc, 'withdrawal.thinOutBeforeDenialMin', 10);
+  rows.push({ name: 'Timings', st: 'pass', reason: `from last light: echelons L+${prog.echelons} min (no rearward move before it except the recce parties, IC s90 para 15 a (2) p 478), control points manned L+${prog.controlPoints}, depth Coys out L+${prog.depthWithdraw}, rear parties in L+${prog.rearPartyIn}, thinning out L+${prog.denial - thin} (a few minutes before denial, IC s90 para 15 b (1) p 479; ${thin} min, E), denial L+${prog.denial} (IBB s75 para 11 pp 379-380, a guide; the march to the EPs is read with the terrain); a part of the mortars stays with the rear parties to the end (IC s92 paras 1, 13 pp 484, 488; IBB p 380 withdraws them at denial: the books differ)` });
+  return { rows, confirm: ['Routes back walked by day; Coy RVs and the Bn checkpoint recognisable at night (IC s91 para 5 b p 483)', 'Normal activity and harassing fire kept up to the last; the line left intact to the end (IC s91 paras 7-9 p 483)', 'Demolitions and mines in front of the intermediate posn, the abandoned posns booby trapped (engineer tasks: IC s93 para 3 b, e p 489)'] };
 }
 
 /**
@@ -509,7 +603,7 @@ export function checkWithdrawal(inp: FitLayoutInput, drawn: Record<string, { pts
   const need = recipe.layout === 'delay' ? ['hq', 'fwdL', 'fwdR', 'res', 'dp2', 'dp3']
     : recipe.layout === 'by-day' ? ['hq', 'fwdL', 'fwdR', 'depth', 'res', 'freshA', 'freshB', 'ppA', 'ppB', 'intPosn', 'newMain']
       : isFmnWithdrawal(recipe) ? ['hq', 'fwdL', 'fwdR', 'res', 'intPosn', 'intPosn2', 'newMain']
-      : ['hq', 'fwdL', 'fwdR', 'rvA', 'rvB', 'bnRv', 'epA', 'epB', 'intPosn', 'newMain'];
+      : ['hq', 'fwdL', 'fwdR', 'rvA', 'rvB', 'bnRv', 'epA', 'epB', 'rvRp', 'epRp', 'intPosn', 'newMain'];
   const names = (r: string) => recipe.slots.find((s) => s.role === r)?.label || r;
   return { rows: read.rows, confirm: read.confirm, reading: { paths: read.paths, times: read.times, routes: read.routes, confirm: read.confirm }, pending: ground.pending(), read: [...new Set(Object.keys(drawn).map(names))], missing: need.filter((r) => !drawn[r]).map(names) };
 }

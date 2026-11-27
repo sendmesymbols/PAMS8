@@ -7,9 +7,9 @@
  * - geometry rows: how far each echelon stands from the head against Fig 2 (read off a highlighted scan: uncertain);
  * - on the ground: the axis routed for tracks over the bundle's going (PlanGround.avenues), its share on roads and
  *   their classes, the going along it (NO-GO share and longest stretch), each water feature it crosses and how (the
- *   bundle's bridge classes: tanks need Cl 60), report lines laid on the water ahead with the bounds between them, and
- *   the flank guards' ground;
- * - Check my plan reads the same rows off the drawn symbols (the axis and report lines as drawn).
+ *   bundle's bridge classes: tanks need Cl 60), bounds laid on the water ahead and report lines on the lateral roads
+ *   and railways (IC s58 paras 4, 6 pp 242-243), and the flank guards' ground;
+ * - Check my plan reads the same rows off the drawn symbols (the axis, bounds and report lines as drawn).
  *
  * No ArcGIS, no DOM, so Node can test it.
  */
@@ -17,7 +17,7 @@ import type { DoctrineSet, Recipe } from './PlanRecipes';
 import { doctrineAt, resolveRange } from './PlanRecipes';
 import type { Check, CheckState, PlanItem, XY } from './PlanSolve';
 import { solveRecipe } from './PlanSolve';
-import { toLocal, toWorld, type FitFrame, type FitLayoutInput, type FitResult, type FittedLayout, type PlanGround } from './PlanFit';
+import { detectTerrain, toLocal, toWorld, type FitFrame, type FitLayoutInput, type FitResult, type FittedLayout, type PlanGround } from './PlanFit';
 import type { OrbatSet } from './PlanOrbat';
 import { mkPath, type LngLat } from '../MovePlanner/MoveGeo';
 import { clearAt, densityFor, dueAt, roadRulesFrom, simulate, speedFor, type MvRoadRules, type MvSerialIn } from '../MovePlanner/MoveRoad';
@@ -26,6 +26,8 @@ import { mercToLngLat } from '../MovementGuide/MovementGuideScan';
 
 type MercXY = [number, number];
 export type AdvDrawn = Record<string, { pts: MercXY[] }>;
+/** A bound (bd) or report line (rl) as drawn, where it meets the axis. */
+export type DrawnLine = { label: string; s: number; kind?: 'bd' | 'rl' };
 
 const kOf = (y: number) => 1 / Math.cos(2 * Math.atan(Math.exp(y / 6378137)) - Math.PI / 2);
 const km = (m: number) => `${(m / 1000).toFixed(1)} km`;
@@ -53,6 +55,13 @@ export function advanceFigures(doc: DoctrineSet) {
     bnLink: r('bn.linkGpsM', [800, 900]),
     bnLinkMin: r('bn.linkGpsMin', [40, 65]),
     bnMainMin: r('bn.mainGdBehindVanMinM', [300, 400]),
+    // IC beside IBB: by day the leading Coy strung up to 1100-1400 m, the Bn up to 3-5 km (s61 para 7 p 261); by night
+    // the vanguard about 450 m, the main guard not less than 400-450 m behind it (s64 para 6 b, c p 280)
+    bnVanDay: r('bn.vanDepthDayM', [1100, 1400]),
+    bnSpreadDay: r('bn.bnSpreadDayM', [3000, 5000]),
+    bnVanNightIc: r('bn.vanDepthNightIcM', [450, 450])[0],
+    bnMainIc: r('bn.mainGdBehindVanIcM', [400, 450]),
+    lateralMax: r('rlLateralMaxM', [120, 120])[0],
     bnClear: r('bn.flankClearM', [800, 800])[0],
     bnFollow: r('bn.followUpPlM', [100, 300]),
     closeShare: r('bn.closeShare', [0.1, 0.4]),
@@ -136,22 +145,39 @@ export function bnAdvanceRows(items: { role: string; pts: XY[] }[], doc: Doctrin
   // the vanguard's point is its centre: its tail half its depth behind it
   const tail = van ? back(van) + vanMid / 2 : vanMid;
   if (van) {
-    const ok = back(van) >= 0 && back(van) <= vanMid;
-    rows.push({ name: 'Vanguard', st: ok ? 'pass' : 'warn', reason: `a Coy group with a Sec of the Bn mortars, an assault pioneer Sec, the ATGM Pl, tanks and the FOO if allotted (IBB S33 para 3 p 138), its tail about ${fmtM(tail)} behind its head at the SP${night ? `; by night ${fmtM(F.bnVan[0])}-${fmtM(F.bnVan[1])} deep (IBB Fig 12 p 150)` : '; by day its gaps are reckoned in time, not space, by the speed, the En and the country, so that nothing drifts into action unaware or piecemeal (IBB p 138 para 4)'}${ok ? '' : ': it stands outside the vanguard\'s depth'}` });
+    // by night Fig 12's depth (IBB p 150); by day IC's: the leading Coy strung on the road up to 1100-1400 m in open
+    // country with good visibility (IC s61 para 7 p 261), its head at the SP and its point (the symbol) its centre
+    const dayDepth = 2 * back(van);
+    const ok = back(van) >= 0 && (night ? back(van) <= vanMid : dayDepth <= F.bnVanDay[1] + 1);
+    rows.push({
+      name: 'Vanguard', st: ok ? 'pass' : 'warn',
+      reason: `a Coy group with a Sec of the Bn mortars, an assault pioneer Sec, the ATGM Pl, tanks and the FOO if allotted (IBB S33 para 3 p 138), its tail about ${fmtM(night ? tail : dayDepth)} behind its head at the SP${night
+        ? `; by night ${fmtM(F.bnVan[0])}-${fmtM(F.bnVan[1])} deep (IBB Fig 12 p 150), the night formation; IC has the point Sec to the vanguard's tail only ${fmtM(F.bnVanNightIc)} or so (s64 para 6 b p 280): the books differ, Fig 12 drawn`
+        : `; by day its gaps are reckoned in time, not space, by the speed, the En and the country, so that nothing drifts into action unaware or piecemeal (IBB p 138 para 4; IC s61 para 6 p 261); in open country with good visibility the leading Coy may be strung on the road as long as ${fmtM(F.bnVanDay[0])}-${fmtM(F.bnVanDay[1])} (IC s61 para 7 p 261; Fig 12's ${F.bnVan[0]}-${F.bnVan[1]} m is the night formation); scouts 75-150 m ahead of the point Sec, the point Sec 150 / 200 m ahead of the Pl R Gp (IC s61 para 5 p 259)`}${ok ? '' : night ? ': it stands outside the vanguard\'s depth' : `: longer than the ${fmtM(F.bnVanDay[1])} the leading Coy strings out to by day`}`,
+      ...(ok ? {} : { detail: { head: back(van) < 0 ? 'The vanguard is ahead of the SP' : night ? `Vanguard ${fmtM(tail)} deep by night` : `Vanguard ${fmtM(dayDepth)} long by day`, why: back(van) < 0 ? 'The SP is the head of the vanguard.' : night ? 'By night the distances close up: no man out of sight of his neighbour (IC s64 para 6 b p 280); Fig 12 draws the vanguard 500-600 m (IBB p 150).' : 'Strung out further, the leading Coy cannot support its point Pl or close in when it meets the En (IC s61 paras 6-7 p 261).', fix: [night ? `Close the vanguard to ${fmtM(F.bnVan[0])}-${fmtM(F.bnVan[1])} (Fig 12)` : `Close the vanguard to ${fmtM(F.bnVanDay[1])} or less`] } }),
+    });
   }
   // the main guard's head: the first of Bn HQ, the mortars and the main guard behind the vanguard's tail
   const behind = [hq, mor, main].filter((p): p is XY => !!p).map(back).filter((d) => d > tail - 1);
   if (main) {
     const gap = behind.length ? Math.min(...behind) - tail : back(main) - tail;
     const inLink = gap >= F.bnLink[0] - 1 && gap <= F.bnLink[1] + 1;
-    const st: CheckState = gap <= 0 ? 'warn' : night && gap < F.bnMainMin[0] ? 'warn' : 'pass';
+    // by night the books differ: IBB at least 300-400 m (p 149), IC not less than 400-450 m (s64 para 6 c p 280): safety
+    // first, it warns under IC's 400 m
+    const nightMin = Math.max(F.bnMainMin[0], F.bnMainIc[0]);
+    const st: CheckState = gap <= 0 ? 'warn' : night && gap < nightMin ? 'warn' : 'pass';
     rows.push({
       name: 'Main Gd', st,
       reason: night
-        ? `its head ${fmtM(gap)} behind the vanguard's tail: by night at least ${F.bnMainMin[0]}-${F.bnMainMin[1]} m, so it is not within the effective range of the En small arms on contact (IBB p 149 para 4 d (4)); Fig 12 draws the gap ${F.bnLink[0]}-${F.bnLink[1]} m filled by link groups, ${F.bnLinkMin[0]}-${F.bnLinkMin[1]} min (IBB p 150)${inLink ? '' : `: here ${gap < F.bnLink[0] ? 'shorter' : 'longer'}`}; connecting files from a Coy of the main guard, their number by the visibility (p 149 d (5))`
+        ? `its head ${fmtM(gap)} behind the vanguard's tail: by night at least ${F.bnMainMin[0]}-${F.bnMainMin[1]} m, so it is not within the effective range of the En small arms on contact (IBB p 149 para 4 d (4)); IC: not less than ${F.bnMainIc[0]}-${F.bnMainIc[1]} m (s64 para 6 c p 280): the books differ, warned under ${nightMin} m (safety first); Fig 12 draws the gap ${F.bnLink[0]}-${F.bnLink[1]} m filled by link groups, ${F.bnLinkMin[0]}-${F.bnLinkMin[1]} min (IBB p 150)${inLink ? '' : `: here ${gap < F.bnLink[0] ? 'shorter' : 'longer'}`}; connecting files from a Coy of the main guard, their number by the visibility (p 149 d (5))`
         : `its head ${fmtM(gap)} behind the vanguard's tail: by day the gap is set in time by the speed, the En and the country (IBB p 138 para 4); the follow-up Coys on foot in Secs along the road, a Pl about every ${F.bnFollow[0]}-${F.bnFollow[1]} m (p 139 para 9 b)`,
-      ...(st === 'warn' ? { detail: { head: gap <= 0 ? 'The main guard is not behind the vanguard' : `Main guard ${fmtM(gap)} behind the vanguard by night`, why: gap <= 0 ? 'The vanguard leads; the main guard follows it.' : 'Closer, the main guard comes under the En small arms when the vanguard meets him (IBB p 149 d (4)).', fix: [`Hold the main guard ${F.bnMainMin[1]} m or more behind the vanguard by night; Fig 12 has ${F.bnLink[0]}-${F.bnLink[1]} m with link groups`] } } : {}),
+      ...(st === 'warn' ? { detail: { head: gap <= 0 ? 'The main guard is not behind the vanguard' : `Main guard ${fmtM(gap)} behind the vanguard by night`, why: gap <= 0 ? 'The vanguard leads; the main guard follows it.' : 'Closer, the main guard comes under the En small arms when the vanguard meets the En (IBB p 149 d (4); IC s64 para 6 c p 280).', fix: [`Hold the main guard ${Math.max(F.bnMainMin[1], F.bnMainIc[1])} m or more behind the vanguard by night (IC p 280); Fig 12 has ${F.bnLink[0]}-${F.bnLink[1]} m with link groups`] } } : {}),
     });
+    // by day the Bn's length on the road (IC s61 para 7 p 261: up to 3-5 km in open country with good visibility)
+    if (!night) {
+      const d = back(main);
+      rows.push({ name: 'Bn spread', st: d <= F.bnSpreadDay[1] + 1 ? 'pass' : 'warn', reason: `the main guard ${fmtM(d)} behind the SP: by day in open country with good visibility the Bn may be spread over ${km(F.bnSpreadDay[0])}-${km(F.bnSpreadDay[1])} at most (IC s61 para 7 p 261); the rear elements close in when the forward elements meet the En, still out of his direct fire (para 7)${d <= F.bnSpreadDay[1] + 1 ? '' : ': strung out further, the rear cannot support the front in time'}` });
+    }
   }
   if (hq) {
     const d = back(hq), ok = d >= tail - 1 && (!main || d <= back(main) + 1);
@@ -166,8 +192,8 @@ export function bnAdvanceRows(items: { role: string; pts: XY[] }[], doc: Doctrin
     rows.push({ name: 'Mortars, ATGM, RR', st: ok ? 'pass' : 'warn', reason: `${mor ? `the Mor Pl ${fmtM(back(mor))}` : ''}${mor && atgm ? ', ' : ''}${atgm ? `the ATGM ${fmtM(back(atgm))}` : ''} behind the SP: the mortar platoon well forward in the order of march to support the vanguard; the ATGM Pl and the RRs well forward, detachments interspersed in the column and with the flank security (MIB p 82 para 22 g, h); by night a Sec of 81 mm with the vanguard, the Pl less it at the head of the main guard (IBB Fig 12 p 150)${ok ? '' : ': here behind the main guard'}` });
   }
   rows.push(night
-    ? { name: 'Flank clearance', st: 'pass', reason: 'by night the point Pl searches both flanks to the greatest distance it can see, the follow-up Pls of the vanguard one flank each (IBB p 149 para 4 d (1), (3)); flank guards picket the lines of approach rather than move parallel to the axis (p 149 c (2))' }
-    : { name: 'Flank clearance', st: 'pass', reason: `by day in open country the Bn clears at least ${fmtM(F.bnClear)} either side of the axis (IBB S32 para 2 i (1) p 133): the axis band laid ${fmtM(2 * F.bnClear)} wide; the vanguard well dispersed either side of the road against small arms fire from the flanks (p 139 para 9 a)` });
+    ? { name: 'Flank clearance', st: 'pass', reason: 'by night the point Pl searches both flanks to the greatest distance it can see, the follow-up Pls of the vanguard one flank each (IBB p 149 para 4 d (1), (3)); flank guards picket the lines of approach rather than move parallel to the axis (p 149 c (2); IC s64 para 16 b p 284); villages and woods close to the axis searched, those away from it bypassed, the leading troops not bypassing opposition by night (IC s64 para 15 p 284); a flanking move on meeting the En at Coy level on a dark night, at Bn level only in moonlight or under illumination (IC s64 para 11 p 283); by night the point Sec spread 100 m on a dark night, 140 m on a moonlit one (IC s64 para 20 b (1) p 286)' }
+    : { name: 'Flank clearance', st: 'pass', reason: `by day in open country the Bn clears at least ${fmtM(F.bnClear)} either side of the axis (IBB S32 para 2 i (1) p 133): the axis band laid ${fmtM(2 * F.bnClear)} wide; the vanguard well dispersed either side of the road against small arms fire from the flanks (p 139 para 9 a); a point Pl that cannot clear the En deploys into a fire base about 450-550 m wide for the Coy's attack (IC s63 para 15 p 276)` });
   return rows;
 }
 
@@ -226,7 +252,7 @@ export function divAdvanceRows(items: { role: string; pts: XY[] }[], doc: Doctri
 
 /** Water the axis crosses (rules.json classes): permanent water, seasonal water, canal, distributary, drain, stream. */
 const WET = new Set([4, 5, 20, 21, 22, 46]);
-/** The water a report line is set on: permanent water, canal, distributary, perennial stream (not drains). */
+/** The water a bound is set on: permanent water, canal, distributary, perennial stream (not drains). */
 const RL_WATER = new Set([4, 20, 21, 46]);
 /** How the axis crosses (rules.json crossing classes), for tracks: its word and verdict. */
 const CROSSING: Record<number, { word: string; st: CheckState }> = {
@@ -316,6 +342,10 @@ export function routeAxis(items: { role: string; pts: XY[] }[], f: FitFrame, g: 
 
 /** The water features the axis crosses, in order: where along it, the water, how it is crossed. */
 export interface AxisCrossing { s: number; at: XY; dir: XY; water: number | null; how: number | null; lengthM: number }
+/** A road or railway stretch the axis is on: where along it, its class (28 railway when any of it is), its length. */
+export interface AxisLateral { s: number; at: XY; dir: XY; cls: number; lengthM: number }
+/** Roads, railways and level crossings (rules.json): a short stretch of them on the axis is a lateral it crosses. */
+const LATERAL = new Set([28, 34, 35, 36, 37, 38, 50]);
 
 /** Read the classes along the axis: the NO-GO run, the road share, the water crossed (one feature per wet stretch). */
 function readAxis(axis: AdvAxis, f: FitFrame, g: PlanGround) {
@@ -326,10 +356,19 @@ function readAxis(axis: AdvAxis, f: FitFrame, g: PlanGround) {
   const roads = new Map<number, number>();
   const xs: AxisCrossing[] = [];
   let cur: AxisCrossing | null = null, gap = 0;
+  // roads and railways the axis is on, stretch by stretch (a short one is a lateral it crosses: a report line)
+  const lat: AxisLateral[] = [];
+  let lc: AxisLateral | null = null, lgap = 0;
   for (const q of pts) {
     const w = toWorld(f, q.p);
     const c = g.cls(w.x, w.y);
     if (c === null) continue;
+    if (LATERAL.has(c)) {
+      if (!lc) { lc = { s: q.s, at: q.p, dir: q.dir, cls: c, lengthM: 0 }; lat.push(lc); }
+      lc.lengthM = q.s - lc.s + STEP;
+      if (c === 28) lc.cls = 28;
+      lgap = 0;
+    } else if (lc && (lgap += STEP) >= 40) lc = null;
     n++;
     const no = tracked.nogo.has(c);
     if (no) bad++;
@@ -368,7 +407,7 @@ function readAxis(axis: AdvAxis, f: FitFrame, g: PlanGround) {
     }
   }
   const steps = pts.length;
-  return { n, steps, bad, worst, worstAt, roads, xs: xs.filter((x) => x.water !== null || (x.how !== null && x.how !== 50)) };
+  return { n, steps, bad, worst, worstAt, roads, xs: xs.filter((x) => x.water !== null || (x.how !== null && x.how !== 50)), lat };
 }
 
 /**
@@ -402,15 +441,17 @@ function axisReadRows(R: ReturnType<typeof readAxis>, ax: AdvAxis, g: PlanGround
  * On the ground, along the axis as laid (routed for tracks where the bundle allows): Axis route (its length against the
  * straight line, the share on roads and their classes), Going on the axis (NO-GO share and longest stretch), Crossings
  * on the axis (each water feature, how it is crossed: a Cl 60+ bridge passes, Cl 50-59 or unrecorded warns, below Cl 50
- * or none fails), Report lines (on the water features ahead of the SP, at least `rlApartM` apart, up to four; the bounds
- * between them) and the flank guards' ground. Report lines laid are returned for the map.
+ * or none fails), Bounds (on the water features ahead of the SP: a tactical feature where the troops halt, IC s58 para 4
+ * p 242) and Report lines (on the lateral roads and railways: no tactical significance, para 6 p 243), each at least
+ * `rlApartM` apart, up to four, and the flank guards' ground. The lines laid (bd1.., rl1..) are returned for the map;
+ * `lines` are the bounds (the halting areas stand short of them), `rlLines` the report lines.
  */
-export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFrame, g: PlanGround, doc: DoctrineSet, axis: AdvAxis | null = null, drawnRls: { label: string; s: number }[] | null = null, rlApartM: number | null = null): { rows: Check[]; rls: Record<string, { pts: XY[]; label: string }>; lines: { label: string; s: number }[] } {
+export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFrame, g: PlanGround, doc: DoctrineSet, axis: AdvAxis | null = null, drawnRls: DrawnLine[] | null = null, rlApartM: number | null = null, night = false): { rows: Check[]; rls: Record<string, { pts: XY[]; label: string }>; lines: { label: string; s: number }[]; rlLines: { label: string; s: number }[] } {
   const F = advanceFigures(doc);
   const at = (role: string) => { const i = items.find((x) => x.role === role && x.pts.length); return i ? centre(i.pts) : null; };
   const head = at('sp');
   const rls: Record<string, { pts: XY[]; label: string }> = {};
-  if (!head) return { rows: [], rls, lines: [] };
+  if (!head) return { rows: [], rls, lines: [], rlLines: [] };
   const ax: AdvAxis = axis ?? (() => {
     const ct = at('ctps') ?? { x: head.x, y: head.y + (F.ctps[0] + F.ctps[1]) / 2 }, mb = at('mainBody') ?? { x: head.x, y: head.y - F.body };
     return { path: [mb, head, ct], spAt: Math.hypot(head.x - mb.x, head.y - mb.y), routed: false, pending: false };
@@ -421,7 +462,7 @@ export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFr
   const where = (s: number) => (s >= ax.spAt ? `${fmtM(s - ax.spAt)} ahead of the SP` : `${fmtM(ax.spAt - s)} behind the SP`);
   if (R.n < R.steps / 2) {
     rows.push({ name: 'Going on the axis', st: 'unchecked', reason: 'the ground along the axis is not loaded yet' });
-    return { rows, rls, lines: [] };
+    return { rows, rls, lines: [], rlLines: [] };
   }
   // the route
   const straight = Math.hypot(ax.path[ax.path.length - 1].x - ax.path[0].x, ax.path[ax.path.length - 1].y - ax.path[0].y);
@@ -433,14 +474,21 @@ export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFr
     ? { name: 'Axis route', st: total > straight * F.detour + 1 ? 'warn' : 'pass', reason: `${ax.drawn ? 'the axis as drawn (no way searched: its going and crossings read along it)' : 'the least-cost way for tracks over the bundle\'s going (NO-GO avoided, SLOW-GO dear)'}, the Main Body through the SP to the C Tps: ${km(total)} against ${km(straight)} straight (${(total / straight).toFixed(2)} times; warn over ${F.detour}, E)${roadTxt}. Not a road route: the march table and the roads' classes are the Move Planner's` }
     : { name: 'Axis route', st: 'unchecked', reason: `${ax.pending ? 'the ground for the route is still loading' : `no way for tracks found${oneLeg ? ` ${oneLeg}` : ''} in the bundle's grid (about 25 km across)${R.xs.some((x) => x.how === null) ? ', with water across the axis and no bridge on it (Crossings on the axis): bridge it, or another axis' : ''}`}: ${oneLeg ? 'that leg read on the straight line, the other along its way' : 'the straight line read instead'}${roadTxt}` });
   rows.push(...axisReadRows(R, ax, g, F, 'axis'));
-  // report lines: laid on the water ahead of the SP (or read as drawn)
+  // bounds on the water ahead of the SP: a tactical feature of importance, the troops halt and secure it before passing
+  // through (IC s58 para 4 p 242); report lines on the lateral roads and railways: no tactical significance, the units
+  // report but do not halt (para 6 p 243). Laid, or read as drawn (Check my plan)
   const RL_MAX = 4, apart = rlApartM ?? F.rlApart;
+  const SRC_CM = 'bounds and report lines are control measures of the advance (OoW Vol II s4 para 8 p 11)';
+  const nightTxt = night ? '; by night bounds and report lines at shorter intervals (IC s64 para 6 g (3) p 281; IBB p 148): no figure, set RL apart shorter' : '';
   let lines: { label: string; s: number }[];
-  // drawn report lines with no axis drawn are measured from the SP (checkAdvance): on the fallback axis the SP lies spAt in
-  if (drawnRls) lines = axis ? drawnRls : drawnRls.map((l) => ({ ...l, s: l.s + ax.spAt }));
+  let rlLines: { label: string; s: number }[];
+  // drawn lines with no axis drawn are measured from the SP (checkAdvance): on the fallback axis the SP lies spAt in
+  const asDrawn = (k: 'bd' | 'rl') => (drawnRls ?? []).filter((l) => (l.kind ?? 'rl') === k).map((l) => (axis ? l : { ...l, s: l.s + ax.spAt }));
+  if (drawnRls) { lines = asDrawn('bd'); rlLines = asDrawn('rl'); }
   else {
     lines = [];
-    // the features ahead, at least `apart` between them; within that, the bigger obstacle wins (a canal or river over a
+    rlLines = [];
+    // the water ahead, at least `apart` between them; within that, the bigger obstacle wins (a canal or river over a
     // stream, a stream over a distributary, water over a bridge alone); of the same kind, the wider on the axis
     const RANK: Record<number, number> = { 4: 4, 20: 4, 46: 3, 21: 2 };
     const rank = (x: AxisCrossing) => (x.water !== null ? RANK[x.water] ?? 1 : 1);
@@ -452,24 +500,44 @@ export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFr
       if (last && x.s - last.s < apart) { if (bigger(x, last)) pick[pick.length - 1] = x; continue; }
       if (pick.length < RL_MAX) pick.push(x);
     }
+    const across = (at: XY, dir: XY) => { const half = 750, n = { x: -dir.y, y: dir.x }; return [{ x: at.x - n.x * half, y: at.y - n.y * half }, { x: at.x + n.x * half, y: at.y + n.y * half }]; };
     pick.forEach((x, k) => {
-      const i = k + 1, half = 750, n = { x: -x.dir.y, y: x.dir.x };
+      const i = k + 1;
       const name = x.water !== null ? g.label(x.water).replace(/ \/.*$/, '') : 'bridge';
-      rls[`rl${i}`] = { pts: [{ x: x.at.x - n.x * half, y: x.at.y - n.y * half }, { x: x.at.x + n.x * half, y: x.at.y + n.y * half }], label: `RL ${i} ${name}` };
-      lines.push({ label: `RL ${i} (${name})`, s: x.s });
+      rls[`bd${i}`] = { pts: across(x.at, x.dir), label: `Bd ${i} ${name}` };
+      lines.push({ label: `Bd ${i} (${name})`, s: x.s });
+    });
+    // the lateral roads and railways ahead: stretches of them on the axis no longer than `rlLateralMaxM` (longer, the axis
+    // runs along the road), not within 300 m of a bound, at least `apart` between them; a railway over a road
+    const latPick: AxisLateral[] = [];
+    for (const x of R.lat) {
+      if (x.lengthM > F.lateralMax || x.s <= ax.spAt + 300 || lines.some((l) => Math.abs(l.s - x.s) < 300)) continue;
+      const last = latPick[latPick.length - 1];
+      if (last && x.s - last.s < apart) { if (x.cls === 28 && last.cls !== 28) latPick[latPick.length - 1] = x; continue; }
+      if (latPick.length < RL_MAX) latPick.push(x);
+    }
+    latPick.forEach((x, k) => {
+      const i = k + 1, name = x.cls === 28 ? 'railway' : x.cls === 50 ? 'level crossing' : 'road';
+      rls[`rl${i}`] = { pts: across(x.at, x.dir), label: `RL ${i} ${name}` };
+      rlLines.push({ label: `RL ${i} (${name})`, s: x.s });
     });
   }
-  if (!lines.length) rows.push({ name: 'Report lines', st: 'unchecked', reason: 'no canal, distributary or stream crosses the axis ahead of the SP: set report lines on roads, railways or villages across the axis by eye (report lines and bounds are control measures of the advance: OoW Vol II s4 p 11)' });
-  else {
-    const sorted = [...lines].sort((a, b) => a.s - b.s);
-    const bounds = sorted.map((l, i) => `${i ? sorted[i - 1].label.replace(/ \(.*$/, '') : 'SP'} to ${l.label.replace(/ \(.*$/, '')} ${fmtM(l.s - (i ? sorted[i - 1].s : ax.spAt))}`);
-    // as drawn (Check my plan): nothing laid, the spacing set (or the default) checked between them
+  // one row per kind: where each lies, the stretches between them, the spacing (as drawn: checked against it)
+  const kindRow = (name: string, ls: { label: string; s: number }[], what: string, none: Check): Check => {
+    if (!ls.length) return none;
+    const sorted = [...ls].sort((a, b) => a.s - b.s);
+    const short = (l: { label: string }) => l.label.replace(/ \(.*$/, '');
+    const legs = sorted.map((l, i) => `${i ? short(sorted[i - 1]) : 'SP'} to ${short(l)} ${fmtM(l.s - (i ? sorted[i - 1].s : ax.spAt))}`);
     const close = drawnRls ? sorted.slice(1).map((l, i) => ({ a: sorted[i], b: l, d: l.s - sorted[i].s })).filter((p) => p.d < apart * 0.95) : [];
     const how = drawnRls
       ? `read as drawn, at least ${km(apart)} apart wanted: ${rlApartM ? 'as set' : 'the default, E'}${close.length ? `; ${close.map((p) => `${p.a.label} to ${p.b.label} only ${fmtM(p.d)}`).join(', ')}` : ''}`
-      : `on the water features across the axis, at least ${km(apart)} apart: ${rlApartM ? 'as set' : 'the default, E'}`;
-    rows.push({ name: 'Report lines', st: close.length ? 'warn' : 'pass', reason: `${sorted.map((l) => `${l.label} ${where(l.s)}`).join('; ')} (${how}; report lines and bounds are control measures of the advance: OoW Vol II s4 p 11). Bounds: ${bounds.join(', ')}` });
-  }
+      : `${what}, at least ${km(apart)} apart: ${rlApartM ? 'as set' : 'the default, E'}`;
+    return { name, st: close.length ? 'warn' : 'pass', reason: `${sorted.map((l) => `${l.label} ${where(l.s)}`).join('; ')} (${how}; ${SRC_CM})${nightTxt}. ${name === 'Bounds' ? 'Bounds' : 'Between them'}: ${legs.join(', ')}` };
+  };
+  rows.push(kindRow('Bounds', lines, 'on the water across the axis: a bound is a tactical feature of importance; the troops halt there and secure it before passing through, the point Pl approaching it secured (IC s58 para 4 p 242)',
+    { name: 'Bounds', st: 'unchecked', reason: `${drawnRls ? 'no bound drawn' : 'no canal, distributary or stream crosses the axis ahead of the SP'}: set bounds by eye on the tactical features across the axis, a feature of importance on the map and on the ground where the troops halt and secure it (IC s58 para 4 p 242; ${SRC_CM})${nightTxt}` }));
+  rows.push(kindRow('Report lines', rlLines, 'on the lateral roads and railways across the axis: a line of no tactical significance on which the units report but do not halt (IC s58 para 6 p 243)',
+    { name: 'Report lines', st: 'unchecked', reason: `${drawnRls ? 'no report line drawn' : 'no lateral road or railway crosses the axis ahead of the SP'}: set report lines by eye on a lateral road or railway, a line of no tactical significance on which the units report but do not halt (IC s58 para 6 p 243; ${SRC_CM})` }));
   // the flank guards
   const tracked = g.going('tracked');
   const fl = (['flankL', 'flankR'] as const).map((r) => ({ r, p: at(r) })).filter((x): x is { r: 'flankL' | 'flankR'; p: XY } => !!x.p);
@@ -479,7 +547,7 @@ export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFr
     rows.push(!known.length ? { name: 'Flank guards\' ground', st: 'unchecked', reason: 'their ground is not loaded yet' }
       : { name: 'Flank guards\' ground', st: known.some((x) => x.no) ? 'warn' : 'pass', reason: known.map((x) => `the ${x.side} flank guard on ${g.label(x.c!)}${x.no ? ' (NO-GO for tracks)' : x.slow ? ' (SLOW-GO for tracks)' : ''}`).join('; ') });
   }
-  return { rows, rls, lines };
+  return { rows, rls, lines, rlLines };
 }
 
 // ── the march: timings and halting areas (the Move Planner's road engine) ───────────────────────────────────────────
@@ -542,7 +610,7 @@ const hPlus = (min: number) => `H${min < 0 ? '-' : '+'}${Math.floor(Math.abs(min
 
 /**
  * Halting areas for the Main Body (harbour areas chosen by the time gap between echelons, with space, cover and
- * concealment: OoW Vol II s4 p 12): one 1 km short of each report line, beside the axis on its right so the axis stays clear (`advance.haShortOfRlM`, `haSizeM`: the user's).
+ * concealment: OoW Vol II s4 p 12): one 1 km short of each bound (the troops halt at bounds, IC s58 para 4 p 242), beside the axis on its right so the axis stays clear (`advance.haShortOfRlM`, `haSizeM`: the user's).
  */
 export function haltingAreas(axis: AdvAxis, lines: { label: string; s: number }[], shortM = 1000, size: [number, number] = [600, 400]): Record<string, { pts: XY[]; label: string }> {
   const out: Record<string, { pts: XY[]; label: string }> = {};
@@ -567,9 +635,9 @@ const ROADS_IN = new Set([34, 35, 36, 37, 38]);
 export interface HaSite { role: string; label: string; pts: XY[]; side: 'right' | 'left'; shiftM: number; cover: number | null; room: number | null; entry: 'axis' | 'road' | null }
 
 /**
- * The Main Body's halting areas sited on the ground: for each report line the area `haShortOfRlM` short of it is tried
+ * The Main Body's halting areas sited on the ground: for each bound the area `haShortOfRlM` short of it is tried
  * on the right of the axis, then on the left (Fig 2 draws HAR-1 right, HAR-2 left), and `haScore.shiftM` forward and
- * back along it (never onto the report line); the one kept has the most natural cover (trees, orchards, forest) up to
+ * back along it (never onto the bound); the one kept has the most natural cover (trees, orchards, forest) up to
  * `coverShareWant`, the most firm ground for tracks up to `roomShareMin`, and an entry: the ground between it and the
  * axis passable for tracks, or a road or track within `entryRoadM` (IBB S35 para 11 a p 160; OoW Vol II p 12). Row
  * "Halting areas" names each with its side, cover, room and entry; it warns where one falls short.
@@ -622,7 +690,7 @@ export function siteHaltingAreas(axis: AdvAxis, lines: { label: string; s: numbe
   });
   if (!sites.length) return { areas, sites, row: null };
   const read = sites.filter((s) => s.cover !== null);
-  if (!read.length) return { areas, sites, row: { name: 'Halting areas', st: 'unchecked', reason: `${sites.map((s) => s.label).join(', ')} laid ${fmtM(F.haShort)} short of the report lines: their ground is not loaded yet` } };
+  if (!read.length) return { areas, sites, row: { name: 'Halting areas', st: 'unchecked', reason: `${sites.map((s) => s.label).join(', ')} laid ${fmtM(F.haShort)} short of the bounds: their ground is not loaded yet` } };
   const short = read.filter((s) => (s.cover ?? 0) < F.haCover || (s.room ?? 0) < F.haRoom || !s.entry);
   const pct = (v: number | null) => `${Math.round((v ?? 0) * 100)} %`;
   const parts = sites.map((s) => `${s.label} ${s.side} of the axis${s.shiftM ? `, ${fmtM(Math.abs(s.shiftM))} ${s.shiftM < 0 ? 'back' : 'forward'}` : ''}: ${s.cover === null ? 'not loaded' : `${pct(s.cover)} under trees or orchards, ${pct(s.room)} firm for tracks, entry ${s.entry === 'axis' ? 'from the axis' : s.entry === 'road' ? `by a road or track within ${fmtM(F.haEntry)}` : 'none found'}`}`);
@@ -630,7 +698,7 @@ export function siteHaltingAreas(axis: AdvAxis, lines: { label: string; s: numbe
     areas, sites,
     row: {
       name: 'Halting areas', st: short.length ? 'warn' : 'pass',
-      reason: `${parts.join('; ')}. For the Main Body, about ${fmtM(F.haShort)} short of each report line, the best of the right and left of the axis and ${fmtM(F.haShift)} up or back (${F.haSize[0]} x ${F.haSize[1]} m): close to the axis, natural cover to conceal the force at once, easy entry and exit, all-round defence, room to disperse (IBB S35 para 11 a p 160); space, cover, concealment and protection from air and ground (OoW Vol II p 12); wanted ${pct(F.haCover)} under cover and ${pct(F.haRoom)} firm (E)`,
+      reason: `${parts.join('; ')}. For the Main Body, about ${fmtM(F.haShort)} short of each bound (the troops halt there, IC s58 para 4 p 242), the best of the right and left of the axis and ${fmtM(F.haShift)} up or back (${F.haSize[0]} x ${F.haSize[1]} m): close to the axis, natural cover to conceal the force at once, easy entry and exit, all-round defence, room to disperse (IBB S35 para 11 a p 160); space, cover, concealment and protection from air and ground (OoW Vol II p 12); wanted ${pct(F.haCover)} under cover and ${pct(F.haRoom)} firm (E)`,
       ...(short.length ? { detail: { head: `${short.length} of ${sites.length} halting area${sites.length > 1 ? 's' : ''} short of a harbour's needs`, items: short.map((s) => `${s.label}: ${[(s.cover ?? 0) < F.haCover ? `${pct(s.cover)} under cover` : '', (s.room ?? 0) < F.haRoom ? `only ${pct(s.room)} firm` : '', !s.entry ? 'no entry found' : ''].filter(Boolean).join(', ')}`), why: 'A harbour wants natural cover so the force conceals itself at once with the least effort, easy entry and exit, and room to disperse (IBB p 160 para 11 a); without them the Main Body is seen and caught bunched (OoW Vol II p 12).', fix: ['Move it to the nearest wood or orchard beside the axis', 'Halt short of the report line where the axis passes cover', 'Without cover: dispersion, camouflage at once, AD deployed on arrival (IBB p 160 b (1) (a))'] } } : {}),
     },
   };
@@ -669,7 +737,7 @@ export function bnGroundRows(axis: AdvAxis, f: FitFrame, g: PlanGround, doc: Doc
  * The march along the axis by the Move Planner's road engine (MoveRoad.simulate): the Adv Gd's head at the SP at H, the
  * Main Body's head `mainBodyBackM` behind it, both moving at H (first light today at the SP, civil twilight: an advance
  * to contact by day, E), at the speeds for columns with tanks on good roads, the road density, the halts of the road
- * rules. March row: each serial's column length and time past a point, when its head reaches the SP, each report line
+ * rules. March row: each serial's column length and time past a point, when its head reaches the SP, each bound and report line
  * and the C Tps' line, its halts; warns when the Adv Gd's column is longer than the gap to the Main Body's head (the
  * Main Body closes on it) or a serial runs on past last light.
  */
@@ -681,11 +749,11 @@ export function bnGroundRows(axis: AdvAxis, f: FitFrame, g: PlanGround, doc: Doc
  */
 export function advanceBookRows(lines: { label: string; s: number }[], hAt: string, kind: 'bn' | 'div' | 'bde' = 'bde'): Check[] {
   const rows: Check[] = [];
-  const bnNight = kind === 'bn' ? '; at Bn level bounds and report lines at shorter intervals than by day, steadiness in probing rather than speed (IBB p 148 para 4 b (1), (2)); a separate Adv Gd for each route (p 149 c (5)); the harbour, GPO and engineer recce parties well forward with the Adv Gd (p 149 c (4))' : '';
+  const bnNight = kind === 'bn' ? '; at Bn level bounds and report lines at shorter intervals than by day, steadiness in probing rather than speed (IBB p 148 para 4 b (1), (2); IC s64 para 6 g (3), (4) p 281); a separate Adv Gd for each route (p 149 c (5)); the harbour, GPO and engineer recce parties well forward with the Adv Gd (p 149 c (4))' : '';
   if (hAt === 'last') rows.push({ name: 'By night', st: 'pass', reason: `a night advance: keep the distances manageable; strengthen the covering troops and the Adv Gd with infantry and ATGM, the flank guards too; the artillery relatively forward (OOW2 s5 pp 13-14); in the desert the night distances are reduced (OOW2 p 68)${bnNight}` });
   const far = lines.length ? Math.max(...lines.map((l) => l.s)) : 0;
   const beyond = far > 48000 ? ': beyond a day of turn-round the RP steps forward, set up near the leading Bde (lsf pp 4-5)' : '';
-  if (far > 0) rows.push({ name: 'Maintenance', st: far <= 48000 ? 'pass' : 'warn', reason: `the last report line ${(far / 1000).toFixed(1)} km from the SP: first line turns round within 48 km and second line within 64 km of the RP (lsf p 27, Annex F p 72)${beyond}` });
+  if (far > 0) rows.push({ name: 'Maintenance', st: far <= 48000 ? 'pass' : 'warn', reason: `the last bound ${(far / 1000).toFixed(1)} km from the SP: first line turns round within 48 km and second line within 64 km of the RP (lsf p 27, Annex F p 72)${beyond}` });
   return rows;
 }
 
@@ -729,6 +797,29 @@ export function advanceMarch(axis: AdvAxis, lines: { label: string; s: number }[
 }
 
 /** An advance fitted where it rests (PlanFit.fitLayout hands it over): the click is the SP, the aim the axis. */
+/**
+ * The advance in the desert (DW s11 pp 35-37, s15 para 4 p 55): on a very wide front, by combat groups, on multiple axes
+ * to exploit weak points and disperse his reactions, the force able to concentrate; armour in the mobile troops and
+ * advance guards outflanking opposition, the infantry clearing it after; flank protection and AD; by night cross-country
+ * on unexpected routes, best against a weakly held posn. A Bde on one axis warns (p 55: a very wide front); a Div on
+ * two axes and a Bn on its Bde's axis carry it as a note.
+ */
+export function desertAdvanceRow(kind: 'bn' | 'div' | 'bde'): Check {
+  const rules = 'armour in the mobile troops and advance guards outflanks the opposition, the infantry clears it after (DW p 55 para 4 b); flank guards and AD secure the manoeuvre (p 35 para 1 e); by night cross-country on unexpected routes, best against a weakly held posn (p 37 para 8); camel-borne or long-range patrols on the going astride the axes (p 36 para 3)';
+  if (kind === 'bde') return {
+    name: 'Desert', st: 'warn',
+    reason: `one axis: in the desert the advance goes on a very wide front, by combat groups, on multiple axes to exploit his weak points and disperse his reactions (DW s11 paras 1 a, 2 p 35; s15 para 4 p 55); ${rules}`,
+    detail: { head: 'One axis in the desert', why: 'Vast spaces, the air threat, lack of cover and of obstacles dictate an advance on a very wide front based on combat groups, contacting the En on a wide front to exploit flanks and weak spots (DW s15 para 4 p 55).', fix: ['Advance two Regt groups up on two axes (OoW Vol II pp 52-53), within supporting distance', 'Or the Armd Div two Bdes up (Div Advance)'] },
+  };
+  return { name: 'Desert', st: 'pass', reason: `${kind === 'div' ? 'two Bdes on two axes: the very wide front and multiple axes of the desert (DW pp 35, 55)' : 'the Bn on its Bde\'s axis, the formation on a very wide front by combat groups (DW pp 35, 55)'}; ${rules}` };
+}
+
+/** The ground kind for an advance: as set in the tab, else read where it rests (PlanFit.detectTerrain); null unknown. */
+function advanceGroundKind(inp: FitLayoutInput, frame: FitFrame, res: ReturnType<typeof solveRecipe>): string | null {
+  if (inp.terrain && inp.terrain !== 'auto') return inp.terrain;
+  return detectTerrain(inp.ground, frame, res, inp.recipe, inp.ctx.doc)?.kind ?? null;
+}
+
 export function fitAdvance(inp: FitLayoutInput): FittedLayout | null {
   const { recipe, ctx, ground } = inp;
   const base = solveRecipe(recipe, ctx, inp.opts);
@@ -737,21 +828,30 @@ export function fitAdvance(inp: FitLayoutInput): FittedLayout | null {
   const frame: FitFrame = { anchor: inp.anchor, bearing: inp.bearing, k: kOf(inp.anchor.y), pivot: pivot.pts[0] };
   inp.begin?.();
   const kind = advanceKind(base.items);
-  if (kind === 'div') return fitDivAdvance(inp, base, frame);
+  if (kind === 'div') {
+    const fd = fitDivAdvance(inp, base, frame);
+    if (fd && advanceGroundKind(inp, frame, base) === 'desert') {
+      const dr = desertAdvanceRow('div');
+      fd.res.rows.push(dr);
+      if (fd.fit.rows !== fd.res.rows) fd.fit.rows.push(dr);
+    }
+    return fd;
+  }
   const hAt = recipe.advance?.hAt ?? 'first';
   // a Bn Adv Gd: the axis from its main guard through the SP to 6 km ahead (it has no C Tps of its own)
   const axis = routeAxis(base.items, frame, ground, kind === 'bn' ? { rear: 'mainGd', aheadM: 6000 } : {});
-  const gr = advanceGroundRows(base.items, frame, ground, ctx.doc, axis, null, recipe.advance?.rlApartM ?? null);
-  // the axis arrow along the route, a little past the C Tps; the report lines on the water
+  const gr = advanceGroundRows(base.items, frame, ground, ctx.doc, axis, null, recipe.advance?.rlApartM ?? null, hAt === 'last');
+  // the axis arrow along the route, a little past the C Tps; the bounds on the water, the report lines on the lateral roads and railways
   const p = axis.path, a = p[p.length - 2], b = p[p.length - 1], L = Math.hypot(b.x - a.x, b.y - a.y) || 1;
   // simplified within 25 m, so the arrow as drawn reads as the route did; its head 300 m past the C Tps
   const arrow = simplify([...p, { x: b.x + ((b.x - a.x) / L) * 300, y: b.y + ((b.y - a.y) / L) * 300 }], 25);
-  // the Main Body's halting areas short of the report lines, sited on the ground (IBB p 160; OoW Vol II p 12); the march
+  // the Main Body's halting areas short of the bounds, sited on the ground (IBB p 160; OoW Vol II p 12); the march
   // timed along the axis (Recipe.march, the ORBAT's)
   const ha = siteHaltingAreas(axis, gr.lines, frame, ground, ctx.doc);
   const raw = solveRecipe(recipe, ctx, { ...inp.opts, paths: { ...(inp.opts.paths ?? {}), axis: arrow }, geom: { ...(inp.opts.geom ?? {}), ...gr.rls, ...ha.areas } });
-  const marchRow = recipe.march && !axis.pending ? advanceMarch(axis, gr.lines, frame, ctx.doc, recipe.march, hAt) : null;
+  const marchRow = recipe.march && !axis.pending ? advanceMarch(axis, [...gr.lines, ...gr.rlLines].sort((a, b) => a.s - b.s), frame, ctx.doc, recipe.march, hAt) : null;
   const rows = [...advanceRows(raw.items, ctx.doc, hAt), ...gr.rows, ...(kind === 'bn' ? bnGroundRows(axis, frame, ground, ctx.doc) : []), ...(ha.row ? [ha.row] : []), ...(marchRow ? [marchRow] : []), ...advanceBookRows(gr.lines, hAt, kind)];
+  if (advanceGroundKind(inp, frame, raw) === 'desert') rows.push(desertAdvanceRow(kind));
   const fails = rows.filter((r) => r.st === 'fail').length, warns = rows.filter((r) => r.st === 'warn').length;
   const fit: FitResult = {
     nudges: {}, slides: [], killingGr: null, slots: {}, rows, approaches: [],
@@ -801,7 +901,7 @@ function divAxisRows(axes: ReturnType<typeof divAxes>, f: FitFrame, g: PlanGroun
 
 /**
  * An Armd Div on two axes fitted where it rests (recipe div-advance-two-bde): each Bde's axis routed for tracks from its
- * tail to its head and read for its going and water crossings; the report lines, halting areas and march are each
+ * tail to its head and read for its going and water crossings; the bounds, report lines, halting areas and march are each
  * Bde's own, built with the Armd Bde advance on its axis.
  */
 function fitDivAdvance(inp: FitLayoutInput, base: ReturnType<typeof solveRecipe>, frame: FitFrame): FittedLayout {
@@ -812,7 +912,7 @@ function fitDivAdvance(inp: FitLayoutInput, base: ReturnType<typeof solveRecipe>
   for (const a of axes) paths[a.role] = simplify(a.axis.path, 25);
   const raw = solveRecipe(recipe, ctx, { ...inp.opts, paths: { ...(inp.opts.paths ?? {}), ...paths } });
   const rows = [...divAdvanceRows(raw.items, ctx.doc), ...divAxisRows(axes, frame, ground, F),
-    { name: 'Report lines', st: 'unchecked' as const, reason: 'each Bde\'s own on its axis, with its halting areas and march: build the Armd Bde Advance to Contact on each axis (report lines and bounds are control measures of the advance: OoW Vol II s4 p 11)' },
+    { name: 'Bounds', st: 'unchecked' as const, reason: 'each Bde\'s own bounds (on the water: IC s58 para 4 p 242) and report lines (on lateral roads and railways: para 6 p 243) on its axis, with its halting areas and march: build the Armd Bde Advance to Contact on each axis (bounds and report lines are control measures of the advance: OoW Vol II s4 para 8 p 11)' },
     ...advanceBookRows([], recipe.advance?.hAt ?? 'first', 'div')];
   const fails = rows.filter((r) => r.st === 'fail').length, warns = rows.filter((r) => r.st === 'warn').length;
   const pending = axes.some((a) => a.axis.pending) || ground.pending();
@@ -840,7 +940,7 @@ export function checkAdvance(inp: FitLayoutInput, drawn: AdvDrawn): { rows: Chec
     const items: PlanItem[] = base.items.filter((it) => drawn[it.role]).map((it) => ({ ...it, pts: drawn[it.role].pts.map((q) => toLocal(fr, { x: q[0], y: q[1] })) }));
     const rows = [...divAdvanceRows(items, ctx.doc), ...divAxisRows(divAxes(items, fr, ground, true), fr, ground, advanceFigures(ctx.doc))];
     const need = ['sp', 'axisL', 'axisR', 'ctpsL', 'ctpsR', 'flankL', 'flankR'];
-    return { rows, confirm: ['Each Bde\'s report lines, halting areas and march on its axis', 'The Follow-in-Zone infantry for the positions the armour bypasses (OoW Vol II p 53)'], pending: ground.pending(), read: Object.keys(drawn).map(names), missing: need.filter((r) => !drawn[r]).map(names) };
+    return { rows, confirm: ['Each Bde\'s bounds, report lines, halting areas and march on its axis', 'The Follow-in-Zone infantry for the positions the armour bypasses (OoW Vol II p 53)'], pending: ground.pending(), read: Object.keys(drawn).map(names), missing: need.filter((r) => !drawn[r]).map(names) };
   }
   // the direction of advance: from the SP toward the covering troops, else from the Van Gd to the SP
   const bearing = ct ? Math.atan2(ct[0] - sp[0], ct[1] - sp[1]) : van ? Math.atan2(sp[0] - van[0], sp[1] - van[1]) : inp.bearing;
@@ -859,10 +959,13 @@ export function checkAdvance(inp: FitLayoutInput, drawn: AdvDrawn): { rows: Chec
     if (ctp) { const q = project(pts, centre(ctp.pts)); pts = [...pts.slice(0, q.i + 1), q.q]; }
     axis = { path: pts, spAt: project(pts, head).s, routed: true, pending: false, drawn: true };
   }
-  // each drawn report line where it meets the axis, measured along it
-  const rlDrawn = Object.keys(drawn).filter((r) => /^rl\d$/.test(r)).map((r) => { const c = centre(drawn[r].pts.map(loc)); return { label: `RL ${r.slice(2)}`, s: axis ? project(axis.path, c).s : c.y - head.y }; });
-  const gr = advanceGroundRows(items, frame, ground, ctx.doc, axis, rlDrawn.length ? rlDrawn : null, recipe.advance?.rlApartM ?? null);
+  // each drawn bound and report line where it meets the axis, measured along it
+  const rlDrawn: DrawnLine[] = Object.keys(drawn).filter((r) => /^(bd|rl)\d$/.test(r)).map((r) => {
+    const c = centre(drawn[r].pts.map(loc)), kind = r.slice(0, 2) as 'bd' | 'rl';
+    return { label: `${kind === 'bd' ? 'Bd' : 'RL'} ${r.slice(2)}`, s: axis ? project(axis.path, c).s : c.y - head.y, kind };
+  });
   const hAt = recipe.advance?.hAt ?? 'first';
+  const gr = advanceGroundRows(items, frame, ground, ctx.doc, axis, rlDrawn.length ? rlDrawn : null, recipe.advance?.rlApartM ?? null, hAt === 'last');
   // a Bn Adv Gd: who leads read along the axis as drawn, else from its main guard through the SP to 6 km ahead
   const bnAxis = kind === 'bn' ? axis ?? (() => { const mg = items.find((i) => i.role === 'mainGd')?.pts[0] ?? { x: head.x, y: head.y - 1500 }; return { path: [mg, head, { x: head.x, y: head.y + 6000 }], spAt: Math.hypot(head.x - mg.x, head.y - mg.y), routed: false, pending: false }; })() : null;
   const rows = [...advanceRows(items, ctx.doc, hAt), ...gr.rows, ...(bnAxis ? bnGroundRows(bnAxis, frame, ground, ctx.doc) : [])];

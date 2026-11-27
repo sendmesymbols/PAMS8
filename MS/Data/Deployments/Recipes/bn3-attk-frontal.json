@@ -9,12 +9,12 @@
   "basis": "E",
   "task": "attack",
   "name": "Bn Attk: frontal, two up (3 Coys)",
-  "frontageRow": "Battalion, set-piece attack in plains",
+  "frontageRow": "Battalion, night attack, two companies up",
   "subRow": null,
   "needs": {
     "terrain": false
   },
-  "note": "Plan metres from the FUP centre (backM negative = toward the objective). FUP 450 x 300 m (NightMarchDoctrine, Bn); the objective's near edge 1150 m ahead (attack.fupFromObjM 1000-1200); the assault 400 m wide (IC s113 set-piece row); the BOF on the right flank, firing at the objective; LOE 600 m beyond its far edge (E); the Assy Area 3 km behind the FUP (IBB p173: 1-5 miles from the enemy). Frontal: dangerous, small chance of success: only if unavoidable (user, attack.form). A three-Coy Bn (Lt Cdo, p 623): A and B Coys assault, C Coy the reserve; no Coy is left for the BOF, so it is the support weapons (the Coys' Sp Pls and the HQ Coy) on its own (E). One phase only: no Coy is left for a second.",
+  "note": "Plan metres from the FUP centre (backM negative = toward the objective). FUP 450 x 300 m (NightMarchDoctrine, Bn); the objective's near edge 1150 m ahead (attack.fupFromObjM 1000-1200); the assault 450 m wide (the own row: IBB S47 para 17 a p 248, a Bn two up 450-650 m by night); the BOF on the right flank, firing at the objective; LOE 600 m beyond its far edge (E); the Assy Area 3 km behind the FUP (IBB p173: 1-5 miles from the enemy). Frontal: dangerous, small chance of success: only if unavoidable (user, attack.form). A three-Coy Bn (Lt Cdo, p 623): A and B Coys assault, C Coy the reserve; no Coy is left for the BOF, so it is the support weapons (the Coys' Sp Pls and the HQ Coy) on its own (E). One phase only: no Coy is left for a second.",
   "slots": [
     {
       "role": "obj",
@@ -138,7 +138,7 @@
             -1250
           ]
         ],
-        "widthM": 400
+        "widthM": 450
       }
     },
     {

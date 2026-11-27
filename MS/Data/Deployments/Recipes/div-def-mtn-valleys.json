@@ -1,0 +1,233 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": false
+  },
+  "id": "div-def-mtn-valleys",
+  "family": "div-def-mtn",
+  "layout": "valleys",
+  "echelon": "21",
+  "unit": "inf-div",
+  "basis": "D",
+  "name": "Div Def (Mtn): two Bdes up on two valleys, the reserves split",
+  "frontageRow": "Infantry division, two to three axes",
+  "subRow": null,
+  "note": "An Inf Div in the mountains with a Bde on each of two valleys or terrain compartments and the reserves split to guard them: \"If fighting in mountains, the divisional reserves may have to be split to guard approaches along different valleys or terrain compartments\" (GSP 1947 Inf Div in Battle s27 para 4 p 122); an immediate counter-attack has the greater chance, so the reserves are split and positioned to launch at once and concentrate quickly (s39 para 11 p 176); upwards of Bn level the reserves cannot act from one central location (MW s12 p 169). The depth Bde gives a reserve group behind each forward Bde: the Bde less a Bn on the main approach (Lt), a Bn on the other. No Armd Regt in the reserve and no transport from the Div pool: armour is confined to roads and tracks (MW p 238); the reserves move on foot. No Security Zone: along the LoC in Kashmir and the Northern Areas none exists, and the En softens up selected posts (MW p 164). Minefields thickest in the valleys and foothills (MW p 150). The reserve groups occupy the counter-penetration posns behind their valleys as the threat warrants (GSP s27 para 5 b (5) p 123). The Bdes' own layouts are built as Bde plans (Bde Def (Mtn) for a salient).",
+  "slots": [
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Left Bde (Lt valley)",
+      "echelon": "18",
+      "order": 1,
+      "size": {
+        "doctrine": "size.bde"
+      },
+      "seed": {
+        "acrossM": -8000,
+        "backM": -3000
+      },
+      "rule": {
+        "side": "L"
+      },
+      "terrainRule": {
+        "across": "approach.main",
+        "prefer": [
+          "itg",
+          "highGround"
+        ]
+      }
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Right Bde (Rt valley)",
+      "echelon": "18",
+      "order": 1,
+      "size": {
+        "doctrine": "size.bde"
+      },
+      "seed": {
+        "acrossM": 8000,
+        "backM": -3000
+      },
+      "rule": {
+        "side": "R"
+      },
+      "terrainRule": {
+        "across": "approach.secondary",
+        "prefer": [
+          "itg",
+          "highGround"
+        ]
+      }
+    },
+    {
+      "role": "resL",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "Res Gp Lt (Depth Bde less a Bn)",
+      "echelon": "18",
+      "order": 2,
+      "size": {
+        "doctrine": "size.bde"
+      },
+      "seed": {
+        "acrossM": -8000,
+        "backM": 2500
+      },
+      "rule": {
+        "reach": {
+          "slots": [
+            "fwdL",
+            "fwdR"
+          ]
+        },
+        "behind": [
+          "fwdL"
+        ]
+      }
+    },
+    {
+      "role": "resR",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "Res Gp Rt (a Bn of the Depth Bde)",
+      "echelon": "16",
+      "order": 2,
+      "size": {
+        "doctrine": "size.bn"
+      },
+      "seed": {
+        "acrossM": 8000,
+        "backM": 2000
+      },
+      "rule": {
+        "reach": {
+          "slots": [
+            "fwdL",
+            "fwdR"
+          ]
+        },
+        "behind": [
+          "fwdR"
+        ]
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Div HQ",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          6500
+        ]
+      }
+    },
+    {
+      "role": "atRes",
+      "kind": "point",
+      "sym": "15111200",
+      "label": "AT Res (LAT Bn)",
+      "order": 6,
+      "shape": {
+        "at": [
+          0,
+          2500
+        ]
+      }
+    },
+    {
+      "role": "killingGr",
+      "kind": "area",
+      "sym": "25242300",
+      "label": "K1",
+      "order": 3,
+      "terrainOnly": true,
+      "rule": {
+        "inRangeOf": [
+          "fwdL",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main.chokepoint"
+      }
+    },
+    {
+      "role": "atMines",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "inFrontOf": [
+          "fwdL",
+          "fwdR"
+        ],
+        "distM": {
+          "doctrine": "standoff.obstacleInFrontM"
+        },
+        "depthM": {
+          "doctrine": "standoff.protectiveMinefieldDepthM"
+        }
+      }
+    },
+    {
+      "role": "fdl",
+      "kind": "line",
+      "sym": "25140400",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "joins": [
+          "fwdL",
+          "fwdR"
+        ],
+        "edge": "front"
+      }
+    },
+    {
+      "role": "dfTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "DF Tgt",
+      "count": {
+        "doctrine": "df.perBn"
+      },
+      "order": 7,
+      "rule": {
+        "ahead": {
+          "doctrine": "df.closeMinFromFdlM.medium"
+        },
+        "of": [
+          "fwdL",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main"
+      }
+    }
+  ],
+  "alternates": [],
+  "supplementary": "perSecondaryApproach",
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "gaps",
+    "depth",
+    "flanks",
+    "exposure",
+    "killingGr",
+    "reserveReach",
+    "dfMinRange"
+  ]
+}

@@ -27,7 +27,8 @@ import { SitePanel, siteHint, copyToClipboard, type PanelAction, type PanelContr
 import { setSetting } from '../../Support/SettingsBus';
 import { MONTHS, dataCatalog, groundDist, lngLatToMerc, mercToLngLat, offsetPt, seasonFor, km, type Season, type Tone, type XY } from '../SiteScan/SiteScan';
 import {
-  findGunAreas,
+  findGunSites,
+  gunTaskFor,
   gunLines,
   gunWhyNot,
   type GunWhyNot,
@@ -43,6 +44,8 @@ import {
 } from './GunDeploymentFind';
 
 const ENGINE = 'GunDeployment';
+/** Tones from best to worst, for the worst of several. */
+const TONE_ORDER: Tone[] = ['ok', 'warn', 'unknown', 'bad'];
 const HINT = 'ms-gun-deployment-hint';
 const ICON = '🎯';
 /** A month is wet from this much rain (the bundle's climate.json thresholds.wetFromMm, WorldClim normals). */
@@ -394,15 +397,17 @@ export default class GunDeployment {
     };
     b.begin();
     let res: GunResult | null = null;
+    // towed guns on mountain ground go by section (MW pp 240, 244): the circle read as mountains or not
+    const t2 = gunTaskFor(b, task, this._R);
     try {
-      res = findGunAreas(b, b.rules, task, this._R, (x, y) => b.standing(x, y, month));
+      res = findGunSites(b, b.rules, t2, this._R, (x, y) => b.standing(x, y, month));
     } catch (err) {
       EngineLogger.error(ENGINE, `Gun areas not worked out: ${(err as Error)?.message ?? err}`);
     }
     this._whyNot = null;
     if (res && this._whyNotAt) {
       try {
-        this._whyNot = gunWhyNot(b, b.rules, task, this._R, this._whyNotAt, res.sites[0] ?? null, (x, y) => b.standing(x, y, month));
+        this._whyNot = gunWhyNot(b, b.rules, t2, this._R, this._whyNotAt, res.sites[0] ?? null, (x, y) => b.standing(x, y, month));
       } catch (err) {
         EngineLogger.error(ENGINE, `Why not here? not read: ${(err as Error)?.message ?? err}`);
       }
@@ -410,7 +415,7 @@ export default class GunDeployment {
     this._pending = b.pending() || (prec === null && b.climateLoading);
     if (res) res.pending = this._pending;
     this._res = res;
-    this._task = task;
+    this._task = t2;
     if (this._sel >= (res?.sites.length ?? 0)) this._sel = 0;
     this._paint();
     this._render();
@@ -696,17 +701,24 @@ export default class GunDeployment {
     if (!r.sites.length) return { tone: 'bad', text: 'No gun area in this circle' };
     const best = r.sites[0];
     const good = r.sites.filter((s) => s.tone === 'ok').length;
+    if (r.btys) {
+      // mountains, towed guns: by sections (MW p 244)
+      const t = r.btys.map((g) => `${g.label === 'The Bty' ? 'Bty' : g.label} in ${g.sites.length}`).join(', ');
+      return { tone: r.btys.reduce<Tone>((w, g) => (TONE_ORDER.indexOf(g.tone) > TONE_ORDER.indexOf(w) ? g.tone : w), 'ok'), text: `Mountains: by sections (MW p 244), ${t} section site${r.sites.length > 1 ? 's' : ''}; ${good} of ${r.sites.length} clean` };
+    }
     return { tone: best.tone, text: good ? `${good} good gun area${good > 1 ? 's' : ''} of ${r.sites.length}; best: ${best.verdict}` : `${r.sites.length} gun areas, none clean; best: ${best.verdict}` };
   }
 
   private _sites(): PanelSite[] {
+    const btys = this._res?.btys ?? [];
     return (this._res?.sites ?? []).map((s) => ({
       rank: s.rank,
       grid: this._grid(s.at),
       verdict: s.verdict,
       tone: s.tone,
       score: s.score,
-      rows: s.rows.map((r) => ({ label: r.label, value: r.value, tone: r.tone, why: r.why, fix: r.fix, rules: r.rules })),
+      // by sections: the Bty's row leads its first section's rows
+      rows: [...btys.filter((g) => g.sites[0] === s).map((g) => g.row), ...s.rows].map((r) => ({ label: r.label, value: r.value, tone: r.tone, why: r.why, fix: r.fix, rules: r.rules })),
       why: s.why,
       whyRules: this._res?.orderRules,
     }));

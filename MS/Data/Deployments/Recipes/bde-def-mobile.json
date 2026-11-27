@@ -1,0 +1,28 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": { "terrain": false },
+  "id": "bde-def-mobile",
+  "family": "bde-def-mob",
+  "layout": "mobile",
+  "echelon": "18",
+  "unit": "armr-iabg",
+  "basis": "D",
+  "name": "Armd Bde Mobile Def: two groups fix, one counter-attacks",
+  "frontageRow": null,
+  "subRow": null,
+  "alternates": [],
+  "checks": ["approaches", "facingThreat", "flanks", "reserveReach"],
+  "note": "An Armd Bde's mobile defence as MIB Annex P sets it (pp 357-358): an MIB Gp and an Armd Regt Gp in the fixing role, an Armd Regt Gp in reserve / depth (para 2). The Bde checks the En on its left and right, forces him into the centre where the forces on each flank contain him, then brings his advance to a halt and destroys him with the deliberate counter-attack force (para 6). The Bde's mixed minefield on the left channels him (para 5). Mobile defence: a portion of the force fixes, the bulk of the mechanised force attacks and destroys (DW s7 para 4 b (2) p 22); preferred in the Thar, area and mobile combined in Cholistan (para 4 c). The MIB Gp's own layout is mib-def-fixing (Annex P: about 6 x 10 km). The Bde's sizes and spacing here are a decision (E: Annex P draws the Bn's area only): each group 4 x 2.5 km, the killing zone 4 km wide between them, the counter-attack force 3 km behind it.",
+  "slots": [
+    { "role": "fixL", "kind": "fwd", "sym": "25151200", "label": "MIB Gp (fixing: checks)", "echelon": "16", "order": 1, "size": { "wM": 4000, "hM": 2500 }, "seed": { "acrossM": -4500, "backM": -2500 }, "rule": { "side": "L" }, "terrainRule": { "notIn": ["noGo", "water"] } },
+    { "role": "fixR", "kind": "fwd", "sym": "25151200", "label": "Armd Regt Gp (fixing: checks, then contains)", "echelon": "16", "order": 1, "size": { "wM": 4000, "hM": 2500 }, "seed": { "acrossM": 4500, "backM": -2500 }, "rule": { "side": "R" }, "terrainRule": { "notIn": ["noGo", "water"] } },
+    { "role": "kz", "kind": "area", "sym": "25242300", "label": "Killing Zone", "order": 3, "shape": { "rect": { "acrossM": 0, "backM": -1500, "wM": 4000, "hM": 4000 } } },
+    { "role": "res", "kind": "res", "sym": "25151200", "label": "Armd Regt Gp (Res: deliberate C attk)", "echelon": "16", "order": 2, "mounted": true, "size": { "wM": 4000, "hM": 2500 }, "seed": { "acrossM": 0, "backM": 3000 }, "rule": { "reach": { "slots": ["fixL", "fixR"] } }, "terrainRule": { "notIn": ["noGo", "water"] } },
+    { "role": "scr", "kind": "area", "sym": "25151200", "label": "Screen (Bde)", "order": 3, "echelon": "14", "shape": { "rect": { "acrossM": 0, "backM": -6500, "wM": 12000, "hM": 300 } } },
+    { "role": "atMines", "kind": "obstacle", "sym": "25270703", "label": "", "order": 4, "rule": { "inFrontOf": ["fixL"], "distM": { "doctrine": "standoff.obstacleInFrontM" }, "depthM": { "doctrine": "standoff.protectiveMinefieldDepthM" } } },
+    { "role": "hq", "kind": "point", "sym": "10121100", "label": "Bde HQ", "order": 3, "shape": { "at": [-2500, 3500] } },
+    { "role": "fdl", "kind": "line", "sym": "25140400", "label": "", "order": 5, "rule": { "joins": ["fixL", "fixR"], "edge": "front" } }
+  ]
+}

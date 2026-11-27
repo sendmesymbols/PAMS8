@@ -1115,7 +1115,7 @@ export function timeCalcAttk(c: AprcTimeCalcIn): AprcTimeCalc {
   });
   const basis: AprcBasis[] = [
     rule(`The steps and their minutes: ${coy ? "a Coy's, the specimen of Mechs of Aprc (Attk) p 14 (fighting on the obj p 5: Ph 1 45-60 min, Ph 2 30-45 min)" : `a Bn's, Understanding Aprc p 24 (two phases), fighting on the obj Ph 1 1.5 h, Ph 2 1 h, with bunkers 2 h and 1.5 h (${UA(21)}); the unforeseen before the mov ${UA(17, 'IV')}`}; no pamphlet prints them`),
-    ...(hs ? [calc("The march, the assault and Phase 2 from the plan's H-hour sum: the march at the day / night rates (IBB p 18), the assault at its pace, the fire lifting at each ring (IC s66 p 305)")] : !coy && c.fupM ? [rule(`FUP to obj: ${km(c.fupM)} km at 100 m in 3 min by ni (${UA(20)}; the Plan Builder takes 100 m in 4 min, IC s114 p 684, the En rate)`)] : []),
+    ...(hs ? [calc("The march, the assault and Phase 2 from the plan's H-hour sum: the march at the day / night rates (IBB p 18), the assault at its pace, the fire lifting at each ring (IC s66 para 7 e (1) pp 304-305)")] : !coy && c.fupM ? [rule(`FUP to obj: ${km(c.fupM)} km at 100 m in 3 min by ni (${UA(20)}; the Plan Builder takes the same; the En rate is 100 m in 4 min, IC s114 para 35 k p 684)`)] : []),
     rule(`Fwd calc when the task is ASP, backward calc for a set time, both for "ASP and not later than" (${MA(13)})`),
     ...(c.msnBy !== null ? [input('The msn time: the aim\'s limitation')] : []),
     ...(c.hMin !== null ? [input('H: the sheet\'s')] : []),

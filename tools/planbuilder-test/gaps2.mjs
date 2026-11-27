@@ -82,7 +82,7 @@ const valid = (id) => V.validateRecipe(rec(id), { doc, symbols: ctx.symbols }).f
   const f = Av.fitAdvance(inp(r, g));
   check('on the ground: Going and Crossings on the Lt axis and on the Rt axis', ['Going on the Lt axis', 'Going on the Rt axis', 'Crossings on the Lt axis', 'Crossings on the Rt axis'].every((k) => !!row(f.res.rows, k)), f.res.rows.map((x) => x.name).join(', '));
   check('...the canal across the Rt axis with no bridge: Crossings on the Rt axis fails, the Lt passes', row(f.res.rows, 'Crossings on the Rt axis')?.st === 'fail' && row(f.res.rows, 'Crossings on the Lt axis')?.st === 'pass', row(f.res.rows, 'Crossings on the Rt axis')?.reason);
-  check('...report lines left to each Bde on its axis (grey, never a pass)', row(f.res.rows, 'Report lines')?.st === 'unchecked');
+  check('...bounds and report lines left to each Bde on its axis (grey, never a pass)', row(f.res.rows, 'Bounds')?.st === 'unchecked');
   // Check my plan reads the Div as drawn
   const W = (role) => { const it = f.raw.items.find((i) => i.role === role); return it ? { pts: it.pts.map((p) => { const w = { x: A.x + (p.x - f.frame.pivot.x) * f.frame.k, y: A.y + (p.y - f.frame.pivot.y) * f.frame.k }; return [w.x, w.y]; }) } : null; };
   const drawn = Object.fromEntries(['sp', 'axisL', 'axisR', 'ctpsL', 'ctpsR', 'flankL', 'flankR', 'rgL1', 'rgL2', 'rgR1', 'bdeL', 'bdeR', 'res'].map((k) => [k, W(k)]).filter(([, v]) => v));

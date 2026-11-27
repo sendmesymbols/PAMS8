@@ -63,7 +63,10 @@
     "minApartM": 400,
     "obstacleClasses": [4, 5, 6, 9, 20, 21, 22, 24, 27, 28, 31, 49],
     "positionOffsetsM": [150, 300, 500],
-    "minSeesPct": 30
+    "minSeesPct": 30,
+    "rlCoverM": 275,
+    "rearM": 300,
+    "coverRule": "IC s47 para 7 p 178: a road block always covered by fire, normally a Sec with the Pl anti-tank weapon; the rocket launcher and at least one LMG sited to cover the road on the En side of the block. IC s47 para 2 e p 176: good routes to the rear. rlCoverM: a flanking position this near the Rd 100 m in front of the block covers it with the RL (IC s46 para 6 b p 168: a well-concealed RPG-7 destroys any tank up to 180 to 275 metres: the upper figure). rearM (E): a way back this long on foot clear of NO-GO."
   },
   "convoy": {
     "basis": "R",
@@ -77,7 +80,8 @@
     "boundKm": 12,
     "haltEveryMin": 120,
     "haltMin": 15,
-    "speedNote": "Speeds and halts from MovementSpeeds.json columns.wheeled (open column 40 km/h by day, 8-16 km/h blackout at night; 15 min halt every 2 h)."
+    "speedNote": "Speeds and halts from MovementSpeeds.json columns.wheeled (open column 40 km/h by day, 8-16 km/h blackout at night; 15 min halt every 2 h).",
+    "booksDiffer": "Packets of 5-10 vehicles (packetSize 8) is the user's rule (R); IC s32 para 6 p 76 (MT along roads): 'Vehicles will normally move in groups of about four or five according to the size of subunits', same type or same subunit, each group under an officer / JCO / NCO, groups apart against air attack. Both kept; the packet size is the user's to set."
   },
   "patrol": {
     "basis": "R",
@@ -104,6 +108,7 @@
   "infil": {
     "basis": "R",
     "rule": "Lanes through gaps in dead ground, off roads; objective within one night's march; the mirror: anti-infiltration posts.",
+    "booksDiffer": "One night's march is the user's rule (R; IBB S64 para 4 p 341: not more than 24 km in a single night, lane.nightKmMax). IC s48 para 21 a p 184: 'It would be better to allow the movement to be completed on open schedule', movement by infiltration is very slow, assembly and reorganisation at night; the force may exfiltrate the same night or on subsequent nights (para 21 c), hideouts chosen for it. Both kept (a note only): the lane's one-night check (withinNight) stands as the user's rule; IC lets the march run on an open schedule over more than one night.",
     "estimates": "E: a band 1.5 km either side of the line, posts see 1.5 km at night from 3 m, the cost multipliers.",
     "bandM": 1500,
     "maxCells": 260,

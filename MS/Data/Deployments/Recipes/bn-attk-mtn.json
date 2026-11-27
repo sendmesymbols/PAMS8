@@ -9,12 +9,12 @@
   "basis": "D",
   "task": "attack",
   "name": "Bn Attk (Mtn): multidirectional, fire base and infiltration",
-  "frontageRow": "Battalion, set-piece attack in plains",
+  "frontageRow": "Battalion, night attack, two companies up",
   "subRow": null,
   "needs": {
     "terrain": false
   },
-  "note": "A mountain attack by multiple threats on one posn (MW s1 para 13 a pp 83-84): the assault onto the Obj's left flank from its FUP, a fire base on an adjoining hill to the right (long range direct fire weapons, one target per two weapons, MW para 28 p 94), and a Pl of D Coy infiltrating to block the En routes of reinforcement and escape behind the Obj (p 84 (b), (d)). The Obj a hill feature on a flank of the main axis or in the rear that dominates the defences (p 78 para 3); a reserve on this axis, C Coy (p 82 para 9: a central reserve is of little value); P adds phases with liberal timings. Laid on the left flank attack's geometry (IBB p 201 FUP), which the ground notes for mountains qualify (MW pp 83, 85, 228).",
+  "note": "A mountain attack by multiple threats on one posn (MW s7 para 13 a pp 83-84): the assault onto the Obj's left flank from its FUP, a fire base on an adjoining hill to the right (long range direct fire weapons, one target per two weapons, MW para 28 p 94), and a Pl of D Coy infiltrating to block the En routes of reinforcement and escape behind the Obj (p 84 (b), (d)). The Obj a hill feature on a flank of the main axis or in the rear that dominates the defences (p 78 para 3); a reserve on this axis, C Coy (p 82 para 9: a central reserve is of little value); P adds phases with liberal timings. Laid on the left flank attack's geometry (IBB p 201 FUP), which the ground notes for mountains qualify (MW pp 83, 85, 228).",
   "slots": [
     {
       "role": "obj",
@@ -138,7 +138,7 @@
             -1200
           ]
         ],
-        "widthM": 400
+        "widthM": 450
       }
     },
     {

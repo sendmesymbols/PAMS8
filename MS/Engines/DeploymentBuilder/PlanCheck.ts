@@ -27,7 +27,7 @@ import { atCoverRow, detectTerrain, fitPlan, frontCheckRows, toLocal, toWorld, t
 import { faceBearing, frontValid, nearestOnFront, type EnFront } from './PlanEnFront';
 import { movesRow, reserveMovesCheck, tankCoverRow, triggerLines, whatIf, type WhatIfResult } from './PlanWhatIf';
 import {
-  assaultFrontageCheck, bnFrontageCheck, defaultEnemy, groundNotes, echelonLabel, enemyFupM, enemyProfile, footKmh, forceRow, frontageAllowance, frontageRowCheck, gapsAccepted, levelOf, strengthOf, terrainLabel, terrainRow,
+  assaultFrontageCheck, bnFrontageCheck, defaultEnemy, fupFromObjCheck, groundNotes, echelonLabel, enemyFupM, enemyProfile, footKmh, forceRow, frontageAllowance, frontageRowCheck, gapsAccepted, levelOf, strengthOf, terrainLabel, terrainRow,
   type EnemySpec, type EnemyType, type TerrainKind, type TerrainSpec,
 } from './PlanContext';
 import { brief, enUnitFor, forceFromOrbat, minefieldRow, tankSqnOf, withAtGroup, type OrbatSet } from './PlanOrbat';
@@ -589,7 +589,10 @@ function mountainRowsOf(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions, fr
   if (!own.length) return [];
   // no frame (an attack read as drawn): a local one at the first symbol, metres on the ground (Mercator scaled by 1 / cos lat)
   const f: FitFrame = frame ?? (() => { const a = own[0].pts[0]; return { anchor: { x: a.x, y: a.y }, bearing: 0, k: 1 / Math.cos(2 * Math.atan(Math.exp(a.y / 6378137)) - Math.PI / 2), pivot: { x: 0, y: 0 } }; })();
-  return layoutRows(own.map((s) => ({ role: s.pbRole!, label: s.label, pts: s.pts.map((v) => toLocal(f, v)) })), recipe, doc);
+  // with the ground, the strong points and the Obj are read on the elevation (MW s12 para 9 p 152; s7 para 3 p 78)
+  const g = opts.ground;
+  const elevAt = g ? (p: XY) => { const w = toWorld(f, p); return g.elev(w.x, w.y); } : undefined;
+  return layoutRows(own.map((s) => ({ role: s.pbRole!, label: s.label, pts: s.pts.map((v) => toLocal(f, v)) })), recipe, doc, elevAt);
 }
 
 function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): CheckReport {
@@ -657,7 +660,10 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
     const unit = planEch === '16' ? (doctrineAt(doc, `terrain.kinds.${kind}.bnFrontageRow`) as string) ?? (nFwd >= 3 ? 'Battalion, three companies up' : nFwd === 2 ? 'Battalion, two companies up' : 'Battalion, normal frontage in the plains') : null;
     const row = unit ? (doc.ocoka?.frontage?.rows ?? []).find((r: any) => r.unit === unit) : null;
     const dr = row?.depthM != null ? resolveRange(doc, row.depthM) : range(`check.planDepthM.${planEch}`);
-    rows.push(dr
+    // a Coy with all its Pls forward and none in depth (IC s74 para 11 p 391; depth always kept, s84 para 7 c p 447)
+    if (planEch === '15' && nFwd >= 3 && !depth.length) rows.push({ name: 'Depth', st: 'warn', reason: `${fmtM(depthM)}, ${nFwd} Pls forward and none in depth: a Coy defends two Pls forward and one in depth; all three up only if the frontage is over extended, the lack of depth fully weighed (IC s74 para 11 p 391; depth at Coy level always retained, s84 para 7 c p 447)${dLine}`,
+      detail: { head: 'Three up: no Pl in depth', why: 'Nothing holds a penetration or counter-attacks it (IC s74 para 11 p 391).', fix: ['Two up, one back if the frontage allows it', 'Kept three up: a prepared depth posn the Coy can occupy at short notice, depth behind it from the Bn (IC s84 para 7 b p 447)'] } });
+    else rows.push(dr
       ? { name: 'Depth', st: depthM >= dr[0] - 1 && depthM <= dr[1] * 1.25 ? 'pass' : 'warn', reason: `${fmtM(depthM)} from the FDL to the rear of the posns held; ${row ? row.unit : `a ${echelonLabel(doc, planEch)}`} wants ${fmtM(dr[0])}-${fmtM(dr[1])}${dLine}` }
       : { name: 'Depth', st: 'unchecked', reason: `${fmtM(depthM)}; no printed depth for a ${echelonLabel(doc, planEch)}${dLine}` });
     // gaps between neighbouring forward posns
@@ -719,12 +725,14 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
     if (!['fwd', 'depth', 'res'].includes(p.kind)) continue;
     let max = resolveRange(doc, doctrineAt(doc, `check.posnFrontageM.${p.ech}`))?.[1] ?? null;
     if (p.ech === '16') { const al = frontageAllowance(doc, '16', kind, 3); if (al) max = Math.max(max ?? 0, al.range[1]); }
+    // a Coy on a canal or ditch may hold 1500-2000 m with three Pls up (IC s85 para 11 p 455)
+    if (p.ech === '15' && kind === 'obstacle') { const al = frontageAllowance(doc, '15', kind, 3); if (al) max = Math.max(max ?? 0, al.range[1]); }
     if (!max) { s.checks.push({ name: 'Size', st: 'unchecked', reason: `echelon ${p.ech ?? 'not known'}: no size to hold it to` }); continue; }
     const w = s.wM;
     const note = p.echSize && p.ech && p.echSize !== p.ech && w > max * slack ? ` (its size is a ${echelonLabel(doc, p.echSize)}'s)` : '';
     s.checks.push(w <= max + 1
       ? { name: 'Size', st: 'pass', reason: `${fmtM(w)} across; a ${echelonLabel(doc, p.ech)} holds up to ${fmtM(max)}` }
-      : { name: 'Size', st: w <= max * slack ? 'warn' : 'fail', reason: `${fmtM(w)} across; a ${echelonLabel(doc, p.ech)} holds ${fmtM(max)}${p.ech === '15' || p.ech === '14' ? ', and its frontage is not extended (IBB S59 para 6 b p 326; IC s84.6b)' : ''}${note}` });
+      : { name: 'Size', st: w <= max * slack ? 'warn' : 'fail', reason: `${fmtM(w)} across; a ${echelonLabel(doc, p.ech)} holds ${fmtM(max)}${p.ech === '15' || p.ech === '14' ? `, and its frontage is not extended (IBB S59 para 6 b p 326; IC s84 para 6 b p 446)${p.ech === '15' && kind !== 'obstacle' ? '; on a canal or ditch a Coy three Pls up may hold 1500-2000 m (IC s85 para 11 p 455)' : ''}` : ''}${note}` });
   }
 
   // on the ground: PlanFit, reading only (never sliding)
@@ -756,7 +764,8 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
     // the obstacle drawn (a DCB or AT ditch is not in the bundle): its tie-in read from the symbol, not the ground
     const drawnOb = mp.syms.filter((s) => s.side === 'own' && isDitch(s.key));
     if (terrain.source === 'symbols' && drawnOb.length && fwd.length) {
-      const band = resolveRange(doc, doctrineAt(doc, 'terrain.kinds.obstacle.tieInM')) ?? [250, 700];
+      // a Coy / Pl plan: IC's band (s72 para 6 b p 372; s76 para 11 e p 417), as the fit reads it
+      const band = ((planEch === '15' || planEch === '14') ? resolveRange(doc, doctrineAt(doc, 'checkBands.fieldOfFireToObstacleCoyM')) : null) ?? resolveRange(doc, doctrineAt(doc, 'terrain.kinds.obstacle.tieInM')) ?? [250, 700];
       const lines = drawnOb.map((s) => s.pts.map((v) => toLocal(frame, v)));
       const at: string[] = [], far: string[] = [];
       for (const p of fwd) {
@@ -767,7 +776,7 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
       const name = drawnOb[0].name || 'DCB';
       fit.rows = fit.rows.filter((r) => r.name !== 'Obstacle tie-in');
       fit.rows.push(far.length
-        ? { name: 'Obstacle tie-in', st: 'warn', reason: `the ${name} drawn is ${far.join(', ')} in front: beyond the MGs (${fmtM(band[1])}, E). Held so far forward it is the advance posn's obstacle (OOW1 s5 p 14: the advance position is usually based on a natural obstacle); else move the FDL up to it${at.length ? `; ${at.join(', ')} on it` : ''}` }
+        ? { name: 'Obstacle tie-in', st: 'warn', reason: `the ${name} drawn is ${far.join(', ')} in front: beyond the MGs (${fmtM(band[1])}, ${planEch === '15' || planEch === '14' ? 'the LMGs\' 500 m line, IC s76 para 11 e p 417' : 'E'}). Held so far forward it is the advance posn's obstacle (OOW1 s5 p 14: the advance position is usually based on a natural obstacle); else move the FDL up to it${at.length ? `; ${at.join(', ')} on it` : ''}` }
         : { name: 'Obstacle tie-in', st: 'pass', reason: `the ${name} under the forward posns' fire: ${at.join(', ')}` });
     }
     rows.push(...fit.rows);
@@ -841,7 +850,7 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
   const assumptions = [
     'Read as drawn: nothing was moved.',
     mp.threat.from === 'marker' ? 'The threat is where it was marked.' : `The threat is read from ${mp.threat.why}.`,
-    'Frontages from IBB Annex U / IC s113 / OOW1; the en force from the En echelon (about three of the level below each level up, E).',
+    'Frontages from the own rows (IBB Annex U / V, OOW1; the Foxland rows of IC s113-114 are the En\'s); the en force from the En echelon (about three of the level below each level up, E).',
   ];
   const unclear = [...mp.unclear];
   if (terrain.source === 'assumed') unclear.push(`Ground taken as plains (${terrain.why}): set it if the plan stands on an obstacle, desert or mountains, which allow wider frontages`);
@@ -901,7 +910,8 @@ function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Chec
   // built for the Air Aslt Bn: its lift by the Air Aslt Sqn (PlanAvn)
   const lift = opts.orbat ? airLiftOf(opts.orbat, mp.built?.meta?.unit, doc) : null;
   if (lift) rows.push(airLiftRow(lift));
-  const fupBand = range('attack.fupFromObjM') ?? [1000, 1200], tankBand = range('attack.tankFupFromObjM') ?? [2500, 3000];
+  // the FUP band is a night figure (IC s68 para 12 e (1) p 333): a built plan's light is the one it was built for, else not known
+  const nightAt = typeof mp.built?.meta?.night === 'boolean' ? mp.built.meta.night as boolean : null;
   const slBand = range('check.slAxisDeg') ?? [60, 120];
   const bofMin = range('attack.bofFlankMinDeg')?.[0] ?? 30, bofMax = range('attack.bofRangeMaxM')?.[0] ?? 1189;
   // the assault row by the echelon attacking (PlanDoctrine attack.assaultRowByEch: a Coy 250 m, a Bn two up 450-650 m,
@@ -941,7 +951,6 @@ function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Chec
       if (gapToPts(g.tail, o.pts) <= 1500 && deeper) { after.set(i, j); break; }
     }
   });
-  const ph2Band = range('attack.phase2.fup2FromObj2M') ?? [600, 1200];
   const clear1 = range('attack.phase2.clearObj1M')?.[0] ?? 300;
   axes.forEach((a, i) => {
     const { head, tail, objOk } = pre[i];
@@ -961,15 +970,14 @@ function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Chec
     const gr: Check[] = [];
     if (!objOk) gr.push({ name: 'Objective', st: 'warn', reason: 'no enemy posn or Obj within 2 km of its head: draw the Obj' });
     if (prev && fupOk && objOk) {
-      // FUP 2: beyond the last fire lift from Obj 2, no further out than the FUP itself (attack.phase2, E)
+      // FUP 2: as any night FUP, 1000-1200 m in the plains (IC s68 para 12 e (1) p 333); by day no distance (s66 para 8 c)
       const d = m(setDist(fupOk.pts, objOk.pts));
-      gr.push({ name: 'FUP 2 from Obj 2', st: d >= ph2Band[0] - 1 && d <= ph2Band[1] + 1 ? 'pass' : 'warn', reason: `${fmtM(d)} to ${objOk.label}'s near edge (wants ${fmtM(ph2Band[0])}-${fmtM(ph2Band[1])}, E: beyond the last fire lift, no further out than the FUP)` });
+      gr.push(fupFromObjCheck(doc, d, nightAt, { which: 'fup2', obj: `${objOk.label}'s` }));
     } else if (fupOk && objOk) {
       const d = m(setDist(fupOk.pts, objOk.pts));
       const tanks = own.some((s) => isUnit(s) && isArmour(s) && m(dist(s.pts[0], centroid(fupOk.pts))) < 1500);
-      // 1 m either way: a plan laid at exactly 1000 m reads 999.99 m back through Web Mercator
-      const okInf = d >= fupBand[0] - 1 && d <= fupBand[1] + 1, okTank = tanks && d >= tankBand[0] - 1 && d <= tankBand[1] + 1;
-      gr.push({ name: 'FUP from the Obj', st: okInf || okTank ? 'pass' : 'warn', reason: `${fmtM(d)} to the Obj's near edge; IBB p201 wants ${fmtM(fupBand[0])}-${fmtM(fupBand[1])}${tanks ? `, tanks ${fmtM(tankBand[0])}-${fmtM(tankBand[1])} (IBB p214)` : ''}${d < fupBand[0] - 1 ? ': inside the En NVD and small-arms reach' : d > (tanks ? tankBand[1] : fupBand[1]) ? ': a long approach in the open from the FUP' : ''}` });
+      // 1 m either way (fupFromObjCheck): a plan laid at exactly 1000 m reads 999.99 m back through Web Mercator
+      gr.push(fupFromObjCheck(doc, d, nightAt, { tanks }));
     } else gr.push({ name: 'FUP from the Obj', st: 'warn', reason: fupOk ? 'no Obj to measure to' : 'no FUP drawn within 4 km of the axis tail' });
     if (tankAxis) {
       // the tanks cross no SL of their own and need no BOF: they are timed to the infantry's (IBB p187)

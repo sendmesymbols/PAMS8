@@ -13,7 +13,7 @@
  *     and shape stay as the annex draws them (user, 27 Nov 2026: posns are never turned or stretched); a move is made
  *     only when the layout holds (the caller's guard, PlanFit's layout test), else it is halved once, else held and why.
  *   - **Reading** (`readFront`): his frontage across ours, his depth (an area), whether he comes level with our FDL on a
- *     flank, his salients toward us (MW p 126 para 3 b) and our plan in a salient of his line (MW p 126 para 3 c).
+ *     flank, his salients toward us (MW p 126 para 3 b) and our plan in a salient, own ground projecting toward him (MW p 124 para 2 a; p 126 para 3 c).
  */
 
 import type { Check, CheckState, XY } from './PlanSolve';
@@ -611,7 +611,7 @@ export function frontRows(rd: FrontReading, kind: EnFrontKind, shape: FrontShape
   const wraps: string[] = [];
   if (rd.flankLt !== null) wraps.push(`Lt (${fmtM(rd.flankLt)} out)`);
   if (rd.flankRt !== null) wraps.push(`Rt (${fmtM(rd.flankRt)} out)`);
-  if (wraps.length === 2) { st = 'warn'; parts.push(`it comes level with the FDL beside both flanks, ${wraps.join(' and ')}: the plan sits in a salient of the En front, where the defender cannot place enough strength at any one point (MW p 126 para 3 c); a reverse slope posn is one way to avoid a dangerous salient (IBB S69 p 357 para 1 d)`); }
+  if (wraps.length === 2) { st = 'warn'; parts.push(`it comes level with the FDL beside both flanks, ${wraps.join(' and ')}: the plan sits in a salient, own ground projecting into the En line (MW p 124 para 2 a), where the defender cannot place enough strength at any one point (MW p 126 para 3 c); a reverse slope posn is one way to avoid a dangerous salient (IBB S69 p 357 para 1 d)`); }
   else if (wraps.length) { st = 'warn'; parts.push(`it comes level with the FDL beside the ${wraps[0]} flank: a threat from that flank too; mines, fire and a patrol on it`); }
   for (const s of rd.salients) { st = 'warn'; parts.push(`an En salient ${fmtM(s.outM)} out of the En line${s.opposite ? ` opposite ${s.opposite}` : ''}: a salient commonly radiates threats on multiple axes (MW p 126 para 3 b), so ${s.opposite ?? 'the posn opposite'} covers more than one approach`); }
   for (const r of rd.reentrants) parts.push(`the En front draws back ${fmtM(r.backM)}${r.opposite ? ` opposite ${r.opposite}` : ''} (a re-entrant)`);

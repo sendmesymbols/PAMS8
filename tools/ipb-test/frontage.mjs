@@ -53,12 +53,14 @@ check('no echelon: no frontage (the guide keeps its taken one and says so)', of(
 
 // ── the objective's frontage: the enemy's own figures ──
 const enC = of('en', '15', 'plains'), enBo = of('en', '16', 'obstacle'), enBm = of('en', '16', 'mountain'), enBp = of('en', '16', 'plains');
-check('En Coy: 650-1000 m, depth 300 m (IDD p 3)', enC.frontageM === 825 && enC.depthM === 300 && /IDD p 3/.test(enC.src), F.objectiveLine(enC));
+// IC review (27 Nov 2026): off the bund his Sec / Pl / Coy / Bde are IC s114 para 7 p 670's normal frontages; on the bund IDD p 3
+check('En Coy off the bund: 1100-1400 m (IC s114 para 7 p 670, Foxland); on the bund 650-1000 m, depth 300 m (IDD p 3)', enC.frontageM === 1250 && /IC s114 para 7 p 670/.test(enC.src) && of('en', '15', 'obstacle').frontageM === 825 && of('en', '15', 'obstacle').depthM === 300 && /IDD p 3/.test(of('en', '15', 'obstacle').src), F.objectiveLine(enC));
+check('En Sec / Pl off the bund: 70-90 m and 300-350 m (IC s114 para 7 p 670)', of('en', '13', 'plains').frontageM === 80 && of('en', '14', 'desert').frontageM === 325);
 check('En Bn on the bund: two up 2000-3000 m, depth 900 m (IDD p 3)', enBo.frontageM === 2500 && enBo.depthM === 900, F.objectiveLine(enBo));
 check('En Bn in mountains: 6000-8000 m (IC s113, Foxland)', enBm.frontageM === 7000 && /Foxland/.test(enBm.src + enBm.why), F.objectiveLine(enBm));
-check('En Bn in the plains: 3000 m x 2000 m (IC s113 p 658, Foxland)', enBp.frontageM === 3000 && enBp.depthM === 2000 && /Foxland/.test(enBp.src), F.objectiveLine(enBp));
+check('En Bn in the plains: 3000 m x 2000 m (IC s113 para 20 a (4) p 663, Foxland), IC s114 7-10 km said beside', enBp.frontageM === 3000 && enBp.depthM === 2000 && /Foxland/.test(enBp.src) && /p 663/.test(enBp.src) && /7-10 km/.test(enBp.why), F.objectiveLine(enBp));
 const enBde = of('en', '18', 'plains');
-check('En Bde off the bund: no En figure printed, the own row stands in and says so', enBde.standIn && /stands in/.test(enBde.why), F.objectiveLine(enBde));
+check('En Bde off the bund: IC s114 para 7 p 670 prints 20-40 km (no stand-in now); on the bund 5-6 km (IDD p 3)', !enBde.standIn && enBde.frontageM === 30000 && /IC s114 para 7 p 670/.test(enBde.src) && of('en', '18', 'obstacle').frontageM === 5500, F.objectiveLine(enBde));
 check('En Div on an obstacle: 60-80 km (IC s113 p 658, frontageObstacleM)', of('en', '21', 'obstacle').frontageM === 70000);
 
 // ── the mapping: own rows are never the enemy's, every row cites a book ──

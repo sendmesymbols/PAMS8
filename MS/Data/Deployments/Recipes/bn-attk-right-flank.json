@@ -9,7 +9,7 @@
   "basis": "D",
   "task": "attack",
   "name": "Bn Attk: right flank (BOF fixes the front)",
-  "frontageRow": "Battalion, set-piece attack in plains",
+  "frontageRow": "Battalion, night attack, two companies up",
   "subRow": null,
   "needs": {
     "terrain": false
@@ -138,7 +138,7 @@
             -1200
           ]
         ],
-        "widthM": 400
+        "widthM": 450
       }
     },
     {

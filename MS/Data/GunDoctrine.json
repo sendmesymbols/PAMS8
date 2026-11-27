@@ -199,7 +199,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 3,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 2 - Arty.pdf"
             }
           }
@@ -218,7 +218,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 67,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
             }
           },
@@ -230,7 +230,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 67,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
             }
           }
@@ -249,7 +249,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 67,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
             }
           }
@@ -272,7 +272,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 14,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 2 - Arty.pdf"
             }
           }
@@ -291,7 +291,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 26,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 2 - Arty.pdf"
             }
           }
@@ -310,13 +310,61 @@
             "checked": {
               "status": "ok",
               "pdfPage": 26,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 2 - Arty.pdf"
             }
           }
         ]
       },
       "note": "US figures are larger: towed PAA 1 km2 (FM 3-09), SP platoon about 1,500 x 3,000 m (ATP 3-09.70)."
+    },
+    "sec": {
+      "label": "Section gun site",
+      "guns": {
+        "value": 2,
+        "basis": "D",
+        "src": "MW s22 para 5 b p 240: in mountains towed weapons are restricted to small areas near hairpin bends of roads and tracks where just a single weapon or a section can be deployed; a section of a 6-gun Bty (SO's Hbk Sec 2 p 202) taken as 2 guns, so a Bty by sections stands in three places (MW p 244: two / three)",
+        "refs": [
+          {
+            "book": "mw",
+            "page": "240",
+            "quote": "where just a single weapon or a section can be deployed",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 225,
+              "on": "2026-11-27",
+              "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
+            }
+          }
+        ]
+      },
+      "frontM": {
+        "value": 200,
+        "basis": "U",
+        "src": "Two guns no closer than 100 m apart (FM 6-50 para 3-6), each with room to lay: 200 m across the line of fire",
+        "calc": "2 guns x 100 m spacing = 200 m",
+        "refs": [
+          {
+            "book": "fm650",
+            "page": "3-6",
+            "quote": "no closer than 100 meters apart",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 67,
+              "on": "2026-11-27",
+              "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
+            }
+          }
+        ]
+      },
+      "depthM": {
+        "value": 100,
+        "basis": "M",
+        "src": "One gun deep: the section in line across the line of fire, a 100 m strip for the guns, their pits and the ammunition (a method setting: no book gives a section's depth)"
+      },
+      "note": "Used on mountain ground for towed guns only (mountains.bySection): the finder reads 200 x 100 m sites and puts a Bty in two or three of them."
     }
   },
   "altMinM": {
@@ -332,7 +380,7 @@
         "checked": {
           "status": "ok",
           "pdfPage": 22,
-          "on": "2026-11-17",
+          "on": "2026-11-27",
           "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
         }
       },
@@ -344,7 +392,7 @@
         "checked": {
           "status": "ok",
           "pdfPage": 27,
-          "on": "2026-11-17",
+          "on": "2026-11-27",
           "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.70 (2015).pdf"
         }
       },
@@ -356,7 +404,7 @@
         "checked": {
           "status": "ok",
           "pdfPage": 34,
-          "on": "2026-11-17",
+          "on": "2026-11-27",
           "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
         }
       },
@@ -368,7 +416,7 @@
         "checked": {
           "status": "ok",
           "pdfPage": 367,
-          "on": "2026-11-17",
+          "on": "2026-11-27",
           "how": "pdftotext of Material/IC.pdf"
         }
       }
@@ -388,7 +436,7 @@
         "checked": {
           "status": "ok",
           "pdfPage": 13,
-          "on": "2026-11-17",
+          "on": "2026-11-27",
           "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 2 - Arty.pdf (page number read in layout mode)"
         }
       }
@@ -409,7 +457,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 96,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/Literature/2. Online/FM 3-09.21 (2001).pdf"
             }
           },
@@ -421,7 +469,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 75,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/Literature/1. Books/2. Operations of War (Volume-I) Defence.pdf"
             }
           },
@@ -433,7 +481,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 29,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/Literature/2. Online/FM 3-09.70 (2000).pdf"
             }
           },
@@ -445,7 +493,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 45,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/atp2-01-3.pdf"
             }
           },
@@ -457,7 +505,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 24,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/Literature/1. Books/10. Concept and Conduct of Security Zone Battle.pdf"
             }
           }
@@ -481,7 +529,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 24,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/Literature/1. Books/10. Concept and Conduct of Security Zone Battle.pdf"
             }
           },
@@ -493,7 +541,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 168,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/Literature/2. Online/FM 3-09.21 (2001).pdf"
             }
           }
@@ -515,7 +563,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 29,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/Literature/2. Online/FM 3-09.70 (2000).pdf"
             }
           },
@@ -527,7 +575,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 293,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/IC.pdf"
             }
           },
@@ -539,7 +587,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 143,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/Literature/2. Online/FM 3-09 (2024).pdf"
             }
           }
@@ -559,7 +607,7 @@
             "checked": {
               "status": "ok",
               "pdfPage": 24,
-              "on": "2026-11-17",
+              "on": "2026-11-27",
               "how": "pdftotext of Material/Literature/1. Books/10. Concept and Conduct of Security Zone Battle.pdf"
             }
           }
@@ -582,7 +630,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 1,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "saved text of Material/Literature/2. Online/JMRC - PAA Analysis in Severely Restricted Terrain (2024).txt"
           }
         }
@@ -601,7 +649,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 1,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "saved text of Material/Literature/2. Online/JMRC - PAA Analysis in Severely Restricted Terrain (2024).txt"
           }
         }
@@ -628,7 +676,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 61,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
           }
         },
@@ -640,7 +688,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 27,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.70 (2015).pdf"
           }
         },
@@ -652,7 +700,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 225,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
           }
         }
@@ -676,7 +724,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 61,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
           }
         },
@@ -688,7 +736,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 225,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
           }
         }
@@ -709,7 +757,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 34,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
           }
         },
@@ -721,7 +769,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 33,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
           }
         },
@@ -733,7 +781,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 60,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf"
           }
         }
@@ -759,7 +807,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 34,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
           }
         },
@@ -771,7 +819,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 33,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
           }
         },
@@ -783,7 +831,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 66,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
           }
         },
@@ -795,7 +843,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 96,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/1. Books/2. Operations of War (Volume-I) Defence.pdf"
           }
         }
@@ -824,7 +872,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 66,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
           }
         }
@@ -835,7 +883,7 @@
     "maxM": {
       "value": 500,
       "basis": "E",
-      "src": "No distance in any book; the books ask for existing roads and more than one way in and out (FM 6-50 p 2-8; ATP 3-09.50 p 3-5, 3-9) and gun areas are found near roads and tracks (MW p 240; DW p 60). 500 m taken: a short tow on track or field from the road, within the 300-500 m the guns move in any case",
+      "src": "No distance in any book; the books ask for existing roads and more than one way in and out (FM 6-50 p 2-8; ATP 3-09.50 p 3-5, 3-9) and standard towed guns move on roads and tracks only, gun areas near them being scarce: a single gun or a section near a hairpin bend (MW p 240; DW p 60). 500 m taken: a short tow on track or field from the road, within the 300-500 m the guns move in any case",
       "refs": [
         {
           "book": "fm650",
@@ -845,7 +893,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 34,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
           }
         },
@@ -857,7 +905,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 37,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
           }
         },
@@ -869,7 +917,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 225,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
           }
         },
@@ -881,7 +929,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 60,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf"
           }
         }
@@ -912,7 +960,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 185,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/FM 3-09.21 (2001).pdf"
           }
         },
@@ -924,7 +972,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 62,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/IC.pdf"
           }
         },
@@ -936,7 +984,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 50,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
           }
         },
@@ -948,7 +996,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 22,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
           }
         }
@@ -985,7 +1033,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 238,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
           }
         }
@@ -1007,7 +1055,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 87,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
           }
         },
@@ -1019,7 +1067,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 524,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/TC 3-09.81 (2016).pdf"
           }
         }
@@ -1038,7 +1086,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 520,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/TC 3-09.81 (2016).pdf"
           }
         },
@@ -1050,7 +1098,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 89,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
           }
         }
@@ -1074,7 +1122,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 521,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/TC 3-09.81 (2016).pdf"
           }
         }
@@ -1093,7 +1141,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 139,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
           }
         }
@@ -1112,7 +1160,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 1,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "saved text of Material/Literature/2. Online/Esri ArcMap - Using Viewshed and Observer Points for visibility analysis.txt"
           }
         }
@@ -1131,7 +1179,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 140,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
           }
         }
@@ -1150,7 +1198,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 145,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
           }
         }
@@ -1166,7 +1214,7 @@
         "checked": {
           "status": "ok",
           "pdfPage": 139,
-          "on": "2026-11-17",
+          "on": "2026-11-27",
           "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
         }
       },
@@ -1178,7 +1226,7 @@
         "checked": {
           "status": "ok",
           "pdfPage": 140,
-          "on": "2026-11-17",
+          "on": "2026-11-27",
           "how": "pdftotext of Material/Literature/1. Books/Misc/Glossary of Military Terms and Definitions.pdf"
         }
       },
@@ -1190,7 +1238,7 @@
         "checked": {
           "status": "ok",
           "pdfPage": 93,
-          "on": "2026-11-17",
+          "on": "2026-11-27",
           "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
         }
       },
@@ -1202,17 +1250,148 @@
         "checked": {
           "status": "ok",
           "pdfPage": 51,
-          "on": "2026-11-17",
+          "on": "2026-11-27",
           "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
         }
       }
     ]
   },
   "mountains": {
-    "note": "MW p 240: gun areas are scarce near roads; towed guns by sections near hairpin bends; light high-trajectory guns forward on reverse slopes and in valleys. MW p 244: deploy by sections in two or three places. FM 6-50 p F-1: high-angle fire may be required."
+    "note": "MW p 240: gun areas are scarce near roads; towed guns by sections near hairpin bends; light high-trajectory guns forward on reverse slopes and in valleys. MW p 244: deploy by sections in two or three places. FM 6-50 p F-1: high-angle fire may be required. On mountain ground the finder lays towed guns by section (bySection): a Bty in two or three section sites (areas.sec), a Regt as three such Btys; light guns keep the conventional layout (MW p 241).",
+    "bySection": {
+      "note": "Towed guns on mountain ground (the Plan Builder's ground Mountains; the Gun Deployment panel when the search circle reads as mountains): sites for a section (areas.sec), a Bty by sections in two or three places. Gun areas picked off the map are confirmed by recce on the ground (MW p 240).",
+      "sitesPerBty": {
+        "value": [2, 3],
+        "basis": "D",
+        "src": "MW s22 para 6 a (1) p 244: where space restricts deployment by firing units (the Bty as a whole at one place), the command post staff should permit the deployment of the firing unit by sections (two / three places)",
+        "refs": [
+          {
+            "book": "mw",
+            "page": "244",
+            "quote": "the deployment of firing unit by sections",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 229,
+              "on": "2026-11-27",
+              "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
+            }
+          }
+        ]
+      },
+      "minApartM": {
+        "value": 300,
+        "basis": "U",
+        "src": "The sections of one Bty at least 300 m apart, centre to centre: survivability moves of 300-500 m take howitzers out of the target footprint of most threat artillery (ATP 3-09.50 p 2-2), so one counter-battery shoot does not take two sections; the lower bound taken",
+        "refs": [
+          {
+            "book": "atp30950",
+            "page": "2-2",
+            "quote": "Survivability moves of 300-500 meters remove the platoon or howitzers from the target footprint of most threat artillery systems",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 22,
+              "on": "2026-11-27",
+              "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
+            }
+          }
+        ]
+      },
+      "maxSpreadM": {
+        "value": 2000,
+        "basis": "E",
+        "src": "Every section of a Bty within 2 km of its first section: the Bty still fires as one under its CP (MW p 244: the command post staff permit the deployment by sections), so its sections stay within line and voice reach of one CP; FM 6-50 p D-3 computes data by groups when the howitzers are spread (about 250 m apart: two groups), so a spread beyond one set of data is workable, but no book gives a limit",
+        "decided": "2026-11-27",
+        "searched": [
+          "MW s22 pp 238-247 (gun areas, deployment by sections; no distance between sections)",
+          "SO's Hbk 2019 Sec 2 Arty (Bty deployment; no section spread)",
+          "FM 6-50 ch 3 and App D (dispersion: 200 x 400 m minimum; p D-3: all howitzers within 200 m of the centre for one set of TGPCs, groups computed separately when spread)",
+          "ATP 3-09.50 ch 2 and 5, ATP 3-09.70 ch 4 (dispersion, split operations; no maximum spread printed)"
+        ]
+      },
+      "towedOnly": {
+        "value": true,
+        "basis": "D",
+        "src": "MW p 240: the deployment of towed weapons is restricted to small areas near hairpin bends; p 241: firing units equipped with light weapons can be deployed in their conventional layout, as larger deployment areas are found away from roads and tracks",
+        "refs": [
+          {
+            "book": "mw",
+            "page": "240",
+            "quote": "deployment of towed weapons is restricted to small areas near hairpin bends",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 225,
+              "on": "2026-11-27",
+              "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
+            }
+          },
+          {
+            "book": "mw",
+            "page": "241",
+            "quote": "firing units equipped with light weapons can be deployed as such in their conventional layout",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 226,
+              "on": "2026-11-27",
+              "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
+            }
+          }
+        ]
+      },
+      "lightWeapons": {
+        "value": ["105-mm-pack-how"],
+        "basis": "D",
+        "src": "MW p 244: light weapons which can be mule packed and heliborne; in the ORBAT the 105 mm Pack How (weapons.json: can be broken into 14 mule loads). SP guns are not towed and keep their own rule.",
+        "refs": [
+          {
+            "book": "mw",
+            "page": "244",
+            "quote": "light weapons which can be mule packed",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 229,
+              "on": "2026-11-27",
+              "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
+            }
+          }
+        ]
+      },
+      "detectRiseM": {
+        "value": 400,
+        "basis": "M",
+        "src": "The Gun Deployment panel reads its search circle as mountains when the ground within 5 km (detectWithinM) of the centre rises 400 m or more: the same test the Plan Builder's Auto ground and the Ground Guide's mountain template use (PlanDoctrine terrain.detect.mountain, IpbTemplates.mountainTest), so the three agree (a method setting)"
+      },
+      "detectWithinM": {
+        "value": 5000,
+        "basis": "M",
+        "src": "See detectRiseM: within 5 km of the search centre (a method setting, the Plan Builder's and the Ground Guide's figure)"
+      },
+      "recce": {
+        "basis": "D",
+        "src": "MW p 240: though gun areas may be selected off the map, their confirmatory physical reconnaissance is essential",
+        "refs": [
+          {
+            "book": "mw",
+            "page": "240",
+            "quote": "their confirmatory physical reconnaissance is essential",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 225,
+              "on": "2026-11-27",
+              "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
+            }
+          }
+        ]
+      }
+    }
   },
   "desert": {
-    "note": "OoW Vol I p 70: a number of alternative gun areas; DW p 59-61: guns not to be overrun early, protect gun areas, plan successive positions in depth; guns cannot engage the reverse slopes of high steep dunes. FM 6-50 p F-5: wadis attract but flash-flood."
+    "note": "OoW Vol I p 70: a number of alternative gun areas; DW pp 59-61: gun positions not overrun early, redeployments planned against his outflanking, gun areas protected (p 60); successive gun positions in depth when a withdrawal is anticipated (p 60); towed guns hard to move in loose sand, SP guns ideal, trailers cannot be towed (p 60); targets on the reverse slopes of high steep dunes cannot be effectively engaged (p 61). FM 6-50 p F-5: wadis attract but flash-flood."
   },
   "scan": {
     "stepM": 150,
@@ -1277,7 +1456,7 @@
           "checked": {
             "status": "ok",
             "pdfPage": 151,
-            "on": "2026-11-17",
+            "on": "2026-11-27",
             "how": "pdftotext of Material/Literature/1. Books/Misc/Staff Duties in the Field (Volume-II) Operations.pdf"
           }
         }

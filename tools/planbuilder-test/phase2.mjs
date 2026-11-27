@@ -118,6 +118,9 @@ for (const r of [front, right, left]) {
   const hn = A.attackTimes(res, null, null, doc, 'plains', true, null);
   check('...by night the move round Obj 1 is slower', hn.phase2.marchMin > p.marchMin, `${p.marchMin} by day, ${hn.phase2.marchMin} by night`);
   check('Ph 2 timing: the row says when Obj 1 falls, H2 and the gap; within the limit passes', A.phase2Row(h, withPh2({ maxGapMin: { value: 90, basis: 'U' } }))?.st === 'pass' && /after Obj 1 falls/.test(A.phase2Row(h, doc)?.reason ?? ''), A.phase2Row(h, doc)?.reason);
+  // F3: by night few phases and no change of direction (IC s68 para 3 a p 327): a note, a warn, the layout unchanged
+  const nr = A.phase2Row(hn, withPh2({ maxGapMin: { value: 600, basis: 'U' } }));
+  check('...by night the Ph 2 row warns: free from too many phases and changes of direction (IC s68 para 3 a p 327)', nr?.st === 'warn' && /IC s68 para 3 a p 327/.test(nr.reason) && !/IC s68 para 3 a/.test(A.phase2Row(h, doc)?.reason ?? ''), nr?.reason);
   const hb = A.attackTimes(res, null, null, withPh2({ waitAt: { value: 'behind', basis: 'U' } }), 'plains', false, null);
   check('...close behind the assault (IBB p186 h(2)): less of the way left when Obj 1 falls, H2 sooner', hb.phase2.gapMin < p.gapMin && hb.steps.some((st) => st.label === 'Follow-up Coys close up behind the assault' && st.at === 0), `${p.gapMin} min from the FUP, ${hb.phase2.gapMin} min closed up`);
   const dTight = withPh2({ maxGapMin: { value: 10, basis: 'U' } });

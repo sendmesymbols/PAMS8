@@ -180,7 +180,9 @@
   "patrol": {
     "basis": "R",
     "rule": "Legs end on features recognisable at night; bounds 550-750 m apart; final meeting point 400-500 m from the objective; night routes avoid wood edges, villages, tracks and skylines; route out differs from route in; 120 paces = 100 m.",
+    "src": "Printed in IC (27 Nov 2026): s40 para 23 p 116, legs with a magnetic bearing and a known distance measured from the map to the nearest fifty paces (pacesRoundTo), finishing at or near a feature easily recognisable at night (the bounds), 550-750 m between bounds (boundM the middle), the RV 100-200 m off each bound, routes out and in different; s40 para 24 p 116, by night off corners and edges of woods, villages, tracks, hedges and deep defiles, open ground rather than cover; s41 para 9 p 132, the final RV about 400-500 m from the objective (fmpM the middle). 120 paces = 100 m stays the user's rule (OCOKA_Roadmap.md ch 6).",
     "pacesPer100m": 120,
+    "pacesRoundTo": 50,
     "boundM": 650,
     "fmpM": 450,
     "legFeatureM": 150,

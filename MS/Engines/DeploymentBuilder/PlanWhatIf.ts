@@ -14,7 +14,7 @@ import { doctrineAt, resolveRange } from './PlanRecipes';
 import type { Check, CheckDetail, CheckState, XY } from './PlanSolve';
 import { addNudges, mergeChecks, toLocal, toWorld, type FitFrame, type FitLayoutInput, type FittedLayout, type PlanGround } from './PlanFit';
 import { solveRecipe } from './PlanSolve';
-import { enemyFupM, enemyKmh, enemyMover, enemyProfile, footKmh, type EnemySpec, type TerrainKind } from './PlanContext';
+import { enemyFupM, enemyKmh, enemyMover, enemyProfile, footKmh, type EnemySpec, type EnemyType, type TerrainKind } from './PlanContext';
 
 export interface Route {
   /** Plan metres, start to end (the straight line, or with one waypoint round NO-GO). */
@@ -69,6 +69,11 @@ export interface WhatIfResult {
   cpen: XY | null;
   /** Minutes for the enemy's lead tanks from his start to the FDL on the main approach. */
   enemyToFdlMin: number | null;
+  /**
+   * The same at the En pace against a well-prepared defence (IC s114 para 35 k p 684: no faster than 100 m in 4 min), told
+   * beside the driving time (2 min per 100 m, the fastest IC gives); null for a mounted En or when not timed.
+   */
+  enemyToFdlPreparedMin?: number | null;
   /** The enemy's start: the threat marker, or assumed. */
   enemyStartAssumed: boolean;
   /** How far out the assumed start was put (m): 5 km for a Bn, 3 km for a Coy. */
@@ -81,8 +86,13 @@ export interface WhatIfResult {
   /** His infantry pay the climb (mountains, MW p 81). */
   enemyClimbs: boolean;
   /** Who he is and how fast he comes (for the why and the fixes): his type, set by the user or the default, his rates. */
-  /** En type and rates: `go` / `slow` the En approach rates (km/h), `assaultMin` the En infantry pace from the En FUP (min per 100 m, IC s114 p 684; not for a mounted En), `fupM` how far out the En FUP is. */
-  enemyInfo: { type: string; source: string; go: number; slow: number; tracked: boolean; assaultMin: number; fupM: number } | null;
+  /**
+   * En type and rates: `go` / `slow` the En approach rates (km/h; `goSrc` the book: IC s113 para 20 c (1) p 664 for En
+   * infantry in the plains, else IPB p 18 / the ground's), `assaultMin` the En infantry pace from the En FUP (min per
+   * 100 m, IC s114 para 35 k p 684, the fastest: a day attack on favourable ground against a hasty defence; not for a
+   * mounted En), `assaultPreparedMin` the pace against well-prepared defences (4), `fupM` how far out the En FUP is.
+   */
+  enemyInfo: { type: string; source: string; go: number; slow: number; goSrc?: string; tracked: boolean; assaultMin: number; assaultPreparedMin?: number; fupM: number } | null;
   /** The own moves: on foot at this rate (the ground's), or mounted (an APC unit). */
   ownGo: number;
   ownMounted: boolean;
@@ -93,8 +103,28 @@ export interface WhatIfResult {
 const P = (x: number, y: number): XY => ({ x, y });
 const fmtM = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`);
 const num = (doc: DoctrineSet, path: string, fb: number) => { const r = resolveRange(doc, doctrineAt(doc, path)); return r ? (r[0] + r[1]) / 2 : fb; };
-/** His assault pace from his FUP, minutes per 100 m (IC s114 para 35k p 684: 2 against a hasty defence, the faster, safety first). */
+/**
+ * The En assault pace from the En FUP, minutes per 100 m (IC s114 para 35 k p 684, Foxland): 2, "in a day attack over
+ * favourable ground and against hastily prepared defence", the fastest the book gives, drives (safety first); against
+ * well-prepared defences "not faster than 100 metres in 4 minutes" (`prepared`), told beside.
+ */
 const enemyAssaultMin = (doc: DoctrineSet) => num(doc, 'moves.enemyAssaultMinPer100m', 2);
+const enemyAssaultPreparedMin = (doc: DoctrineSet) => Number((doctrineAt(doc, 'moves.enemyAssaultMinPer100m') as { prepared?: number } | null)?.prepared) || 4;
+
+/**
+ * The En approach rates. En infantry in the plains (and on an obstacle there) by day march at the En's own 4.5 km/h (IC
+ * s113 para 20 c (1) p 664, Foxland), faster than the IPB p 18 4 km/h: the faster drives the En's earliest arrival (safety
+ * first), IPB beside; SLOW-GO stays IPB's. In the desert and the mountains the ground's rates stand (IC's figure is for the
+ * plains); in the mountains the MW p 81 climb drives (30-60 min per 300 m; IC p 664 adds 1 h per 300 m of ascent and per
+ * 450 m of descent: slower, told beside). En vehicles at the IPB rates.
+ */
+export function enemyRate(doc: DoctrineSet, type: EnemyType, kind: TerrainKind): { go: number; slow: number; goSrc: string } {
+  const r = enemyKmh(doc, type, kind);
+  if (enemyProfile(doc, type) !== 'dismounted') return { ...r, goSrc: 'IPB p 18' };
+  const fox = num(doc, 'enemy.footKmhFoxland', 4.5);
+  if ((kind === 'plains' || kind === 'obstacle') && fox > r.go) return { go: fox, slow: r.slow, goSrc: `IC s113 para 20 c (1) p 664, the En's own; IPB p 18 ${r.go} km/h beside` };
+  return { ...r, goSrc: kind === 'mountain' ? 'MW p 81' : kind === 'desert' ? 'IBB p 18' : 'IPB p 18' };
+}
 
 /** A route on foot between two plan-metre points, round NO-GO when it must be. */
 export function routeOnFoot(g: PlanGround, f: FitFrame, doc: DoctrineSet, a: XY, b: XY, from: XY | null, shelled = false, kind: TerrainKind = 'plains', mounted = false): Route {
@@ -213,26 +243,30 @@ export interface EnemyTimeOpts {
    * all the way. Read for a dismounted En only: no pace for a mounted assault is printed (the user, 23 Nov 2026).
    */
   fupAtM?: number;
+  /** The En assault pace, minutes per 100 m, in place of the driving 2 (e.g. 4 against a well-prepared defence). */
+  assaultMin?: number;
 }
 
 /**
  * The En leading element along an approach (world path from the En start) to a plan-metre place: minutes. En infantry
- * at the ground's foot rates to the En FUP, then at the En assault pace (Foxland doctrine, IC s114 para 35k p 684: an
- * infantry battalion's deliberate attack, 100 m in 2 min against a hasty defence, in 4 against a well-prepared one);
- * En Mech / Armd at the IPB vehicle rates (p 18) all the way (no mounted assault pace is printed); in the mountains En
- * infantry also pay 30-60 min per 300 m of ascent (MW p 81), the same figure the own moves pay (`routeOnFoot`).
+ * at the En approach rates (`enemyRate`: IC s113 p 664 4.5 km/h in the plains by day, else the ground's) to the En FUP,
+ * then at the En assault pace (Foxland doctrine, IC s114 para 35 k p 684: 100 m in 2 min in a day attack over favourable
+ * ground against a hastily prepared defence, the fastest, driving safety first; no faster than 100 m in 4 min against
+ * well-prepared defences, `opts.assaultMin` to time that beside); En Mech / Armd at the IPB vehicle rates (p 18) all the
+ * way (no mounted assault pace is printed); in the mountains En infantry also pay 30-60 min per 300 m of ascent (MW p 81),
+ * the same figure the own moves pay (`routeOnFoot`).
  */
 export function enemyMinutesTo(f: FitFrame, doc: DoctrineSet, path: XY[], goPct: number, to: XY, en: EnemySpec | null = null, kind: TerrainKind = 'plains', opts: EnemyTimeOpts = {}): number {
   if (path.length < 2) return NaN;
   const { m: bestAt, i: bestI } = runTo(f, path, to);
   const type = en?.type ?? 'mech';
-  const { go, slow } = enemyKmh(doc, type, kind);
+  const { go, slow } = enemyRate(doc, type, kind);
   const share = Math.max(0, Math.min(100, goPct)) / 100;
   const pad = Math.max(0, opts.padM ?? 0), total = bestAt + pad;
   const dismounted = enemyProfile(doc, type) === 'dismounted';
   const fupAt = dismounted && opts.fupAtM !== undefined && Number.isFinite(opts.fupAtM) ? Math.max(0, opts.fupAtM + pad) : Infinity;
   const approach = Math.min(total, fupAt), assault = Math.max(0, total - fupAt);
-  let min = (approach / 1000) * (share / go + (1 - share) / slow) * 60 + (assault / 100) * enemyAssaultMin(doc);
+  let min = (approach / 1000) * (share / go + (1 - share) / slow) * 60 + (assault / 100) * (opts.assaultMin ?? enemyAssaultMin(doc));
   if (opts.g && kind === 'mountain' && enemyProfile(doc, type) === 'dismounted') {
     // the climb along his way to that point, every 50 m (as routeOnFoot measures the own moves)
     let climb = 0, lastE = NaN;
@@ -273,10 +307,10 @@ export function whatIf(fl: FittedLayout, ground: PlanGround, doc: DoctrineSet, t
   const en = fl.enemy ?? null, kind: TerrainKind = fl.terrain?.kind ?? 'plains';
   const mover = enemyMover(doc, en?.type ?? 'mech');
   const enType = en?.type ?? 'mech';
-  const enRate = enemyKmh(doc, enType, kind);
+  const enRate = enemyRate(doc, enType, kind);
   const out: WhatIfResult = {
     triggers: [], sups: [], cpen: null, enemyToFdlMin: null, enemyStartAssumed: fit.fromAssumed, enemyStartAssumedM: fit.fromAssumed ? fit.fromAssumedM ?? null : null, enemyFromFup: null, enemyClimbs: false, mover,
-    enemyInfo: { type: enType, source: en?.source ?? 'default', go: enRate.go, slow: enRate.slow, tracked: enemyProfile(doc, enType) !== 'dismounted', assaultMin: enemyAssaultMin(doc), fupM: enemyFupM(doc, enType)[0] },
+    enemyInfo: { type: enType, source: en?.source ?? 'default', go: enRate.go, slow: enRate.slow, goSrc: enRate.goSrc, tracked: enemyProfile(doc, enType) !== 'dismounted', assaultMin: enemyAssaultMin(doc), assaultPreparedMin: enemyAssaultPreparedMin(doc), fupM: enemyFupM(doc, enType)[0] },
     ownGo: footKmh(doc, kind).go, ownMounted: !!fl.unit?.mounted,
   };
   if (fl.recipe.task === 'attack') return out;
@@ -296,7 +330,7 @@ export function whatIf(fl: FittedLayout, ground: PlanGround, doc: DoctrineSet, t
   };
   // his clock starts no nearer the FDL than his FUP (IBB p201 infantry 1000-1200 m, p214 tanks 2500-3000 m): a threat
   // marker inside it gives the way he comes, not where he starts; his way is set back to his FUP along it. From his FUP
-  // on he is timed at his assault pace (IC s114 p 684), not his approach rate
+  // on he is timed at his assault pace (IC s114 para 35 k p 684: the fastest, 2 min per 100 m), not his approach rate
   const fupM = enemyFupM(doc, en?.type ?? 'mech')[0];
   const eOpts = (a: (typeof fit.approaches)[number]): EnemyTimeOpts => {
     const at = fdlPoint(a);
@@ -310,6 +344,8 @@ export function whatIf(fl: FittedLayout, ground: PlanGround, doc: DoctrineSet, t
       const pad = eOpts(main).padM ?? 0;
       if (pad > 0) out.enemyFromFup = { markerM: Math.round(fupM - pad), fupM: Math.round(fupM) };
       out.enemyToFdlMin = enemyMinutesTo(f, doc, main.path, main.goPct, at, en, kind, eOpts(main));
+      // beside it, the En at the pace against a well-prepared defence (IC s114 para 35 k p 684: 100 m in 4 min)
+      if (enemyProfile(doc, en?.type ?? 'mech') === 'dismounted') out.enemyToFdlPreparedMin = enemyMinutesTo(f, doc, main.path, main.goPct, at, en, kind, { ...eOpts(main), assaultMin: enemyAssaultPreparedMin(doc) });
     }
     // who watches the moves: the enemy on the main approach 2.5 km out from the FDL (where he deploys), not his
     // start far back (which is often beyond the sight grid)
@@ -472,10 +508,11 @@ function movesDetail(w: WhatIfResult, moves: Trigger[], head: string): CheckDeta
   const e = w.enemyInfo, shelled = timed.some((t) => kindOfTrigger(t) === 'shell'), reserve = timed.some((t) => kindOfTrigger(t) !== 'shell');
   const why: string[] = [];
   if (timed.length) {
-    // En infantry from the En FUP on at the En assault pace (IC s114 p 684), before it at the foot rate; En vehicles at
-    // the IPB rate all the way: no mounted assault pace is printed (the user, 23 Nov 2026)
-    const pace = e ? `the En assault pace, 100 m in ${e.assaultMin} min (IC s114 p 684: Foxland infantry in a deliberate attack)` : 'the En assault pace';
-    const rate = e ? (e.tracked ? `${e.go} km/h on GO (IPB p 18)` : `${e.go} km/h on foot`) : 'the En approach rate';
+    // En infantry from the En FUP on at the En assault pace (IC s114 para 35 k p 684), before it at the foot rate; En
+    // vehicles at the IPB rate all the way: no mounted assault pace is printed (the user, 23 Nov 2026)
+    const prepTo = w.enemyToFdlPreparedMin !== null && w.enemyToFdlPreparedMin !== undefined && Number.isFinite(w.enemyToFdlPreparedMin) ? `, the FDL in ${w.enemyToFdlPreparedMin} min instead of ${w.enemyToFdlMin}` : '';
+    const pace = e ? `the En assault pace, 100 m in ${e.assaultMin} min (IC s114 para 35 k p 684, Foxland: the fastest, in a day attack over favourable ground against a hastily prepared defence, taken safety first; against well-prepared defences no faster than 100 m in ${e.assaultPreparedMin ?? 4} min${prepTo})` : 'the En assault pace';
+    const rate = e ? (e.tracked ? `${e.go} km/h on GO (IPB p 18)` : `${e.go} km/h on foot (${e.goSrc ?? 'IPB p 18'})`) : 'the En approach rate';
     why.push(e?.tracked
       ? `En ${w.mover} come from ${enemyStartWords(w)} at ${rate} all the way (no assault pace for a mounted attack is printed: IC s114 p 684 gives the infantry's), and the clock starts when En moves`
       : w.enemyFromFup
@@ -496,7 +533,7 @@ function movesDetail(w: WhatIfResult, moves: Trigger[], head: string): CheckDeta
   if (noRoute.length) fix.push('Find a crossing, or end the move on this side of the NO-GO');
   const sentence = why.map((x, i) => (i ? x : x.charAt(0).toUpperCase() + x.slice(1))).join('; ');
   const whyShort = timed.length
-    ? `En ${w.mover} (${e?.tracked ? `${e.go} km/h` : w.enemyFromFup ? `100 m in ${e?.assaultMin ?? '-'} min from the En FUP` : `${e?.go ?? '-'} km/h on foot to the En FUP, then 100 m in ${e?.assaultMin ?? '-'} min`}) beat ${w.ownMounted ? 'Own mounted moves' : `Own Coys on foot at ${w.ownGo} km/h`}${shelled ? ' under shelling' : ''}`
+    ? `En ${w.mover} (${e?.tracked ? `${e.go} km/h` : w.enemyFromFup ? `100 m in ${e?.assaultMin ?? '-'} min from the En FUP (${e?.assaultPreparedMin ?? 4} vs a prepared def)` : `${e?.go ?? '-'} km/h on foot to the En FUP, then 100 m in ${e?.assaultMin ?? '-'} min (${e?.assaultPreparedMin ?? 4} vs a prepared def)`}) beat ${w.ownMounted ? 'Own mounted moves' : `Own Coys on foot at ${w.ownGo} km/h`}${shelled ? ' under shelling' : ''}`
     : 'No way on foot round the NO-GO';
   return { head, items, why: `${sentence}.`, fix, short, whyShort };
 }
@@ -561,7 +598,7 @@ export function reserveMovesCheck(w: WhatIfResult, resLabel: string): Check | nu
 export function triggerLines(w: WhatIfResult): string[] {
   const word: Record<CheckState, string> = { pass: 'Pass', warn: 'Warn', fail: 'Fail', unchecked: 'Not checked' };
   const L: string[] = [];
-  if (w.enemyToFdlMin !== null) L.push(`  En ${w.mover} to the FDL on the main approach: about ${w.enemyToFdlMin} min from ${enemyStartWords(w)}.`);
+  if (w.enemyToFdlMin !== null) L.push(`  En ${w.mover} to the FDL on the main approach: about ${w.enemyToFdlMin} min from ${enemyStartWords(w)}${w.enemyToFdlPreparedMin !== null && w.enemyToFdlPreparedMin !== undefined && Number.isFinite(w.enemyToFdlPreparedMin) ? ` (${w.enemyToFdlPreparedMin} min at the pace against a well-prepared defence, IC s114 para 35 k p 684)` : ''}.`);
   for (const t of w.triggers) {
     const r = t.route;
     const route = r ? `${fmtM(r.lengthM)}${r.detour ? ' round NO-GO' : ''}${r.coveredPct !== null ? `, ${r.coveredPct} % hidden` : ''}${r.slowPct ? `, ${r.slowPct} % SLOW-GO` : ''}` : '-';
@@ -612,8 +649,11 @@ export function mineGapRow(w: WhatIfResult, items: { role: string; key?: string;
 
 /**
  * The En's quick attack (MIB p 89; IBB p 133 beside it): held at the FDL, the En mounts a quick attack from contact to H in
- * about 30-60 min (a Coy) or 60-100 min (a Bn). Told beside the moves, which stay timed against the En's arrival (safety
- * first); a Bde's has no printed figure: at least a Bn's. Null with no En time to the FDL.
+ * about 30-60 min (a Coy) or 60-100 min (a Bn). These are own drills; the En's own doctrine gives a Foxland Bn a quick day
+ * attack with armour as the predominant arm on a Coy locality (1000 x 1500 m) in 2-3 h (IC s113 para 20 b (3) p 664,
+ * `enemy.quickAttackMin.foxlandBn`): slower, so the own drills drive (safety first) and IC is told beside. Told beside the
+ * moves, which stay timed against the En's arrival; a Bde's has no printed figure: at least a Bn's. Null with no En time
+ * to the FDL.
  */
 export function quickAttackRow(w: WhatIfResult, en: EnemySpec | null, doc: DoctrineSet): Check | null {
   if (w.enemyToFdlMin === null) return null;
@@ -622,7 +662,9 @@ export function quickAttackRow(w: WhatIfResult, en: EnemySpec | null, doc: Doctr
   const r = resolveRange(doc, doctrineAt(doc, `enemy.quickAttackMin.${key}`)) ?? (key === '15' ? [30, 60] : [60, 100]);
   const t0 = w.enemyToFdlMin;
   const who = ech === '15' ? 'a Coy attack' : ech === '16' ? 'a Bn attack' : `a ${ech === '18' ? 'Bde' : 'Div'} attack (no figure printed: at least a Bn's)`;
-  return { name: 'En quick attack', st: 'pass', reason: `the En reaches the FDL about ${t0} min from the En start; held there, ${who} takes about ${r[0]}-${r[1]} min from contact to H (MIB p 89; IBB p 133: a Coy at most 30-45 min, a Bn 1-2 h): its H about ${t0 + r[0]}-${t0 + r[1]} min, a deliberate attack later. The moves stay timed against the En's arrival (Moves in time), not this H` };
+  const fox = ech === '15' ? null : resolveRange(doc, doctrineAt(doc, 'enemy.quickAttackMin.foxlandBn')) ?? [120, 180];
+  const foxWords = fox ? `; the En's own doctrine gives a Foxland Bn a quick day attack with armour on a Coy locality in ${fox[0] / 60}-${fox[1] / 60} h (IC s113 para 20 b (3) p 664: its H about ${t0 + fox[0]}-${t0 + fox[1]} min), slower: the own-drill figure drives, safety first` : '';
+  return { name: 'En quick attack', st: 'pass', reason: `the En reaches the FDL about ${t0} min from the En start; held there, ${who} takes about ${r[0]}-${r[1]} min from contact to H (MIB p 89; IBB p 133: a Coy at most 30-45 min, a Bn 1-2 h): its H about ${t0 + r[0]}-${t0 + r[1]} min${foxWords}; a deliberate attack later. The moves stay timed against the En's arrival (Moves in time), not this H` };
 }
 
 export function withMoves(fl: FittedLayout, inp: FitLayoutInput): FittedWithMoves {

@@ -10,7 +10,7 @@
  *   priWise     DI: formations by group priority I / II / III and giving corps (O).
  *   hmt         DI: buses and trucks (hired mechanical transport) by op corps and formation (O).
  *   blocks      Mov & Assy: block timings per formation, earliest SP due to latest RP clear (O), and the matrix rows.
- *   assySpace   Mov & Assy: the assembly area against the map squares the formation needs (R for armd, E otherwise).
+ *   assySpace   Mov & Assy: the assembly area against the map squares the formation needs (R for armd and the Inf Div, E otherwise).
  */
 
 import { MIN, DAY_MIN, mDayOf, type MvClock } from './MoveTime';
@@ -178,9 +178,11 @@ export function assySpace(size: string, areaKm2: number, S: SpaceRules): { need:
   const need = S.assyKm2[size] ?? null;
   if (!need || !(areaKm2 > 0)) return { need, tone: 'warn', text: need ? 'Draw the assembly area to check its size' : 'No space figure for this formation' };
   const a = Math.round(areaKm2);
-  if (areaKm2 < need[0]) return { need, tone: 'bad', text: `${a} map squares: too small (needs ${need[0]}-${need[1]})` };
-  if (areaKm2 > need[1] * 1.5) return { need, tone: 'warn', text: `${a} map squares: much larger than needed (${need[0]}-${need[1]}); hard to control` };
-  return { need, tone: 'ok', text: `${a} map squares: enough (needs ${need[0]}-${need[1]})` };
+  // a book may print one figure (an Inf Div's 20 map squares, GSP Annex J p 205): say it once
+  const fig = need[0] === need[1] ? `${need[0]}` : `${need[0]}-${need[1]}`;
+  if (areaKm2 < need[0]) return { need, tone: 'bad', text: `${a} map squares: too small (needs ${fig})` };
+  if (areaKm2 > need[1] * 1.5) return { need, tone: 'warn', text: `${a} map squares: much larger than needed (${fig}); hard to control` };
+  return { need, tone: 'ok', text: `${a} map squares: enough (needs ${fig})` };
 }
 
 export { MIN, DAY_MIN };

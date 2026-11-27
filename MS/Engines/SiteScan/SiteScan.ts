@@ -647,3 +647,31 @@ export function worstTone(tones: Tone[]): Tone {
   const rank: Record<Tone, number> = { ok: 0, warn: 1, unknown: 2, bad: 3 };
   return tones.reduce<Tone>((w, t) => (rank[t] > rank[w] ? t : w), 'ok');
 }
+
+/**
+ * The lowest and highest ground read round a point: the point and rings at a quarter, a half, three quarters and all of
+ * `withinM`, 16 bearings each (65 reads). Null when fewer than 20 heights are known.
+ */
+export function reliefAround(probe: Pick<SiteProbe, 'elev'>, c: XY, withinM: number): { minM: number; maxM: number; n: number } | null {
+  const hs: number[] = [];
+  for (const r of [0, withinM * 0.25, withinM * 0.5, withinM * 0.75, withinM]) {
+    const n = r ? 16 : 1;
+    for (let i = 0; i < n; i++) {
+      const p = r ? offsetPt(c[0], c[1], (360 * i) / n, r) : c;
+      const h = probe.elev(p[0], p[1]);
+      if (Number.isFinite(h)) hs.push(h);
+    }
+  }
+  if (hs.length < 20) return null;
+  return { minM: Math.min(...hs), maxM: Math.max(...hs), n: hs.length };
+}
+
+/**
+ * Mountain ground round a point (the site finders' mountain test): the ground within `withinM` rises `riseM` or more,
+ * the test the Plan Builder's Auto ground and the Ground Guide's mountain template use (400 m in 5 km). Null when too
+ * little of it is read.
+ */
+export function mountainGround(probe: Pick<SiteProbe, 'elev'>, c: XY, riseM: number, withinM: number): boolean | null {
+  const r = reliefAround(probe, c, withinM);
+  return r ? r.maxM - r.minM >= riseM : null;
+}

@@ -14,7 +14,7 @@
   "needs": {
     "terrain": false
   },
-  "note": "A Bde attacking at night in the plains with two Bns up from a brigaded FUP on 1100-1500 m (GSP 1947 Inf Div in Battle s19 para 12 d p 86), the third Bn in reserve; the FUP 1000-1200 m from the objective (IBB p 201, IC p 333); the Obj the En forward Coys of a Bn locality (1500 x 1000 m, E); the base of fire the Bde support weapons and the DS artillery; LOE 1000 m beyond (E). The Bns' own attacks are built as Bn plans.",
+  "note": "A Bde attacking at night in the plains with two Bns up from a brigaded FUP on 1100-1500 m (GSP 1947 Inf Div in Battle s19 para 12 d p 86; each Bde needs a clear axis of advance, ibid.; in the desert up to 3000-4000 m, mountains and jungle narrower, p 87 para 12 e), the third Bn in reserve; the FUP 1000-1200 m from the objective (IBB p 201, IC p 333); the Obj the En forward Coys of a Bn locality (1500 x 1000 m, E); the base of fire the Bde support weapons and the DS artillery; LOE 1000 m beyond (E). The Bns' own attacks are built as Bn plans.",
   "slots": [
     {
       "role": "obj",

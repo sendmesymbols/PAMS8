@@ -13,7 +13,7 @@
   "needs": {
     "terrain": false
   },
-  "note": "Plan metres from the SP (the click), y toward the objective (the aim: the second click is the Obj). FRV 450 m short of the Obj (R: 400-500 m), check points at the bounds 550-750 m apart (R), the route in different from the route out (R). Without the terrain: straight lines, the Obj 3 km out (E) until it is aimed; with it, the routes from the Movement Guide (planPatrol: round NO-GO, away from roads, villages, wood edges by night, skylines and ground the threat sees) and the patrol card (PlatoonGuideRead.patrolCard: legs, bounds, FRV, times by day and night).",
+  "note": "Plan metres from the SP (the click), y toward the objective (the aim: the second click is the Obj). FRV 450 m short of the Obj (IC s41 para 9 p 132: about 400-500 m), check points at the bounds 550-750 m apart (IC s40 para 23 p 116), legs measured to the nearest 50 paces, the RV 100-200 m off each bound, the route in different from the route out (IC s40 para 23 p 116); at the Obj an hour or more, then again from another direction (IC s41 para 10 p 132). Without the terrain: straight lines, the Obj 3 km out (E) until it is aimed; with it, the routes from the Movement Guide (planPatrol: round NO-GO, away from roads, villages, wood edges by night, skylines and ground the threat sees: IC s40 para 24 p 116) and the patrol card (PlatoonGuideRead.patrolCard: legs, bounds, FRV, times by day and night).",
   "pivot": "sp",
   "slots": [
     {

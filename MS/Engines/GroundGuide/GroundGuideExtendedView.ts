@@ -244,6 +244,16 @@ function offLine(p: MercXY, path: MercXY[], k: number): number {
   return best * k;
 }
 
+/** The water point nearest a candidate (Web Mercator, `k` the cos-latitude scale) and how far, metres. */
+function nearestWater(at: MercXY, water: NonNullable<NonNullable<GroundGuideOcoka['desert']>['water']>, k: number): { label: string; offM: number } | null {
+  let best: { label: string; offM: number } | null = null;
+  for (const w of water) {
+    const d = Math.hypot(at[0] - w.at[0], at[1] - w.at[1]) * k;
+    if (!best || d < best.offM) best = { label: w.name ?? w.kindLabel, offM: d };
+  }
+  return best;
+}
+
 /**
  * The ITG candidates ranked for this position, threat and approaches: strong candidates, ground higher than the
  * Posn, ground that commands an approach or covers its narrows, ground toward the threat, ground in view of the
@@ -289,6 +299,13 @@ export function rankKeyGround(o: GroundGuideOcoka): KeyGrPick[] {
     if (c.seenP !== null) {
       if (c.seenP >= 0.5) score += 0.5;
       why.push({ text: c.seenP >= 0.5 ? 'In view of the Posn' : c.seenP >= 0.2 ? 'May be in view' : 'Not in view', k: c.seenP >= 0.5 ? 'go' : c.seenP >= 0.2 ? 'may' : 'no' });
+    }
+    // the desert: water sources are ground of tactical importance and objectives there (DW s4 para 2 e p 7; s12 para 3
+    // p 38): a candidate that commands one (within COMMAND_M) ranks higher, as one beside an approach's narrows does
+    const wtr = o.desert?.water?.length ? nearestWater(c.at, o.desert.water, k) : null;
+    if (wtr && wtr.offM <= COMMAND_M) {
+      score += 1;
+      why.push({ text: `Commands water · ${cut(wtr.label, 16)} ${fmtDistance(wtr.offM)} (DW p 7)`, k: '' });
     }
     score += Math.max(0, 1 - c.distanceM / Math.max(1, o.radiusM));
     const t = c.itg?.traits;
@@ -862,6 +879,7 @@ export function extTiles(tab: ExtTab, v: GroundGuideVerdict): HTMLElement[] {
             ['Nearest station', wx && wx.stationKm !== null ? `${Math.round(wx.stationKm)} km${wx.stationKm > 100 ? ' (far: treat as a guess)' : ''}` : null],
             ['Light', lt.night ? `Night: ${lt.level === 'moonlight' ? 'Moonlight' : 'Starlight'}${lt.moonIllum !== null ? `, moon ${pc(lt.moonIllum * 100)} lit` : ''}` : 'Day'],
             ['Night sight', o.nightSight ? `${fmtDistance(o.nightSight.ordinaryM)}; haze day ${fmtDistance(o.nightSight.hazeDayM)}, fog day ${fmtDistance(o.nightSight.fogDayM)}` : null],
+            ['Desert', o.desert ? `${pc(o.desert.sharePct)} of the Gr: movement seen ${o.desert.detectKm[0]}-${o.desert.detectKm[1]} km from a vantage point by the view; parallel dunes block ground OPs; better by night (${o.desert.src})` : null],
           ]),
           note('Daily mean views from the nearest airports, 2016 to 2025: short fog is understated.'),
         ),
@@ -880,7 +898,7 @@ export function extTiles(tab: ExtTab, v: GroundGuideVerdict): HTMLElement[] {
       const ranked = tile(
         picks.length ? `Ranked · ${picks.length} Candidate${picks.length === 1 ? '' : 's'}` : 'Ranked',
         keyGrList(o, picks),
-        picks.length > 0 && note(`Ranked higher: strong, higher than the Posn, within ${fmtDistance(COMMAND_M)} of an approach, toward the threat, in view (a proposed weighting). Candidates only: the commander designates ITG / MITG.`),
+        picks.length > 0 && note(`Ranked higher: strong, higher than the Posn, within ${fmtDistance(COMMAND_M)} of an approach, toward the threat, in view${o.desert ? `, in the desert within ${fmtDistance(COMMAND_M)} of a water source (DW pp 7, 38: water sources are ground of tactical importance and objectives there; ${o.desert.water?.length ? `${o.desert.water.length} read, nearest ${o.desert.water[0].name ?? o.desert.water[0].kindLabel} ${fmtDistance(o.desert.water[0].distanceM)} ${o.desert.water[0].compass}` : 'none recorded within the radius'})` : ''} (a proposed weighting). Candidates only: the commander designates ITG / MITG.`),
       );
       ranked.classList.add('ms-ggd-brk');
       out.push(ranked);
@@ -1014,6 +1032,7 @@ export function extendedText(v: GroundGuideVerdict): string[] {
     o.light.night ? `Night: ${o.light.level}${o.light.moonIllum !== null ? `, moon ${pc(o.light.moonIllum * 100)} lit` : ''}.` : null,
     ns ? `Night sight${ns.thermal ? ' (thermal)' : ''} ${fmtDistance(ns.deviceM)}: ${fmtDistance(ns.ordinaryM)} on an ordinary ${mon} day, ${fmtDistance(ns.hazeDayM)} on a haze day, ${fmtDistance(ns.fogDayM)} on a fog day.` : null,
     wx && wx.fogPct !== null ? `Visibility, ${mon}: fog on ${pc(wx.fogPct)} of days, view 3 km or less on ${wx.hazePct !== null ? pc(wx.hazePct) : '-'}, under 2 km on ${wx.lt2kmPct !== null ? pc(wx.lt2kmPct) : '-'}; mean view ${wx.meanViewKm ?? '-'} km${wx.stationKm !== null && wx.stationKm > 100 ? ' (nearest station far: a guess)' : ''}.` : null,
+    o.desert ? `Desert (${pc(o.desert.sharePct)} of the Gr round it): ${o.desert.text} (${o.desert.src}).` : null,
   ]);
   if (en) {
     sec("Threat's View", [

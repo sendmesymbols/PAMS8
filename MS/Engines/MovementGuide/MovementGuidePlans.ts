@@ -786,14 +786,25 @@ export function ambushSiteAt(r: RouteReading, c: Station, probe: MovProbe, R: Ru
     const a = stationAt(st, Math.max(0, c.chainM - A.kzM / 2));
     const b = stationAt(st, Math.min(r.lengthM, c.chainM + A.kzM / 2));
     const off = Math.max(A.coverFromM, Math.min(coverAt.distM, A.fireOffsetMaxM));
-    const fa = offsetPt(a.x, a.y, a.bearing + 90 * sign, off);
+    // V (IC s44 para 18 c p 158): two halves on either side of the Rd with interlocking fire. IC does not say which way it
+    // opens (Fig 19: the halves' fire converging on the KZ); here each half lies wider at the En end (a: chainage 0 is where
+    // he comes from) and nearer the Rd at the far end, so the two open toward the En (E: the spread a quarter of the KZ).
+    const spread = shape === 'V' ? Math.round(A.kzM / 4) : 0;
+    const fa = offsetPt(a.x, a.y, a.bearing + 90 * sign, off + spread);
     const fb = offsetPt(b.x, b.y, b.bearing + 90 * sign, off);
     const sA = stationAt(st, Math.max(0, a.chainM - A.stopM));
     const sB = stationAt(st, Math.min(r.lengthM, b.chainM + A.stopM));
     const stops: MercXY[] = [offsetPt(sA.x, sA.y, sA.bearing + 90 * sign, A.coverFromM), offsetPt(sB.x, sB.y, sB.bearing + 90 * sign, A.coverFromM)];
     let arm: [MercXY, MercXY] | null = null;
+    // L (IC s44 para 18 b p 158): the short leg at the far end of the KZ, at right angles to it, enfilading up the Rd
     if (shape === 'L') arm = [offsetPt(b.x, b.y, b.bearing + 90 * sign, off), offsetPt(b.x, b.y, b.bearing, A.kzM / 3)];
-    if (shape === 'V') arm = [offsetPt(a.x, a.y, a.bearing - 90 * sign, off), offsetPt(b.x, b.y, b.bearing - 90 * sign, off)];
+    if (shape === 'V') {
+      // the other half in the cover on its own side of the Rd (else the same offset), mirrored: the legs form a V, not two
+      // parallel lines
+      const otherCover = side === 'L' ? c.coverR : c.coverL;
+      const off2 = Math.max(A.coverFromM, Math.min(otherCover?.distM ?? off, A.fireOffsetMaxM));
+      arm = [offsetPt(a.x, a.y, a.bearing - 90 * sign, off2 + spread), offsetPt(b.x, b.y, b.bearing - 90 * sign, off2)];
+    }
     return {
       rank: 0,
       chainM: c.chainM,
@@ -817,8 +828,12 @@ export interface BlockSite {
   y: number;
   score: number;
   parts: Array<{ what: string; ok: boolean; pts: number }>;
-  /** Positions that see the approach (anti-tank / tank ambush), with what share of the approach each sees. */
-  positions: Array<{ x: number; y: number; side: 'L' | 'R'; offM: number; seesPct: number; riseM: number }>;
+  /**
+   * Positions that see the approach (anti-tank / tank ambush), with what share of the approach each sees; `rlCovers`: the
+   * position is within the rocket launcher's reach of the Rd on the En side of the block (IC s47 para 7 p 178), `rearOk`: a
+   * way back from it on foot clear of NO-GO (good routes to the rear: IC s47 para 2 e p 176).
+   */
+  positions: Array<{ x: number; y: number; side: 'L' | 'R'; offM: number; seesPct: number; riseM: number; rlCovers?: boolean; rearOk?: boolean }>;
   approachFromM: number;
 }
 
@@ -852,11 +867,23 @@ export function roadBlockSites(r: RouteReading, probe: MovProbe, R: Rules, foot:
     const tied = [s.leftWhy, s.rightWhy].filter((c): c is number => c !== null && obstacleWhy.has(c));
     parts.push({ what: tied.length ? `Tied to ${tied.map(word).join(' and ')}` : 'NO-GO both sides', ok: true, pts: tied.length ? 25 : 15 });
     parts.push({ what: 'No bypass within 100 m', ok: true, pts: 15 });
-    // Flanking positions that see the approach.
+    // Flanking positions that see the approach. IC s47 para 7 p 178: a Sec with the RL and at least one LMG sited to cover
+    // the Rd on the En side of the block (here: within the RL's reach of the Rd 100 m in front of it, rlCoverM); para 2 e
+    // p 176: good routes to the rear (a way back from the position, rearM, clear of NO-GO on foot).
     const approach = st.filter((q) => q.chainM >= s.chainM - B.approachM && q.chainM < s.chainM - 50).filter((_, i) => i % 2 === 0);
+    const enSide = stationAt(st, Math.max(0, s.chainM - 100));
+    const rlM = (B.rlCoverM as number | undefined) ?? 275, rearM = (B.rearM as number | undefined) ?? 300;
+    const rearClear = (p: MercXY, brg: number): boolean => {
+      for (let d = 50; d <= rearM; d += 50) {
+        const q = offsetPt(p[0], p[1], brg, d), k = probe.cls(q[0], q[1]);
+        if (k !== null && foot.nogo.has(k)) return false;
+      }
+      return true;
+    };
     const positions: BlockSite['positions'] = [];
     for (const sign of [-1, 1]) {
       let best: BlockSite['positions'][number] | null = null;
+      let bestKey = -1;
       for (const d of B.positionOffsetsM as number[]) {
         for (const along of [0, -150, 150]) {
           const base = stationAt(st, Math.max(0, Math.min(r.lengthM, s.chainM + along)));
@@ -870,12 +897,21 @@ export function roadBlockSites(r: RouteReading, probe: MovProbe, R: Rules, foot:
             if (v !== null && v >= 0.5) seen++;
           }
           const pct = approach.length ? Math.round((100 * seen) / approach.length) : 0;
-          if (!best || pct > best.seesPct) best = { x: p[0], y: p[1], side: sign < 0 ? 'L' : 'R', offM: d, seesPct: pct, riseM: e === e && s.elev === s.elev ? Math.round(e - s.elev) : 0 };
+          const rlCovers = groundDist(p, [enSide.x, enSide.y]) <= rlM;
+          // the way back: away from the Rd and back from the En (the Rd's bearing is the way he drives)
+          const rearOk = rearClear(p, base.bearing + 90 * sign) || rearClear(p, base.bearing + 45 * sign);
+          // seeing the approach first (the threshold), then the RL on the Rd on the En side, then a way back, then the view
+          const key = (pct >= B.minSeesPct ? 4000 : 0) + (rlCovers ? 2000 : 0) + (rearOk ? 1000 : 0) + pct;
+          if (key > bestKey) { bestKey = key; best = { x: p[0], y: p[1], side: sign < 0 ? 'L' : 'R', offM: d, seesPct: pct, riseM: e === e && s.elev === s.elev ? Math.round(e - s.elev) : 0, rlCovers, rearOk }; }
         }
       }
       if (best && best.seesPct >= B.minSeesPct) positions.push(best);
     }
     parts.push({ what: positions.length ? `${positions.length} flanking position${positions.length > 1 ? 's' : ''} see the approach` : 'No flanking position sees the approach', ok: positions.length > 0, pts: positions.length ? 10 : 0 });
+    const rl = positions.some((p) => p.rlCovers);
+    parts.push({ what: rl ? `The RL and an LMG cover the Rd on the En side of the block from within ${rlM} m (IC s47 para 7 p 178)` : `No flanking position within ${rlM} m of the Rd on the En side for the RL and an LMG (IC s47 para 7 p 178)`, ok: rl, pts: rl ? 5 : 0 });
+    const rear = positions.length > 0 && positions.every((p) => p.rearOk);
+    parts.push({ what: rear ? 'Good routes to the rear from the flanking positions (IC s47 para 2 e p 176)' : positions.length ? 'A flanking position has no clear way back on foot (IC s47 para 2 e p 176: good routes to the rear)' : 'No flanking position, no route to the rear read', ok: rear, pts: rear ? 5 : 0 });
     const score = Math.min(100, parts.reduce((a, p) => a + p.pts, 0));
     out.push({ rank: 0, chainM: s.chainM, x: s.x, y: s.y, score, parts, positions, approachFromM: Math.max(0, s.chainM - B.approachM) });
   }

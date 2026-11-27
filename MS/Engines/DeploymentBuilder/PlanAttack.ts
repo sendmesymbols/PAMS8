@@ -1,14 +1,17 @@
 /**
  * PlanAttack.ts — PURE. The attack in depth (PlanBuilder_Plan.md Phase 6, §9.2):
  *
- * - finders on the ground: the FUP swung round the objective into dead ground (IBB p 180: out of observed fire; by night 1000-1200 m,
- *   pp 201, 203), the start line on a linear feature square to the axis with nothing between it and the objective (never
- *   behind an obstacle), the BOF sited off the axis where it sees the objective best and stands higher (§9.2), the
+ * - finders on the ground: the FUP swung round the objective into dead ground (IBB p 180: out of observed fire; by night
+ *   1000-1200 m, IBB pp 201, 203, IC s68 para 12 e (1) p 333; by day no distance, a covered FUP, IC s66 para 8 c pp 307-308),
+ *   the start line by day on a linear feature square to the axis with nothing between it and the objective (never behind
+ *   an obstacle; as close to the En as possible, IC s66 para 8 d p 308), by night at the FUP forward edge (IC s68 para 13 a
+ *   p 334), the BOF sited off the axis where it sees the objective best and stands higher (§9.2), the
  *   Assy Area 1-5 miles back, unobserved, with a road for entry and exit (IBB pp 173, 180); the route on foot from the Assy
  *   Area to the FUP round NO-GO;
  * - the H-hour sum: the approach march (day / night rates, IBB p 18, + a spare), forming up, the FUP to the SL, the
- *   assault at its pace, the fire lifting as it closes (IC s66 p305: 450 / 360 / 275 / 180 m), the objective and the
- *   LOE; times back from H;
+ *   assault at its pace, the fire lifting as it closes (IC s66 para 7 e (1) pp 304-305: 450 / 360 / 275 / 180 m), the
+ *   objective and the LOE, the fighting on it and the reorganisation (by night before daylight: IC s68 para 13 b p 334);
+ *   times back from H;
  * - his MSR behind the objective (a bridge on a metalled road first) and how near each layout's LOE comes to it (the
  *   user: a flanking attack that chokes his MSR is encouraged);
  * - left against right (frontal for reference): weighed factors, each with its reason (PlanDoctrine attack.compareWeights);
@@ -21,6 +24,7 @@ import type { DoctrineSet, Recipe } from './PlanRecipes';
 import { tamBreach, type EngrType } from './PlanEngr';
 import { doctrineAt, resolveRange } from './PlanRecipes';
 import type { Check, CheckState, SolveResult, XY } from './PlanSolve';
+import { liftRings } from './PlanSolve';
 import { toLocal, toWorld, type FitFrame, type PlanGround } from './PlanFit';
 import { footKmh, type TerrainKind } from './PlanContext';
 import { nightMarchChart, type NightMarchChart, type Rules as NmRules } from '../NightMarch/NightMarchRead';
@@ -46,6 +50,8 @@ export interface AttackFind {
   axis: XY[] | null;
   /** The route on foot from the Assy Area to the FUP, plan metres; null when it is not found (straight then). */
   route: XY[] | null;
+  /** The narrows (defiles) on that route, plan metres, with their width (the avenue finder's chokes). */
+  routeChokes?: { at: XY; widthM: number; label: string }[];
   rows: Check[];
 }
 
@@ -58,21 +64,17 @@ const extentAlong = (b: ReturnType<typeof ext>, u: XY) => Math.min(Math.abs(u.x)
  * The finders. `res` is the recipe solved with the user's own moves only; the frame is the attack's (y toward the
  * objective). Every move is kept small and said; without sight data a place stays where the recipe put it.
  */
-/**
- * The fire lifts the assault is covered to (IC s66 p305: from the objective, 120 mm mortars 450 m, medium 360, the Bn's
- * mortars 275, field 180). Without artillery on the plan, every ring (the safe side); with it (PlanArty), the Bn's
- * mortars and the ring of the plan's own guns: a Fd or Mtn Regt / Bty the field ring, a Med or Hy one the medium ring.
- */
-export function liftRings(res: { recipe: { arty?: { name: string; weapon: { name: string } } } }, doc: DoctrineSet): [string, number][] {
-  const lift = (doctrineAt(doc, 'fireLiftM') ?? {}) as Record<string, number>;
-  const all: [string, number][] = [['120 mm Mor', lift.mor120 ?? 450], ['Med', lift.medium ?? 360], ['Bn Mor', lift.bnMor ?? 275], ['Fd', lift.field ?? 180]];
-  const a = res.recipe.arty;
-  if (!a) return all;
-  const med = /(med|hy)|155|130|8 in/i.test(`${a.name} ${a.weapon.name}`);
-  return [['Bn Mor', lift.bnMor ?? 275], med ? [a.name, lift.medium ?? 360] : [a.name, lift.field ?? 180]];
-}
+/** The fire lifts the assault is covered to (PlanSolve.liftRings, IC s66 para 7 e (1) pp 304-305), re-exported here. */
+export { liftRings };
 
-export function findAttackSpots(res: SolveResult, f: FitFrame, g: PlanGround, doc: DoctrineSet): AttackFind {
+/**
+ * `night`: the FUP band (1000-1200 m) and the SL at the FUP forward edge are night rules (IC s68 para 12 e (1) p 333,
+ * para 13 a p 334; IBB S44 para 5 h p 201); by day the FUP is a covered place with no distance printed (IC s66 para 8 c
+ * pp 307-308) and the SL is walked forward to a linear feature beyond the last fire lift (IC s66 para 8 d p 308). Null
+ * (the light not known): the night rules, the safe side.
+ */
+export function findAttackSpots(res: SolveResult, f: FitFrame, g: PlanGround, doc: DoctrineSet, night: boolean | null = null): AttackFind {
+  const byNight = night !== false;
   const out: AttackFind = { nudges: {}, geom: {}, axis: null, route: null, rows: [] };
   const item = (role: string) => res.items.find((i) => i.role === role);
   const obj = item('obj'), fup = item('fup'), sl = item('sl'), bof = item('bof'), assy = item('assy');
@@ -103,12 +105,14 @@ export function findAttackSpots(res: SolveResult, f: FitFrame, g: PlanGround, do
     const a = a0 + (dAdeg * Math.PI) / 180;
     let R = R0 + dR, F = P(O.x + R * Math.sin(a), O.y + R * Math.cos(a));
     let pts = [F, ...fup.pts.map((p) => P(p.x + F.x - F0.x, p.y + F.y - F0.y))];
-    // swinging round the objective's corner brings the FUP nearer its edge: keep it 1000-1200 m off (IBB p201)
+    // by night: swinging round the objective's corner brings the FUP nearer its edge: keep it 1000-1200 m off (IBB S44
+    // para 5 h p 201; IC s68 para 12 e (1) p 333); by day no distance is printed (IC s66 para 8 c pp 307-308): it stays as laid
     const gap0 = gapOf(pts);
-    if (gap0 < band[0]) { R += band[0] - gap0 + 1; F = P(O.x + R * Math.sin(a), O.y + R * Math.cos(a)); pts = [F, ...fup.pts.map((p) => P(p.x + F.x - F0.x, p.y + F.y - F0.y))]; }
+    if (!byNight) { /* by day: no band */ }
+    else if (gap0 < band[0]) { R += band[0] - gap0 + 1; F = P(O.x + R * Math.sin(a), O.y + R * Math.cos(a)); pts = [F, ...fup.pts.map((p) => P(p.x + F.x - F0.x, p.y + F.y - F0.y))]; }
     // one laid farther out (a smaller objective than the layout was drawn for: a Coy's Pl locality) comes in to the band
     else if (gap0 > band[1]) { R -= gap0 - (band[0] + band[1]) / 2; F = P(O.x + R * Math.sin(a), O.y + R * Math.cos(a)); pts = [F, ...fup.pts.map((p) => P(p.x + F.x - F0.x, p.y + F.y - F0.y))]; }
-    if (gapOf(pts) > band[1] + 50) continue;
+    if (byNight && gapOf(pts) > band[1] + 50) continue;
     const nogo = pts.filter(bad).length;
     if (nogo >= 2) { fupNogo++; continue; }
     fupTried++;
@@ -118,14 +122,14 @@ export function findAttackSpots(res: SolveResult, f: FitFrame, g: PlanGround, do
   }
   const F1 = best ? best.F : F0;
   if (!best && fupNogo && !fupTried) out.rows.push({ name: 'FUP finder', st: 'warn', reason: `every place within ${sw}° and 100 m of the FUP is NO-GO on foot: the FUP stays where the recipe put it; find one on the ground` });
-  else if (!best && !fupNogo && !fupTried) out.rows.push({ name: 'FUP finder', st: 'warn', reason: `no place within ${sw}° of the FUP lies ${fmtM(band[0])}-${fmtM(band[1])} off the Obj (IBB p201): the FUP stays where the recipe put it` });
+  else if (!best && !fupNogo && !fupTried) out.rows.push({ name: 'FUP finder', st: 'warn', reason: `no place within ${sw}° of the FUP lies ${fmtM(band[0])}-${fmtM(band[1])} off the Obj (by night: IBB p 201, IC s68 para 12 e (1) p 333): the FUP stays where the recipe put it` });
   else if (!best || best.seen === null) out.rows.push({ name: 'FUP finder', st: 'unchecked', reason: g.sight ? 'the ground round the FUP is not loaded' : 'no sight data in the bundle: the FUP stays where the recipe put it' });
   else {
     const d = P(F1.x - F0.x, F1.y - F0.y);
     if (dist(F1, F0) > 1) move(['fup', 'asltL', 'asltR', 'res', 'hq', 'fu1', 'fu2'], d);
     out.rows.push(best.seen < 0.5
-      ? { name: 'FUP finder', st: 'pass', reason: `${dist(F1, F0) > 1 ? `moved ${fmtM(dist(F1, F0))} (${[best.dA ? `${Math.abs(best.dA)}° ${best.dA > 0 ? 'clockwise' : 'anti-clockwise'} round the Obj` : '', best.dR ? `${Math.abs(best.dR)} m ${best.dR > 0 ? 'further out' : 'nearer'}` : '', Math.abs(best.pull) > 20 ? `${fmtM(Math.abs(best.pull))} ${best.pull > 0 ? 'in' : 'out'} to ${fmtM(band[0])}-${fmtM(band[1])} off the Obj, IBB p201` : ''].filter(Boolean).join(', ') || 'a short way'}) ` : ''}into ground likely hidden from the Obj (${Math.round(best.seen * fupPts)} of ${fupPts} points seen); IBB p173: not observed` }
-      : { name: 'FUP finder', st: 'warn', reason: `${dist(F1, F0) > 1 ? `moved ${fmtM(dist(F1, F0))} (${[best.dA ? `${Math.abs(best.dA)}° ${best.dA > 0 ? 'clockwise' : 'anti-clockwise'} round the Obj` : '', best.dR ? `${Math.abs(best.dR)} m ${best.dR > 0 ? 'further out' : 'nearer'}` : '', Math.abs(best.pull) > 20 ? `${fmtM(Math.abs(best.pull))} ${best.pull > 0 ? 'in' : 'out'} to ${fmtM(band[0])}-${fmtM(band[1])} off the Obj, IBB p201` : ''].filter(Boolean).join(', ') || 'a short way'}) ` : ''}no ground within ${sw}° and 100 m of it is hidden from the Obj (${Math.round(best.seen * 100)} % seen at best): form up by night or under smoke` });
+      ? { name: 'FUP finder', st: 'pass', reason: `${dist(F1, F0) > 1 ? `moved ${fmtM(dist(F1, F0))} (${[best.dA ? `${Math.abs(best.dA)}° ${best.dA > 0 ? 'clockwise' : 'anti-clockwise'} round the Obj` : '', best.dR ? `${Math.abs(best.dR)} m ${best.dR > 0 ? 'further out' : 'nearer'}` : '', Math.abs(best.pull) > 20 ? `${fmtM(Math.abs(best.pull))} ${best.pull > 0 ? 'in' : 'out'} to ${fmtM(band[0])}-${fmtM(band[1])} off the Obj, by night: IBB p 201, IC s68 para 12 e (1) p 333` : ''].filter(Boolean).join(', ') || 'a short way'}) ` : ''}into ground likely hidden from the Obj (${Math.round(best.seen * fupPts)} of ${fupPts} points seen); IBB p173: not observed${byNight ? '' : '; by day no distance is printed, a covered FUP (IC s66 para 8 c pp 307-308)'}` }
+      : { name: 'FUP finder', st: 'warn', reason: `${dist(F1, F0) > 1 ? `moved ${fmtM(dist(F1, F0))} (${[best.dA ? `${Math.abs(best.dA)}° ${best.dA > 0 ? 'clockwise' : 'anti-clockwise'} round the Obj` : '', best.dR ? `${Math.abs(best.dR)} m ${best.dR > 0 ? 'further out' : 'nearer'}` : '', Math.abs(best.pull) > 20 ? `${fmtM(Math.abs(best.pull))} ${best.pull > 0 ? 'in' : 'out'} to ${fmtM(band[0])}-${fmtM(band[1])} off the Obj, by night: IBB p 201, IC s68 para 12 e (1) p 333` : ''].filter(Boolean).join(', ') || 'a short way'}) ` : ''}no ground within ${sw}° and 100 m of it is hidden from the Obj (${Math.round(best.seen * 100)} % seen at best): form up by night or under smoke` });
   }
 
   // ── the start line: a linear feature square to the axis, nothing between it and the objective ────────────────────
@@ -149,23 +153,43 @@ export function findAttackSpots(res: SolveResult, f: FitFrame, g: PlanGround, do
     return known >= 5 ? hit / known : null;
   };
   const S0 = sl ? centre(sl.pts) : P(F1.x + u.x * 200, F1.y + u.y * 200);
-  // the SL beyond the furthest fire lift (IC s66 p305), with room to spare: the assault crosses it under covering fire
   // the furthest lift of the fire the plan has (all of them without its own artillery)
   const liftMax = Math.max(...liftRings(res, doc).map(([, r]) => r));
-  const slMinM = liftMax + num(doc, 'attack.slBeyondLiftM', 150);
-  let S: XY | null = null, cover = 0, anyKnown = false;
-  for (let t = 200; toEdge(P(F1.x + u.x * t, F1.y + u.y * t)) >= slMinM; t += 25) {
-    const p = P(F1.x + u.x * t, F1.y + u.y * t);
-    const c = linearAcross(p);
-    if (c === null) continue;
-    anyKnown = true;
-    if (c >= 0.6 && clearAhead(p)) { S = p; cover = c; break; }
+  let Sfin: XY;
+  if (byNight) {
+    // by night the SL is, in many cases, the FUP forward edge (IC s68 para 13 a p 334), the FUP and SL out of the En
+    // direct-fire reach: in the plains 1000-1200 m from the Obj (IC s68 para 12 e (1) p 333); never nearer than band[0]
+    const fwd = Math.max(0, ...fup.pts.map((p) => (p.x - F0.x) * u.x + (p.y - F0.y) * u.y));
+    const gapAt = (tt: number) => toEdge(P(F1.x + u.x * tt, F1.y + u.y * tt));
+    let tN = fwd;
+    const pulled = gapAt(tN) < band[0] - 1;
+    if (pulled) tN -= band[0] - gapAt(tN);
+    Sfin = P(F1.x + u.x * tN, F1.y + u.y * tN);
+    if (sl) move(['sl'], P(Sfin.x - S0.x, Sfin.y - S0.y));
+    const inside = tN < -1;
+    const clear = clearAhead(Sfin);
+    out.rows.push({
+      name: 'SL finder', st: inside || !clear ? 'warn' : 'pass',
+      reason: `by night at the FUP forward edge (IC s68 para 13 a p 334: in many cases the SL), ${fmtM(Math.max(0, toEdge(Sfin)))} from the Obj${pulled ? `, held back to stay ${fmtM(band[0])} out` : ''}: FUP and SL out of the En direct-fire reach, ${fmtM(band[0])}-${fmtM(band[1])} in the plains (IC s68 para 12 e (1) p 333)${inside ? ': the FUP itself lies nearer than that: move it out' : ''}${clear ? '' : '; NO-GO lies between it and the Obj (IBB p 174: never behind an obstacle)'}; marked by the FUP centre line and minimum marking material (IC s68 para 12 f p 333)`,
+    });
+  } else {
+    // by day: as close to the En as possible, not under observed fire (IC s66 para 8 d p 308): walked forward to a linear
+    // feature, beyond the furthest fire lift (IC s66 para 7 e (1) pp 304-305) with room to spare (attack.slBeyondLiftM, E)
+    const slMinM = liftMax + num(doc, 'attack.slBeyondLiftM', 150);
+    let S: XY | null = null, cover = 0, anyKnown = false;
+    for (let t = 200; toEdge(P(F1.x + u.x * t, F1.y + u.y * t)) >= slMinM; t += 25) {
+      const p = P(F1.x + u.x * t, F1.y + u.y * t);
+      const c = linearAcross(p);
+      if (c === null) continue;
+      anyKnown = true;
+      if (c >= 0.6 && clearAhead(p)) { S = p; cover = c; break; }
+    }
+    Sfin = S ?? P(F1.x + u.x * 200, F1.y + u.y * 200);
+    if (sl) move(['sl'], P(Sfin.x - S0.x, Sfin.y - S0.y));
+    out.rows.push(S ? { name: 'SL finder', st: 'pass', reason: `by day on a linear feature ${fmtM(dist(Sfin, F1))} ahead of the FUP centre, ${fmtM(toEdge(Sfin))} from the Obj (${Math.round(cover * 100)} % of it across the axis), nothing NO-GO between it and the Obj (IBB p 174: never behind an obstacle), beyond the last fire lift (${Math.round(liftMax)} m, IC s66 para 7 e (1) pp 304-305); as close to the En as possible and not under observed fire (IC s66 para 8 d p 308): confirm it is not seen` }
+      : !anyKnown ? { name: 'SL finder', st: 'unchecked', reason: 'the ground between the FUP and the Obj is not loaded' }
+      : { name: 'SL finder', st: 'warn', reason: 'no linear feature square to the axis with a clear run to the Obj: the SL 200 m ahead of the FUP, mark it with tape' });
   }
-  const Sfin = S ?? P(F1.x + u.x * 200, F1.y + u.y * 200);
-  if (sl) move(['sl'], P(Sfin.x - S0.x, Sfin.y - S0.y));
-  out.rows.push(S ? { name: 'SL finder', st: 'pass', reason: `on a linear feature ${fmtM(dist(Sfin, F1))} ahead of the FUP centre, ${fmtM(toEdge(Sfin))} from the Obj (${Math.round(cover * 100)} % of it across the axis), nothing NO-GO between it and the Obj (IBB p 174: never behind an obstacle), beyond the last fire lift (${Math.round(liftMax)} m)` }
-    : !anyKnown ? { name: 'SL finder', st: 'unchecked', reason: 'the ground between the FUP and the Obj is not loaded' }
-    : { name: 'SL finder', st: 'warn', reason: 'no linear feature square to the axis with a clear run to the Obj: the SL 200 m ahead of the FUP, mark it with tape' });
   out.axis = [Sfin, P(O.x - u.x * (near - 100), O.y - u.y * (near - 100))];
 
   // ── the BOF: off the axis (40-100°), 600-1100 m from the objective, where it sees most of it and stands higher ─────
@@ -242,6 +266,7 @@ export function findAttackSpots(res: SolveResult, f: FitFrame, g: PlanGround, do
     const av = g.avenues?.(W(Afin), W(F1), 300, 'dismounted');
     const path = av?.[0]?.path;
     out.route = simplify(path && path.length >= 2 ? [Afin, ...path.slice(1, -1).map((w) => toLocal(f, w)), F1] : [Afin, F1], num(doc, 'attack.routeToleranceM', 75));
+    out.routeChokes = (av?.[0]?.chokes ?? []).map((c) => ({ at: toLocal(f, c.at), widthM: c.widthM, label: c.label }));
   }
   return out;
 }
@@ -277,6 +302,14 @@ export interface HSum {
   phase2?: Phase2Times;
   /** A third phase: obj1At = Obj 2 taken, h2At = H3, obj2At = on Obj 3. */
   phase3?: Phase2Times;
+  /** Phase 1's assault uphill in mountains (MW Annex F pp 311-313): slant distance and the climb on the covering fire. */
+  uphill?: Uphill;
+  /** Minutes of fighting on the last Obj (attack.fightOnObjMin, Understanding Aprc p 21; the walk through it when longer). */
+  fightMin?: number;
+  /** The final reorganisation, minutes (attack.reorgMin, Understanding Aprc p 24). */
+  reorgMin?: number;
+  /** Minutes from H: the op done and reorganised (the last Obj fought through, the LOE, the reorganisation). */
+  doneAt?: number;
   /** Tanks with the attack (PlanTanks.addTankTimes): minutes from H they leave FUP (Tks), reach the assault line or fire posns, and are on the Obj (close sp). */
   tanks?: { mode: string; leaveAt: number; atAt: number; onObjAt: number | null; lengthM: number };
 }
@@ -289,6 +322,31 @@ export interface Phase2Times {
   marchM: number; marchMin: number;
   lifts: { label: string; rM: number; at: number }[];
   paceMinPer100m: number;
+  /** Uphill in mountains (MW Annex F pp 311-313): the climb from this phase's SL to its Obj. */
+  uphill?: Uphill;
+  /** Phase 3 only: the Coys that attack it already fought for Obj 1 (A, B Coys again: no fresh troops left). */
+  recycled?: boolean;
+  /** Phase 3 only: the plan is on mountain ground (recycled troops are then judged by MW pp 210-215). */
+  mountain?: boolean;
+}
+
+/**
+ * An assault uphill in mountains, MW Annex F pp 311-313 (timed programme in hilly terrain): the height climbed from the
+ * SL (A) to where the assault meets the Obj (B), the angle of slope, the slant factor (slant over horizontal distance,
+ * 1 / cos of the angle: the book's table 30° 1.16 ... 70° 2.93) and the minutes the climb adds to the covering fire (one
+ * hour for every 350 m, para 3 c).
+ */
+export interface Uphill { dh: number; deg: number; factor: number; climbMin: number }
+
+/** The point `m` along a polyline from its first point (its last point when the line is shorter). */
+function pointAlong(pts: XY[], m: number): XY {
+  let left = Math.max(0, m);
+  for (let i = 1; i < pts.length; i++) {
+    const L = dist(pts[i - 1], pts[i]);
+    if (L >= left && L > 0) return P(pts[i - 1].x + ((pts[i].x - pts[i - 1].x) * left) / L, pts[i - 1].y + ((pts[i].y - pts[i - 1].y) * left) / L);
+    left -= L;
+  }
+  return pts[pts.length - 1];
 }
 
 /** Walk a plan-metre polyline: metres on GO and SLOW-GO on foot (unknown counted GO), metres climbed and descended. */
@@ -353,7 +411,8 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
   const go = night ? num(doc, `attack.nightFootKmh.${kind}`, num(doc, 'attack.nightFootKmh.plains', 3)) : day.go;
   const slow = go * (day.slow / day.go);
   const spare = num(doc, 'attack.spareFactor', 0.15);
-  const pace = num(doc, 'attack.assaultMinPer100m', 4);
+  // the own assault pace, 100 m in 3 min (Understanding Aprc p 20; the Foxland 4 min of IC s114 p 684 is the En's)
+  const pace = num(doc, 'attack.assaultMinPer100m', 3);
   // MW p 48, p 81 (pdf 82), p 309: + 30-60 min per 300 m of ascent and per 600 m of descent
   const climbPer = kind === 'mountain' ? num(doc, 'terrain.kinds.mountain.ascentMinPer300m', 45) / 300 : 0;
   const descPer = kind === 'mountain' ? num(doc, 'terrain.kinds.mountain.descentMinPer600m', 45) / 600 : 0;
@@ -366,7 +425,8 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
   const A = assy ? centre(assy.pts) : null;
   const l1 = A ? leg(route && route.length >= 2 ? route : [A, F]) : null;
   const l1min = l1 ? Math.round(l1.min * (1 + spare)) : 0;
-  const fupMin = Math.round(num(doc, 'attack.fupMin', 30));
+  // in the FUP: a Coy no more than five minutes (IC s66 para 13 f p 312)
+  const fupMin = Math.round(num(doc, 'attack.fupMin', 5));
   const l2 = leg([F, S]);
   // the assault from the SL to the objective's near edge, along the axis as laid
   const ax = axis.pts;
@@ -380,7 +440,34 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
   };
   const { share: slowShare, pace: paceEff } = paceOn(ax);
   const rings = liftRings(res, doc);
-  const atD = (m: number) => Math.round((Math.max(0, m) / 100) * paceEff);
+  // Uphill in mountains (MW Annex F pp 311-313, timed programme in hilly terrain): the assault covers the slant distance,
+  // the horizontal distance off the map times the factor for the angle of slope (1 / cos: the book's table 30° 1.16 ...
+  // 70° 2.93), and the covering fire is lengthened by one hour for every 350 m of climb from the SL (A) to the Obj (B);
+  // the safe distances are unchanged (para 1). Read from the elevation: without it, or going down, timed on the flat.
+  const per350 = num(doc, 'terrain.kinds.mountain.uphillCoverMinPer350m', 60);
+  const uphillOf = (axPts: XY[], Dh: number): Uphill | undefined => {
+    if (kind !== 'mountain' || !f || !g || Dh <= 0 || axPts.length < 2) return undefined;
+    const a = toWorld(f, axPts[0]), b = toWorld(f, pointAlong(axPts, Dh));
+    const ea = g.elev(a.x, a.y), eb = g.elev(b.x, b.y);
+    if (!Number.isFinite(ea) || !Number.isFinite(eb) || eb - ea < 1) return undefined;
+    const dh = eb - ea;
+    return { dh: Math.round(dh), deg: Math.round((Math.atan2(dh, Dh) * 180) / Math.PI), factor: Math.round((Math.hypot(Dh, dh) / Dh) * 100) / 100, climbMin: Math.round((dh / 350) * per350) };
+  };
+  // minutes from the phase's H: `at` a point m along the assault (the climb spread along it, level beyond the Obj's
+  // edge); `lift` the fire lifting at a ring r: (slant - safe distance) in hundreds of metres x the rate, + the climb
+  // (Annex F para 3 b, c). With no climb both are the flat pace.
+  const clock = (Dh: number, pc: number, up: Uphill | undefined) => {
+    const F = up?.factor ?? 1, c = up?.climbMin ?? 0;
+    return {
+      at: (m: number) => { const x = Math.max(0, m); return Math.round(x <= Dh ? ((x * F) / 100) * pc + (Dh > 0 ? (c * x) / Dh : 0) : ((Dh * F) / 100) * pc + c + ((x - Dh) / 100) * pc); },
+      lift: (r: number) => Math.round((Math.max(0, Dh * F - r) / 100) * pc + c),
+    };
+  };
+  const up1 = uphillOf(ax, D);
+  const c1 = clock(D, paceEff, up1);
+  const atD = c1.at;
+  const slantM = (Dh: number, up: Uphill | undefined) => Math.round(Dh * (up?.factor ?? 1));
+  const upLbl = (up: Uphill | undefined) => (up ? ` (uphill ${up.dh} m, slant)` : '');
   const steps: HStep[] = [];
   const before = l1min + fupMin + Math.round(l2.min);
   if (l1 && A) steps.push({ label: `Assy Area to the FUP${night ? ' (night)' : ''}`, distM: Math.round(l1.m), min: l1min, at: -before });
@@ -389,11 +476,13 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
   // a two-phase attack (PlanPhase): Obj 1, then the follow-up Coys round it onto Obj 2; the LOE beyond Obj 2
   const obj2 = item('obj2'), axis2 = item('axis2'), fup2 = item('fup2'), sl2 = item('sl2');
   const two = !!(obj2 && axis2 && fup2);
-  steps.push({ label: two ? 'Assault: SL to Obj 1' : 'Assault: SL to the Obj', distM: Math.round(D), min: atD(D), at: 0 });
+  steps.push({ label: `${two ? 'Assault: SL to Obj 1' : 'Assault: SL to the Obj'}${upLbl(up1)}`, distM: slantM(D, up1), min: atD(D), at: 0 });
   steps.push({ label: two ? 'Through Obj 1' : 'Through the Obj', distM: Math.round(depth), min: atD(depth), at: atD(D) });
   let phase2: Phase2Times | undefined;
   let phase3: Phase2Times | undefined;
   let loeAt: number | null = null;
+  // the last objective: reached at, walked through in, its phase (1: Obj 1 alone; 2: Obj 2 or Obj 3)
+  let last = { reach: atD(D), through: atD(D + depth) - atD(D), ph: 1 };
   if (obj2 && axis2 && fup2) {
     // the follow-up Coys stay in the FUP until Obj 1 is taken (IBB p204 (7)), then go round it to FUP 2
     const t1 = atD(D + depth);
@@ -407,17 +496,19 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
     const go2 = Math.max(t1, m0);
     const l3 = leg(post);
     const m2 = Math.round(l3.min * (1 + spare));
-    const fm2 = Math.round(num(doc, 'attack.phase2.fupMin', 15));
+    const fm2 = Math.round(num(doc, 'attack.phase2.fupMin', 5));
     const l4 = leg([F2, S2]);
     const h2 = go2 + m2 + fm2 + Math.round(l4.min);
     const ob2 = ext(obj2.pts), D2 = assaultDist(axis2.pts, ob2), depth2 = 2 * extentAlong(ob2, dirOf(axis2.pts));
     const p2 = paceOn(axis2.pts).pace;
-    const at2 = (m: number) => h2 + Math.round((Math.max(0, m) / 100) * p2);
+    const up2 = uphillOf(axis2.pts, D2);
+    const c2 = clock(D2, p2, up2);
+    const at2 = (m: number) => h2 + c2.at(m);
     if (l0) steps.push({ label: 'Follow-up Coys close up behind the assault', distM: Math.round(l0.m), min: m0, at: 0 });
     steps.push({ label: `Follow-up Coys: ${l0 ? 'on' : 'FUP'} to FUP 2${night ? ' (night)' : ''}`, distM: Math.round(l3.m), min: m2, at: go2 });
     steps.push({ label: 'Form up at FUP 2', distM: 0, min: fm2, at: go2 + m2 });
     steps.push({ label: 'FUP 2 to SL 2', distM: Math.round(l4.m), min: Math.round(l4.min), at: go2 + m2 + fm2 });
-    steps.push({ label: 'Assault: SL 2 to Obj 2 (H2)', distM: Math.round(D2), min: at2(D2) - h2, at: h2 });
+    steps.push({ label: `Assault: SL 2 to Obj 2 (H2)${upLbl(up2)}`, distM: slantM(D2, up2), min: at2(D2) - h2, at: h2 });
     steps.push({ label: 'Through Obj 2', distM: Math.round(depth2), min: at2(D2 + depth2) - at2(D2), at: at2(D2) });
     const obj3 = item('obj3'), axis3 = item('axis3'), fup3 = item('fup3'), sl3 = item('sl3');
     const loeDist2 = loe && !(obj3 && axis3 && fup3) ? Math.max(0, dist(centre(obj2.pts), centre(loe.pts)) - depth2 / 2) : null;
@@ -425,7 +516,8 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
       steps.push({ label: 'On to the LOE', distM: Math.round(loeDist2), min: at2(D2 + depth2 + loeDist2) - at2(D2 + depth2), at: at2(D2 + depth2) });
       loeAt = at2(D2 + depth2 + loeDist2);
     }
-    phase2 = { obj1At: t1, h2At: h2, obj2At: at2(D2), gapMin: h2 - t1, marchM: Math.round(l3.m), marchMin: m2, lifts: rings.map(([label, r]) => ({ label, rM: r, at: at2(D2 - r) })), paceMinPer100m: Math.round(p2 * 10) / 10 };
+    last = { reach: at2(D2), through: at2(D2 + depth2) - at2(D2), ph: 2 };
+    phase2 = { obj1At: t1, h2At: h2, obj2At: at2(D2), gapMin: h2 - t1, marchM: Math.round(l3.m), marchMin: m2, lifts: rings.map(([label, r]) => ({ label, rM: r, at: h2 + c2.lift(r) })), paceMinPer100m: Math.round(p2 * 10) / 10, ...(up2 ? { uphill: up2 } : {}) };
     // a third phase: from Obj 2 taken, the follow-up round it to FUP 3, H3, the assault onto Obj 3, the LOE beyond
     if (obj3 && axis3 && fup3) {
       const t2 = at2(D2 + depth2);
@@ -437,18 +529,23 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
       const h3 = t2 + m3 + fm2 + Math.round(l6.min);
       const ob3 = ext(obj3.pts), D3 = assaultDist(axis3.pts, ob3), depth3 = 2 * extentAlong(ob3, dirOf(axis3.pts));
       const p3 = paceOn(axis3.pts).pace;
-      const at3 = (m: number) => h3 + Math.round((Math.max(0, m) / 100) * p3);
+      const up3 = uphillOf(axis3.pts, D3);
+      const c3 = clock(D3, p3, up3);
+      const at3 = (m: number) => h3 + c3.at(m);
       steps.push({ label: `Phase 3 Coys: Obj 2 to FUP 3${night ? ' (night)' : ''}`, distM: Math.round(l5.m), min: m3, at: t2 });
       steps.push({ label: 'Form up at FUP 3', distM: 0, min: fm2, at: t2 + m3 });
       steps.push({ label: 'FUP 3 to SL 3', distM: Math.round(l6.m), min: Math.round(l6.min), at: t2 + m3 + fm2 });
-      steps.push({ label: 'Assault: SL 3 to Obj 3 (H3)', distM: Math.round(D3), min: at3(D3) - h3, at: h3 });
+      steps.push({ label: `Assault: SL 3 to Obj 3 (H3)${upLbl(up3)}`, distM: slantM(D3, up3), min: at3(D3) - h3, at: h3 });
       steps.push({ label: 'Through Obj 3', distM: Math.round(depth3), min: at3(D3 + depth3) - at3(D3), at: at3(D3) });
       const loeDist3 = loe ? Math.max(0, dist(centre(obj3.pts), centre(loe.pts)) - depth3 / 2) : null;
       if (loeDist3 !== null) {
         steps.push({ label: 'On to the LOE', distM: Math.round(loeDist3), min: at3(D3 + depth3 + loeDist3) - at3(D3 + depth3), at: at3(D3 + depth3) });
         loeAt = at3(D3 + depth3 + loeDist3);
       }
-      phase3 = { obj1At: t2, h2At: h3, obj2At: at3(D3), gapMin: h3 - t2, marchM: Math.round(l5.m), marchMin: m3, lifts: rings.map(([label, r]) => ({ label, rM: r, at: at3(D3 - r) })), paceMinPer100m: Math.round(p3 * 10) / 10 };
+      last = { reach: at3(D3), through: at3(D3 + depth3) - at3(D3), ph: 2 };
+      // who takes Obj 3: D Coy (the reserve) or A, B Coys again from Obj 1 (PlanPhase.threePhaseRecipe labels them)
+      const recycled = /from Obj 1/i.test(item('fu3')?.label ?? '');
+      phase3 = { obj1At: t2, h2At: h3, obj2At: at3(D3), gapMin: h3 - t2, marchM: Math.round(l5.m), marchMin: m3, lifts: rings.map(([label, r]) => ({ label, rM: r, at: h3 + c3.lift(r) })), paceMinPer100m: Math.round(p3 * 10) / 10, ...(up3 ? { uphill: up3 } : {}), recycled, mountain: kind === 'mountain' };
     }
   } else {
     const loeDist = loe ? Math.max(0, dist(O, centre(loe.pts)) - depth / 2) : null;
@@ -460,10 +557,20 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
   const br = res.recipe.enMfAtk ? attackBreach(res.recipe, doc, night, undefined, kind) : null;
   if (br && br.h > 0) steps.unshift({ label: br.feasible ? `Engineers begin the lanes through the En minefield (${br.by})` : `Lanes through the En minefield: no engineer Pls grouped that breach (a Pl's time shown; group more engineers)`, distM: 0, min: Math.round(br.h * 60), at: -Math.round(br.h * 60) });
   steps.sort((a, b) => a.at - b.at);
+  // the time the op needs: the fighting on the last Obj (Understanding Aprc p 21: Ph 1 1.5 h, Ph 2 1 h in a normal
+  // defence; the walk through it when longer), on to the LOE, the final reorganisation (p 24: 40 min); by night it all
+  // ends before daylight (IC s68 para 13 b p 334)
+  const fight = (doctrineAt(doc, 'attack.fightOnObjMin') ?? {}) as Record<string, number>;
+  const fightMin = Math.max(last.through, Math.round(last.ph === 1 ? fight.ph1 ?? 90 : fight.ph2 ?? 60));
+  const reorgMin = Math.round(num(doc, 'attack.reorgMin', 40));
+  const loeLeg = loeAt !== null ? Math.max(0, loeAt - (last.reach + last.through)) : 0;
+  const doneAt = last.reach + fightMin + loeLeg + reorgMin;
   return {
-    steps, lifts: rings.map(([label, r]) => ({ label, rM: r, at: atD(D - r) })),
+    steps, lifts: rings.map(([label, r]) => ({ label, rM: r, at: c1.lift(r) })),
     leaveBeforeH: before, objAt: atD(D), loeAt, night, slowPct: l1?.slowPct ?? null,
     paceMinPer100m: Math.round(paceEff * 10) / 10, assaultSlowPct: Math.round(slowShare * 100), phase2, phase3,
+    ...(up1 ? { uphill: up1 } : {}),
+    fightMin, reorgMin, doneAt,
   };
 }
 
@@ -523,7 +630,7 @@ export function attackBreach(r: Recipe & { engr?: EngrType & { engrData?: any[] 
   if (!mf) return null;
   // mountains: the En minefield is at most 100-150 m deep and crossed in single file by boulders and nullah beds, without
   // breaching, mine shoes or lanes; 2 wire lanes a Pl by Bangalore torpedo (MW pp 86, 106, 113)
-  if (kind === 'mountain') return { h: 0, by: 'no breach (mountains)', feasible: true, row: { name: 'Breach', st: 'pass', reason: 'mountains: the En minefield is at most 100-150 m deep (MW p 106) and is crossed in single file by boulders and nullah beds, without breaching or minefield lanes (MW pp 86, 113); 2 wire lanes a Pl by Bangalore torpedo (MW p 113): no lane time in the H-hour sum' } };
+  if (kind === 'mountain') return { h: 0, by: 'no breach (mountains)', feasible: true, row: { name: 'Breach', st: 'pass', reason: 'mountains: the En minefield is at most 100-150 m deep (MW p 106) and is crossed in single file by boulders and nullah beds, without breaching or minefield lanes (MW pp 86, 113): a path-marking group (1 Aslt Engr NCO, 1 Aslt Engr Sepoy, 3 riflemen) marks the path with tape and blows 2 wire lanes a Pl by Bangalore torpedo (MW pp 106, 113); the book gives the drill no time, so none is added to the H-hour sum (see Strong point drill)' } };
   const li = night ? 2 : 0;
   const laneM = num(doc, 'crossing.breach.laneM', 108);
   const hrs = (doctrineAt(doc, 'crossing.breach.hours') as any)?.none ?? [4, 5, 6];
@@ -534,7 +641,10 @@ export function attackBreach(r: Recipe & { engr?: EngrType & { engrData?: any[] 
   const rounds = e && e.pls ? Math.ceil(need / e.pls) : null;
   const handH = rounds ? handOne * rounds : handOne;
   const tam = e ? tamBreach(e, mf.lanes, mf.depthM, handOne) : null;
-  const useTam = !!tam && tam.h < handH && e!.tam >= mf.lanes;
+  // the desert: TAMs may work on the dhars but are likely to fail on soft sand, the rollers not exploding the mines for the
+  // low bearing capacity of the soil (DW s19 para 2 b (3) p 65): the breach is timed by hand, never on the TAMs
+  const sandTam = kind === 'desert' && !!tam;
+  const useTam = !!tam && !sandTam && tam.h < handH && e!.tam >= mf.lanes;
   const h = useTam ? tam!.h : handH;
   const by = useTam ? 'TAM' : 'by hand';
   const book = tbl ? `; SO's Hbk p 450 for ${tbl.yds} yd: ${tbl.pls} Pl${tbl.pls > 1 ? 's' : ''} a lane, ${Math.floor(tbl.h[li])} h ${Math.round((tbl.h[li] % 1) * 60)} min` : '';
@@ -546,8 +656,40 @@ export function attackBreach(r: Recipe & { engr?: EngrType & { engrData?: any[] 
     : e.pls ? `; the ${e.name} has ${e.pls} Pls for ${need}: the lanes in ${rounds} turns, ${handH} h: begun that long before H, or more engineers` : `; the ${e.name} has no engineer Pls that breach: more engineers`;
   // grouped engineers with no Pls that breach and no TAM cannot begin the lanes: the time is what a Pl would need, said so
   const feasible = !e || useTam || e.pls > 0;
-  return { h, by: e ? `${e.name}, ${by}` : 'engineers to be grouped', row: { name: 'Breach', st, reason: head + who }, feasible };
+  const sand = sandTam ? `; its ${e!.tam} TAM${e!.tam > 1 ? 's' : ''} not counted: in the desert TAMs may work on the dhars but are likely to fail on soft sand (DW p 65), so the lanes are timed by hand` : '';
+  return { h, by: e ? `${e.name}, ${by}` : 'engineers to be grouped', row: { name: 'Breach', st, reason: head + who + sand }, feasible };
 }
+
+/** The uphill assaults of an H-hour sum in words (MW Annex F pp 311-313), '' when none climbs. */
+function uphillText(h: HSum): string {
+  const ups: [string, Uphill][] = [];
+  if (h.uphill) ups.push([h.phase2 ? 'onto Obj 1' : 'onto the Obj', h.uphill]);
+  if (h.phase2?.uphill) ups.push(['onto Obj 2', h.phase2.uphill]);
+  if (h.phase3?.uphill) ups.push(['onto Obj 3', h.phase3.uphill]);
+  if (!ups.length) return '';
+  return `; uphill ${ups.map(([w, u]) => `${w} ${u.dh} m at ${u.deg}° (slant x ${u.factor.toFixed(2)}, + ${u.climbMin} min)`).join(', ')}: in hilly terrain the assault covers the slant distance, the map distance times the factor for the angle of slope, and the covering fire is lengthened by one hour for every 350 m of climb; the safe distances are unchanged (MW Annex F pp 311-313)`;
+}
+
+/**
+ * Phase 3 by A and B Coys again in mountains: troops recycled in less than 48 hours "could not deliver the goods"; 72-96 h
+ * after their attack holds for planning (MW s17 para 3 c p 210); recycled, their timings may have to be doubled (para 4 a
+ * p 211); troops to be recycled are not given tasks that take them below 80 % (para 5 d p 213).
+ */
+function recycledMtn(p: Phase2Times): Pick<Check, 'st' | 'reason' | 'detail'> | null {
+  if (!p.recycled || !p.mountain) return null;
+  return {
+    st: 'warn',
+    reason: '; Obj 3 falls to A and B Coys again, recycled the same night: in mountains troops recycled in less than 48 h could not deliver, 72-96 h after their attack holds for planning (MW s17 para 3 c p 210), and recycled troops\' timings may have to be doubled (para 4 a p 211)',
+    detail: {
+      head: 'Ph 3 by recycled Coys in mountains',
+      why: 'The battle for dominating features is a well contested duel; troops recycled in less than 48 hours could not deliver the goods, and 72-96 hours after the attack hold good for planning (MW s17 para 3 c p 210). Recycled, the speed of the operation is retarded and timings may have to be doubled (para 4 a p 211); troops planned to be recycled must not be given initial tasks that bring them below 80 % (para 5 d p 213).',
+      fix: ['Keep D Coy for Ph 3 (two phases plus the reserve) and ask Bde for a reserve (IBB p 186 i)', 'Take Obj 3 in a separate attack 72-96 h later, or by a fresh unit', 'Give A and B Coys a lighter Obj 1 so they stay above 80 % (MW para 5 d p 213)'],
+    },
+  };
+}
+
+/** By night: a simple plan, free from too many phases and changes of direction (IC s68 para 3 a p 327). */
+const NIGHT_PHASES = '; by night the plan must be simple, free from too many phases and actions involving a change of direction (IC s68 para 3 a p 327): this phase comes round the Obj before it from a new direction, so rehearse it, mark the way round and fix the bearings from FUP 2 by day, or take the next Obj in a separate attack';
 
 /** Phase 2's timing as a check row: H2 against the time he has to react after Obj 1 falls (IBB p176 c). */
 /** The third phase's timing against the same limit (attack.phase2.maxGapMin). */
@@ -555,9 +697,11 @@ export function phase3Row(h: HSum, doc: DoctrineSet): Check | null {
   const p = h.phase3;
   if (!p) return null;
   const max = num(doc, 'attack.phase2.maxGapMin', 60);
+  const rc = recycledMtn(p);
   return {
-    name: 'Ph 3 timing', st: p.gapMin <= max ? 'pass' : 'warn',
-    reason: `Obj 2 taken ${hRelText(p.obj1At)}; the phase 3 Coys' move to FUP 3 ${fmtM(p.marchM)} in ${p.marchMin} min, form up, H3 ${hRelText(p.h2At)}: ${p.gapMin} min after Obj 2 falls (wants ${max} min or less, E)${p.gapMin > max ? ': the En has time to counter-attack or man the depth (IBB p176 c)' : ''}; on Obj 3 ${hRelText(p.obj2At)}`,
+    name: 'Ph 3 timing', st: rc ? rc.st : p.gapMin <= max && !h.night ? 'pass' : 'warn',
+    reason: `Obj 2 taken ${hRelText(p.obj1At)}; the phase 3 Coys' move to FUP 3 ${fmtM(p.marchM)} in ${p.marchMin} min, form up, H3 ${hRelText(p.h2At)}: ${p.gapMin} min after Obj 2 falls (wants ${max} min or less, E)${p.gapMin > max ? ': the En has time to counter-attack or man the depth (IBB p176 c)' : ''}; on Obj 3 ${hRelText(p.obj2At)}${h.night ? NIGHT_PHASES : ''}${rc ? rc.reason : ''}`,
+    ...(rc?.detail ? { detail: rc.detail } : {}),
   };
 }
 
@@ -567,8 +711,8 @@ export function phase2Row(h: HSum, doc: DoctrineSet): Check | null {
   const max = num(doc, 'attack.phase2.maxGapMin', 60);
   const slow = p.gapMin > max ? ': the En has time to counter-attack or man its depth (IBB p176 c); bring them forward close behind the assault (p186 h(2); attack.phase2.waitAt behind), or shorten their way' : '';
   return {
-    name: 'Ph 2 timing', st: p.gapMin <= max ? 'pass' : 'warn',
-    reason: `Obj 1 taken ${hRelText(p.obj1At)}; the follow-up Coys' move to FUP 2 ${fmtM(p.marchM)} in ${p.marchMin} min, form up, H2 ${hRelText(p.h2At)}: ${p.gapMin} min after Obj 1 falls (wants ${max} min or less, E)${slow}; on Obj 2 ${hRelText(p.obj2At)}`,
+    name: 'Ph 2 timing', st: p.gapMin <= max && !h.night ? 'pass' : 'warn',
+    reason: `Obj 1 taken ${hRelText(p.obj1At)}; the follow-up Coys' move to FUP 2 ${fmtM(p.marchM)} in ${p.marchMin} min, form up, H2 ${hRelText(p.h2At)}: ${p.gapMin} min after Obj 1 falls (wants ${max} min or less, E)${slow}; on Obj 2 ${hRelText(p.obj2At)}${h.night ? NIGHT_PHASES : ''}`,
   };
 }
 
@@ -581,13 +725,37 @@ export function nightRow(nb: NightBrief): Check {
   };
 }
 
-/** The H-hour sum as a check row. */
+/**
+ * The H-hour sum as a check row. After the assault: the fighting on the last Obj, the LOE and the final reorganisation
+ * (Understanding Aprc pp 21, 24). By night H is chosen so that the op and its reorganisation end before daylight (IC s68
+ * para 13 b p 334; delays that bring the troops onto the Obj in daylight are a cause of failure, para 11 f p 331): the plan
+ * holds no clock time, so the row says the latest H against first light and stays unchecked (set H); it warns when the
+ * march, the attack and the reorganisation do not fit in a night of crossing.nightH hours (E) at all.
+ */
 export function hSumRow(h: HSum, doc: DoctrineSet): Check {
-  const base = num(doc, 'attack.assaultMinPer100m', 4);
+  const base = num(doc, 'attack.assaultMinPer100m', 3);
   const pace = h.paceMinPer100m;
+  const head = `leave the Assy Area ${hRelText(-h.leaveBeforeH)}${h.night ? ' (night rates, IBB p 18)' : ''}; ${h.steps.filter((s) => s.distM).map((s) => `${s.label.toLowerCase()} ${fmtM(s.distM)} ${s.min} min`).join(', ')}; fire lifts ${h.lifts.map((l) => `${l.rM} m ${hRelText(l.at)}`).join(', ')} (IC s66 para 7 e (1) pp 304-305); on ${h.phase2 ? 'Obj 1' : 'the Obj'} ${hRelText(h.objAt)}${h.phase2 ? `; H2 ${hRelText(h.phase2.h2At)}, fire lifts on Obj 2 ${h.phase2.lifts.map((l) => `${l.rM} m ${hRelText(l.at)}`).join(', ')}, on Obj 2 ${hRelText(h.phase2.obj2At)}` : ''}${h.loeAt !== null ? `, the LOE ${hRelText(h.loeAt)}` : ''} (assault ${pace} min a 100 m, Understanding Aprc p 20${pace > base ? `, slowed by ${h.assaultSlowPct} % SLOW-GO on the axis` : ''})${uphillText(h)}`;
+  if (h.doneAt == null) return { name: 'H-hour sum', st: 'pass', reason: head };
+  const lastObj = h.phase3 ? 'Obj 3' : h.phase2 ? 'Obj 2' : 'the Obj';
+  const done = `; fighting on ${lastObj} ${h.fightMin} min, final reorg ${h.reorgMin} min (Understanding Aprc pp 21, 24): done and reorganised ${hRelText(h.doneAt)}`;
+  if (!h.night) return { name: 'H-hour sum', st: 'pass', reason: head + done };
+  const nightH = num(doc, 'crossing.nightH', 10);
+  const span = h.leaveBeforeH + h.doneAt;
+  if (span > nightH * 60) {
+    return {
+      name: 'H-hour sum', st: 'warn',
+      reason: `${head}${done}: from leaving the Assy Area to reorganised ${hm(span)}, more than a ${nightH} h night (E): the troops reach the Obj or reorganise in daylight (IC s68 para 11 f p 331, para 13 b p 334)`,
+      detail: {
+        head: `${hm(span)} from the Assy Area to reorganised, a ${nightH} h night`,
+        why: 'By night H is set so that the op, including the reorganisation, is complete before daylight (IC s68 para 13 b p 334); troops arriving on the Obj in daylight is a cause of failure (para 11 f p 331).',
+        fix: ['A Forward Assy Area nearer the FUP (a shorter night march)', 'Fewer phases or a nearer Obj by night (IC s68 para 3 a p 327: objectives limited)', 'The last phase at first light as a day attack', 'A longer night: check the month\'s first and last light'],
+      },
+    };
+  }
   return {
-    name: 'H-hour sum', st: 'pass',
-    reason: `leave the Assy Area ${hRelText(-h.leaveBeforeH)}${h.night ? ' (night rates, IBB p 18)' : ''}; ${h.steps.filter((s) => s.distM).map((s) => `${s.label.toLowerCase()} ${fmtM(s.distM)} ${s.min} min`).join(', ')}; fire lifts ${h.lifts.map((l) => `${l.rM} m ${hRelText(l.at)}`).join(', ')} (IC s66 p305); on ${h.phase2 ? 'Obj 1' : 'the Obj'} ${hRelText(h.objAt)}${h.phase2 ? `; H2 ${hRelText(h.phase2.h2At)}, fire lifts on Obj 2 ${h.phase2.lifts.map((l) => `${l.rM} m ${hRelText(l.at)}`).join(', ')}, on Obj 2 ${hRelText(h.phase2.obj2At)}` : ''}${h.loeAt !== null ? `, the LOE ${hRelText(h.loeAt)}` : ''} (assault ${pace} min a 100 m${pace > base ? `, slowed by ${h.assaultSlowPct} % SLOW-GO on the axis` : ''}, E)`,
+    name: 'H-hour sum', st: 'unchecked',
+    reason: `${head}${done}; by night H no later than first light less ${hm(h.doneAt)} (the op and its reorganisation before daylight, IC s68 para 13 b p 334), leaving the Assy Area ${hm(span)} before first light: not checked, set H against first light`,
   };
 }
 
@@ -767,7 +935,9 @@ export function attackFactors(layout: string, rows: Check[], res: SolveResult, f
   const row = (n: string) => rows.find((r) => r.name === n);
   const fs: Factor[] = [];
   const frontal = layout === 'frontal';
-  fs.push({ key: 'form', label: 'Form of attack', w: Wt.form ?? 0.15, v: frontal ? 0 : 1, reason: frontal ? 'frontal: dangerous, small chance of success' : 'onto the En flank, the BOF fixing its front' });
+  // a Div attack (PlanDivAttack) is neither: a main and a secondary attack, or one Bde up; its Bdes' plans choose their own form
+  const divForm = res.recipe.echelon === '21' ? (/^main-/.test(layout) ? 'two Bdes up: a main and a secondary attack (GSP 1947 s19 para 7 p 84); each Bde\'s own form is chosen on its Bde plan' : 'one Bde up: the follow-up Bde round the leading one (GSP 1947 s19 para 11 b p 86); each Bde\'s own form is chosen on its Bde plan') : null;
+  fs.push({ key: 'form', label: 'Form of attack', w: Wt.form ?? 0.15, v: divForm ? 0.5 : frontal ? 0 : 1, reason: divForm ?? (frontal ? 'frontal: dangerous, small chance of success' : 'onto the En flank, the BOF fixing its front') });
   const loe = res.items.find((i) => i.role === 'loe');
   if (choke && loe) {
     const d = Math.min(...loe.pts.map((p) => dist(p, choke.at)), dist(centre(loe.pts), choke.at));

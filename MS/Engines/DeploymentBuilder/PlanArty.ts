@@ -15,7 +15,7 @@
  */
 import type { DoctrineSet, Recipe } from './PlanRecipes';
 import { footprints } from './PlanRecipes';
-import type { Check, CheckState, XY } from './PlanSolve';
+import type { Check, CheckState, SolveResult, XY } from './PlanSolve';
 import { toWorld, type FitFrame, type PlanGround } from './PlanFit';
 import type { OrbatSet } from './PlanOrbat';
 
@@ -282,10 +282,10 @@ function divArtyRows(items: { role: string; pts: XY[] }[], recipe: Recipe, a: Ar
   rows.push({ name: 'Arty reinforcement', st: extended ? 'warn' : 'pass', reason: `${heavy.length ? `${heavy.map((r) => r.name).join(', ')} in the Div Arty` : 'no Med or Hy Regt in the Div Arty'}; on extended frontages the Div Arty is reinforced by a minimum of one Med / Hy Regt (OoW Vol I p 83)${extended ? ': three Bdes up on three axes is such a frontage (OoW Vol I Annex D p 105): ask Corps for it' : ': confirm with Corps if the frontage is extended'}`,
     ...(extended ? { detail: { head: 'Reinforcing Med / Hy Regt not in the plan', why: 'On an extended frontage the Div Arty alone cannot cover every approach in strength (OoW Vol I p 83).', fix: ['Ask Corps for a Med / Hy Regt and give it the main approach'] } } : {}) });
   if (f && g) {
-    const read = areas.map(({ r, it }) => ({ r, s: gunGround(it.pts, f, g) })).filter((x) => x.s !== null) as { r: ArtyOnPlan; s: number }[];
+    const read = areas.map(({ r, it }) => ({ r, s: gunGround(it.pts, f, g, !r.weapon.sp) })).filter((x) => x.s !== null) as { r: ArtyOnPlan; s: number }[];
     const worst = read.length ? Math.min(...read.map((x) => x.s)) : null;
     const gst: CheckState = worst === null ? 'unchecked' : worst >= a.room[0] ? 'pass' : worst >= a.room[1] ? 'warn' : 'fail';
-    rows.push({ name: 'Gun area', st: gst, reason: `${read.length ? read.map((x) => `${x.r.name} ${Math.round(x.s * 100)} %`).join(', ') + ` of the area is ground a gun position may take (the bundle's Gun Position going); ${Math.round(a.room[0] * 100)} % wanted (GunDoctrine room)` : 'their ground not loaded'}; ${a.areaSrc}` });
+    rows.push({ name: 'Gun area', st: gst, reason: `${read.length ? read.map((x) => `${x.r.name} ${Math.round(x.s * 100)} %`).join(', ') + ` of the area is ground a gun position may take (the bundle's Gun Position going${read.some((x) => !x.r.weapon.sp) ? '; loose sand not counted for the towed guns, DW p 60' : ''}); ${Math.round(a.room[0] * 100)} % wanted (GunDoctrine room)` : 'their ground not loaded'}; ${a.areaSrc}` });
   }
   return rows;
 }
@@ -332,9 +332,11 @@ export function artyRows(items: { role: string; pts: XY[] }[], recipe: Recipe, e
     rows.push({ name: 'Arty reach', st, reason: `${what}: its gun area ${fmtM(Math.max(0, d))} behind the FDL (${km(a.band[0])}-${km(a.band[1])}: ${a.bandSrc}); its guns reach ${km(beyond)} beyond the FDL${enemyFupM !== null ? `, ${fupOk ? 'past' : 'short of'} the En FUP ${km(enemyFupM)} out` : ''}${df.length ? `; ${df.length - dfOut} of ${df.length} DF Tgts in range` : ''}${a.band[1] < a.band[0] ? `; no band: a third of its range (${km(a.band[1])}) is short of the ${km(a.band[0])} it must stand back: a longer gun` : !inBand ? `; outside the band${d < a.band[0] ? ': too near the front, the En overruns it early (OoW I p 70)' : ': too far back, the fire does not reach deep'}` : ''}` });
   }
   if (f && g) {
-    const s = gunGround(ga.pts, f, g);
+    const towed = !a.weapon.sp;
+    const rd = gunGroundRead(ga.pts, f, g, towed);
+    const s = rd?.s ?? null;
     const st: CheckState = s === null ? 'unchecked' : s >= a.room[0] ? 'pass' : s >= a.room[1] ? 'warn' : 'fail';
-    rows.push({ name: 'Gun area', st, reason: `${s === null ? 'its ground not loaded' : `${Math.round(s * 100)} % of it is ground a gun position may take (the bundle's Gun Position going); ${Math.round(a.room[0] * 100)} % wanted, under ${Math.round(a.room[1] * 100)} % the guns cannot keep 100 m apart (GunDoctrine room)${st === 'fail' ? ': move it (G while placing)' : ''}`}; ${a.areaSrc}. Level, crest, firm soil, access and concealment: G while placing sites it with the Gun Deployment finder` });
+    rows.push({ name: 'Gun area', st, reason: `${s === null ? 'its ground not loaded' : `${Math.round(s * 100)} % of it is ground a gun position may take (the bundle's Gun Position going)${sandText(rd!.sand, towed)}; ${Math.round(a.room[0] * 100)} % wanted, under ${Math.round(a.room[1] * 100)} % the guns cannot keep 100 m apart (GunDoctrine room)${st === 'fail' ? ': move it (G while placing)' : ''}`}; ${a.areaSrc}. Level, crest, firm soil, access and concealment: G while placing sites it with the Gun Deployment finder` });
   }
   return rows;
 }
@@ -344,19 +346,36 @@ export function artyRows(items: { role: string; pts: XY[] }[], recipe: Recipe, e
  * Position going (rules.json profiles.gun: water, marsh, built-up, too steep are no place for guns); null with under 13
  * read (the ground not loaded).
  */
-function gunGround(pts: XY[], f: FitFrame, g: PlanGround): number | null {
+function gunGround(pts: XY[], f: FitFrame, g: PlanGround, towed = false): number | null {
+  return gunGroundRead(pts, f, g, towed)?.s ?? null;
+}
+
+/**
+ * gunGround with the loose sand counted: for towed guns the bundle's Sand class is no place for them ("in areas of loose
+ * sand, it is difficult to move the guns. Therefore, self propelled guns are ideal": DW s17 para 7 a p 60), SP guns take
+ * it (the Gun Position going's caution). `sand` the share of loose sand read, whatever the guns.
+ */
+function gunGroundRead(pts: XY[], f: FitFrame, g: PlanGround, towed: boolean): { s: number; sand: number } | null {
   const going = g.going('gun');
   const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-  let n = 0, ok = 0;
+  let n = 0, ok = 0, sand = 0;
   for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) {
     const w = toWorld(f, { x: x0 + ((i + 0.5) / 5) * (x1 - x0), y: y0 + ((j + 0.5) / 5) * (y1 - y0) });
     const c = g.cls(w.x, w.y);
     if (c === null) continue;
     n++;
-    if (!going.nogo.has(c)) ok++;
+    const loose = /^sand$/i.test(g.label(c));
+    if (loose) sand++;
+    if (!going.nogo.has(c) && !(towed && loose)) ok++;
   }
-  return n >= 13 ? ok / n : null;
+  return n >= 13 ? { s: ok / n, sand: sand / n } : null;
+}
+
+/** The loose sand in a gun area, in words ('' when none): towed guns stick there, SP guns are ideal (DW p 60). */
+function sandText(sand: number, towed: boolean): string {
+  if (sand < 0.04) return '';
+  return towed ? `; ${Math.round(sand * 100)} % loose sand, not counted: towed guns are hard to move in loose sand, SP guns are ideal there (DW p 60)` : `; ${Math.round(sand * 100)} % loose sand, taken by SP guns (DW p 60)`;
 }
 
 /**
@@ -393,11 +412,61 @@ function crossArtyRows(items: { role: string; pts: XY[] }[], a: ArtyOnPlan, f: F
   const st: CheckState = !nearAll ? 'fail' : nearAll < areas.length || (deep.length && !deepAny) || offBand ? 'warn' : 'pass';
   const rows: Check[] = [{ name: 'Arty reach', st, reason: `${a.name}${a.unit === 'div' ? ` (${areas.length} Regts, ${a.guns} guns)` : ` (${a.guns} x ${a.weapon.name})`}: ${parts.join('; ')}${deep.length && !deepAny ? '; no Regt reaches the deep line: the Med Regts forward after the break-in, or Corps Arty' : ''}. Band: ${a.bandSrc}` }];
   if (f && g) {
-    const shares = areas.map(({ r, it }) => ({ r, s: gunGround(it.pts, f, g) }));
+    const shares = areas.map(({ r, it }) => ({ r, s: gunGround(it.pts, f, g, !r.weapon.sp) }));
     const read = shares.filter((x) => x.s !== null) as { r: ArtyOnPlan; s: number }[];
     const worst = read.length ? Math.min(...read.map((x) => x.s)) : null;
     const gst: CheckState = worst === null ? 'unchecked' : worst >= a.room[0] ? 'pass' : worst >= a.room[1] ? 'warn' : 'fail';
-    rows.push({ name: 'Gun area', st: gst, reason: `${read.length ? read.map((x) => `${x.r.name} ${Math.round(x.s * 100)} %`).join(', ') + ` of the area is ground a gun position may take (the bundle's Gun Position going); ${Math.round(a.room[0] * 100)} % wanted, under ${Math.round(a.room[1] * 100)} % the guns cannot keep 100 m apart (GunDoctrine room)` : 'their ground not loaded'}; ${a.areaSrc}. Level, crest, firm soil, access and concealment: site them with Gun Deployment` });
+    rows.push({ name: 'Gun area', st: gst, reason: `${read.length ? read.map((x) => `${x.r.name} ${Math.round(x.s * 100)} %`).join(', ') + ` of the area is ground a gun position may take (the bundle's Gun Position going${read.some((x) => !x.r.weapon.sp) ? '; loose sand not counted for the towed guns, DW p 60' : ''}); ${Math.round(a.room[0] * 100)} % wanted, under ${Math.round(a.room[1] * 100)} % the guns cannot keep 100 m apart (GunDoctrine room)` : 'their ground not loaded'}; ${a.areaSrc}. Level, crest, firm soil, access and concealment: site them with Gun Deployment` });
   }
   return rows;
 }
+
+// ── mountains: towed guns by section (MW s22 para 5 b p 240, para 6 a (1) p 244) ─────────────────────────────────────
+
+/** A plan's Regt or Bty whose guns go by section on mountain ground: towed (not SP) and not a light, mule-packed gun. */
+export function goesBySectionOnPlan(a: ArtyType, lightIds: readonly string[]): boolean {
+  return !a.weapon.sp && !lightIds.includes(a.weapon.id);
+}
+
+/** The section sites G found for one gun-area role: its unit's name and each section's outline (plan metres). */
+export interface GunSections { role: string; name: string; rings: XY[][]; /** Each section's label (a Regt's Btys: "B2 Sec 1"); else "<name> Sec n". */ labels?: string[] }
+
+/**
+ * The plan with its gun areas by sections (G on mountain ground): each gun-area role's item becomes its first section
+ * (label "<unit> Sec 1", the section's outline) and a copy of it is added for every other section ("Sec 2", "Sec 3";
+ * role `<role>S<n>`), so the plan shows and Create on Map places one PAA per section site, with the plan's own symbol.
+ * The result passed in is not changed.
+ */
+export function withGunSections(res: SolveResult, secs: GunSections[]): SolveResult {
+  if (!secs.length) return res;
+  const items = [...res.items];
+  for (const s of secs) {
+    const k = items.findIndex((i) => i.role === s.role);
+    if (k < 0 || !s.rings.length) continue;
+    const base = items[k];
+    const lbl = (j: number) => s.labels?.[j] ?? `${s.name} Sec ${j + 1}`;
+    items[k] = { ...base, label: lbl(0), pts: s.rings[0] };
+    s.rings.slice(1).forEach((ring, j) => items.push({ ...base, id: `${base.id}-s${j + 2}`, role: `${s.role}S${j + 2}`, label: lbl(j + 1), pts: ring }));
+  }
+  return { ...res, items };
+}
+
+/**
+ * The Gun area rows on mountain ground for towed guns (MW s22 pp 240, 244): the conventional area's room test is set
+ * aside (gun areas near the roads are too small for the conventional layout; towed guns go a single gun or a section near
+ * the hairpin bends, a Bty by sections in two or three places): not checked until G sites the Bty by sections, then the
+ * sections' own verdict (`sited`, from the Gun site row). Other ground, SP or light guns: the rows as they are.
+ */
+export function mountainGunRows(rows: Check[], a: ArtyOnPlan | undefined, kind: string | null | undefined, lightIds: readonly string[], sited: Check | null): Check[] {
+  if (kind !== 'mountain' || !a) return rows;
+  const units = a.regts?.length ? a.regts : [a];
+  const towed = units.filter((u) => goesBySectionOnPlan(u, lightIds));
+  if (!towed.length) return rows;
+  const book = 'in mountains gun areas near the roads and tracks are scarce and too small for the conventional layout: towed guns go a single gun or a section in small areas near the hairpin bends, a Bty by sections in two or three places (MW s22 para 5 b p 240, para 6 a (1) p 244); light guns away from the roads keep the conventional layout (p 241)';
+  return rows.map((r) => {
+    if (r.name !== 'Gun area') return r;
+    if (sited) return { ...r, st: sited.st, reason: `by sections (G): ${towed.map((u) => u.name).join(', ')}, see Gun site; ${book}; confirm the sites by recce (p 240)`, detail: undefined };
+    return { ...r, st: 'unchecked', reason: `${towed.map((u) => u.name).join(', ')} (towed): ${book}. G sites the Bty by sections. The conventional area as laid: ${r.reason}`, detail: undefined };
+  });
+}
+

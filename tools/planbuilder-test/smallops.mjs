@@ -76,6 +76,18 @@ for (const r of [line, Lr, Vr, ptl, r2, r3]) {
   check('Plan document: the SP is the pivot; FPoint units carry their echelon', doc2.pivotId === res.pivotId && doc2.doc.poObj.plnOrdrOverlay[0].syms.some((s) => s.SYM_GEO_TYPE === 'FPoint' && s.SIDC.slice(8, 10) === '13'));
 }
 
+// ── ambush geometry: the seeds as the terrain lays them (y toward the En: PlanSolve) ─────────────────────────────────────
+{
+  const at = (res, role) => it(res, role).pts[0];
+  const gL = O.solveSmall(line, ctx, {}, null), gLl = O.solveSmall(Lr, ctx, {}, null), gV = O.solveSmall(Vr, ctx, {}, null), gA = O.solveSmall(rec('pl-ambush-area'), ctx, {}, null);
+  check('Ambush geometry: Stop 1 on the En side of the KZ (y +), Stop 2 beyond the far end (y -), as the terrain lays them', at(gL, 'stop1').y > 100 && at(gL, 'stop2').y < -100, `${at(gL, 'stop1').y} / ${at(gL, 'stop2').y}`);
+  check('...the L: its short leg (Sp Gp) at the far end of the KZ (y -), as ambushSiteAt lays it', at(gLl, 'amb2Gp').y < -75 && it(gLl, 'amb2').pts.slice(0, 2).every((q) => q.y < -75), `${at(gLl, 'amb2Gp').y}`);
+  check('...the area ambush: Outlying 1 up the Rd toward the En (y +), Outlying 2 down it (y -)', at(gA, 'out1Gp').y > 400 && at(gA, 'out2Gp').y < -400);
+  const legs = ['amb', 'amb2'].map((rl) => it(gV, rl).pts);
+  check('...the V: a half each side of the Rd, each wider at the En end than at the far end (opening toward the En, E)', Math.sign(legs[0][0].x) !== Math.sign(legs[1][0].x) && legs.every((pts) => Math.abs(pts[0].x) > Math.abs(pts[1].x) + 20 && pts[0].y > pts[1].y), legs.map((pts) => `${pts[0].x},${pts[0].y} -> ${pts[1].x},${pts[1].y}`).join(' | '));
+  check('...every ambush: a reserve and a covering group on the RV side (x +: IC s44 para 8 c p 149, para 15 b p 156)', [gL, gLl, gV, gA].every((g2) => at(g2, 'res').x > 0 && at(g2, 'cov').x > 0 && at(g2, 'rv').x > 0 && it(g2, 'res').label === 'Res' && it(g2, 'cov').label === 'Cov Gp'));
+}
+
 // ── ambush: the road, the defile ─────────────────────────────────────────────────────────────────────────────────────
 const defile = W.at(1300, 0);
 {
@@ -105,6 +117,24 @@ const defile = W.at(1300, 0);
   const kzW = Math.max(...it(fl.raw, 'kz').pts.map((p) => roadSide(world(fl, p)))), arcW = Math.min(roadSide(world(fl, amb.pts[0])), roadSide(world(fl, amb.pts[1])));
   check('...the KZ (the road and its verges) stays short of the fire line', kzW < arcW, `KZ to ${Math.round(kzW)} m, fire line at ${Math.round(arcW)} m`);
   const pd = S.toPlanDocument(fl.raw, (pid, ov, id, de) => ({ id, ...de }), (pid, id, name, seq, syms) => ({ id, syms }), 1);
+  const rs = world(fl, it(fl.raw, 'res').pts[0]), cv = world(fl, it(fl.raw, 'cov').pts[0]);
+  const sideOfRd = (p) => { const a = W.roadXY; return Math.sign((a[2] - a[0]) * (p.y - a[1]) - (a[3] - a[1]) * (p.x - a[0])); };
+  check('...the reserve on the RV side of the Rd (IC s44 para 8 c p 149), its row passes', sideOfRd(rs) === sideOfRd(rv) && row(rows, 'Reserve')?.st === 'pass', `${row(rows, 'Reserve')?.st}: ${row(rows, 'Reserve')?.reason}`);
+  check('...the covering group back from the fire line, its row read (IC s44 para 15 b (3) p 156)', roadSide(cv) > roadSide(fg) && !!row(rows, 'Cov Gp'), `${Math.round(roadSide(cv))} m off the Rd; ${row(rows, 'Cov Gp')?.st}: ${row(rows, 'Cov Gp')?.reason}`);
+  check('...by day (the default): longer ranges with a covered approach (IC s44 para 16 b p 157), else day occupation warned (para 10 a p 150): here 19 % in cover, so it warns', row(rows, 'Day / Night')?.st === 'warn' && /no covered approach/.test(row(rows, 'Day / Night')?.reason ?? '') && /para 10 a p 150/.test(row(rows, 'Day / Night')?.detail?.why ?? ''), row(rows, 'Day / Night')?.reason);
+  check('...confirm: an admin area if the ambush lasts 24 hours or more (IC s44 para 8 e)', fl.res.confirm.some((x) => /24 hours or more/.test(x) && /para 8 e/.test(x)));
+  const nf = F.fitLayout(inpOf(line, defile, 270, { night: true }));
+  check('By night: the Day / Night row says point blank (IC s44 para 17 a p 157); the fire line within 120 m of the Rd', /point blank/.test(row(nf.res.rows, 'Day / Night')?.reason ?? '') && Math.min(...[0, 1].map((k) => roadSide(world(nf, it(nf.raw, 'amb').pts[k])))) <= 125, row(nf.res.rows, 'Day / Night')?.reason);
+  const tf = F.fitLayout(inpOf(line, defile, 270, { mover: 'tracked' }));
+  const kzLen = (f) => { const ps = it(f.raw, 'kz').pts.map((p) => world(f, p)); let m = 0; for (const a of ps) for (const b of ps) m = Math.max(m, gd(a, b)); return m; };
+  check('Tank ambush (tracked): the KZ long enough for the whole column (IC s46 para 9 p 172; 400 m E), the Tank ambush row names the groups', kzLen(tf) > 350 && kzLen(fl) < 250 && /covering group/.test(row(tf.res.rows, 'Tank ambush')?.reason ?? ''), `${Math.round(kzLen(tf))} m vs ${Math.round(kzLen(fl))} m`);
+  const lf = F.fitLayout(inpOf(Lr, defile, 270));
+  check('An L on the straight stretch: the Layout row passes (IC s44 para 18 b p 158), no points off', row(lf.res.rows, 'Layout')?.st === 'pass' && /straight stretch/.test(row(lf.res.rows, 'Layout')?.reason ?? ''), row(lf.res.rows, 'Layout')?.reason);
+  const vf = F.fitLayout(inpOf(Vr, defile, 270));
+  const vLeg = (rl) => it(vf.raw, rl).pts.slice(0, 2).map((p) => roadSide(world(vf, p)));
+  const [v1, v2] = [vLeg('amb'), vLeg('amb2')];
+  check('The V on the ground: each half wider from the Rd at the En end than at the far end (not two parallel legs)', v1[0] > v1[1] + 15 && v2[0] > v2[1] + 15, `${v1.map(Math.round)} / ${v2.map(Math.round)}`);
+  check('...its Cov Gp is the third portion covering the withdrawal (IC s44 para 18 c p 158)', /third portion/.test(row(vf.res.rows, 'Cov Gp')?.reason ?? row(vf.res.rows, 'Cov Gp')?.detail?.why ?? '') || row(vf.res.rows, 'Cov Gp')?.st === 'warn', row(vf.res.rows, 'Cov Gp')?.reason);
   check('...the KZ target is the pivot (the click)', pd.pivotId === fl.raw.pivotId && fl.raw.items.find((i) => i.id === pd.pivotId)?.role === 'kzTgt' && Math.hypot(it(fl.raw, 'kzTgt').pts[0].x, it(fl.raw, 'kzTgt').pts[0].y) < 1);
   // aimed the other way: he comes from the east
   const fe = F.fitLayout(inpOf(line, defile, 90));
@@ -174,6 +204,10 @@ const defile = W.at(1300, 0);
   const b = its(fl.raw, 'bound');
   check('...check points at the bounds, numbered (CheckPt)', b.length >= 3 && b.every((x) => x.key === '25130300') && b[0].label === '1', `${b.length}`);
   check('...rows: Bounds, Seen, Villages, Skylines, Dangers, Time', ['Bounds', 'Seen', 'Villages', 'Skylines', 'Dangers', 'Time'].every((x) => row(rows, x)), rows.map((x) => `${x.name} ${x.st}`).join(', '));
+  check('...Bounds: the route\'s own spacing printed, cited (IC s40 para 23 p 116)', /check points .* apart, legs of /.test(row(rows, 'Bounds')?.reason ?? '') && /IC s40 para 23 p 116/.test(row(rows, 'Bounds')?.reason ?? ''), row(rows, 'Bounds')?.reason);
+  check('...legs measured to the nearest 50 paces (IC s40 para 23 p 116)', (fl.fit.small?.legs ?? []).length > 0 && fl.fit.small.legs.every((l) => l.paces % 50 === 0 && l.paces > 0), (fl.fit.small?.legs ?? []).map((l) => l.paces).join(' '));
+  check('...Time: the Obj recced twice (an hour or more, then from another direction: IC s41 para 10 p 132)', /2 h 00 at the Obj/.test(row(rows, 'Time')?.reason ?? '') && /another direction/.test(row(rows, 'Time')?.reason ?? ''), row(rows, 'Time')?.reason);
+  check('...confirm: four daylight hours to plan, the RV 100-200 m off each bound', fl.res.confirm.some((x) => /four daylight hours/.test(x)) && fl.res.confirm.some((x) => /100-200 m/.test(x)));
   check('...Time: out, at the Obj and back by night', /by night: out .* at the Obj, back /.test(row(rows, 'Time')?.reason ?? ''), row(rows, 'Time')?.reason);
   const legsOut = fl.fit.small.legs.filter((l) => l.way === 'Out');
   check('...the route card: a few legs a patrol can walk by night (the grid steps straightened), each with a bearing and paces', legsOut.length >= 2 && legsOut.length <= 15 && legsOut.every((l) => l.paces > 0 && l.bearingDeg >= 0 && l.bearingDeg < 360 && l.gridDeg >= 0 && l.gridDeg < 360), `${legsOut.length} legs out`);
@@ -315,13 +349,13 @@ const defile = W.at(1300, 0);
   check('Coy screen south of Test Hill, aimed north: fitted, three Pl posts sited', sf.res.mode === 'terrain' && (sf.fit.small?.ops ?? []).length === 3 && sf.fit.small?.screen === true && !row(srows, 'Posts sited'), srows.map((x) => `${x.name} ${x.st}`).join(', '));
   const posts = ['op1', 'op2', 'op3'].map((r) => world(sf, it(sf.raw, r).pts[0]));
   const fwdOf = (p) => { const d = gd(XY(srv), p), b = ((M.bearingOf(srv, [p.x, p.y]) - M.bearingOf(srv, sAim)) * Math.PI) / 180; return d * Math.cos(b); };
-  check('...every post 300-1500 m forward of the Wdr RV (no further than needed: IC p378)', posts.every((p) => fwdOf(p) >= 250 && fwdOf(p) <= 1550) && row(srows, 'Posts forward')?.st === 'pass', posts.map((p) => Math.round(fwdOf(p))).join(' / '));
-  check('...a post on Test Hill (the knoll of IC p378: high ground that sees over the front)', posts.some((p) => gd(p, hill) < 250), posts.map((p) => Math.round(gd(p, hill))).join(' / '));
+  check('...every post 300-1500 m forward of the Wdr RV (AMP p 1.2: 1-1.5 km; IC s73 para 10 p 377: no further than needed)', posts.every((p) => fwdOf(p) >= 250 && fwdOf(p) <= 1550) && row(srows, 'Posts forward')?.st === 'pass', posts.map((p) => Math.round(fwdOf(p))).join(' / '));
+  check('...a post on Test Hill (the knoll of IC s73 para 11 p 377: high ground that sees over the front)', posts.some((p) => gd(p, hill) < 250), posts.map((p) => Math.round(gd(p, hill))).join(' / '));
   check('...laid laterally with intervals: 1, 2, 3 Pl left to right, spanning the front', row(srows, 'Laterally')?.st === 'pass' && posts[0].x < posts[1].x && posts[1].x < posts[2].x, row(srows, 'Laterally')?.reason);
   check('...his viewpoints: the points of the ground in front that see the main posn counted (those are what the posts watch)', row(srows, 'En viewpoints')?.st === 'pass' && /(\d+) of (\d+) points/.test(row(srows, 'En viewpoints')?.reason ?? ''), row(srows, 'En viewpoints')?.reason);
   check('...rows: Ground in front seen, Post ground, Withdrawal (covered way back), Time back', ['Ground in front seen', 'Post ground', 'Withdrawal', 'Time back'].every((x) => row(srows, x)), srows.map((x) => x.name).join(', '));
   check('...the Screen symbol (25342203) from the left post to the right one, its centre behind them', it(sf.raw, 'scr')?.key === '25342203' && gd(world(sf, it(sf.raw, 'scr').pts[0]), posts[0]) < 5 && gd(world(sf, it(sf.raw, 'scr').pts[2]), posts[2]) < 5 && fwdOf(world(sf, it(sf.raw, 'scr').pts[1])) < Math.min(...posts.map(fwdOf)));
-  check('...confirm: withdrawal on the order of the commander who ordered it, 50 % or time up if comms break (IC p381)', sf.res.confirm.some((x) => /50 %/.test(x) && /IC p381/.test(x)));
+  check('...confirm: withdrawal on the order of the commander who ordered it, 50 % or time up if comms break (IC s73 para 18 p 380)', sf.res.confirm.some((x) => /50 %/.test(x) && /IC s73 para 18 p 380/.test(x)));
   const sc2 = O.checkSmallOp(inpOf(sr, srv, 0), asDrawn(sf));
   check('Check my plan, Coy screen: read as drawn, the same verdicts as built', !!sc2 && same(sc2.rows, srows, ['En viewpoints', 'Ground in front seen', 'Posts forward', 'Laterally', 'Post ground', 'Withdrawal']) && !sc2.missing.length, sc2 ? ['En viewpoints', 'Ground in front seen', 'Posts forward', 'Laterally', 'Post ground', 'Withdrawal'].map((nm) => `${nm} ${row(srows, nm)?.st}/${row(sc2.rows, nm)?.st}`).join(', ') : 'null');
   // the ground still loading (no class anywhere yet): not a NO-GO fail, and no row passes with no posts to judge
@@ -332,6 +366,9 @@ const defile = W.at(1300, 0);
   const rl = F.fitLayout(inpOf(r2, W.at(-1500, -2500), 45, { cursor: XY(W.at(1200, 600)), ground: loadG }));
   check('...the recce the same: OPs sited not checked while loading', row(rl.res.rows, 'OPs sited')?.st === 'unchecked' && !row(rl.res.rows, 'Routes hidden'), rl.res.rows.map((x) => `${x.name} ${x.st}`).join(', '));
   const far = asDrawn(sf); far.op2 = { pts: [[far.op2.pts[0][0], far.op2.pts[0][1] + 1500 / W.s]] };
+  const nearP = asDrawn(sf); { const q = nearP.op2.pts[0], b = M.bearingOf(srv, sAim) * Math.PI / 180, d = fwdOf({ x: q[0], y: q[1] }) - 600; nearP.op2 = { pts: [[q[0] - (Math.sin(b) * d) / W.s, q[1] - (Math.cos(b) * d) / W.s]] }; }
+  const nr = row(O.checkSmallOp(inpOf(sr, srv, 0), nearP).rows, 'Posts forward');
+  check('...2 Pl dragged in to 600 m: Posts forward warns, the books differ (AMP p 1.2 vs IC s73 para 11 p 377), not a fail', nr?.st === 'warn' && /AMP p 1\.2/.test(nr?.reason ?? '') && /IC s73 para 11 p 377/.test(nr?.reason ?? ''), nr?.reason);
   check('...2 Pl dragged 1.5 km further out: Posts forward warns (further than needed)', row(O.checkSmallOp(inpOf(sr, srv, 0), far).rows, 'Posts forward')?.st === 'warn', row(O.checkSmallOp(inpOf(sr, srv, 0), far).rows, 'Posts forward')?.reason);
 }
 

@@ -116,6 +116,27 @@ const coy = S.solveRecipe(get('coy-def-two-up'), ctx, {});
 check('Coy two up: frontage 1500 m passes', row(coy, 'Frontage')?.st === 'pass' && Math.round(coy.frontageM) === 1500, String(coy.frontageM));
 check('Coy two up: Pl gap 300 m passes', row(coy, 'Gaps')?.st === 'pass', row(coy, 'Gaps')?.reason);
 check('Coy two up: Coy HQ is the pivot', coy.items.find((i) => i.id === coy.pivotId)?.label === 'Coy HQ');
+// IC review (27 Nov 2026): Coy HQ in line with the depth Pl (IC s74 para 27 b p 396), never in the forward gap
+{
+  const hqAt = (r) => r.items.find((i) => i.role === 'hq')?.pts[0];
+  const ctrOf = (r, role) => { const it = r.items.find((i) => i.role === role); const ys = it.pts.map((p) => p.y), xs = it.pts.map((p) => p.x); return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2, x0: Math.min(...xs), x1: Math.max(...xs) }; };
+  for (const id of ['coy-def-two-up', 'coy-def-rev-slope']) {
+    const r = S.solveRecipe(get(id), ctx, {}), h = hqAt(r), d = ctrOf(r, 'res');
+    check(`${id}: Coy HQ level with the depth Pl, beside it, not in the forward gap (IC s74 para 27 b)`, h && Math.abs(h.y - d.y) < 1 && (h.x < d.x0 || h.x > d.x1), h && `${Math.round(h.x)},${Math.round(h.y)} vs depth y ${Math.round(d.y)}`);
+  }
+  const one1 = S.solveRecipe(get('coy-def-one-up'), ctx, {}), h1 = hqAt(one1), dl = ctrOf(one1, 'depthL');
+  check('coy-def-one-up: Coy HQ in line with the two depth Pls', h1 && Math.abs(h1.y - dl.y) < 1, h1 && `${Math.round(h1.x)},${Math.round(h1.y)}`);
+  check('Coy two up: confirm list names the CP in the FDLs, 1-2 OPs and the check post (IC s74-s75)', ['CP in the FDLs', 'One or two OPs', 'check post'].every((w) => coy.confirm.some((c) => c.includes(w))));
+  check('Coy two up: Depth 680 m read against the Coy depth 600-800 m (no "no doctrine depth")', row(coy, 'Depth')?.st === 'pass' && /600 m-800 m/.test(row(coy, 'Depth').reason), row(coy, 'Depth')?.reason);
+  const c3 = S.solveRecipe(get('coy-def-three-up'), ctx, {});
+  check('Coy three up: Depth warns, no Pl in depth (IC s74 para 11 p 391), Why and Fix', row(c3, 'Depth')?.st === 'warn' && /IC s74 para 11 p 391/.test(row(c3, 'Depth').reason) && row(c3, 'Depth').detail?.fix?.length >= 2, row(c3, 'Depth')?.reason);
+  check('Coy two up: Approach responsibility grey without the terrain', row(coy, 'Approach responsibility')?.st === 'unchecked');
+  // IC8: an own Coy on a canal or ditch, three Pls up, may hold 1500-2000 m (IC s85 para 11 p 455); elsewhere 1500 m
+  const C = await import('../../MS/Engines/DeploymentBuilder/PlanContext.ts');
+  const onCanal = C.frontageRowCheck(ctx.doc, '15', 'obstacle', 3, 1900), onPlain = C.frontageRowCheck(ctx.doc, '15', 'plains', 3, 1900);
+  check('Coy three Pls up on a canal: 1.9 km passes (IC s85 para 11 p 455); on the plains it fails', onCanal?.st === 'pass' && /IC s85 para 11 p 455/.test(onCanal.reason) && onPlain?.st === 'fail', `${onCanal?.reason} / ${onPlain?.reason}`);
+  check('Bn two up: DF targets placed by df.perBn 6-12 (IC s111 para 10 p 652)', two.items.filter((i) => i.role === 'dfTgt').length >= 8);
+}
 
 // ── attack ───────────────────────────────────────────────────────────────────────────────────────────────────────
 const atk = S.solveRecipe(get('bn-attk-frontal'), ctx, {});
@@ -125,7 +146,8 @@ check('Bn Attk: BOF on a flank and in range', row(atk, 'BOF on a flank')?.st ===
 check('Bn Attk: mortars reach the LOE', row(atk, 'Mortars reach the LOE')?.st === 'pass', row(atk, 'Mortars reach the LOE')?.reason);
 check('Bn Attk: the click lands on the Obj', atk.items.find((i) => i.id === atk.pivotId)?.role === 'objTgt');
 const axis = atk.items.find((i) => i.role === 'axis');
-check('Bn Attk: axis arrow carries BASE_LN_PTS 400 m wide', !!axis?.base && Math.abs(Math.hypot(axis.base.start.x - axis.base.end.x, axis.base.start.y - axis.base.end.y) - 400) < 1);
+// IC1: the own Bn two up row, 450-650 m by night (IBB S47 para 17 a p 248), not the Foxland 400 m (IC s113 p 663)
+check('Bn Attk: axis arrow carries BASE_LN_PTS 450 m wide', !!axis?.base && Math.abs(Math.hypot(axis.base.start.x - axis.base.end.x, axis.base.start.y - axis.base.end.y) - 450) < 1);
 check('Bn Attk: LOE is the 2525D LOA (25140900)', atk.items.find((i) => i.role === 'loe')?.key === '25140900');
 check('Bn Attk: FUP unseen is not checked', row(atk, 'FUP unseen')?.st === 'unchecked');
 

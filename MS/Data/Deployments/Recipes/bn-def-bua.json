@@ -22,7 +22,7 @@
     "reserveReach",
     "mutualSupport"
   ],
-  "note": "A Bn defending a BUA by a number of localities of limited size (drawn at the doctrine Coy size), each held by a Coy, infiltration between them accepted (IBB S58 para 1 b p 319): A and B Coys on the main routes in, C Coy in depth, D Coy the central mobile reserve (paras 3 h, 13 pp 322, 324); a Pl screen on the outer perimeter to deceive and contest his first footholds (para 3 c pp 320-321); strong points in the strongest large buildings, mutually supporting and in depth; barricades, wire and mines on the main streets covered by their fire (para 3 g pp 321-322). Reinforcing a locality is often better than a counter-attack here (para 12 p 324).",
+  "note": "A Bn defending a BUA by a number of localities of limited size, each held by a Coy, infiltration between them accepted (IBB S58 para 1 b p 319; IC s82 para 1 b pp 439-440): A and B Coys on the main routes in, C Coy in depth, D Coy the central mobile reserve (paras 3 h, 13 pp 322, 324); a Pl screen on the outer perimeter to deceive and contest the En first footholds (para 3 c pp 320-321); strong points in the strongest large buildings, mutually supporting and in depth; barricades, wire and mines on the main streets covered by their fire (para 3 g pp 321-322). Each locality drawn 400 x 300 m (bua.locality, E): 'of a limited size' with no figure printed (IC s52 para 1 c p 203), three Pl blocks whose fields of fire are about 50-100 m (IC s52 para 4 a (3) p 204), mutual support only within a Pl (IC s51 para 5 a (3) p 200); the Localities row warns past bua.localityMaxM, and on the ground a locality mostly outside the built-up area warns. The RRs on the periphery covering the tankable approaches and the street crossings, a tank Tp with a Coy on the edge (IC s57 paras 4 b-c, 12 a pp 238-240). Reinforcing a locality is often better than a counter-attack here (para 12 p 324).",
   "slots": [
     {
       "role": "fwdL",
@@ -32,12 +32,11 @@
       "order": 1,
       "echelon": "15",
       "size": {
-        "wM": 1500,
-        "hM": 700
+        "doctrine": "bua.locality"
       },
       "seed": {
-        "acrossM": -1000,
-        "backM": -500
+        "acrossM": -500,
+        "backM": -300
       },
       "rule": {},
       "terrainRule": {
@@ -55,12 +54,11 @@
       "order": 1,
       "echelon": "15",
       "size": {
-        "wM": 1500,
-        "hM": 700
+        "doctrine": "bua.locality"
       },
       "seed": {
-        "acrossM": 1000,
-        "backM": -500
+        "acrossM": 500,
+        "backM": -300
       },
       "rule": {},
       "terrainRule": {
@@ -78,12 +76,11 @@
       "order": 2,
       "echelon": "15",
       "size": {
-        "wM": 1500,
-        "hM": 700
+        "doctrine": "bua.locality"
       },
       "seed": {
         "acrossM": 0,
-        "backM": 300
+        "backM": 250
       },
       "rule": {},
       "terrainRule": {
@@ -101,12 +98,11 @@
       "order": 2,
       "echelon": "15",
       "size": {
-        "wM": 1500,
-        "hM": 700
+        "doctrine": "bua.locality"
       },
       "seed": {
         "acrossM": 0,
-        "backM": 1100
+        "backM": 800
       },
       "rule": {
         "reach": {
@@ -136,8 +132,8 @@
       "shape": {
         "rect": {
           "acrossM": 0,
-          "backM": -1500,
-          "wM": 2000,
+          "backM": -800,
+          "wM": 1600,
           "hM": 150
         }
       }
@@ -151,8 +147,8 @@
       "echelon": "14",
       "shape": {
         "rect": {
-          "acrossM": -1000,
-          "backM": -550,
+          "acrossM": -500,
+          "backM": -330,
           "wM": 120,
           "hM": 120
         }
@@ -167,8 +163,8 @@
       "echelon": "14",
       "shape": {
         "rect": {
-          "acrossM": 1000,
-          "backM": -550,
+          "acrossM": 500,
+          "backM": -330,
           "wM": 120,
           "hM": 120
         }
@@ -184,7 +180,7 @@
       "shape": {
         "rect": {
           "acrossM": 0,
-          "backM": 300,
+          "backM": 250,
           "wM": 120,
           "hM": 120
         }
@@ -199,12 +195,12 @@
       "shape": {
         "pts": [
           [
-            -1150,
-            -950
+            -600,
+            -550
           ],
           [
-            -850,
-            -950
+            -400,
+            -550
           ]
         ]
       }
@@ -218,12 +214,12 @@
       "shape": {
         "pts": [
           [
-            850,
-            -950
+            400,
+            -550
           ],
           [
-            1150,
-            -950
+            600,
+            -550
           ]
         ]
       }
@@ -236,8 +232,8 @@
       "order": 3,
       "shape": {
         "at": [
-          900,
-          700
+          450,
+          500
         ]
       }
     },
@@ -250,7 +246,7 @@
       "shape": {
         "at": [
           0,
-          1600
+          1300
         ]
       }
     }

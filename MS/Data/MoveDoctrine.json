@@ -86,14 +86,15 @@
     "packet": { "basis": "R", "rule": "Packet: a small group of about four to six vehicles, each not less than 70 m apart.", "vehs": [4, 6], "minGapM": 70 },
     "space": {
       "basis": "R",
-      "rule": "An armd div (about 13,128 pers, 576 A and 2,077 B and C vehs) on two axes occupies 144 km by day and 64 km by night on each axis; an armd bde gp needs 12 to 16 map squares for assembly, an armd div 100 to 130.",
+      "rule": "An armd div (about 13,128 pers, 576 A and 2,077 B and C vehs) on two axes occupies 144 km by day and 64 km by night on each axis; an armd bde gp needs 12 to 16 map squares for assembly, an armd div 100 to 130. An Inf Div on two axes needs 112 km of road by day and 56 km by night; for concentration its fighting echelons need 20 map squares and the DAA 15-20 (GSP 1947 Inf Div in Battle Annex J para 1 g-h p 205).",
       "assyKm2": {
         "armd_div": [100, 130],
         "armd_bde": [12, 16],
-        "inf_div": [80, 110],
-        "inf_bde": [10, 14],
-        "bn": [2, 4],
-        "estimates": "inf_div, inf_bde and bn are E (scaled by vehicles from the armd figures)."
+        "inf_div": [20, 20],
+        "div_daa": [15, 20],
+        "inf_bde": [6, 7],
+        "bn": [2, 2],
+        "estimates": "inf_div (fighting echelons) and div_daa are R: GSP 1947 Inf Div in Battle Annex J para 1 h p 205 (27 Nov 2026; the E 80-110 they replace was four times the book). inf_bde and bn are E, decided 27 Nov 2026: a third of the book's Inf Div each way down (searched: GSP 1947 Annex J, SO's Hbk 2019 Sec 9: no Inf Bde or Bn figure printed)."
       }
     },
     "di": {
@@ -229,7 +230,8 @@
     "halts": { "basis": "O", "rule": "En Mov: a halt every 8 h of running for 60 min (crew, water).", "everyMin": 480, "haltMin": 60 },
     "trainsPerFmn": {
       "basis": "R",
-      "armd_div": { "whole": 55, "bVehsByRoad": 25, "rule": "An armd div needs 25 trains when B vehs fully loaded move by road, 55 when the whole div moves by rail." }
+      "armd_div": { "whole": 55, "bVehsByRoad": 25, "rule": "An armd div needs 25 trains when B vehs fully loaded move by road, 55 when the whole div moves by rail." },
+      "inf_div": { "bVehsByRoad": 10, "rule": "An Inf Div needs 10 trains when its B vehs move by road fully loaded and the heavy vehs and stores by train (GSP 1947 Inf Div in Battle Annex J para 1 f p 205)." }
     },
     "circuity": { "basis": "E", "factor": 1.25, "rule": "Without a rail route, the distance between stations is the straight line x 1.25." }
   },

@@ -231,6 +231,12 @@ MS/
   narrows, crossovers; drawn as the MS attack arrows (layer `ms-ground-guide-ipb-apch`), in tab 3 (replacing the single
   path), on the rail. Pure engine `GroundGuideIpbCorridors.ts`, map `GroundGuideIpbApchMap.ts`, tab 3
   `GroundGuideIpbApchView.ts`; `guide.ipbApproaches()`, `ipbApproachesAround()`; `node tools/ipb-test/corridors.mjs` (55 checks).
+  On mountain ground (IpbTemplates `mountainTest`) each approach is typed from the 30 m elevation across it as a valley,
+  nullah, ridge line or side slope (a fall within 1.5 km makes a ridge, a floor's sides are looked for out to 5 km so a broad
+  valley like the Swat at Mingora reads as a valley), with what MW s7 para 4 a p 78 says of it (LPs on the valley and ridge approaches of
+  the En's options, p 52), and the difficult one of those read is marked as normally lightly held (p 79); tab 3 cards,
+  Read As and Copy as Text (`mountainApproach`, `mtnHardestIndex`, IpbDoctrine `mountainApproach`; `node
+  tools/ipb-test/mtnapch.mjs`, 20 checks).
   Review fixes (24 Nov 2026): the slope is judged along each way's own heading from the elevation (a cell coded for slope
   alone is passable; SLOW-GO, and a climb at the SLOW-GO figure, weigh the book's day ratio for the mover, GO over SLOW-GO
   km/h (vehicles 1.5, foot 1.67; 3 without the rates; user, 24 Nov 2026), a climb at NO-GO is impassable, diagonal steps judged by
@@ -287,7 +293,12 @@ MS/
   (`ipb.mapAir`), rail line 4, Create on Map 'air' (LLTR, LZ, DZ, SHORAD EZ, OP); figures `IpbDoctrine.json air` (US T
   figures to confirm); `guide.ipbAir()`; `node tools/ipb-test/air.mjs` (33 checks). Review fixes (24 Nov 2026): the 10 : 1
   approach test counts the ground rising beside the LZ; existing helipads / airfields are favoured for own LZs only; the
-  other side's AD symbols on the map (`Rng.ad`, `hisAd`, cost `air.cost.ad`) are a cost on the air avenues. **Airspace
+  other side's AD symbols on the map (`Rng.ad`, `hisAd`, cost `air.cost.ad`) are a cost on the air avenues. In mountains (27 Nov
+  2026, `IpbDoctrine air.mountain`, MW pp 253-263; `node tools/ipb-test/mtnair.mjs`): own LZs masked from the En's view rank
+  higher (p 255), dry barren ground / snow and LZs at 2500 m or more (E) are cautioned (pp 256, 263), each LZ's wind line says
+  take off into the wind (p 255), and the Wx tiles carry MW's mountain weather notes by month and height (fog in the valleys
+  till 0900-1000, poor visibility above 2000 m, snow over the tracks above 2500 m, slides, flash floods; `coding.season.
+  mountainWx`, `mountainWxNotes`). **Airspace
   measures and gun-target lines** (`ipb.airspace`, `GroundGuideIpbAirspace.ts`, `node tools/ipb-test/airspace.mjs` 31 checks;
   24 Nov 2026): the 2525D ROZ / HIDACZ / ACA / engagement-zone symbols on the map read over each air avenue (share inside;
   what each means for the side that flies, `IpbDoctrine airspace`, FM 3-09 2024 App B pp B-9, B-20, B-27; joint definitions
@@ -414,7 +425,16 @@ MS/
   S (Pakistani book, US doctrine, civil standard: page + words, `calc` when worked out), M (method setting, not a military
   rule; shortcuts proved by tests), E (decision: `decided` + `searched`, shown "Decision, no book figure"). The US manuals
   and civil sources are kept in `Material/Literature/2. Online/` (git-ignored) so verify.py checks them locally (also .txt
-  web pages); run.mjs fails if any figure is unbacked, undecided or unchecked.
+  web pages); run.mjs fails if any figure is unbacked, undecided or unchecked. On mountain ground towed guns go **by
+  section** (MW pp 240, 244; `mountains.bySection`, `areas.sec` 200 x 100 m): `gunTaskFor` / `findGunSites` put a Bty in
+  two or three section sites 300 m-2 km apart (a Regt three such Btys), light (Pack How) and SP guns keep the
+  conventional area; the 🎯 panel reads its circle as mountains by the 400 m in 5 km test, the Plan Builder's G by the
+  fitted ground, and G adds one gun-area outline per section to the plan (`PlanArty.withGunSections`); `node
+  tools/sitefinder-test/gunsec.mjs` (19). On the same mountain test (`SiteScan.mountainGround`) the 🏕 admin finder adds
+  MW's rows (AdminDoctrine `mountains`, MW s25 para 3 pp 264-265): Slides (a slope over 35° above the area fails, over
+  25° warns where and when snow lies, p 281), Part way up (not the valley floor, p 9, nor the top), Rock / gravel,
+  Helipad Gr (recorded, or a level patch of 4° or less within 3 km, p 256) and Water for every kind (p 266); the downwind
+  side and defensible ground are a note to confirm (no wind or defence reading); `node tools/sitefinder-test/adminmtn.mjs` (26).
 - **AoiCheck** (`Engines/AoiCheck/`), **CrossSection** (`Engines/CrossSection/`) and **Compare** (`Engines/Compare/`) — three
   terrain tools, each optional and off by default (`features.aoiCheck` / `crossSection` / `compare`; top bar 🗺 AOI Check,
   📈 X-Section, ⚖ Compare, each with ⚙; Ctrl+K widgets; built 17 Nov 2026), on the shared `Engines/SiteScan/`. AOI Check:
@@ -577,7 +597,7 @@ MS/
   OPs / FPF on the crest, Fields of fire FDL to crest; IC s78 pp 429-431, IBB s69 pp 357-359; `revslope.mjs`); **withdrawal
   by night** (`bn-wdr-night`, `PlanWithdrawal.ts`: old HQ, aim back, new main posn; rear parties, RVs, EPs, routes back,
   intermediate posn beyond En field artillery and behind an obstacle (class grid + mapped canals / rivers), programme from
-  last light; Check my plan `checkWithdrawal`; `withdrawal.mjs`); Coy Attk, Bde Def, Div Def, Bde Attk recipes; **three
+  last light; Check my plan `checkWithdrawal`; `withdrawal.mjs`); Coy Attk, Bde Def, Div Def, Bde Attk recipes; **Div Attk** and a **Bde on a ditch cum bund** (`bde-def-dcb`, three Bns up, `PlanDcb.ts`: GSP s26 pp 118-121) (27 Nov 2026, `div-attk-main-left` / `-main-right` / `-one-up`, pure `PlanDivAttack.ts`: GSP 1947 Inf Div in Battle s19 pp 84-91: two Bdes up with a main and a Sp attack on clear axes, the Div reserve behind the main attack, or one Bde up in mountains; rows Div formation (judged on the ground by `groundNotes`), Clear axes, Main attack, Div reserve, Tasks in Bns (two down: each Bde's Lt / Rt / Res Bn drawn, `divAttack.bnsInDiv` 9); Task-step chips Phases 1 / 2 (P: Ph 2 by the Div reserve from FUP C between OBJ A and B onto OBJ C, rows Div phases, FUP C from OBJ C, Ph 2 through the gap, Fresh reserve) and Prelim op (OBJ P on each FUP's ground cleared by the Res Bns, p 89), `PlanDivAttack.withDivOptions`; the Div defences carry the three echelons of s23 pp 104-109 and the Div reserve of p 122; `node tools/planbuilder-test/idb.mjs`, see `IDB_Review.md`); **three
   phases** (`threePhaseRecipe`, P cycles 1-2-3) and an Obj 2 the user marks; the tank Sqn's Assy area (MIB p 118; was "harbour") and its move; FUP (Tks)
   against the En ATGM range from the ORBAT; Corps bridging when the span passes the division's 84 m; the patrol's Night
   March chart. Plan Builder texts say En / Own, never his / he.
@@ -588,7 +608,7 @@ MS/
   (`attack.assaultRowByEch`: Coy 250 m, Bn two up 450-650 m, IBB S47 para 17 a p 248; Bde GSP p 86, desert p 87) judged by
   day and by night on every ground (`assaultFrontageCheck`: desert twice by day, DW p 47; mountains narrower, MW p 79; plains
   wider by day with no figure, OOW2 s9 p 36: warns, never fails); a Bde / Div beyond its row on extended ground warns
-  (`frontageRowCheck`). No figure rests on the IBB p 277 margin tables ("Source: ARIB", a reader's note): check.mjs guards it. **Doctrine gaps (24 Nov 2026,** `Doctrine_Review.md`; `node tools/planbuilder-test/gaps.mjs`): `div-def-three-axes` (OOW1 Annex D), a Bn HQ in every Bn defence (IBB p 23), an AT Res in Bde / Div defences (OOW1 p 45), `groundNotes` (the mountain / desert / night / attack rules of MW, DW, MIB, IBB, OOW2 appended to rows, run last in the build, the fit and Check my plan), the mountain breach without lanes (MW pp 86, 106, 113), Mortars whole or split (IBB pp 54, 61), Coy RVs 200-500 yd (IBB p 381), crossing twin obstacle / regulated water / APC swim (IDD p 8, MIB pp 278-280). **Plan types (24 Nov 2026,** `Doctrine_Review.md`; `node tools/planbuilder-test/plantypes.mjs`, 78): `bn-delay` (`PlanDelay.ts`: DP 1-3 a 4.2 km hop apart, MIB pp 233-239, OOW3 p 29), `bn-wdr-day` (leap-frog through the depth, MIB pp 223-224, OOW3 pp 40-43), `bde-wdr-night` / `div-wdr-night` (`PlanWithdrawalFmn.ts`, OOW3 Annex P: two int posns, covering tps, flank guard, axes, Dml belt), mountain Bn Def ridge / penetrant / lateral / pass / valley and Bn Attk (Mtn) (`PlanMountain.ts`, MW pp 78-162), Bn Attk / Def (BUA) and the MIB Gp fixing force (`PlanBua.ts`, IBB S49 / S58, MIB s23 + Annex P); their rows through `PlanMountain.layoutRows` (build, fit, Check my plan). Withdrawal checks (`withdrawal.mjs`, 37): int posn view and flanks, rear parties per approach (MG 457 m, OOW3 p 27), Coy check pts, BL, passage lanes through the int posn (OOW3 Annex Q, pp 19, 48, 67).
+  (`frontageRowCheck`). No figure rests on the IBB p 277 margin tables ("Source: ARIB", a reader's note): check.mjs guards it. **Doctrine gaps (24 Nov 2026,** `Doctrine_Review.md`; `node tools/planbuilder-test/gaps.mjs`): `div-def-three-axes` (OOW1 Annex D), a Bn HQ in every Bn defence (IBB p 23), an AT Res in Bde / Div defences (OOW1 p 45), `groundNotes` (the mountain / desert / night / attack rules of MW, DW, MIB, IBB, OOW2 appended to rows, run last in the build, the fit and Check my plan), the mountain breach without lanes (MW pp 86, 106, 113), Mortars whole or split (IBB pp 54, 61), Coy RVs 200-500 yd (IBB p 381), crossing twin obstacle / regulated water / APC swim (IDD p 8, MIB pp 278-280). **Plan types (24 Nov 2026,** `Doctrine_Review.md`; `node tools/planbuilder-test/plantypes.mjs`, 78): `bn-delay` (`PlanDelay.ts`: DP 1-3 a 4.2 km hop apart, MIB pp 233-239, OOW3 p 29), `bn-wdr-day` (leap-frog through the depth, MIB pp 223-224, OOW3 pp 40-43), `bde-wdr-night` / `div-wdr-night` (`PlanWithdrawalFmn.ts`, OOW3 Annex P: two int posns, covering tps, flank guard, axes, Dml belt), mountain Bn Def ridge / penetrant / lateral / pass / valley and Bn Attk (Mtn) (`PlanMountain.ts`, MW pp 78-162), Bn Attk / Def (BUA) and the MIB Gp fixing force (`PlanBua.ts`, IBB S49 / S58, MIB s23 + Annex P); their rows through `PlanMountain.layoutRows` (build, fit, Check my plan). **Mountain Warfare re-read (27 Nov 2026,** `MW_Review.md`; `node tools/planbuilder-test/mw.mjs`): an uphill assault in mountains is timed on the slant with 1 h per 350 m of climb on the covering fire (MW Annex F pp 311-313; `HSum.uphill`); Ph 3 by recycled Coys warns (MW s17 p 210); Strong points and the mountain attack's Objective are read on the elevation (`readFeature`: each Coy posn's top is its Pl SP, overlooked by higher ground outside the own posns within 600 m, E; MW s12 para 9 p 152, s7 para 3 p 78). MW numbers its sections 1-25 straight through: cite s7 Attack, s8 Strong Point, s12 Defence. A mountain defence's row *Weapon angles* (PlanFit) judges each forward posn's angle onto the main approach against the MG's 6° / 8.5° and the RR's 30° / 5° (MW p 221; RRs in the foothills, p 225); every mountain attack gets *Strong point drill* (groundNotes; MW s8 pp 101-121, warns by day, p 103). **Salient plans** (MW s9 / s14; `node tools/planbuilder-test/salient.mjs`): `bde-def-mtn-salient` (family Bde Def (Mtn): strong shoulders, the arch held lightly as Pl SPs, depth localities prepared (`cpen`, dashed), the Bde reserve central; rows Shoulders, Arch, Reserve central, Depth, Salient) and `bde-attk-mtn-salient` (Bde Attk (Mtn), MW Figure 4 p 131: the arch fixed (`fix`, 2525D Fixation), the main and secondary attacks onto the base from both flanks, infiltration to the base (Infiltration Lane), three Assy Areas; rows Base or shoulder, Front fixed, Infiltration to the base, Assembly, Reserve per axis, Deception, Arty and DAA); figures `PlanDoctrine mountain.salient` (M). A formation's Reserve share counts its Bns only, never a Coy-size posn it draws. Withdrawal checks (`withdrawal.mjs`, 37): int posn view and flanks, rear parties per approach (MG 457 m, OOW3 p 27), Coy check pts, BL, passage lanes through the int posn (OOW3 Annex Q, pp 19, 48, 67).
   Review fixes (23 Nov 2026), checked by `node tools/planbuilder-fixes/run.mjs` (18): the ground's kind needs class data
   (elevation alone is never "plains"); no approach found is grey, never a Pass; Check my plan faces each posn by its drawn
   open face and times the drawn Sup / C Pen posns; the alternate's move one way (foot rate x under-fire factor + settle);

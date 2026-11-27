@@ -1,0 +1,235 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": false
+  },
+  "id": "bde-def-mtn-salient",
+  "family": "bde-def-mtn",
+  "layout": "salient",
+  "echelon": "18",
+  "unit": "inf-bde",
+  "basis": "D",
+  "name": "Bde Def (Mtn): a salient, strong shoulders, the arch held lightly",
+  "frontageRow": "Brigade, two battalions up",
+  "subRow": null,
+  "alternates": [],
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "flanks",
+    "exposure",
+    "reserveReach",
+    "mutualSupport",
+    "fieldOfFire"
+  ],
+  "note": "A salient is own ground projecting toward the En, an enclave for him (MW s9 para 2 a p 124); it radiates threats on several axes and leaves little room to deploy (p 126). Its defence (MW s14 pp 178-179): the outer periphery, the central arch, held lightly with strong dispositions on the shoulders; key features as Pl / Coy strong points with the bias toward the shoulders (para 1 a); the depth localities prepared for occupation by the reserves at short notice, some partly occupied from the outset (para 1 b), drawn planned (dashed) here; the reserves central, quick to reinforce or recapture on interior lines (para 1 f, h), split per sub-sector where the tracks are poor (para 2 d). The Left and Right Bns hold the shoulders, B Coy of the third Bn the arch as Pl strong points, the rest of that Bn the Bde reserve in the centre. A Bn guards one major approach in an important sub-sector, wider frontages with wide gaps elsewhere (para 1 g); the arch takes more troops than a linear border and is fired on from three sides, and the En's envelopment is aimed at its base (para 2 a-c). Laid square to the threat on the Bde row (OoW Vol I Annexes B-D, a yardstick; MW prints no figure, frontages large in mountains, MW p 148). The shoulders face out as well as forward: turn their localities on the ground.",
+  "slots": [
+    {
+      "role": "shL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Left Bn, L shoulder",
+      "echelon": "16",
+      "order": 1,
+      "size": {
+        "wM": 4500,
+        "hM": 3000
+      },
+      "seed": {
+        "acrossM": -3700,
+        "backM": -500
+      },
+      "rule": {},
+      "terrainRule": {
+        "prefer": [
+          "highGround",
+          "itg"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "shR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Right Bn, R shoulder",
+      "echelon": "16",
+      "order": 1,
+      "size": {
+        "wM": 4500,
+        "hM": 3000
+      },
+      "seed": {
+        "acrossM": 3700,
+        "backM": -500
+      },
+      "rule": {},
+      "terrainRule": {
+        "prefer": [
+          "highGround",
+          "itg"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "arch",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "B Coy (Res Bn), the arch: Pl SPs",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": -3200
+      },
+      "rule": {},
+      "terrainRule": {
+        "prefer": [
+          "highGround",
+          "itg"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "Res Bn less B Coy (Bde Res, central)",
+      "echelon": "16",
+      "order": 2,
+      "size": {
+        "wM": 2400,
+        "hM": 1400
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": 0
+      },
+      "rule": {
+        "reach": {
+          "slots": [
+            "shL",
+            "shR",
+            "arch"
+          ]
+        }
+      },
+      "terrainRule": {
+        "vehicleAccess": false,
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "depthL",
+      "kind": "cpen",
+      "sym": "25151200",
+      "label": "Depth locality L (prepared, partly occupied)",
+      "echelon": "15",
+      "order": 2,
+      "planned": true,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": -1800,
+        "backM": 1700
+      },
+      "rule": {},
+      "terrainRule": {
+        "prefer": [
+          "highGround"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "depthR",
+      "kind": "cpen",
+      "sym": "25151200",
+      "label": "Depth locality R (prepared, partly occupied)",
+      "echelon": "15",
+      "order": 2,
+      "planned": true,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 1800,
+        "backM": 1700
+      },
+      "rule": {},
+      "terrainRule": {
+        "prefer": [
+          "highGround"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bde HQ",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          2700
+        ]
+      }
+    },
+    {
+      "role": "atRes",
+      "kind": "point",
+      "sym": "15111200",
+      "label": "AT Res",
+      "order": 3,
+      "shape": {
+        "at": [
+          1300,
+          900
+        ]
+      }
+    },
+    {
+      "role": "fdl",
+      "kind": "line",
+      "sym": "25140400",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "joins": [
+          "shL",
+          "arch",
+          "shR"
+        ],
+        "edge": "front"
+      }
+    }
+  ]
+}

@@ -13,7 +13,7 @@
   "needs": {
     "terrain": false
   },
-  "note": "IC s44 pp 152-153, Fig 16 (R): an area ambush, not laid by less than a Pl, when the target cannot be taken in one killing zone: a central ambush site (laid as the line ambush) and outlying ambushes on the En's ways into and out of it, here one up the Rd toward the En and one down it, 400-1200 m from the central KZ (E). Each outlying ambush is a point ambush of its own (a Sec): sited at the best stretch in its band and read for the KZ in view. The Pl Comd stays at the central KZ until it is sprung; the outlying ambushes then stop anyone getting in or out. RV 750-900 m back (IC p153).",
+  "note": "IC s44 para 11 b pp 152-153, Fig 16: an area ambush, not laid by less than a Pl, when the target cannot be taken in one killing zone: a central ambush site (laid as the line ambush, with its stops, reserve and covering group) and outlying ambushes on the En's ways into and out of it, here Outlying 1 up the Rd toward the En (y +) and Outlying 2 down it, 400-1200 m from the central KZ (a decision, E: IC prints no distance). Each outlying ambush is a point ambush of its own (a Sec): sited at the best stretch in its band and read for the KZ in view. The Pl Comd stays at the central KZ until it is sprung; the outlying ambushes then stop anyone getting in or out. RV 750-900 m back (IC s44 para 13 p 153).",
   "pivot": "kzTgt",
   "slots": [
     {
@@ -114,6 +114,20 @@
       }
     },
     {
+      "role": "cov",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Cov Gp",
+      "echelon": "12",
+      "order": 2,
+      "shape": {
+        "at": [
+          190,
+          -70
+        ]
+      }
+    },
+    {
       "role": "rv",
       "kind": "point",
       "sym": "25131400",
@@ -123,6 +137,20 @@
         "at": [
           800,
           0
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Res",
+      "echelon": "11",
+      "order": 3,
+      "shape": {
+        "at": [
+          260,
+          40
         ]
       }
     },

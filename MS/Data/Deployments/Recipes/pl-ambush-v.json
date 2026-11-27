@@ -13,7 +13,7 @@
   "needs": {
     "terrain": false
   },
-  "note": "Plan metres from the KZ centre (the click), y toward where the enemy comes from (the aim). KZ 150 m along the road (E, MovementDoctrine ambush.kzM), the fire group 60 m beside it in cover (30-120 m), stop groups 100 m beyond each end, the RV 800 m back (R: 750-900 m). V: high ground on both sides; a leg each side, opening toward the En, arcs fixed so they do not fire into each other. With the terrain the layout is laid on the road the click is on, the side and the RV from the ground (MovementGuidePlans.ambushSiteAt), and checked: the vehicles cannot leave the road, hidden from the vehicles 300 m behind, covered withdrawal, no post or police within 3 km, no village within 1 km.",
+  "note": "Plan metres from the KZ centre (the click), y toward where the En comes from (the aim), x across (the RV side +); the seeds are written [across, back], so a seed back -175 lies 175 m toward the En. KZ 150 m along the Rd (E, MovementDoctrine ambush.kzM; tanks 400 m, E: the whole column comes into the site, IC s46 para 9 p 172), the fire group beside it in cover: by night 30-120 m, point blank (IC s44 para 17 a p 157; the band E), by day up to 250 m, longer ranges (para 16 b p 157; E), the Day / Night choice. Stop 1 100 m beyond the En end of the KZ, Stop 2 beyond the far end (E), the RV 800 m back (IC s44 para 13 p 153: 750-900 m). A reserve on the same side of the position as the RV (IC s44 para 8 c p 149) and a covering group with the automatic weapons back from the fire line, to take on a reacting En and cover the withdrawal (para 15 b (3)-(4) p 156; places E). V: the party in two halves on either side of the Rd with interlocking fire, a third portion (the Cov Gp) covering the withdrawal of the assaulting groups (IC s44 para 18 c p 158). IC does not say which way the V opens (its Fig 19 shows the two halves' fire converging on the KZ); here the halves open toward the En (E), so the column drives into the narrowing V, their arcs fixed so they never fire into each other. With the terrain the layout is laid on the road the click is on, the side and the RV from the ground (MovementGuidePlans.ambushSiteAt), and checked: the vehicles cannot leave the road, hidden from the vehicles 300 m behind, covered withdrawal, no post or police within 3 km, no village within 1 km.",
   "pivot": "kzTgt",
   "slots": [
     {
@@ -155,6 +155,20 @@
       }
     },
     {
+      "role": "cov",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Cov Gp",
+      "echelon": "12",
+      "order": 2,
+      "shape": {
+        "at": [
+          190,
+          -70
+        ]
+      }
+    },
+    {
       "role": "rv",
       "kind": "point",
       "sym": "25131400",
@@ -164,6 +178,20 @@
         "at": [
           800,
           0
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Res",
+      "echelon": "11",
+      "order": 3,
+      "shape": {
+        "at": [
+          260,
+          40
         ]
       }
     },

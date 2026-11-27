@@ -63,6 +63,12 @@ export interface AirRules {
   firmFlat: { cls: number[]; share: number; bonus: number };
   /** Own counter-measures against the En heliborne landing (IBB pp 126, 343-344), named under his LZs. */
   heliCounter: string[];
+  /**
+   * Army aviation in mountains (IpbDoctrine `air.mountain`, MW pp 253-258, 263): the weight a masked own LZ gains, the
+   * dry barren / snow classes that raise dust or snow clouds and the share of an LZ that cautions it, the height above
+   * which the lift is cautioned, and the notes under the Air tab.
+   */
+  mtn: { maskW: number; dustCls: Uint8Array; dustShare: number; altM: number; notes: string[] };
   cost: {
     cellM: number;
     seen: number;
@@ -141,6 +147,13 @@ export function airRulesFrom(doc: any): AirRules {
     opWithinM: num(A.heliborne?.opWithinM?.value, 3000),
     firmFlat: { cls: Array.isArray(A.clear?.firmFlat?.classes) ? A.clear.firmFlat.classes.map(Number) : [12], share: num(A.clear?.firmFlat?.share, 0.5), bonus: num(A.clear?.firmFlat?.bonus, 1.5) },
     heliCounter: Array.isArray(A.heliborne?.counter?.value) ? A.heliborne.counter.value.map(String) : [],
+    mtn: {
+      maskW: num(A.mountain?.masked?.weight, 3),
+      dustCls: flags(A.mountain?.dust?.classes, [8, 12, 13, 14, 17, 47]),
+      dustShare: num(A.mountain?.dust?.share?.value, 0.25),
+      altM: num(A.mountain?.altitudeM?.value, 2500),
+      notes: Array.isArray(A.mountain?.notes?.value) ? A.mountain.notes.value.map(String) : [],
+    },
     cost: {
       cellM: num(C.cellM, 150),
       seen: num(C.seen, 4),
@@ -244,6 +257,8 @@ export interface AirLz {
   points: number;
   slopeDeg: number;
   mountain: boolean;
+  /** The square's mean height above sea level, metres (null: no elevation). */
+  elevM: number | null;
   /** Slope over the limit but within the caution figure, or ground to land on with care. */
   caution: string[];
   /** Chance the other side sees it, 0-1 (0.5 or more in view, 0.2 may be; null: no other side's eyes in the area). */
@@ -739,7 +754,7 @@ export function airIpb(a: AirArgs): AirResult {
     }
     return out;
   };
-  interface Cand { x: number; y: number; slope: number; mountain: boolean; caution: string[]; approaches: number[]; existing: string | null; pre: number; along: number; firm: boolean }
+  interface Cand { x: number; y: number; slope: number; mountain: boolean; caution: string[]; approaches: number[]; existing: string | null; pre: number; along: number; firm: boolean; elevM: number | null }
   const squares = (kind: 'lz' | 'dz', sideM: number, lengthM: number): Cand[] => {
     if (!zw || !zh) return [];
     const nW = Math.max(1, Math.ceil(sideM / res)), nL = Math.max(1, Math.ceil(lengthM / res));
@@ -781,7 +796,7 @@ export function airIpb(a: AirArgs): AirResult {
       if (ex) caution.push(blocked > 0 ? 'existing site: the bundle shows obstacles on it, check it on the ground' : 'existing site: its size and state not recorded, check it');
       if (ex && a.enemyLz) caution.push('an existing site is obvious and likely watched: not favoured for the En LZ');
       // The square's own elevation (the mean of its cells), for the ground rising beside it.
-      let eSum = 0, eN = 0, flat = 0, cN = 0;
+      let eSum = 0, eN = 0, flat = 0, cN = 0, dusty = 0;
       for (let v = 0; v < nL; v++)
         for (let u = 0; u < nW; u++) {
           const xx = x + u, yy = y + v;
@@ -790,7 +805,14 @@ export function airIpb(a: AirArgs): AirResult {
           if (e === e) ((eSum += e), eN++);
           cN++;
           if (R.firmFlat.cls.includes(g.cls[yy * w + xx])) flat++;
+          if (R.mtn.dustCls[g.cls[yy * w + xx]]) dusty++;
         }
+      const elevM = eN ? eSum / eN : null;
+      // Mountains (MW p 256): dry barren ground raises dust clouds that give the landing away and blind the pilot, and
+      // snow the same; the lift falls with altitude and hovering touch-downs are limited by density altitude and weight
+      // (pp 256, 263). Read from the bundle's classes and the 30 m elevation: confirm on the ground.
+      if (kind === 'lz' && mountain && cN && dusty / cN >= R.mtn.dustShare) caution.push(`${Math.round((100 * dusty) / cN)} % dry barren ground or snow: dust or snow clouds may give the landing away and blind the pilot (MW p 256), check on the ground`);
+      if (kind === 'lz' && mountain && elevM !== null && elevM >= R.mtn.altM) caution.push(`${Math.round(elevM)} m above sea level: the lift falls with altitude and hovering touch-downs are limited by density altitude and weight (MW pp 256, 263): lighter loads, back well before last light`);
       // Firm desert flats (DW p 66: dhars are excellent ready-made landing strips) rank higher.
       const firm = cN > 0 && flat / cN >= R.firmFlat.share;
       const app = approachesOf(cx, cy, nW / 2, nL / 2, eN ? eSum / eN : NaN);
@@ -800,7 +822,7 @@ export function airIpb(a: AirArgs): AirResult {
       // A slope over the limit ranks below every LZ within it (safety first: land where no care is needed). An existing
       // site is favoured for own LZs only: the enemy does not land on an obvious, watched site in your rear.
       const pre = 2 * Math.max(0, (R.slopeCautionDeg - s90) / R.slopeCautionDeg) + 2 * (app.length / 8) + (opp ? 1 : 0) + (d === null ? 0 : 3 * (1 - Math.min(1, d / 8000))) - 2 * (nc / all) - (s90 > okDeg ? 4 : 0) + (ex && !a.enemyLz ? 6 : 0) + (firm ? R.firmFlat.bonus : 0);
-      return { x: cx, y: cy, slope: s90, mountain, caution, approaches: app, existing: ex ? `${ex.label}${ex.name ? ` ${ex.name}` : ''}` : null, pre, along: alongOf(cx, cy), firm };
+      return { x: cx, y: cy, slope: s90, mountain, caution, approaches: app, existing: ex ? `${ex.label}${ex.name ? ` ${ex.name}` : ''}` : null, pre, along: alongOf(cx, cy), firm, elevM };
     };
     for (let y = zy0; y + nL <= zy1; y += step)
       for (let x = zx0; x + nW <= zx1; x += step) {
@@ -841,7 +863,10 @@ export function airIpb(a: AirArgs): AirResult {
   const finish = (kind: 'lz' | 'dz', cands: Cand[], sideM: number, lengthM: number, max: number, points = pts): AirLz[] => {
     const list = shortlist(cands, kind === 'lz' ? 1200 : 1500, 40).map((c) => {
       const sp = seenP(c.x, c.y, kind === 'lz' ? C.landedM : 1.7);
-      return { c, sp, score: c.pre + (sp === null ? 0 : 4 * (1 - sp)) };
+      // In mountains own landing sites are shielded from the En's observation by masking terrain or woods (MW p 255):
+      // the masked one ranks higher still (air.mountain.masked.weight, M). Not for the En's LZs (that is his choice).
+      const masked = kind === 'lz' && c.mountain && !a.enemyLz && sp !== null ? R.mtn.maskW * (1 - sp) : 0;
+      return { c, sp, score: c.pre + (sp === null ? 0 : 4 * (1 - sp)) + masked };
     });
     list.sort((p, q) => q.score - p.score);
     return list.slice(0, max).map((e, i) => {
@@ -851,7 +876,9 @@ export function airIpb(a: AirArgs): AirResult {
       if (c.existing) bits.push(c.existing);
       if (c.firm) bits.push('firm desert flat (DW p 66)');
       bits.push(`slope ${c.slope.toFixed(0)}°`);
-      bits.push(e.sp === null ? 'concealment not judged' : e.sp >= 0.5 ? 'in view of the other side' : e.sp >= 0.2 ? 'may be seen by the other side' : 'hidden from the other side');
+      const mtnOwn = kind === 'lz' && c.mountain && !a.enemyLz;
+      bits.push(e.sp === null ? 'concealment not judged' : e.sp >= 0.5 ? 'in view of the other side' : e.sp >= 0.2 ? 'may be seen by the other side' : mtnOwn ? "masked from the En's view (MW p 255)" : 'hidden from the other side');
+      const caution = mtnOwn && e.sp !== null && e.sp >= 0.5 ? [...c.caution, 'in view of the En: in mountains a landing site and its approaches are shielded by masking terrain or woods (MW p 255)'] : c.caution;
       if (d !== null) bits.push(`${(d / 1000).toFixed(1)} km from the Obj`);
       bits.push(c.approaches.length ? `${c.approaches.length} of 8 approaches clear` : 'no clear approach by 10 : 1');
       return {
@@ -864,7 +891,8 @@ export function airIpb(a: AirArgs): AirResult {
         points: kind === 'lz' ? points : 0,
         slopeDeg: c.slope,
         mountain: c.mountain,
-        caution: c.caution,
+        elevM: c.elevM === null ? null : Math.round(c.elevM),
+        caution,
         seenP: e.sp,
         distObjM: d,
         approaches: c.approaches,
@@ -890,6 +918,8 @@ export function airIpb(a: AirArgs): AirResult {
   }
   const dzs = a.dz === false ? [] : finish('dz', squares('dz', R.dzW, R.dzL), R.dzW, R.dzL, a.maxDz ?? 3);
   if (!lzs.length) notes.push(`No LZ for ${pts > 1 ? `${pts} landing points or one` : 'one landing point'} of ${lpD} m (size ${a.lzClass}) in the zone: clear ground, slope and approaches all fail.`);
+  // Army aviation in mountains (MW pp 257-258): what the book says of air support there, once, when the LZs are in mountains.
+  if ([...lzs, ...dzs].some((z) => z.mountain)) for (const n of R.mtn.notes) notes.push(n);
 
   // Against the En heliborne landing (IBB pp 126, 343-344): not more than a Coy against a forward Bn; own counter-measures.
   if (a.enemyLz && lzs.length && R.heliCounter.length)

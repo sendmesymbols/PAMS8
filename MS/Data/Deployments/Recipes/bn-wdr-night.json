@@ -15,7 +15,7 @@
     "terrain": false
   },
   "pivot": "hq",
-  "note": "A Bn two up withdrawing by night (IC s91-93 pp 481-491; IBB s72-76 pp 366-386). The click is the Bn HQ of the old posn; the aim is the direction of withdrawal, the second click the new main posn (planned). Rear parties (a Pl of each forward Coy with part of the weapon section, IC p 488) hold to the time of abandonment; Coy RVs where the Pls gather, the Bn checkpoint and Bn RV on the routes back (IC s92 paras 7-8 pp 486-487); Coy embussing points 1500-2000 m behind the old posn on the Coy routes (IBB s75 para 20 p 383), the Bn EP behind the Bn RV with a covering Pl of the depth Coys (IBB p 379); the intermediate posn, a Coy group (IBB p 379), far enough back that the En must move its field artillery first (IBB s74 para 4 e p 373: the En 105 mm IFG 17.2 km, ORBAT) and behind an obstacle if there is one (IC p 482); part of the artillery repositioned 5000-6000 m back from the old gun area, taken at the Bn rear (IBB s76 para 5 p 385). The programme from last light follows IBB s75 para 11 pp 379-380. Battle Posns are drawn turned to face the enemy behind the plan. Coy check pts behind the forward Coys and the BL across the front at the Bn check pt (OOW3 Annex Q p 76; p 67); two passage lanes and a contact point through the intermediate posn (OOW3 s10 p 48); the rear parties on the inner flanks of the forward Coys, over the approach between them (OOW3 p 27).",
+  "note": "A Bn two up withdrawing by night (IC s90-93 pp 472-490; IBB s72-76 pp 366-386). The click is the Bn HQ of the old posn; the aim is the direction of withdrawal, the second click the new main posn (planned). Rear parties (a Pl of each forward Coy with part of the weapon section, IC p 488) hold to the time of abandonment, with their own RV and a separate embussing point near it, well forward (IC s92 para 8 c p 487, para 14 p 488); Coy RVs where the Pls gather, the Bn checkpoint and Bn RV on the routes back (IC s92 paras 7-8 pp 486-487); Coy embussing points 1500-2000 m behind the old posn on the Coy routes (IBB s75 para 20 p 383; IC s92 para 8 c pp 486-487 makes one Bn EP the normal case and Coy EPs well in the rear on the Coy routes where the Coys are spread out and parallel routes allow: the books differ), the Bn EP behind the Bn RV with a covering Pl of the depth Coys (IBB p 379; IC s92 para 11 p 487); the intermediate posn, a Coy group (IBB p 379), far enough back that the En must move its field artillery first (IBB s74 para 4 e p 373; IC s91 para 3 b p 481: the En 105 mm IFG 17.2 km, ORBAT) and behind an obstacle if there is one (IC s91 para 3 e p 482); part of the artillery repositioned 5000-6000 m back from the old gun area, taken at the Bn rear (IBB s76 para 5 p 385). The programme from last light follows IBB s75 para 11 pp 379-380, with IC's essential timings (no rearward move before, thinning out a few minutes before the time of denial: s90 para 15 pp 478-479) and a part of the mortars kept with the rear parties to the end (IC s92 paras 1, 13 pp 484, 488; IBB p 380 withdraws them at denial). Battle Posns are drawn turned to face the enemy behind the plan. Coy check pts behind the forward Coys and the BL across the front at the Bn check pt (OOW3 Annex Q p 76; p 67); two passage lanes and a contact point through the intermediate posn (OOW3 s10 p 48); the rear parties on the inner flanks of the forward Coys, over the approach between them (OOW3 p 27).",
   "checks": [],
   "slots": [
     {
@@ -302,6 +302,32 @@
         ]
       },
       "echelon": "14"
+    },
+    {
+      "role": "rvRp",
+      "kind": "point",
+      "sym": "25131400",
+      "label": "Rear Party RV",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          600
+        ]
+      }
+    },
+    {
+      "role": "epRp",
+      "kind": "point",
+      "sym": "25131700",
+      "label": "Rear Party EP",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          400
+        ]
+      }
     },
     {
       "role": "rtA",

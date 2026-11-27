@@ -264,7 +264,28 @@
       "echelon": "18",
       "unit": "inf-bde",
       "recipes": [
-        "bde-def-two-up"
+        "bde-def-two-up",
+        "bde-def-dcb"
+      ]
+    },
+    {
+      "id": "bde-def-mob",
+      "name": "Armd Bde Mobile Def",
+      "task": "defence",
+      "echelon": "18",
+      "unit": "armr-iabg",
+      "recipes": [
+        "bde-def-mobile"
+      ]
+    },
+    {
+      "id": "bde-def-mtn",
+      "name": "Bde Def (Mtn)",
+      "task": "defence",
+      "echelon": "18",
+      "unit": "inf-bde",
+      "recipes": [
+        "bde-def-mtn-salient"
       ]
     },
     {
@@ -279,6 +300,16 @@
       ]
     },
     {
+      "id": "div-def-mtn",
+      "name": "Div Def (Mtn)",
+      "task": "defence",
+      "echelon": "21",
+      "unit": "inf-div",
+      "recipes": [
+        "div-def-mtn-valleys"
+      ]
+    },
+    {
       "id": "bde-attk",
       "name": "Bde Attk",
       "task": "attack",
@@ -286,6 +317,28 @@
       "unit": "inf-bde",
       "recipes": [
         "bde-attk-two-up"
+      ]
+    },
+    {
+      "id": "bde-attk-mtn",
+      "name": "Bde Attk (Mtn)",
+      "task": "attack",
+      "echelon": "18",
+      "unit": "inf-bde",
+      "recipes": [
+        "bde-attk-mtn-salient"
+      ]
+    },
+    {
+      "id": "div-attk",
+      "name": "Div Attk",
+      "task": "attack",
+      "echelon": "21",
+      "unit": "inf-div",
+      "recipes": [
+        "div-attk-main-left",
+        "div-attk-main-right",
+        "div-attk-one-up"
       ]
     }
   ]
