@@ -5,16 +5,16 @@
  *   pp 120-121). So the Bde's depth is its Bns' own (a Bn along an AT ditch 1850-2757 m, IBB Annex V App 9 p 485), not
  *   the plains Bde's 4-6 km (OoW Vol I Annexes B-D): the solver's Depth row is judged again on that.
  * - Gaps covered: by artillery fire, automatics, AT fire, mines and patrols (para 8 c p 121): mines in each gap.
- * - Contingency posns: prepared in depth astride his major axes, the frontages being extended (para 8 f p 121).
+ * - Contingency posns: prepared in depth astride the En major axes, the frontages being extended (para 8 f p 121).
  * - Protective elements: surveillance and protective elements ahead of the obstacle if the terrain and space permit
  *   (para 6 p 120).
  * - Reserves: the strong mobile reserves for counter-penetration and counter-attack are the Div's (para 6 p 120; para
- *   8 g p 121); he assaults at two or three points in one night, two at most (para 8 d-e p 121).
+ *   8 g p 121); the En assaults at two or three points in one night, two at most (para 8 d-e p 121).
  *
  * Pure: plan metres, y toward the enemy (the solver's frame).
  */
 import type { DoctrineSet, Recipe } from './PlanRecipes';
-import { frontageRow, resolveRange } from './PlanRecipes';
+import { doctrineAt, frontageRow, resolveRange } from './PlanRecipes';
 import type { Check, PlanItem } from './PlanSolve';
 
 const G = 'GSP 1947 Inf Div in Battle';
@@ -64,18 +64,37 @@ export function dcbRows(items: PlanItem[], recipe: Recipe, doc: DoctrineSet, row
   const cps = items.filter((i) => kindOf(i.role) === 'cpen' && i.pts.length);
   const rear = fwd.length ? Math.min(...fwd.map((b) => ext(b.pts).y0)) : 0;
   const behind = cps.filter((c) => ext(c.pts).y1 <= rear + 1).length;
-  rows.push({ name: 'Contingency posns', st: cps.length && behind === cps.length ? 'pass' : 'warn', reason: `${cps.length} prepared contingency posn${cps.length === 1 ? '' : 's'} in depth (${behind} behind the Bns), astride his major axes because of the extended frontage (${G} s26 para 8 f p 121); he assaults a DCB at two or three points, aiming to finish in one night, two at most (para 8 d-e)` });
-  confirm.push('The contingency posns astride his major axes on the ground, prepared and their occupants named');
+  rows.push({ name: 'Contingency posns', st: cps.length && behind === cps.length ? 'pass' : 'warn', reason: `${cps.length} prepared contingency posn${cps.length === 1 ? '' : 's'} in depth (${behind} behind the Bns), astride the En major axes because of the extended frontage (${G} s26 para 8 f p 121); the En assaults a DCB at two or three points, aiming to finish in one night, two at most (para 8 d-e)` });
+  confirm.push('The contingency posns astride the En major axes on the ground, prepared and their occupants named');
 
   // protective elements ahead of the obstacle (para 6)
   const scr = at('scr'), ditch = at('xTgt');
   const ahead = scr && ditch ? Math.max(...scr.pts.map((p) => p.y)) - ditch.pts[0].y : 0;
   rows.push(scr
-    ? { name: 'Protective elements', st: 'pass', m: ahead, reason: `a screen ${fmtM(ahead)} ahead of the ditch: surveillance and protective elements ahead of the obstacle to gain information, impose delay and cause attrition before he contacts the DCB, if the terrain and space permit (${G} s26 para 6 p 120); DCBs lie 1-6 km from the border (para 1 p 118)` }
+    ? { name: 'Protective elements', st: 'pass', m: ahead, reason: `a screen ${fmtM(ahead)} ahead of the ditch: surveillance and protective elements ahead of the obstacle to gain information, impose delay and cause attrition before the En contacts the DCB, if the terrain and space permit (${G} s26 para 6 p 120); DCBs lie 1-6 km from the border (para 1 p 118)` }
     : { name: 'Protective elements', st: 'warn', reason: `none ahead of the ditch: if the terrain and space permit, surveillance and protective elements are sited ahead of the obstacle (${G} s26 para 6 p 120)` });
 
   // reserves: the Div's (para 6; para 8 g)
   rows.push({ name: 'Reserves', st: 'pass', reason: `no Bde reserve Bn: the depth is the Bns' own (para 8 b); the strong mobile reserves of infantry and armour for counter-penetration and counter-attack are the Div's (${G} s26 para 6 p 120, para 8 g p 121)` });
   confirm.push('The Div reserve\'s counter-penetration and counter-attack tasks in this Bde\'s sector');
   return { rows, confirm };
+}
+
+/**
+ * A Div defence on obstacle ground (a DCB, a canal): how many of the approaches the fit read carry an En Div. A Div
+ * should normally not be asked to defend more than two divisional size major approaches unless it is allocated
+ * additional resources (GSP 1947 s26 para 5 p 119; PlanDoctrine terrain.kinds.obstacle.divMajorApchsMax). Null for any
+ * other plan, ground, or when no approach was read. `carries`: the largest En echelon an approach takes (null: not
+ * known, counted as major); `levelOf` ranks echelons (PlanContext).
+ */
+export function divApproachesRow(recipe: Recipe, kind: string | null, approaches: { id: string; carries?: string | null }[], doc: DoctrineSet, levelOf: (ech: string | null | undefined) => number | null): Check | null {
+  if (recipe.task !== 'defence' || recipe.echelon !== '21' || kind !== 'obstacle' || !approaches.length) return null;
+  const v = resolveRange(doc, doctrineAt(doc, 'terrain.kinds.obstacle.divMajorApchsMax'));
+  const max = v ? v[0] : 2;
+  const div = levelOf('21') ?? 0;
+  const major = approaches.filter((a) => a.carries == null || (levelOf(a.carries) ?? 0) >= div);
+  const ids = major.map((a) => a.id).join(', ');
+  return major.length <= max
+    ? { name: 'Div approaches', st: 'pass', m: major.length, limitM: max, limitSrc: 'GSP 1947 s26 para 5 p 119', reason: `${major.length} of the ${approaches.length} approaches read carry an En Div${ids ? ` (${ids})` : ''}: within the ${max} a Div should normally be asked to defend on an obstacle (${G} s26 para 5 p 119)` }
+    : { name: 'Div approaches', st: 'warn', m: major.length, limitM: max, limitSrc: 'GSP 1947 s26 para 5 p 119', reason: `${major.length} approaches carry an En Div (${ids}): a Div should normally not be asked to defend more than ${max} divisional size major approaches unless it is allocated additional resources (${G} s26 para 5 p 119)`, detail: { head: `${major.length} Div-size approaches, ${max} at most`, why: 'Each major approach needs a Bde on it and the reserves behind it; beyond two the Div has no depth or reserve left (s26 paras 5-6 pp 119-120).', fix: ['Ask Corps for additional resources (a Bde, armour, a HAT Bn) for the third approach', 'Narrow the Div sector so a neighbour takes the third approach', 'Block the third approach with obstacles and second line troops, the Div reserve behind it'] } };
 }

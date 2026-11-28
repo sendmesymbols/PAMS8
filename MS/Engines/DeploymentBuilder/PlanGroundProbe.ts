@@ -10,7 +10,8 @@
  * bundle is one log line and the tab stays in geometry mode.
  */
 import { MovementGuideProbe } from '../MovementGuide/MovementGuideProbe';
-import { findAvenue, avenueMask, avenueOverlap, pxToMerc, type OcokaGrid } from '../GroundGuide/GroundGuideOcoka';
+import { findAvenue, avenueMask, avenueOverlap, parseVisibility, pxToMerc, visibilityAt, type OcokaGrid, type VisibilityGrid, type VisibilityReading } from '../GroundGuide/GroundGuideOcoka';
+import { mercToLngLat } from '../MovementGuide/MovementGuideScan';
 import type { GroundAvenue, PlanGround } from './PlanFit';
 import type { SmallProbe } from './PlanSmallOps';
 import type { XY } from './PlanSolve';
@@ -22,8 +23,13 @@ export class PlanGroundProbe implements PlanGround {
   private _ready = false;
   private _pending = false;
   private _avCache = new Map<string, GroundAvenue[] | null>();
+  private _base = '';
+  private _onChange: () => void;
+  /** The month's visibility grid (grotbc.visibility), fetched on the first visibility() call. */
+  private _vis: { state: 'idle' | 'loading' | 'ready' | 'failed'; grid: VisibilityGrid | null } = { state: 'idle', grid: null };
 
   constructor(onChange: () => void) {
+    this._onChange = onChange;
     this._probe = new MovementGuideProbe(() => { this._avCache.clear(); onChange(); });
   }
 
@@ -32,6 +38,8 @@ export class PlanGroundProbe implements PlanGround {
   /** Open the bundle. Resolves false (and keeps nothing) when it is not there. */
   async configure(base: string, opts: { cacheTiles: number; useWorker: boolean }): Promise<boolean> {
     this._ready = false;
+    this._base = base;
+    this._vis = { state: 'idle', grid: null };
     try {
       this._ready = await this._probe.configure(base, opts);
     } catch {
@@ -65,6 +73,25 @@ export class PlanGroundProbe implements PlanGround {
 
   /** The Movement Guide reader itself, for the ambush, patrol and recce (PlanSmallOps): its roads, features, raster reads. */
   mov(): SmallProbe | null { return this._ready ? (this._probe as unknown as SmallProbe) : null; }
+
+  /** The month's visibility at a world point: fog, haze and under-2 km days, the mean view (GroundGuideOcoka.visibilityAt). */
+  visibility(x: number, y: number, month: number): VisibilityReading | null {
+    if (!this._ready) return null;
+    if (this._vis.state === 'idle') {
+      const vm = (this._probe.manifest as any)?.grotbc?.visibility;
+      if (typeof vm?.index !== 'string' || typeof vm?.data !== 'string') { this._vis.state = 'failed'; return null; }
+      this._vis.state = 'loading';
+      this._pending = true;
+      void Promise.all([fetch(`${this._base}/${vm.index}`), fetch(`${this._base}/${vm.data}`)])
+        .then(async ([h, d]) => { if (!h.ok || !d.ok) throw new Error('visibility'); this._vis = { state: 'ready', grid: parseVisibility(await h.json(), await d.arrayBuffer()) }; this._onChange(); })
+        .catch(() => { this._vis = { state: 'failed', grid: null }; });
+      return null;
+    }
+    if (this._vis.state === 'loading') { this._pending = true; return null; }
+    if (!this._vis.grid) return null;
+    const [lng, lat] = mercToLngLat(x, y);
+    return visibilityAt(this._vis.grid, lng, lat, month);
+  }
 
   sight(ox: number, oy: number, eyeM: number, tx: number, ty: number, targetM: number): number | null {
     return this._ready ? this._probe.sight(ox, oy, eyeM, tx, ty, targetM) : null;

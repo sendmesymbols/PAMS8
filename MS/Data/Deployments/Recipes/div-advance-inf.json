@@ -1,0 +1,342 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "div-advance-inf",
+  "family": "div-advance-inf",
+  "layout": "inf-div",
+  "echelon": "21",
+  "unit": "inf-div",
+  "basis": "D",
+  "task": "advance",
+  "name": "Inf Div Advance to Contact (one axis)",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "An Inf Div advancing to contact on one axis (GSP 1947 Inf Div in Battle s18 pp 76-80, Annex H p 203: Adv to Contact, Diagrammatic Layout). In open country the Inf Div, lacking mobility, is not suitable to advance unless made mobile; in restricted or mountainous country it advances effectively (para 3 p 76). Grouping (para 9 p 78): covering troops (mobile troops and flank guards, para 10 p 79), the Advance Guard found by the leading Bde (Van Gd and Main Gd), the leading Bde's main body, the main body of the Div (follow-up Bde Gps, the artillery and other arms). Plan metres from the SP (the click: the Van Gd's head), the aim the direction of advance. From Annex H (a scanned diagram, read from the scan): the mobile troops approx 1 h or 10-15 miles ahead of the Van Gd (laid 20 km); the leading Pl(s) 20-30 min ahead of the Van Gd, moving deployed (laid 1.5 km: 22 min on foot at 4 km/h, IPB p 18); the Main Gd behind, not deployed (the gap printed is not legible: laid 4 km, E); the artillery with the Adv Gd in the gap between them, its batteries then leapfrogging; harbour areas for the Bde Gps and other Div elements selected by the Div, normally 15-20 miles apart (the leading Bde's at 9 km, the follow-up Bde Gps' and the Div Arty's 28 km behind it, the next one 28 km ahead, planned); the DAA placed by the turn-round to the leading Bde's B Ech (34 km behind it: first line within 48 km, lsf p 27). The Div Tac HQ well forward in the main body (para 14 p 80). The flank guards on parallel routes 5 km out (no figure printed: E). With the terrain the axis is routed for tracks from the leading Bde's harbour to the mobile troops, its bounds on the water and report lines on the lateral roads (as the Armd Bde advance). Tanks lead when the terrain favours, no A tk obstacles are known and the En has armour (Annex H).",
+  "pivot": "sp",
+  "slots": [
+    {
+      "role": "sp",
+      "kind": "point",
+      "sym": "25131600",
+      "label": "SP",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "axis",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "Axis",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            0,
+            9000
+          ],
+          [
+            0,
+            -20500
+          ]
+        ],
+        "widthM": 1500
+      }
+    },
+    {
+      "role": "ctps",
+      "kind": "point",
+      "sym": "10121300",
+      "label": "Mob Tps",
+      "echelon": "16",
+      "order": 2,
+      "shape": {
+        "at": [
+          0,
+          -20000
+        ]
+      }
+    },
+    {
+      "role": "flankL",
+      "kind": "point",
+      "sym": "10121300",
+      "label": "Flank Gd",
+      "echelon": "15",
+      "order": 2,
+      "shape": {
+        "at": [
+          -5000,
+          4000
+        ]
+      }
+    },
+    {
+      "role": "flankR",
+      "kind": "point",
+      "sym": "10121300",
+      "label": "Flank Gd",
+      "echelon": "15",
+      "order": 2,
+      "shape": {
+        "at": [
+          5000,
+          4000
+        ]
+      }
+    },
+    {
+      "role": "ldgPl",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Ldg Pl",
+      "echelon": "14",
+      "order": 2,
+      "shape": {
+        "at": [
+          0,
+          -1500
+        ]
+      }
+    },
+    {
+      "role": "vanGd",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Van Gd",
+      "echelon": "15",
+      "order": 2,
+      "shape": {
+        "at": [
+          0,
+          1000
+        ]
+      }
+    },
+    {
+      "role": "arty",
+      "kind": "point",
+      "sym": "10130300",
+      "label": "Arty (Adv Gd)",
+      "echelon": "15",
+      "order": 2,
+      "shape": {
+        "at": [
+          0,
+          3000
+        ]
+      }
+    },
+    {
+      "role": "mainGd",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Main Gd",
+      "echelon": "16",
+      "order": 2,
+      "shape": {
+        "at": [
+          0,
+          5000
+        ]
+      }
+    },
+    {
+      "role": "advGdEnd",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "Adv Gd",
+      "order": 3,
+      "drawType": 1,
+      "shape": {
+        "pts": [
+          [
+            -700,
+            6500
+          ],
+          [
+            700,
+            6500
+          ]
+        ]
+      }
+    },
+    {
+      "role": "bd1",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "Bd 1",
+      "order": 3,
+      "drawType": 1,
+      "terrainOnly": true,
+      "terrainRule": {
+        "on": "water.acrossAxis"
+      }
+    },
+    {
+      "role": "bd2",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "Bd 2",
+      "order": 3,
+      "drawType": 1,
+      "terrainOnly": true,
+      "terrainRule": {
+        "on": "water.acrossAxis"
+      }
+    },
+    {
+      "role": "bd3",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "Bd 3",
+      "order": 3,
+      "drawType": 1,
+      "terrainOnly": true,
+      "terrainRule": {
+        "on": "water.acrossAxis"
+      }
+    },
+    {
+      "role": "bd4",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "Bd 4",
+      "order": 3,
+      "drawType": 1,
+      "terrainOnly": true,
+      "terrainRule": {
+        "on": "water.acrossAxis"
+      }
+    },
+    {
+      "role": "rl1",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "RL 1",
+      "order": 3,
+      "drawType": 1,
+      "terrainOnly": true,
+      "terrainRule": {
+        "on": "lateral.acrossAxis"
+      }
+    },
+    {
+      "role": "rl2",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "RL 2",
+      "order": 3,
+      "drawType": 1,
+      "terrainOnly": true,
+      "terrainRule": {
+        "on": "lateral.acrossAxis"
+      }
+    },
+    {
+      "role": "rl3",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "RL 3",
+      "order": 3,
+      "drawType": 1,
+      "terrainOnly": true,
+      "terrainRule": {
+        "on": "lateral.acrossAxis"
+      }
+    },
+    {
+      "role": "rl4",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "RL 4",
+      "order": 3,
+      "drawType": 1,
+      "terrainOnly": true,
+      "terrainRule": {
+        "on": "lateral.acrossAxis"
+      }
+    },
+    {
+      "role": "har1",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Har (Ldg Bde)",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": 9000,
+          "wM": 3000,
+          "hM": 2000
+        }
+      }
+    },
+    {
+      "role": "divTac",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Div Tac HQ",
+      "order": 2,
+      "shape": {
+        "at": [
+          0,
+          12000
+        ]
+      }
+    },
+    {
+      "role": "harNext",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Next Har",
+      "order": 3,
+      "planned": true,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -19000,
+          "wM": 3000,
+          "hM": 2000
+        }
+      }
+    },
+    {
+      "role": "har2",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Har (Bde Gps, Div Arty)",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": 37000,
+          "wM": 4000,
+          "hM": 3000
+        }
+      }
+    },
+    {
+      "role": "daa",
+      "kind": "area",
+      "sym": "25310700",
+      "label": "DAA",
+      "order": 3,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": 43000,
+          "wM": 3000,
+          "hM": 2000
+        }
+      }
+    }
+  ]
+}

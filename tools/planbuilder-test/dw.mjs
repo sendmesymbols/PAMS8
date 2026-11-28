@@ -234,6 +234,64 @@ const orbat = { own: O.mergeOwn(O.OWN_ORBAT_FILES.map((f) => json(`${P}${f}`).un
   check('...the reserve share a third and mounted: no desert reserve warning', row(des, 'Reserve share')?.st === 'pass' && row(des, 'Reserve reach')?.st === 'pass');
 }
 
+// ── N6: DF Tgts in a dune's lee (DW s17 para 7 e p 61) ──────────────────────────────────────────────────────────────
+{
+  const gd = json('MS/Data/GunDoctrine.json').desert.duneLee;
+  check('N6: the dune lee figures in the code equal GunDoctrine desert.duneLee (rise 15 m = 50 ft DW p 2, fall 20° E, within 300 m E)', A.DUNE_LEE.riseM === gd.riseM.value && A.DUNE_LEE.fallDeg === gd.fallDeg.value && A.DUNE_LEE.withinM === gd.withinM.value && gd.fallDeg.decided && gd.withinM.searched);
+  const f = { anchor: { x: 8000000, y: 3000000 }, bearing: 0, k: 1, pivot: { x: 0, y: 0 } };
+  const sand = Number(Object.keys(rules.classes).find((k) => rules.classes[k].name === 'sand'));
+  // the target at local y 1000, the guns at y -3000: a dune between them, its crest `toCrest` m short of the target, `rise` m up
+  const ground = (toCrest, rise, cls = sand, known = true) => ({
+    label: (c) => rules.classes[String(c)]?.label ?? String(c),
+    cls: (x, y) => { const l = F.toLocal(f, { x, y }); return l.y > 700 && l.y <= 1000 ? cls : 12; },
+    elev: (x, y) => { if (!known) return NaN; const l = F.toLocal(f, { x, y }); const c = 1000 - toCrest; if (l.y >= c && l.y <= 1000) return 100 + rise * (1000 - l.y) / toCrest; if (l.y < c && l.y > c - 150) return 100 + rise * (l.y - (c - 150)) / 150; return 100; },
+  });
+  const tg = [{ label: 'DF Tgt 1', at: { x: 0, y: 1000 } }], guns = [{ x: 0, y: -3000 }];
+  const steep = A.duneLeeRow(tg, guns, f, ground(60, 30));
+  check('...a 30 m dune face 60 m short of the target (27°) toward the guns: Dune lee warns, the target named, fixes mortars / air', steep?.st === 'warn' && /DF Tgt 1 under a 30 m dune face at 27°/.test(steep.reason) && /DW s17 para 7 e p 61/.test(steep.reason) && /mortars/.test(steep.detail.fix[0]), steep?.reason);
+  const gentle = A.duneLeeRow(tg, guns, f, ground(150, 30));
+  check('...the same dune 150 m short (11°, under the 20° fall): a pass', gentle?.st === 'pass', gentle?.reason);
+  check('...a 10 m rise, however steep, is no "high" dune (under 50 ft): a pass', A.duneLeeRow(tg, guns, f, ground(20, 10))?.st === 'pass');
+  check('...no sand round the target (bare desert / plains): no row at all', A.duneLeeRow(tg, guns, f, ground(60, 30, 12)) === null);
+  check('...the elevation not loaded: grey, never a pass', A.duneLeeRow(tg, guns, f, ground(60, 30, sand, false))?.st === 'unchecked');
+}
+
+// ── N1 measured: the desert defence sited to deny (DW s7 para 5 a p 22) ─────────────────────────────────────────────
+{
+  const f = { anchor: { x: 8000000, y: 3000000 }, bearing: 0, k: 1, pivot: { x: 0, y: 0 } };
+  const posns = [{ label: 'Left Bn', pts: [{ x: -3000, y: 0 }, { x: -1000, y: 0 }, { x: -1000, y: 1000 }, { x: -3000, y: 1000 }] }];
+  const g = (roads, places, pending = false) => ({ pending: () => pending, mov: () => ({ roads: () => roads, features: (x, y, r, kinds) => places.filter((p) => kinds.has(p.kind) && p.distM <= r) }) });
+  const msr = F.desertSitingRow(posns, f, g([{ distM: 900, attrs: { m: 1, n: 'N-55' } }], []), doc);
+  check('N1: a desert defence within 2 km of the MSR: Sited to deny passes, the MSR named (DW p 22)', msr?.st === 'pass' && /the MSR N-55 900 m from Left Bn/.test(msr.reason) && /DW s7 para 5 a p 22/.test(msr.reason), msr?.reason);
+  const bua = F.desertSitingRow(posns, f, g([], [{ kind: 'town', name: 'Mithi', label: 'Town', distM: 600 }]), doc);
+  check('...within 1 km of a town: passes, the BUA named', bua?.st === 'pass' && /the BUA Mithi 600 m/.test(bua.reason));
+  const open = F.desertSitingRow(posns, f, g([{ distM: 1500, attrs: { aw: true, t: 'unclassified' } }], [{ kind: 'village', name: 'Goth', label: 'Village', distM: 400 }]), doc);
+  check('...open desert, an unclassified track (flagged all-weather) and a small village only: warns, holding space not what matters (DW pp 22, 7; most desert tracks fair weather, p 2)', open?.st === 'warn' && /Holding desert space/.test(open.detail.head) && /DW s7 para 5 a p 22; s4 para 2 p 7/.test(open.detail.why));
+  check('...the roads still loading: grey; no Movement probe: grey', F.desertSitingRow(posns, f, g([], [], true), doc)?.st === 'unchecked' && F.desertSitingRow(posns, f, { pending: () => false }, doc)?.st === 'unchecked');
+  const s = doc.plan.terrain.kinds.desert.siting;
+  check('...the distances are E decided and searched (road 2 km, BUA 1 km), the rule DW p 22', s.roadReachM.value === 2000 && s.buaM.value === 1000 && s.roadReachM.basis === 'E' && s.roadReachM.decided && s.buaM.searched && s.roadReachM.refs[0].page === '22');
+}
+
+// ── N7: the attack by infiltration (IBB S45 pp 221-230; DW p 48) ────────────────────────────────────────────────────
+{
+  const M = await import('../../MS/Engines/DeploymentBuilder/PlanMountain.ts');
+  const V = await import('../../MS/Engines/DeploymentBuilder/PlanRecipes.ts');
+  const r = rec('bn-attk-infiltration');
+  const bad = V.validateRecipe(r, { doc, symbols, file: 'bn-attk-infiltration.json' }).filter((i) => i.level === 'fail');
+  check('N7: bn-attk-infiltration validates, layout infiltration, in the index (family Bn Attk (Infil))', !bad.length && r.layout === 'infiltration' && json('MS/Data/Deployments/Recipes/index.json').families.some((x) => x.id === 'bn-attk-infil' && x.recipes.includes('bn-attk-infiltration')), bad.map((i) => i.msg).join('; '));
+  const res = S.solveRecipe(r, ctx, {});
+  const lr = M.layoutRows(res.items, r, doc);
+  check('...its rows: Lanes, Through the En FDL, Gap shoulders, RV and firm base pass; Link-up and Fire support (IBB pp 222-228; DW p 48)', ['Lanes', 'Through the En FDL', 'Gap shoulders', 'RV and firm base', 'Link-up', 'Fire support'].every((nm) => row(lr, nm)?.st === 'pass') && /24-36 h/.test(row(lr, 'Link-up').reason) && /medium guns/.test(row(lr, 'Fire support').reason), lr.map((x) => `${x.name} ${x.st}`).join(', '));
+  check('...the attack\'s own rows still run (FUP from the Obj, Assault frontage, Mortars reach the LOE)', ['FUP from the Obj', 'Assault frontage', 'Mortars reach the LOE'].every((nm) => row(res.rows, nm)?.st === 'pass'), res.rows.map((x) => `${x.name} ${x.st}`).join(', '));
+  const one = { ...r, slots: r.slots.filter((s) => s.role !== 'laneR') };
+  check('...one lane: Lanes warns (multiple routes to the RV, DW p 48; a blocked lane stops all, IBB p 227)', row(M.layoutRows(S.solveRecipe(one, ctx, {}).items, one, doc), 'Lanes')?.st === 'warn');
+  const noSh = { ...r, slots: r.slots.filter((s) => !/^sh/.test(s.role)) };
+  check('...no troops on the gap shoulders: Gap shoulders warns (IBB p 228)', row(M.layoutRows(S.solveRecipe(noSh, ctx, {}).items, noSh, doc), 'Gap shoulders')?.st === 'warn');
+  const farRv = res.items.map((i) => (i.role === 'rv' ? { ...i, pts: i.pts.map((p) => ({ x: p.x, y: p.y - 3000 })) } : i)); // solved y: the enemy toward +y, so back toward own side
+  check('...an RV short of the En FDL: RV and firm base warns (DW p 48 a: in the vicinity of the Obj)', row(M.layoutRows(farRv, r, doc), 'RV and firm base')?.st === 'warn');
+  check('...no "his / him / he" in the infiltration texts (Plan Builder En / Own rule)', !lr.some((x) => /\b(his|him|he)\b/.test(x.reason)) && !/\b(his|him|he)\b/.test(r.note));
+}
+
 // the Ground Guide's desert checks (G1-G3) are in tools/ipb-test/desert.mjs (its view modules need transform-types)
 
 console.log(`\n${n - fails}/${n} passed${fails ? `, ${fails} FAILED` : ''}`);

@@ -103,8 +103,8 @@ export function buaDefRows(items: Item[], recipe: Recipe, doc: DoctrineSet | nul
 
 /**
  * An Armd Bde's mobile defence (recipe bde-def-mobile): MIB Annex P paras 2, 6 pp 357-358 (an MIB Gp and an Armd Regt Gp
- * fix, an Armd Regt Gp in reserve / depth; check him left and right, force him into the centre, contain him from each
- * flank, destroy him by the deliberate counter-attack); DW s7 para 4 b (2) p 22 (a portion fixes, the bulk of the
+ * fix, an Armd Regt Gp in reserve / depth; check the En left and right, force the En into the centre, contain the En from each
+ * flank, destroy the En by the deliberate counter-attack); DW s7 para 4 b (2) p 22 (a portion fixes, the bulk of the
  * mechanised force attacks and destroys). Killing zone between the fixing groups; the counter-attack force mounted, in
  * depth behind it, timed to it against the Bde reserve's 2 h (check.reserveMin.18; DW p 27); the split as the books say.
  */
@@ -120,8 +120,8 @@ export function mobileRows(items: Item[], recipe: Recipe, doc: DoctrineSet): Che
   if (kz) {
     const k = centre(kz.pts), xs = fix.map((i) => centre(i.pts).x).sort((a, b) => a - b);
     const between = k.x > xs[0] && k.x < xs[xs.length - 1];
-    rows.push({ name: 'Killing zone', st: between ? 'pass' : 'warn', reason: `${kz.label ?? 'the killing zone'} ${between ? 'between' : 'not between'} the fixing groups: the Bde checks him on its left and right, forces him into the centre and contains him there from each flank (MIB Annex P para 6 pp 357-358); the minefields channel his armour into it (DW p 23 para 5 d)` });
-  } else rows.push({ name: 'Killing zone', st: 'warn', reason: 'no killing zone marked: the fixing groups force him into a pre-selected killing zone where the counter-attack force destroys him (MIB Annex P para 6; DW p 23 para 5 d)' });
+    rows.push({ name: 'Killing zone', st: between ? 'pass' : 'warn', reason: `${kz.label ?? 'the killing zone'} ${between ? 'between' : 'not between'} the fixing groups: the Bde checks the En on its left and right, forces the En into the centre and contains the En there from each flank (MIB Annex P para 6 pp 357-358); the minefields channel the En armour into it (DW p 23 para 5 d)` });
+  } else rows.push({ name: 'Killing zone', st: 'warn', reason: 'no killing zone marked: the fixing groups force the En into a pre-selected killing zone where the counter-attack force destroys the En (MIB Annex P para 6; DW p 23 para 5 d)' });
   if (res) {
     const mounted = slot(res.role)?.mounted === true;
     const kmh = mounted ? num(doc, 'moves.tankKmh.go', 24) : num(doc, 'cpen.footKmPerH', 5);
@@ -130,8 +130,8 @@ export function mobileRows(items: Item[], recipe: Recipe, doc: DoctrineSet): Che
     const want = num(doc, 'check.reserveMin.18', 120);
     const behind = !kz || ahead(c) < ahead(centre(kz.pts));
     const st = mounted && behind && min <= want ? 'pass' : 'warn';
-    rows.push({ name: 'Counter-attack force', st, reason: `${res.label ?? 'the reserve'}: ${mounted ? 'mounted' : 'on foot'}, ${behind ? 'in depth behind' : 'not behind'} the killing zone, ${min} min to it at ${kmh} km/h (wants ${want} min: a Bde reserve as early as possible within 2-6 h, DW p 27): the deliberate counter-attack force that destroys him once his advance is held (MIB Annex P paras 2, 6)` });
-  } else rows.push({ name: 'Counter-attack force', st: 'fail', reason: 'no counter-attack force: a mobile defence destroys him by counter-attack, the fixing force only checks and contains (DW p 22 para 4 b (2); MIB Annex P para 6)' });
+    rows.push({ name: 'Counter-attack force', st, reason: `${res.label ?? 'the reserve'}: ${mounted ? 'mounted' : 'on foot'}, ${behind ? 'in depth behind' : 'not behind'} the killing zone, ${min} min to it at ${kmh} km/h (wants ${want} min: a Bde reserve as early as possible within 2-6 h, DW p 27): the deliberate counter-attack force that destroys the En once the En advance is held (MIB Annex P paras 2, 6)` });
+  } else rows.push({ name: 'Counter-attack force', st: 'fail', reason: 'no counter-attack force: a mobile defence destroys the En by counter-attack, the fixing force only checks and contains (DW p 22 para 4 b (2); MIB Annex P para 6)' });
   rows.push({ name: 'Fixing and striking', st: 'pass', reason: `${fix.length} groups fix, ${res ? 'one' : 'none'} counter-attacks: MIB Annex P para 2 puts an MIB Gp and an Armd Regt Gp in the fixing role and an Armd Regt Gp in reserve / depth; DW p 22 has a portion fix and the bulk of the mechanised force attack: the books differ, the Bde Comd's call` });
   return rows;
 }

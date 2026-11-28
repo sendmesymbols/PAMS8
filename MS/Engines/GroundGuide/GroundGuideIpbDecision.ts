@@ -82,6 +82,8 @@ export interface DecArgs {
   coa?: { fire?: Record<string, number>; turnAa?: string | null; templateAa?: string | null };
   /** The Indian reserves' reaction (IDD p 5), read when the reading is of the En defence (own attack): hours after H or after the decision. */
   reserves?: Array<{ level: string; h: [number, number]; from: 'attack' | 'decision'; what?: string }> | null;
+  /** The book the ladder comes from (IDD p 5, or GSP 1947 p 83 by the reserveLadder setting). */
+  reservesSrc?: string;
   /** The cues that confirm the En main effort (OoW Vol I p 54), named on the counter-attack DP. */
   catkCues?: string[] | null;
 }
@@ -396,10 +398,13 @@ export function decide(a: DecArgs): DecResult {
   // The Indian reserves (IDD p 5), when the reading is of the En defence: when each can be on the objective.
   const reserves: DecReserve[] = (a.reserves ?? []).map((r) => {
     const what = r.what ?? '';
-    const span = r.h[0] === r.h[1] ? `${r.h[0]} h` : `${r.h[0]}-${r.h[1]} h`;
-    return { level: r.level, fromH: r.h[0], toH: r.h[1], from: r.from, what, text: `En ${r.level} reserve${what ? ` (${what})` : ''}: reacts ${span} after ${r.from === 'decision' ? 'his decision' : 'the attack starts'}` };
+    // under an hour in minutes (GSP p 83: a Coy within 35-40 minutes)
+    const t = (h: number) => (h < 1 ? `${Math.round(h * 60)}` : `${h}`), unit = r.h[1] < 1 ? 'min' : 'h';
+    const span = r.h[0] === r.h[1] ? `${t(r.h[0])} ${unit}` : `${t(r.h[0])}-${t(r.h[1])} ${unit}`;
+    return { level: r.level, fromH: r.h[0], toH: r.h[1], from: r.from, what, text: `En ${r.level} reserve${what ? ` (${what})` : ''}: reacts ${span} after ${r.from === 'decision' ? 'his decision' : 'the attack starts'} (${a.reservesSrc ?? 'IDD p 5'})` };
   });
-  if (reserves.length) notes.push(`Be firm on the Obj before H+${reserves[0].fromH}: the En ${reserves[0].level} reserve can react by then (IDD p 5)`);
+  const hp = (h: number) => (h < 1 ? `${Math.round(h * 60)} min` : `${h}`);
+  if (reserves.length) notes.push(`Be firm on the Obj before H+${hp(reserves[0].fromH)}: the En ${reserves[0].level} reserve can react by then (${a.reservesSrc ?? 'IDD p 5'})`);
   return { profiles, nais, tais, dps, coas, reserves, notes };
 }
 

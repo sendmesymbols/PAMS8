@@ -698,3 +698,25 @@ export function mountainGround(probe: Pick<SiteProbe, 'elev'>, c: XY, riseM: num
   const r = reliefAround(probe, c, withinM);
   return r ? r.maxM - r.minM >= riseM : null;
 }
+
+/**
+ * Desert ground round a point (the site finders' desert test, as the Plan Builder's Auto ground): `share` or more of the
+ * ground read within `withinM` (the same five rings of 16 as reliefAround) is one of `classes` (bare desert, sand, dunes,
+ * salt pan). Null when too little of it is read.
+ */
+export function desertGround(probe: Pick<SiteProbe, 'cls'>, c: XY, classes: readonly number[], share: number, withinM: number): boolean | null {
+  const set = new Set(classes);
+  let n = 0, d = 0;
+  for (const r of [0, withinM * 0.25, withinM * 0.5, withinM * 0.75, withinM]) {
+    const k = r ? 16 : 1;
+    for (let i = 0; i < k; i++) {
+      const p = r ? offsetPt(c[0], c[1], (360 * i) / k, r) : c;
+      const cl = probe.cls(p[0], p[1]);
+      if (cl === null || cl === 255) continue;
+      n++;
+      if (set.has(cl)) d++;
+    }
+  }
+  if (n < 20) return null;
+  return d / n >= share;
+}

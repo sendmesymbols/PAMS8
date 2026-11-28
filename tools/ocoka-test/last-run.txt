@@ -64,36 +64,36 @@ C. Real sites on the bundle
 
 D. Cost per call (Node 24 / V8, tiles in memory; the browser is within a factor of two)
   Margalla crest
-    fire wedge 90 deg to 600 m (rifle)             median   0.02 ms   p95   0.03 ms
-    fire wedge 90 deg to 2 km (tank)               median   0.23 ms   p95   0.29 ms
-    observation all round, 2 deg, to 5 km          median   0.95 ms   p95   1.03 ms
-    straight ways out, 24 sectors to 2 km          median   0.00 ms   p95   0.00 ms
+    fire wedge 90 deg to 600 m (rifle)             median   0.02 ms   p95   0.04 ms
+    fire wedge 90 deg to 2 km (tank)               median   0.23 ms   p95   0.27 ms
+    observation all round, 2 deg, to 5 km          median   0.92 ms   p95   1.01 ms
+    straight ways out, 24 sectors to 2 km          median   0.00 ms   p95   0.01 ms
     highest ground within 3 km                     median   0.03 ms   p95   0.03 ms
-    sight to 3 ITG candidates 3 km away            median   0.02 ms   p95   0.02 ms
-    picture: all round, fine, to 5 km, with the trace median   5.68 ms   p95   6.41 ms
-    going flood to 5 km (ways round)               median   2.18 ms   p95   2.89 ms
-    sight tables for a month                       median   0.01 ms   p95   0.08 ms
-    map: avenue from 4 km east, 300 m frontage     median   2.29 ms   p95   2.54 ms
-    map: better position within 300 m              median   0.45 ms   p95   0.54 ms
-    map: fan runs of the tank wedge                median   0.27 ms   p95   0.33 ms
-    = every mouse move (tank wedge + observation + ways + highest ground + 3 sight lines): 1.24 ms
+    sight to 3 ITG candidates 3 km away            median   0.01 ms   p95   0.02 ms
+    picture: all round, fine, to 5 km, with the trace median   5.46 ms   p95   5.79 ms
+    going flood to 5 km (ways round)               median   2.06 ms   p95   2.57 ms
+    sight tables for a month                       median   0.00 ms   p95   0.01 ms
+    map: avenue from 4 km east, 300 m frontage     median   2.20 ms   p95   2.41 ms
+    map: better position within 300 m              median   0.56 ms   p95   0.73 ms
+    map: fan runs of the tank wedge                median   0.26 ms   p95   0.31 ms
+    = every mouse move (tank wedge + observation + ways + highest ground + 3 sight lines): 1.20 ms
   Lahore centre
     fire wedge 90 deg to 600 m (rifle)             median   0.03 ms   p95   0.04 ms
-    fire wedge 90 deg to 2 km (tank)               median   0.31 ms   p95   0.36 ms
-    observation all round, 2 deg, to 5 km          median   1.42 ms   p95   1.61 ms
-    straight ways out, 24 sectors to 2 km          median   0.01 ms   p95   0.02 ms
-    highest ground within 3 km                     median   0.03 ms   p95   0.04 ms
-    sight to 3 ITG candidates 3 km away            median   0.02 ms   p95   0.02 ms
-    picture: all round, fine, to 5 km, with the trace median   7.48 ms   p95   8.12 ms
-    going flood to 5 km (ways round)               median   2.73 ms   p95   3.05 ms
-    sight tables for a month                       median   0.00 ms   p95   0.02 ms
-    map: avenue from 4 km east, 300 m frontage     median   2.21 ms   p95   2.49 ms
-    map: better position within 300 m              median   3.25 ms   p95   3.57 ms
-    map: fan runs of the tank wedge                median   0.35 ms   p95   0.41 ms
-    = every mouse move (tank wedge + observation + ways + highest ground + 3 sight lines): 1.80 ms
-  laying the tiles for a 6 km circle side by side (once per few km of cursor travel): median 1.7 ms
-  PASS  everything the cursor card needs fits a mouse move (under 4 ms in Node)   1.24 ms hills, 1.80 ms town
-  PASS  the fine picture fits a Detail refresh (under 20 ms)   5.7 ms
+    fire wedge 90 deg to 2 km (tank)               median   0.31 ms   p95   0.39 ms
+    observation all round, 2 deg, to 5 km          median   1.35 ms   p95   1.82 ms
+    straight ways out, 24 sectors to 2 km          median   0.01 ms   p95   0.01 ms
+    highest ground within 3 km                     median   0.03 ms   p95   0.03 ms
+    sight to 3 ITG candidates 3 km away            median   0.02 ms   p95   0.05 ms
+    picture: all round, fine, to 5 km, with the trace median   9.05 ms   p95   9.94 ms
+    going flood to 5 km (ways round)               median   4.60 ms   p95   4.79 ms
+    sight tables for a month                       median   0.01 ms   p95   0.02 ms
+    map: avenue from 4 km east, 300 m frontage     median   2.78 ms   p95   3.07 ms
+    map: better position within 300 m              median   3.95 ms   p95   4.18 ms
+    map: fan runs of the tank wedge                median   0.44 ms   p95   0.49 ms
+    = every mouse move (tank wedge + observation + ways + highest ground + 3 sight lines): 1.72 ms
+  laying the tiles for a 6 km circle side by side (once per few km of cursor travel): median 1.3 ms
+  PASS  everything the cursor card needs fits a mouse move (under 4 ms in Node)   1.20 ms hills, 1.72 ms town
+  PASS  the fine picture fits a Detail refresh (under 20 ms)   5.5 ms
 
 E. Cross-check against an independent implementation (Python, probes every sixth of a pixel, same tiles, ground alone)
   step 1 px: 2640 samples on 24 rays: 2621 agree; engine seen / reference hidden 19, engine hidden / reference seen 0

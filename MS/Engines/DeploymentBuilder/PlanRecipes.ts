@@ -133,13 +133,21 @@ export interface Recipe {
   tankSqn?: { tanks: number; tps: number; tpTanks: number; regtTanks: number | null; src: string };
   /** The role of the point the map click lands on (an ambush's KZ, a patrol's SP); else the HQ or the target on the Obj. */
   pivot?: string;
+  /** A formation withdrawal's intermediate posns (PlanWithdrawalFmn.withWdrOptions): 2 as laid, 1, or 0 when the covering troops do it (GSP 1947 p 145). */
+  wdrIntPosns?: 0 | 1 | 2;
+  /** Who prepares a Div withdrawal's new main posn: fresh troops (OOW3 p 39, the default) or the reserve Bde (GSP 1947 p 145). */
+  wdrNewPosnBy?: 'fresh' | 'res';
+  /** A withdrawal: the delay the higher Comd orders, hours (PlanWithdrawalFmn.timeSpaceRow; OOW3 p 10 para 6 c); unset = the new posn's prep. */
+  wdrDelayH?: number | null;
+  /** A formation withdrawal with its delay means laid: stay-behind parties, subsidiary belts, a road denial band (withWdrOptions). */
+  wdrMeans?: boolean;
 }
 
 /** Tasks laid by PlanSmallOps over the Movement / Platoon Guide engines (Phase 8), not by the defence or attack rules. */
 export const SMALL_TASKS: readonly string[] = ['ambush', 'patrol', 'recce'];
 
 export const TASKS = ['defence', 'attack', 'crossing', 'advance', 'ambush', 'patrol', 'recce', 'withdrawal'] as const;
-export const LAYOUTS = ['two-up', 'three-up', 'one-up', 'all-round', 'canal', 'rev-slope', 'frontal', 'left-flank', 'right-flank', 'two-phase', 'night', 'line', 'l', 'v', 'patrol', 'two-ops', 'three-ops', 'four-bn', 'two-bde', 'area', 'screen', 'armd-lead', 'three-axes', 'delay', 'by-day', 'ridge', 'penetrant', 'lateral', 'pass', 'valley', 'mtn', 'bua', 'fixing', 'extended', 'canal-three-up', 'ditch', 'main-left', 'main-right', 'salient', 'mobile', 'valleys', 'salient-wedge'] as const;
+export const LAYOUTS = ['two-up', 'three-up', 'one-up', 'all-round', 'canal', 'rev-slope', 'frontal', 'left-flank', 'right-flank', 'two-phase', 'night', 'line', 'l', 'v', 'patrol', 'two-ops', 'three-ops', 'four-bn', 'two-bde', 'area', 'screen', 'armd-lead', 'three-axes', 'delay', 'by-day', 'ridge', 'penetrant', 'lateral', 'pass', 'valley', 'mtn', 'bua', 'fixing', 'extended', 'canal-three-up', 'ditch', 'main-left', 'main-right', 'relief', 'passage', 'anti-hb', 'inf-div', 'salient', 'mobile', 'valleys', 'salient-wedge', 'infiltration'] as const;
 /** A defence laid along a canal by PlanCrossing.canalPrep (IBB Annex V p 483 / App 8 p 484): two up, or three up as the annex draws it. */
 export const isCanalLayout = (layout: string | undefined | null): boolean => layout === 'canal' || layout === 'canal-three-up';
 export const ECHELONS = ['13', '14', '15', '16', '17', '18', '21'] as const;
@@ -261,7 +269,7 @@ export function validateRecipe(r: Recipe, ctx: ValidateCtx): RecipeIssue[] {
   if (r.frontageRow != null && !frontageRow(doc, r.frontageRow)) fail(`frontageRow "${r.frontageRow}" is not a row of OcokaDoctrine.frontage`);
   // a crossing's frontages and depths are PlanDoctrine.crossing.bridgehead (IBB S46), not an OcokaDoctrine row; a Div attack's is
   // its Bdes' and the gap between them (GSP 1947 Inf Div in Battle s19 para 12 d p 86), judged by PlanDivAttack
-  if (r.frontageRow == null && r.basis === 'D' && r.task !== 'crossing' && !(r.task === 'attack' && r.echelon === '21') && r.task !== 'advance' && r.task !== 'withdrawal' && !isCanalLayout(r.layout) && !SMALL_TASKS.includes(r.task)) warn('basis D but no frontage row');
+  if (r.frontageRow == null && r.basis === 'D' && r.task !== 'crossing' && !(r.task === 'attack' && r.echelon === '21') && r.layout !== 'anti-hb' && r.task !== 'advance' && r.task !== 'withdrawal' && !isCanalLayout(r.layout) && !SMALL_TASKS.includes(r.task)) warn('basis D but no frontage row');
   if (r.assaultRow && !frontageRow(doc, r.assaultRow)) fail(`assaultRow "${r.assaultRow}" is not a row of OcokaDoctrine.frontage`);
   if (r.subRow && !frontageRow(doc, r.subRow)) fail(`subRow "${r.subRow}" is not a row of OcokaDoctrine.frontage`);
   if (r.depthRow && !frontageRow(doc, r.depthRow)) fail(`depthRow "${r.depthRow}" is not a row of OcokaDoctrine.frontage`);

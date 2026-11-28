@@ -27,8 +27,57 @@ const top = (pts: XY[]) => Math.min(...pts.map((p) => p.y)), bottom = (pts: XY[]
 const width = (pts: XY[]) => Math.max(...pts.map((p) => p.x)) - Math.min(...pts.map((p) => p.x));
 type Item = { role: string; label?: string; pts: XY[] };
 
-/** A formation withdrawal: the recipe carries a second intermediate posn. */
-export const isFmnWithdrawal = (recipe: Recipe) => recipe.slots.some((s) => s.role === 'intPosn2');
+/** A formation withdrawal: the recipe carries a second intermediate posn, or is a Bde / Div withdrawal laid with fewer (withWdrOptions). */
+export const isFmnWithdrawal = (recipe: Recipe) => recipe.slots.some((s) => s.role === 'intPosn2') || (recipe.task === 'withdrawal' && recipe.wdrIntPosns != null);
+
+/**
+ * A formation withdrawal with its options; the recipe passed in is not changed.
+ * - intPosns: 2 as Annex P draws them (OOW3 p 75), 1, or 0. GSP 1947 Inf Div in Battle s30 para 15 p 145: to save infantry
+ *   an intermediate posn is avoided if the covering troops can do the job; their number is the Comd's appreciation (para
+ *   13 p 144). With fewer posns the covering troops stay, each delaying in front of the next posn back.
+ * - newPosnBy (a Div only): 'res' when the reserve Bde prepares and occupies the rear main posn, as GSP 1947 s30 para 17
+ *   p 145 has it normally; it is then drawn in the new posn and the withdrawal keeps no reserve forward. 'fresh' (the
+ *   default) as OOW3 s7 para 2 p 39: fresh troops prepare it, the reserve kept for counter-attacks (p 40).
+ * - means: the delay means laid as symbols: two stay-behind parties beside the rear parties (OOW3 s6 para 27 p 36: "the
+ *   most effective mean to impose delay"), a subsidiary demolition belt in front of each intermediate posn and a road denial
+ *   band across the whole front behind the first covering troops (s12 para 5 b-c pp 56-57). Off by default.
+ */
+export function withWdrOptions(r: Recipe, doc: DoctrineSet, o: { intPosns: 0 | 1 | 2; newPosnBy: 'fresh' | 'res'; means?: boolean }): Recipe {
+  void doc;
+  if (!isFmnWithdrawal(r)) return r;
+  const res = o.newPosnBy === 'res' && r.echelon === '21';
+  if (o.intPosns === 2 && !res && !o.means) return r;
+  const out: Recipe = JSON.parse(JSON.stringify(r));
+  // an intermediate posn left out takes its passage points and contact point with it; the new posn keeps its own
+  const ip2 = ['intPosn2', 'ppII1', 'ppII2', 'ctII'];
+  const drop = o.intPosns === 2 ? [] : o.intPosns === 1 ? ip2 : ['intPosn', 'ppI1', 'ppI2', 'ctI', ...ip2];
+  out.slots = out.slots.filter((s) => !drop.includes(s.role));
+  out.wdrIntPosns = o.intPosns;
+  if (res) {
+    const i = out.slots.findIndex((s) => s.role === 'res');
+    if (i >= 0) {
+      const s = out.slots[i];
+      const nm = (out.slots.find((x) => x.role === 'newMain')?.shape as any)?.rect;
+      out.slots[i] = { role: 'resNew', kind: 'area', sym: s.sym, label: `${(s.label ?? 'Res').replace(/\s*\(Res\)$/, '')}: preps and holds new posn`, order: s.order, echelon: s.echelon, shape: { rect: { acrossM: nm?.acrossM ?? 0, backM: nm?.backM ?? 0, wM: 6000, hM: 3000 } } };
+    }
+    out.wdrNewPosnBy = 'res';
+  }
+  if (o.means) {
+    const at = (role: string) => (out.slots.find((s) => s.role === role)?.shape as any)?.at as [number, number] | undefined;
+    const a = at('rpA') ?? [-3000, 2500], b = at('rpB') ?? [3000, 2500];
+    const sb = (role: string, p: [number, number]) => ({ role, kind: 'point', sym: '10121100', label: 'Stay-behind Pty', echelon: '14', order: 4, shape: { at: p } }) as Recipe['slots'][number];
+    const line = (role: string) => ({ role, kind: 'line', sym: '25290100', label: 'Sub Dml Belt', order: 3, shape: { pts: [[-1000, 0], [1000, 0]] } }) as unknown as Recipe['slots'][number];
+    const has = (role: string) => out.slots.some((s) => s.role === role);
+    out.slots.push(sb('sbA', [a[0] - 1500, a[1]]), sb('sbB', [b[0] + 1500, b[1]]));
+    if (has('intPosn')) out.slots.push(line('dmlSub1'));
+    if (has('intPosn2')) out.slots.push(line('dmlSub2'));
+    out.slots.push({ role: 'rdBand', kind: 'area', sym: '25270200', label: 'Rd Denial Band', order: 3, shape: { rect: { acrossM: 0, backM: -12000, wM: 6000, hM: 3000 } } } as unknown as Recipe['slots'][number]);
+    out.wdrMeans = true;
+  }
+  out.id = `${r.id}-w${o.intPosns}${res ? 'r' : ''}${o.means ? 'm' : ''}`;
+  out.name = `${r.name}${o.intPosns === 2 ? '' : o.intPosns === 1 ? ', one int posn' : ', no int posn'}${res ? ', res Bde preps new posn' : ''}${o.means ? ', delay means' : ''}`;
+  return out;
+}
 
 function sizeOf(doc: DoctrineSet, recipe: Recipe, role: string, fw: number, fh: number): [number, number] {
   const r = (recipe.slots.find((s) => s.role === role)?.shape as any)?.rect;
@@ -47,31 +96,109 @@ export function fmnWdrGeom(recipe: Recipe, doc: DoctrineSet, aimM: number | null
   const [wN, hN] = sizeOf(doc, recipe, 'newMain', 10000, 5000);
   const [w1, h1] = sizeOf(doc, recipe, 'intPosn', 4500, 2000);
   const [w2, h2] = sizeOf(doc, recipe, 'intPosn2', 4500, 2000);
-  const full = want + h1 / 2 + want + h2 + want + hN / 2;
-  const d = Math.max(9000, aimM ?? full);
-  const y1 = Math.min(want, d / 3);
-  const y2 = Math.min(y1 + h1 / 2 + want + h2 / 2, y1 + (d - y1) / 2);
-  const g: Record<string, { pts: XY[] }> = {
-    newMain: { pts: rect(P(0, d), wN, hN) },
-    intPosn: { pts: rect(P(0, y1), w1, h1) },
-    intPosn2: { pts: rect(P(0, y2), w2, h2) },
-  };
   const has = (r: string) => recipe.slots.some((s) => s.role === r);
+  // the intermediate posns laid (withWdrOptions may leave out one or both)
+  const n = (has('intPosn') ? 1 : 0) + (has('intPosn2') ? 1 : 0);
+  const full = n === 2 ? want + h1 / 2 + want + h2 + want + hN / 2 : n === 1 ? want + h1 / 2 + want + hN / 2 : want + hN / 2;
+  const d = Math.max(9000, aimM ?? full);
+  const y1 = n === 2 ? Math.min(want, d / 3) : n === 1 ? Math.min(want, d / 2) : d;
+  const y2 = n === 2 ? Math.min(y1 + h1 / 2 + want + h2 / 2, y1 + (d - y1) / 2) : d;
+  const g: Record<string, { pts: XY[] }> = { newMain: { pts: rect(P(0, d), wN, hN) } };
+  if (has('intPosn')) g.intPosn = { pts: rect(P(0, y1), w1, h1) };
+  if (has('intPosn2')) g.intPosn2 = { pts: rect(P(0, y2), w2, h2) };
+  // the reserve Bde preparing and holding the new posn (GSP 1947 p 145; withWdrOptions): inside it
+  if (has('resNew')) { const [wr, hr] = sizeOf(doc, recipe, 'resNew', wN * 0.6, hN * 0.6); g.resNew = { pts: rect(P(0, d), wr, hr) }; }
   const [wc, hc] = sizeOf(doc, recipe, 'cov1', w1, 1500);
-  if (has('cov1')) g.cov1 = { pts: rect(P(0, y1 / 2), wc, hc) };
-  if (has('cov2')) g.cov2 = { pts: rect(P(0, (y1 + y2) / 2), wc, hc) };
+  // the covering troops delay in front of each posn back: with no intermediate posn, spread over the way to the new posn
+  if (has('cov1')) g.cov1 = { pts: rect(P(0, n ? y1 / 2 : d / 3), wc, hc) };
+  if (has('cov2')) g.cov2 = { pts: rect(P(0, n === 2 ? (y1 + y2) / 2 : n === 1 ? (y1 + d) / 2 : (2 * d) / 3), wc, hc) };
   if (has('cov3')) g.cov3 = { pts: rect(P(0, (y2 + d) / 2), wc, hc) };
   if (has('flankG')) { const [wf, hf] = sizeOf(doc, recipe, 'flankG', 2000, 3000); g.flankG = { pts: rect(P(-(Math.max(wN, wc) / 2 + wf / 2 + 1000), y1 / 2), wf, hf) }; }
   if (has('dmlBelt')) { const y = d - hN / 2 - num(doc, 'standoff.obstacleInFrontM', 200); g.dmlBelt = { pts: [P(-wN / 2, y), P(wN / 2, y)] }; }
+  // the delay means (withWdrOptions means): a subsidiary belt in front of each intermediate posn (OOW3 s12 para 5 b p 56);
+  // the road denial band across the whole front from behind the first covering troops toward the next posn back, several
+  // miles deep where the space allows (p 57 para 5 c; withdrawal.formation.roadDenialDepthM, E)
+  const so = num(doc, 'standoff.obstacleInFrontM', 200);
+  if (has('dmlSub1') && g.intPosn) { const y = top(g.intPosn.pts) - so; g.dmlSub1 = { pts: [P(-w1 / 2, y), P(w1 / 2, y)] }; }
+  if (has('dmlSub2') && g.intPosn2) { const y = top(g.intPosn2.pts) - so; g.dmlSub2 = { pts: [P(-w2 / 2, y), P(w2 / 2, y)] }; }
+  if (has('rdBand')) {
+    const from = g.cov1 ? bottom(g.cov1.pts) + 500 : d * 0.2;
+    const next = g.intPosn ? top(g.intPosn.pts) : g.cov2 ? top(g.cov2.pts) : top(g.newMain.pts);
+    const want = num(doc, 'withdrawal.formation.roadDenialDepthM', 4800);
+    const depth = Math.max(1000, Math.min(want, next - 500 - from));
+    g.rdBand = { pts: rect(P(0, from + depth / 2), Math.max(wN, wc), depth) };
+  }
   return g;
 }
 
 /** The hop from one posn to the next against the En field artillery (OOW3 p 33 para 16; IBB p 373). */
 export function hopRow(name: string, from: string, to: string, gap: number, arty: number, artySrc: string): Check {
   return gap >= arty - 1
-    ? { name, st: 'pass', reason: `${fmtM(gap)} from ${from} to ${to}: the En must re-deploy his field artillery (${artySrc}) before attacking it (OOW3 s6 para 16 p 33; IBB s74 para 4 e p 373)` }
+    ? { name, st: 'pass', reason: `${fmtM(gap)} from ${from} to ${to}: the En must re-deploy the field artillery (${artySrc}) before attacking it (OOW3 s6 para 16 p 33; IBB s74 para 4 e p 373)` }
     : { name, st: 'warn', reason: `${fmtM(gap)} from ${from} to ${to}: inside the reach of the En field artillery (${artySrc}) sited against ${from} (OOW3 s6 para 16 p 33: so far apart as to compel the En to re-deploy)`,
       detail: { head: `${to} ${fmtM(gap)} beyond ${from}`, why: 'The En guns that support the attack on one posn range the next without moving: the hop gains no delay from them.', fix: [`Site ${to} ${fmtM(arty)} or more beyond ${from}`, 'Fewer intermediate posns, each further apart, where the troops are short (OOW3 p 33 para 17)', 'Where the space is not there, say so in the plan'] } };
+}
+
+/**
+ * Time and space (OOW3 s2 para 6 pp 9-10; s6 para 6 a p 29): the higher Comd states the delay to impose and the area; the
+ * Comd relates hours or days to the ground, decides the phases, the intermediate posns and the covering troops' delaying
+ * actions, and the time the En is held at each phase line; the distance to the new posn and the time to prepare it are
+ * calculated carefully (para 6 b). Here: the depth from the old FDL to the new posn's at the En's contested rate of advance
+ * (KYE 2019: an Armd Div 24-30 km a day, PDF p 92; an Inf Div 25 km a day against light opposition, 50 km in five days,
+ * p 216; a Mtn Div 8-10 km a day, p 217), against the delay ordered (the tab's Delay chips, Recipe.wdrDelayH) or else the
+ * new posn's preparation (a Bn 36 working hours, OOW1 s8 para 7 p 39; a formation's Bns prepare at once), judged at the
+ * En's fastest (never overstate the time gained). A Bde or Div withdrawal always; a Bn's only when a delay is ordered (the
+ * new main posn is the higher Comd's).
+ */
+export function timeSpaceRow(items: Item[], recipe: Recipe, doc: DoctrineSet, o: { enemy?: string | null; terrain?: string | null } = {}): Check | null {
+  if (recipe.task !== 'withdrawal' || recipe.layout === 'delay' || recipe.layout === 'by-day') return null;
+  const kindOf = (role: string) => recipe.slots.find((s) => s.role === role)?.kind;
+  const fwd = items.filter((i) => kindOf(i.role) === 'fwd' && i.pts.length >= 3);
+  const nm = items.find((i) => i.role === 'newMain' && i.pts.length >= 3);
+  const ordered = recipe.wdrDelayH ?? null;
+  const fmn = isFmnWithdrawal(recipe);
+  if (!fwd.length || !nm || (!fmn && ordered === null)) return null;
+  const frontY = Math.min(...fwd.flatMap((i) => i.pts.map((p) => p.y)));
+  const depth = top(nm.pts) - frontY;
+  if (depth <= 0) return null;
+  // the En's rate by his type and the ground: Mech and Armd on the Armd Div's figure (KYE prints no Mech one), mountains the Mtn Div's
+  const typeDef = String((doctrineAt(doc, 'enemy.defaultType') as any)?.value ?? 'mech');
+  const type = o.enemy ?? typeDef;
+  const key = /^mountain/.test(o.terrain ?? '') ? 'mountain' : type === 'inf' ? 'inf' : 'armd';
+  const rate = resolveRange(doc, doctrineAt(doc, `withdrawal.timeSpace.enAdvanceKmDay.${key}`)) ?? (key === 'mountain' ? [8, 10] : key === 'inf' ? [10, 25] : [24, 30]);
+  const who = key === 'mountain' ? 'a Mtn Div' : key === 'inf' ? 'an Inf Div' : `an Armd Div${type === 'mech' ? ' (the En Mech, on the Armd Div\'s figure)' : ''}`;
+  const rateSrc = key === 'mountain' ? 'KYE 2019 PDF p 217' : key === 'inf' ? 'KYE 2019 PDF p 216: 25 km a day against light opposition, 50 km in five days' : 'KYE 2019 PDF p 92';
+  const hOf = (m: number, kmDay: number) => (m / 1000 / kmDay) * 24;
+  const fast = hOf(depth, rate[1]), slow = hOf(depth, rate[0]);
+  // the hops, front to front: the old FDL, each intermediate posn, the new posn
+  const ips = ['intPosn', 'intPosn2'].map((r) => items.find((i) => i.role === r && i.pts.length >= 3)).filter((x): x is Item => !!x);
+  const marks = [{ y: frontY, label: 'the old FDL' }, ...ips.map((i) => ({ y: top(i.pts), label: i.label ?? i.role })), { y: top(nm.pts), label: nm.label ?? 'the new posn' }];
+  const hops = marks.slice(1).map((m, i) => `${marks[i].label} to ${m.label} ${fmtM(m.y - marks[i].y)}, ${Math.round(hOf(m.y - marks[i].y, rate[1]))} h`);
+  const prepH = num(doc, 'readyBy.bnPosnH', 36);
+  const need = ordered ?? prepH;
+  const needWord = ordered !== null
+    ? `the delay ordered, ${ordered} h (the higher Comd states how much delay and the limits of the area, OOW3 s2 para 6 c p 10; s6 para 6 a p 29)`
+    : `the new posn's preparation, ${prepH} working h for a Bn${fmn ? ', the formation\'s Bns preparing at once' : ''} (OOW1 s8 para 7 p 39), if it starts with the withdrawal; set the delay the higher Comd orders in the Delay chips`;
+  const nPosn = 1 + ips.length;
+  const short = need - fast;
+  const hEach = Math.ceil(Math.max(0, short) / nPosn);
+  const base = `${fmtM(depth)} from the old FDL to the new posn's (${hops.join('; ')}): the En as ${who} advances ${rate[0]}-${rate[1]} km a day in a contested battle (${rateSrc}), so ${Math.round(fast)}-${Math.round(slow)} h to the new posn; needed: ${needWord}`;
+  const rule = 'the Comd relates the hours or days to the ground, decides the phases, the intermediate posns and the covering troops\' delaying actions, and the time the En is held at each phase line (OOW3 s2 para 6 c p 10)';
+  if (short <= 0) return { name: 'Time and space', st: 'pass', m: Math.round(fast), reason: `${base}: ${Math.round(-short)} h in hand at the En's fastest; ${rule}` };
+  return {
+    name: 'Time and space', st: 'warn', m: Math.round(fast), reason: `${base}: ${Math.round(short)} h short at the En's fastest, so each of the ${nPosn} posn${nPosn > 1 ? 's' : ''} must hold the En about ${hEach} h more than the contested rate allows; ${rule}`,
+    detail: {
+      head: `${Math.round(short)} h short of ${need} h`,
+      why: 'At the En\'s fastest contested rate the depth alone does not give the time: the rest must come from holding the En at the posns, obstacles and covering troops, or the new posn is not ready when the En reaches it (OOW3 p 10 para 6 b; p 24 para 1).',
+      fix: [
+        'The new posn further back, where the higher Comd\'s area allows (OOW3 p 9 para 6 a: a longer delay, a new posn at a sufficient distance)',
+        `${ips.length < 2 && fmn ? 'An intermediate posn more, or' : 'The intermediate posns'} on stronger ground: rivers, canals, ridges across the En advance (OOW3 p 33 paras 16-17)`,
+        'Obstacles, demolitions and stay-behind parties on the En routes (OOW3 pp 32, 36)',
+        'Fresh troops preparing the new posn before the withdrawal starts (OOW3 s7 para 2 p 39)',
+        'Tell the higher Comd the time this plan gives',
+      ],
+    },
+  };
 }
 
 /** The formation's own rows: the posns' depth, the covering troops, the flank guard, the axes, the reserve, the demolition belt. */
@@ -91,7 +218,7 @@ export function fmnWdrRows(items: Item[], recipe: Recipe, doc: DoctrineSet): { r
   }
   // covering troops in front of each intermediate posn and of the new posn (Annex P p 75; p 32)
   const covs = items.filter((i) => /^cov\d$/.test(i.role) && i.pts.length);
-  rows.push({ name: 'Covering tps', st: covs.length >= ips.length ? 'pass' : 'warn', reason: `${covs.length} covering troops posn${covs.length === 1 ? '' : 's'} for ${ips.length} intermediate posn${ips.length === 1 ? '' : 's'}: covering troops delay the En forward of each posn, deceive him on the new FDLs, force him to deploy early and give warning (OOW3 s6 para 9 b p 31, Annex P p 75)${div ? '; Div covering troops an Armd Regt or its subunits with artillery, engineers, LAT and mot infantry, held forward to the time Corps sets (s6 para 12 p 32)' : ''}` });
+  rows.push({ name: 'Covering tps', st: covs.length >= ips.length ? 'pass' : 'warn', reason: `${covs.length} covering troops posn${covs.length === 1 ? '' : 's'} for ${ips.length} intermediate posn${ips.length === 1 ? '' : 's'}: covering troops delay the En forward of each posn, deceive the En on the new FDLs, force the En to deploy early and give warning (OOW3 s6 para 9 b p 31, Annex P p 75)${div ? '; Div covering troops an Armd Regt or its subunits with artillery, engineers, LAT and mot infantry, held forward to the time Corps sets (s6 para 12 p 32)' : ''}; in plain country, where the En leads with armour, fully mobile covering troops of armour, recce and mot infantry, the troops left behind given armour and transport (s2 para 7 a pp 10-11); small forces cannot hold a superior En where there is room for manoeuvre, but boldly handled in close country they delay out of all proportion to their size (s6 para 13 p 32)` });
   // the flank guard: on the threatened flank, if required (p 34 para 24)
   const fg = item('flankG');
   rows.push(fg ? { name: 'Flank guard', st: 'pass', reason: `${fg.label ?? 'the flank guard'}: protects the withdrawing force from the threatened flank, on a parallel route or on ground dominating the approaches from it; its strength by the threat (OOW3 s6 para 24 p 34). Drawn on the left: move it to the flank the En threatens` }
@@ -110,10 +237,38 @@ export function fmnWdrRows(items: Item[], recipe: Recipe, doc: DoctrineSet): { r
         detail: { head: `${merged.length} pair${merged.length > 1 ? 's' : ''} of routes merge`, why: 'Routes that merge bring the columns together where the En air and artillery can catch both; the routes converging on the axes from the outer flanks must be protected (OOW3 p 8).', fix: ['Keep each formation on its own axis to the clear line', 'Where they must meet, a traffic control post, AD and a time for each to pass (OOW3 p 62 para 7)'] } }
         : { name: 'Axes', st: 'pass', reason: `${rts.length} axes back, ${fmtM(apart)} apart at the closest: withdraw on several axes to avoid congestion, delays and targets for the En air; the routes converging on them from the outer flanks protected (OOW3 s2 para 5 a p 8)` });
   }
+  // how many intermediate posns, and why (GSP 1947 s30 paras 13-15 pp 144-145; OOW3 s6 para 17 p 33)
+  const nIp = ips.length;
+  rows.push({ name: 'Int posns', st: 'pass', m: nIp, reason: `${nIp === 0 ? 'none: the covering troops impose the delay alone, which saves infantry where they can do the job' : `${nIp} intermediate posn${nIp === 1 ? '' : 's'}`} (GSP 1947 Inf Div in Battle s30 para 15 p 145: to save infantry avoid an intermediate posn if the covering troops can do the job; their number by the Comd's appreciation, para 13 p 144; OOW3 s6 para 17 p 33: by the delay, the distance, the ground, the En and the troops)${nIp ? '; each strong enough to make the En deploy the main force, far enough from the next to make the En move the guns, held by the fewest troops (GSP p 144 para 14)' : '; mobile covering troops strong in fire are needed: elements of the Armd Regt and / or the LAT Bn with some artillery, engineers and infantry (GSP p 143 paras 8-9)'}` });
+  // with no intermediate posn the one hop, old posn to new posn, against the En field artillery (OOW3 p 33; IBB p 373)
+  const fwdIt = items.filter((i) => kindOf(i.role) === 'fwd' && i.pts.length >= 3);
+  if (!nIp && nm && nm.pts.length >= 3 && fwdIt.length) {
+    const want = num(doc, 'withdrawal.intermediateMinM', 17200);
+    rows.push(hopRow('New posn hop', 'the old posn', nm.label || 'the new main posn', top(nm.pts) - Math.max(...fwdIt.map((i) => bottom(i.pts))), want, `105 mm IFG ${fmtM(want)}, ORBAT`));
+  }
+  // who prepares the new main posn (GSP 1947 s30 para 17 p 145; OOW3 s7 para 2 p 39)
+  const byRes = recipe.wdrNewPosnBy === 'res';
+  if (nm) rows.push({ name: 'New posn prepared by', st: 'pass', reason: byRes
+    ? `${item('resNew')?.label ?? 'the reserve Bde'}: normally the Div Comd details a reserve Bde for the preparation and occupation of the rear main posn (GSP 1947 Inf Div in Battle s30 para 17 p 145); posns in the rear organised and partly occupied before the forward ones are given up (p 142 para 5)`
+    : `fresh troops where they are to be had, the force in contact imposing the delay; else a portion of the force sent back, the need being men to dig and lay mines rather than fire power (OOW3 s7 para 2 p 39). GSP 1947 s30 para 17 p 145 normally gives the task to the reserve Bde (the "Res Bde" switch)` });
   // the reserve: a Bde the lowest level for one (s7 para 5 p 40)
   const res = items.find((i) => kindOf(i.role) === 'res' && i.pts.length >= 3);
   rows.push(res ? { name: 'Reserve', st: 'pass', reason: `${res.label ?? 'the reserve'}: a Bde is the minimum level for reserves; used to counter-attack, to reinforce the rear parties or to disengage them, and highly mobile (OOW3 s7 paras 4-5 p 40); counter-attacks with limited objectives (s6 para 23 p 35)` }
-    : { name: 'Reserve', st: 'warn', reason: 'no reserve: the withdrawing force needs hard-hitting reserves; at least the least committed troops prepared for the planned tasks (OOW3 s7 paras 4-5 p 40)' });
+    : { name: 'Reserve', st: 'warn', reason: `no reserve${byRes ? ': the reserve Bde is preparing and holding the new main posn (GSP 1947 p 145 para 17)' : ''}; the withdrawing force needs hard-hitting reserves; at least the least committed troops prepared for the planned tasks (OOW3 s7 paras 4-5 p 40)`, detail: byRes ? { head: 'Reserve Bde gone to the new posn', why: 'The books differ: GSP 1947 p 145 sends the reserve Bde back to prepare the rear main posn; OoW Vol III pp 39-40 keeps a Bde reserve forward to counter-attack and to disengage the rear parties.', fix: ['Name the least committed troops (a forward Bde\'s depth Bn, the armour) as the reserve for the planned tasks (OOW3 p 40 para 4)', 'Fresh troops for the new posn (the "Fresh tps" switch), the reserve Bde kept'] } : undefined });
+  // the delay means, when laid (withWdrOptions means; OOW3 s6 para 27 p 36, s12 para 5 b-c pp 56-57)
+  if (recipe.wdrMeans) {
+    const sbs = items.filter((i) => /^sb[A-Z]$/.test(i.role) && i.pts.length);
+    const subs = items.filter((i) => /^dmlSub\d$/.test(i.role) && i.pts.length >= 2);
+    const band = item('rdBand');
+    const want = num(doc, 'withdrawal.formation.roadDenialDepthM', 4800);
+    const bandD = band && band.pts.length >= 3 ? bottom(band.pts) - top(band.pts) : 0;
+    const miss: string[] = [];
+    if (sbs.length < 2) miss.push('stay-behind parties');
+    if (subs.length < ips.length) miss.push('a subsidiary belt in front of each intermediate posn');
+    if (!band) miss.push('the road denial band');
+    const thin = !!band && bandD < want - 1;
+    rows.push({ name: 'Delay means', st: miss.length || thin ? 'warn' : 'pass', reason: `${sbs.length} stay-behind part${sbs.length === 1 ? 'y' : 'ies'}: the most effective means to impose delay, raids and ambushes on the En's administrative and supporting echelons, made mobile to fall back after the task, ATGM and artillery support guaranteed (OOW3 s6 para 27 p 36); ${subs.length} subsidiary demolition belt${subs.length === 1 ? '' : 's'} in front of the intermediate posns to help the covering troops make a clean break, not continuous, chosen by the subordinate Comds (s12 para 5 b pp 56-57); ${band ? `a road denial band ${fmtM(bandD)} deep across the whole front (several miles deep, p 57 para 5 c; ${fmtM(want)} taken, E)` : 'no road denial band'}, the roads damaged so the En must make new ones, the most effective damage first (p 57)${miss.length ? `; missing: ${miss.join(', ')}` : ''}${thin ? `; the band only ${fmtM(bandD)} deep where the space runs out` : ''}` });
+  }
   // the primary demolition belt continuous across the new posn's front (s12 para 5 a p 56)
   const belt = item('dmlBelt');
   if (nm && nm.pts.length >= 3) {

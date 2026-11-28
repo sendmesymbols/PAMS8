@@ -1035,6 +1035,18 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     keywords: ['extended', 'ipb', 'decision point', 'reaction', 'lead time'],
   },
   {
+    path: ['groundGuide', 'extended', 'ipb', 'reserveLadder'],
+    label: "IPB decision: the Indian reserves' times",
+    group: 'Extended View (F)',
+    type: 'enum',
+    options: [
+      { value: 'idd', label: 'Indian Defensive Doctrine p 5: Bn about 1 h, Bde 2-4 h after the attack starts, Div 4-6 h, Corps 12-16 h after the decision' },
+      { value: 'gsp', label: 'GSP 1947 Inf Div in Battle p 83: Bn a Coy within 35-40 min of the attack, Bde 2-3 h and Div 4-6 h of the decision, Corps 12-16 h' },
+    ],
+    help: 'Read when the reading is of the En defence (your attack): when each level of his reserve can come in, against your time onto the Obj. The books differ on the Bn (IC s114 para 14 agrees with GSP); the earlier figure is the safer one to plan against.',
+    keywords: ['extended', 'ipb', 'decision', 'reserve', 'counter-attack', 'indian', 'idd', 'gsp'],
+  },
+  {
     path: ['groundGuide', 'extended', 'ipb', 'hHour'],
     label: 'IPB time ladder: H hour (HH:MM)',
     group: 'Extended View (F)',

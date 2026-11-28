@@ -43,7 +43,9 @@ for (const r of recipes) {
     check(`${tag}: a confirm-on-the-ground list`, res.confirm.length > 0);
     check(`${tag}: no posn reads Pass while its ground is unchecked`, res.slots.every((s) => s.st !== 'pass'));
     const sidcs = res.items.map(S.sidcFor);
-    check(`${tag}: SIDCs are 20 digits, friend`, sidcs.every((s) => /^\d{20}$/.test(s) && s[3] === '3'));
+    // friend, except a slot the recipe marks hostile (the En FDL of the infiltration attack): hostile (6)
+    const hostileOf = (i) => !!r.slots.find((s) => s.role === i.role)?.hostile;
+    check(`${tag}: SIDCs are 20 digits, friend (a hostile slot hostile)`, res.items.every((i, k) => /^\d{20}$/.test(sidcs[k]) && sidcs[k][3] === (hostileOf(i) ? '6' : '3')));
     const out = S.toPlanDocument(res, Plan.createSymbol, Plan.createOverlay, 1);
     const syms = out.doc.poObj.plnOrdrOverlay.flatMap((o) => o.plnOrdrSymbolSet);
     check(`${tag}: Plan document holds every item`, Plan.isPlanDocument(out.doc) && syms.length === res.items.length);

@@ -31,7 +31,7 @@ import {
 import { nightOf, parseDTime, styleNotes, writeMechs, type AprcClimb, type AprcMechsIn, type AprcNight } from './AprcMechs';
 import { casEstimate, casGroupsOf, gunUnitFor, liftDraft, readHeads, type AprcCasGroup } from './AprcBooks';
 import {
-  attkFirst, hSumFromText, lightTimes, parseHHour, writeAdm, writeAir, writeAttkDir, writeAttkPlan, writeCoyTasks, writeEnemy, writeFire, writeGround, writeGroundWdr, writePlan, writeStrength, writeSymbols, writeTasks, writeTimeCalcAttk, writeTimeData, writeTimeReq, zoneWord,
+  attkFirst, hSumFromText, lightTimes, minesHours, parseHHour, writeAdm, writeAir, writeAttkDir, writeAttkPlan, writeCoyTasks, writeEnemy, writeFire, writeGround, writeGroundWdr, writePlan, writeStrength, writeSymbols, writeTasks, writeTimeCalcAttk, writeTimeData, writeTimeReq, zoneWord,
   type AprcAdmIn, type AprcAirIn, type AprcAttkIn, type AprcAttkPlanIn, type AprcAvenueIn, type AprcCheckIn, type AprcCoyIn, type AprcEnemyIn, type AprcFireIn, type AprcForceUnit, type AprcGroundIn, type AprcHSumIn, type AprcObsn, type AprcStrengthIn, type AprcSymbolIn, type AprcTimeDataIn, type AprcTimeIn,
 } from './AprcWrite';
 import { APRC_DOC_CSS, aprcFileBase, bodyHtml, esc, printHtml } from './AprcHtml';
@@ -967,7 +967,7 @@ export default class GroundAppreciation {
         doc.confirm.unshift(...tag(w.confirm, 'gr'));
         doc.frame = w.frame ?? null;
         if (ipb?.in) {
-          const dw = writeAttkDir(ipb.in);
+          const dw = writeAttkDir({ ...ipb.in, country: r.country });
           applyPatches(doc, dw.patches, 'en');
           doc.confirm.push(...tag(dw.confirm, 'en'));
         } else {
@@ -1098,7 +1098,7 @@ export default class GroundAppreciation {
         if (!live()) return null;
         const tr = writeTimeReq(tin);
         applyPatches(doc, tr.patches, 'orbat');
-        const minesH = tin.mines ? [tin.mines.handH, tin.mines.mechH].filter((x): x is number => x !== null).sort((a, b) => a - b)[0] ?? null : null;
+        const minesH = minesHours(tin.mines, tin.ground).h;
         mx.time = { moveH: tin.move ? tin.move.km / tin.move.kmh : null, prepH: tin.prep?.h[0] ?? null, minesH, reqH: tr.reqH };
         doc.confirm.push(...tag(tr.confirm, 'orbat'));
         const fdl = en ? en.avenues.flatMap((a) => (a.lines ?? []).filter((l) => l.role === 'FDLs').map((l) => l.h[0])) : [];

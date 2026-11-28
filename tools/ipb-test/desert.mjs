@@ -55,7 +55,28 @@ check('...a water point beyond the 1 km a candidate commands adds nothing', !far
 // ── G3: a canal across two approaches is a line of def in a desert AOR (DW p 4) ─────────────────────────────────────
 const aorSrc = readFileSync(resolve(repo, 'MS/Engines/GroundGuide/GroundGuideAor.ts'), 'utf8');
 check('G3: a desert AOR keeps a water line across two approaches as a line by itself, ridges not; the line says why (DW p 4)', /desertAor && obstacle && waterNames\.has\(obstacle\)/.test(aorSrc) && /if \(ol\.key !== 'ridgeline'\) waterNames\.add/.test(aorSrc) && /canals in the green belt are lines of defence \(DW p 4\)/.test(aorSrc) && /villages in the desert belt are a line of defence \(DW p 4\)/.test(aorSrc));
+check('...in a desert AOR a village counts from 100 people within 2 km (dhanis small and sparse; DW p 7 long ranges), off the desert 300 within 800 m as before (checked in the app 28 Nov: Mithi, Chachro, Diplo now get W X Y village lines)', /const VIL = desertAor \? \{ people: 100, withinM: 2000, nearM: 1000, bigPeople: 300 \} : \{ people: 300, withinM: 800, nearM: 400, bigPeople: 1000 \}/.test(aorSrc) && /nearestPlace\(p, home, VIL\.people, VIL\.withinM\)/.test(aorSrc));
 check('...the D sheet and Copy as Text carry the reason', /l\.desert \? `; \$\{l\.desert\}`/.test(readFileSync(resolve(repo, 'MS/Engines/GroundGuide/GroundGuideAorSheet.ts'), 'utf8')) && /l\.desert \? `; \$\{l\.desert\}`/.test(readFileSync(resolve(repo, 'MS/Engines/GroundGuide/GroundGuideScopeAor.ts'), 'utf8')));
+
+// ── G4: dune faces are not mountains (28 Nov 2026, Aprc_Review.md §3) ──────────────────────────────────────────────
+// The bundle's slope classes (sloping 7-15°, moderate 15-30°, steep, escarpment) count as mountain ground; in the Thar
+// they are dune faces (dunes 50-300 ft, a vertical slip face: DW pp 2-3). Shares measured on the real bundle within 5 km:
+// Mithi relief 77 m, sand 45 %; Nagarparkar (Karoonjhar) 309 m, slopes 43 %, sand 14 %; Muzaffarabad 830 m, slopes 48 %.
+// Islamkot (the Desert Warfare session's run, 28 Nov): relief 72 m, sand under 30 %, read Mountains under the first rule;
+// since then the relief decides whenever it is read: slopes make Mountains only on the mountain test (400 m in 5 km).
+const A = await import('../../MS/Engines/GroundGuide/GroundGuideAor.ts');
+const shOf = (o) => (g) => o[g] ?? 0;
+const mithi = shOf({ 1: 0.2, 2: 0.45, 4: 0.2, 6: 0.12 }), karoon = shOf({ 1: 0.43, 2: 0.14, 6: 0.25 }), mzd = shOf({ 1: 0.48, 4: 0.29 }), rocky = shOf({ 1: 0.3, 2: 0.55 });
+check('G4: the Thar round Mithi (slopes 20 %, sand 45 %, the ground rising 77 m in 5 km) reads Desert, not Mountains', A.aorCountry(mithi, 77) === 'Desert');
+check('...with no elevation read the classes alone decide, as before (Mountains)', A.aorCountry(mithi, null) === 'Mountains');
+const islamkot = shOf({ 1: 0.2, 2: 0.25, 6: 0.4 });
+check('...Islamkot (slopes 20 %, sand 25 %, 72 m) is not Mountains: the ground fails the mountain test whatever the sand', A.aorCountry(islamkot, 72) !== 'Mountains');
+check('...the Karoonjhar hills (slopes 43 %, sand 14 %, 309 m) fail the 400 m test too: not Mountains, the other classes decide', A.aorCountry(karoon, 309) === 'Plains' && A.aorCountry(karoon, 400) === 'Mountains');
+check('...Muzaffarabad (830 m) stays Mountains; a rocky desert range rising 400 m or more stays Mountains', A.aorCountry(mzd, 830) === 'Mountains' && A.aorCountry(rocky, 900) === 'Mountains' && A.aorCountry(rocky, 399) === 'Desert');
+check('...the rise is IpbTemplates mountainTest riseM (400 m, E), passed in by the guide', A.AOR_MOUNTAIN_RISE_M === json('MS/Data/IpbTemplates.json').mountainTest.riseM && A.aorCountry(mithi, 450, 500) === 'Desert' && A.aorCountry(mithi, 450) === 'Mountains');
+check('...the other countries unchanged', A.aorCountry(shOf({ 6: 0.8, 5: 0.01 }), 26) === 'Canal plains' && A.aorCountry(shOf({ 6: 0.8 }), 26) === 'Plains' && A.aorCountry(shOf({ 3: 0.2 }), 10) === 'Riverine' && A.aorCountry(shOf({ 4: 0.4 }), 10) === 'Built-up');
+const ggSrc = readFileSync(resolve(repo, 'MS/Engines/GroundGuide/GroundGuide.ts'), 'utf8');
+check('...the guide reads the rise within 5 km of the MITG into the AOR input, and waits for its tiles', /const relief = this\._aorRelief\(anchor, lat\)/.test(ggSrc) && /relief\.pending/.test(ggSrc) && /reliefM: relief\.m/.test(ggSrc) && /mountainTest\?\.withinM \?\? 5000/.test(ggSrc));
 
 console.log(`\n${n - fails}/${n} passed${fails ? `, ${fails} FAILED` : ''}`);
 process.exit(fails ? 1 : 0);

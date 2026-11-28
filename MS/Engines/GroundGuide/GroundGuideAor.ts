@@ -134,6 +134,34 @@ export interface AorInput {
   lines: AorLine[];
   bridges: Array<{ at: AorXY; classed: boolean }>;
   itg: Array<{ at: AorXY; reason: string }>;
+  /**
+   * How far the ground within 5 km of the MITG rises, m (the bundle's elevation, IpbTemplates mountainTest withinM);
+   * null or absent when not read (no elevation layer): the country is then judged on the classes alone.
+   */
+  reliefM?: number | null;
+  /** The rise that makes mountain ground (IpbTemplates mountainTest riseM, E); 400 when absent. */
+  mountainRiseM?: number;
+}
+
+/** IpbTemplates mountainTest riseM (E): the ground within 5 km rises this much on mountain ground. */
+export const AOR_MOUNTAIN_RISE_M = 400;
+
+/**
+ * The country the AOR is, from the shares of its class groups (`sh(g)`, 0-1; groups as `AorClassTables.country`) and,
+ * when read, the rise of the ground within 5 km of the MITG. Slope classes over 15 % make it mountains only where the
+ * ground also passes the mountain test (IpbTemplates mountainTest, 400 m in 5 km, E: the test the IPB templates, the gun /
+ * admin finders and the Plan Builder use). On lower ground the slopes are dune faces (dunes 50-300 ft high, their slip
+ * faces vertical: DW pp 2-3) or broken ground, and the other classes say what the AOR is. With no elevation read the
+ * slope classes alone decide, as before.
+ */
+export function aorCountry(sh: (g: number) => number, reliefM: number | null, riseM = AOR_MOUNTAIN_RISE_M): AorCountry {
+  const low = reliefM !== null && Number.isFinite(reliefM) && reliefM < riseM;
+  if (sh(1) > 0.15 && !low) return 'Mountains';
+  if (sh(2) > 0.3) return 'Desert';
+  if (sh(3) > 0.15) return 'Riverine';
+  if (sh(4) > 0.35) return 'Built-up';
+  if (sh(5) + sh(6) > 0.5 && sh(5) > 0.005) return 'Canal plains';
+  return 'Plains';
 }
 
 export interface AorApproach {
@@ -194,6 +222,8 @@ export interface AorReading {
   corridorM: number;
   frontLimit: { m: number; label: string };
   country: AorCountry;
+  /** How far the ground within 5 km of the MITG rises, m (the bundle's elevation); null when not read. */
+  reliefM?: number | null;
   apchs: AorApproach[];
   lines: AorDefLine[];
   laterals: Array<{ a: AorSide; b: AorSide; n: number }>;
@@ -701,6 +731,11 @@ export function readAor(inp: AorInput): AorReading {
     if (tables.country[g.cls[i]] === 2) dDes++;
   }
   const desertAor = dIn > 0 && dDes / dIn > 0.3;
+  // the villages that make a line: off the desert a BUA of 300 or more within 800 m of the approach (counted full within
+  // 400 m and from 1000 people); in a desert AOR the villages are small and scattered (dhanis) and command the open ground
+  // round them at the desert's long ranges (movement seen 5-20 km, fire at varying ranges: DW s4 para 4 p 7), so a
+  // village of 100 or more within 2 km counts (full within 1 km and from 300 people). E: no distance or size printed.
+  const VIL = desertAor ? { people: 100, withinM: 2000, nearM: 1000, bigPeople: 300 } : { people: 300, withinM: 800, nearM: 400, bigPeople: 1000 };
   if (apchs.length >= 2) {
     const ordered = [...apchs].sort((x, y) => SIDES.indexOf(x.side) - SIDES.indexOf(y.side));
     const entry = ordered.map((a) => a.lengthM - a.pastM);
@@ -725,7 +760,7 @@ export function readAor(inp: AorInput): AorReading {
     for (let d = 1000; d <= dmax; d += 250) {
       const pts = ordered.map((a, i) => pointAt(a.path, entry[i] + d));
       const buas = pts.map((p) => {
-        const n = nearestPlace(p, home, 300, 800);
+        const n = nearestPlace(p, home, VIL.people, VIL.withinM);
         return n ? { name: n.place.name, d: n.d, people: n.place.people, ref: n.place } : null;
       });
       // Near the MITG the approaches run close together, so one place can be the nearest for two or three of them: it
@@ -743,7 +778,7 @@ export function readAor(inp: AorInput): AorReading {
         }
       }
       let bscore = 0;
-      for (const b of buas) if (b) bscore += (b.d <= 400 ? 1 : 0.5) * (b.people >= 1000 ? 1 : 0.6);
+      for (const b of buas) if (b) bscore += (b.d <= VIL.nearM ? 1 : 0.5) * (b.people >= VIL.bigPeople ? 1 : 0.6);
       // A water line or ridge crossing two or more approaches within 500 m of the cut.
       const hits = new Map<string, number>();
       ordered.forEach((_a, i) => {
@@ -853,8 +888,7 @@ export function readAor(inp: AorInput): AorReading {
     grp[tables.country[c]]++;
   }
   const sh = (i: number) => (nIn ? grp[i] / nIn : 0);
-  const country: AorCountry =
-    sh(1) > 0.15 ? 'Mountains' : sh(2) > 0.3 ? 'Desert' : sh(3) > 0.15 ? 'Riverine' : sh(4) > 0.35 ? 'Built-up' : sh(5) + sh(6) > 0.5 && sh(5) > 0.005 ? 'Canal plains' : 'Plains';
+  const country = aorCountry(sh, inp.reliefM ?? null, inp.mountainRiseM ?? AOR_MOUNTAIN_RISE_M);
   // NO-GO patches (areas, not lines) of 0.2 km2 and more.
   const seenB = new Uint8Array(W * H);
   const cellKm2 = (res * res) / 1e6;
@@ -962,6 +996,7 @@ export function readAor(inp: AorInput): AorReading {
     corridorM: inp.corridorM,
     frontLimit: inp.frontLimit,
     country,
+    reliefM: inp.reliefM ?? null,
     apchs,
     lines: defLines,
     laterals,

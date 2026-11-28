@@ -119,9 +119,13 @@ export const MW_LIFT = {
   pri2Bn: { mules: 69, porters: 180 },
   /** Emergency pack rations till link up: "a delay of 48-72 hours" (MW p 145 para 10). */
   packH: [48, 72],
-  /** A Bn in def ops: 158 mules a week for rations, 123 mules a lift of amn replenishment (MW Annex H App pp 322-323). */
+  /**
+   * A Bn in def ops: 158 mules a week for rations, 123 mules a lift of amn replenishment (MW Annex H App pp 322-323). The
+   * amn table prints 123 as its total, but its rows add to 101: the book differs with itself, and its printed total is kept.
+   */
   defRationsWk: 158,
   defAmnLift: 123,
+  defAmnRowsSum: 101,
 };
 
 /** Mules and Porters under Adm and Log in mountains: the book's figures for the echelon read. */
@@ -144,11 +148,69 @@ export function liftDraft(kind: AprcKind, echelon: string): AprcPatch {
     );
   } else {
     draft = `Maint in def: ${L.defRationsWk} mules a week for rations and ${L.defAmnLift} mules a lift of amn replenishment, a Bn's${echelon === 'Bn' ? '' : `; a ${echelon}'s not printed${echelon === 'Bde' ? ` (three Bns: ${3 * L.defRationsWk} and ${3 * L.defAmnLift}, by sum)` : ''}`}. ${by}.`;
-    basis.push(rule(`Inf Bn in def ops: rations ${L.defRationsWk} mules a week, amn ${L.defAmnLift} mules a lift of replenishment (MW Annex H App pp 322-323)`), rule('Movs in the hrs of darkness (MW p 146)'));
+    basis.push(rule(`Inf Bn in def ops: rations ${L.defRationsWk} mules a week, amn ${L.defAmnLift} mules a lift of replenishment (MW Annex H App pp 322-323); the amn table's rows add to ${L.defAmnRowsSum}, its printed total ${L.defAmnLift} is kept (the book differs with itself)`), rule('Movs in the hrs of darkness (MW p 146)'));
     if (echelon === 'Bde') basis.push(calc("A Bde's taken as three Bns', a sum; no Bde figure printed"));
   }
   return { id: 'plan.adm.lift', draft, state: 'judge', basis, src: 'gr' };
 }
+
+// ── the five books re-read for the Aprc (Aprc_Review.md, 28 Nov 2026) ───────────────────────────────────────────────
+// GSP-1947 Inf Div in Battle ("GSP-1947"), IBB, OoW Vol I / II, Mountain Warfare (MW), Desert Warfare (DW); printed pages,
+// each checked in the PDF.
+
+/** The ground as the books take it: mountains and desert have books of their own; the rest is the plains'. */
+export type AprcGroundKind = 'plains' | 'desert' | 'mountains';
+export const groundKind = (country: string | null | undefined): AprcGroundKind => (country === 'Mountains' ? 'mountains' : country === 'Desert' ? 'desert' : 'plains');
+
+/** A Bn's frontage in def (IBB). */
+export const BN_FRONT = {
+  /** "in the plains of Punjab a battalion will normally occupy a frontage of 3000-5000 metres"; depth "upto 2000-3000 metres" (IBB S53 para 4 c pp 276-277). */
+  normalM: [3000, 5000] as [number, number],
+  normalDepthM: [2000, 3000] as [number, number],
+  /** Extended frontages (IBB Annex U App 6 p 481): two Coys up 4,500 m and 3-4 km deep, three up 6,500 m and 2.5-3 km deep. */
+  extTwoM: 4500,
+  extThreeM: 6500,
+  extDepthTwoM: [3000, 4000] as [number, number],
+  extDepthThreeM: [2500, 3000] as [number, number],
+  /** Along a canal or A tk ditch, three Coys up "upto 4115 metres (4500 yards)" (IBB S61 p 333; Annex V p 483, 2750-4115 m). */
+  obstacleM: [2750, 4115] as [number, number],
+  /** A ditch "24 metres (80 feet)" wide is an eff A tk obs (IBB S60 p 331): the water line the def is laid along. */
+  obstacleMinWidthM: 24,
+};
+
+/** A Bde in def: 10-12 km wide and 4-6 km deep, "only a yardstick" (OoW Vol I Annex B p 103); on a DCB up to 8000-10000 m (GSP-1947 s26 para 5 p 119), all three Bns three up (pp 120-121). */
+export const BDE_FRONT = { wideM: [10000, 12000] as [number, number], deepM: [4000, 6000] as [number, number], dcbM: [8000, 10000] as [number, number] };
+
+export const BN_FRONT_TEXT = 'In the plains a Bn normally holds 3,000-5,000 m of front, up to 2,000-3,000 m deep (IBB S53 para 4 c pp 276-277); on an extended frontage two Coys up 4,500 m (3-4 km deep), three up 6,500 m (2.5-3 km deep) (IBB Annex U App 6 p 481)';
+export const BN_OBS_TEXT = 'Along a canal or A tk ditch (24 m or more wide, IBB S60 p 331): three Coys up, up to 4,115 m (4,500 yds) (IBB S61 p 333; Annex V p 483)';
+export const BDE_FRONT_TEXT = 'A Bde 10-12 km wide and 4-6 km deep: only a yardstick, not to be followed rigidly (OoW Vol I Annex B p 103)';
+export const BDE_DCB_TEXT = 'A Bde on a DCB up to 8,000-10,000 m by the terrain and the second line tps allotted (GSP-1947 s26 para 5 p 119); normally all three Bns three up, depth from their own resources (pp 120-121)';
+
+/** The ground's own rules for the def's DP heads (mountains, desert), each with its book and page. */
+export const GROUND_DEF: Record<Exclude<AprcGroundKind, 'plains'>, { fdls: string; adv: string; res: string; atk: string; rules: string[] }> = {
+  mountains: {
+    fdls: 'In mountains: hold the dominating features astride the main axis and on its flks, block the valleys; Pl posts, the gaps covered by mines and fire, the M fds thickest in the valleys and foothills; features the En cannot afford to by-pass, reverse slopes occupied',
+    adv: '',
+    res: 'In mountains: split, each part close to its valley and able to launch at once; a res upwards of Bn lvl from one central loc is of little value; kept as far fwd as possible',
+    atk: '',
+    rules: [
+      'In mountains: deny the main axis by occupying the dominating features astride it and on its flks (MW p 147); protective M fds and wire thickest in the valleys / foothills (MW p 150); the def based on features the En cannot afford to by-pass (GSP-1947 p 175); reverse slopes occupied (GSP-1947 p 176); frontages comparatively narrow (OoW Vol I p 72)',
+      'In mountains: little value in a res upwards of Bn lvl from one central loc (MW p 169); the res split, positioned to launch at once or conc (GSP-1947 p 176); frontages comparatively narrow, the res as far fwd as possible (OoW Vol I p 72)',
+    ],
+  },
+  desert: {
+    fdls: 'In desert: deny the vital gr only, a number of defended localities accepting large gaps, held by fire, not by men; str pts at the comm centres and ITG, adm self-sufficient',
+    adv: 'In desert covering tps rather than an adv posn, more screens and stay-behind parties; the covering tps move by ni and canalise the En into a killing gr',
+    res: 'In desert: one third or more of the force, mainly armr, kept down to Bde, employed within 2-6 h; the C pen mode less preferred',
+    atk: 'In desert ATGMs concentrated on the most threatened tk apch, no dissipation',
+    rules: [
+      'In desert: defended localities accepting large gaps (DW p 22); hold gr by fire and not by men (GSP-1947 p 172); mech res down to Bde (DW p 23); str pts adm self-sufficient (DW p 28)',
+      'In desert: covering tps preferred to adv posns; stay-behind parties (OoW Vol I p 71); all moves of the covering tps at ni, the En canalised into a killing gr (DW pp 24-25)',
+      'In desert: one-third or more of the force earmarked as res, mainly armr, retained down to Bde (DW p 26); employed within 2-6 h; tac res in C pen mode less preferred, not ruled out (DW p 27)',
+      'In desert: concentrate the ATGMs on the most threatened tk apch, avoid dissipation (DW p 58)',
+    ],
+  },
+};
 
 // ── casualties (R91) ─────────────────────────────────────────────────────────────────────────────────────────────────
 

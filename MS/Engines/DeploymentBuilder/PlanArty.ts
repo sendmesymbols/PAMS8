@@ -369,8 +369,54 @@ export function artyRows(items: { role: string; pts: XY[] }[], recipe: Recipe, e
     const s = rd?.s ?? null;
     const st: CheckState = s === null ? 'unchecked' : s >= a.room[0] ? 'pass' : s >= a.room[1] ? 'warn' : 'fail';
     rows.push({ name: 'Gun area', st, reason: `${s === null ? 'its ground not loaded' : `${Math.round(s * 100)} % of ${many ? `its worst section (of ${secs.length})` : 'it'} is ground a gun position may take (the bundle's Gun Position going)${sandText(rd!.sand, towed)}; ${Math.round(a.room[0] * 100)} % wanted, under ${Math.round(a.room[1] * 100)} % the guns cannot keep 100 m apart (GunDoctrine room)${st === 'fail' ? ': move it (G while placing)' : ''}`}; ${a.areaSrc}. Level, crest, firm soil, access and concealment: G while placing sites it with the Gun Deployment finder` });
+    if (recipe.task !== 'attack') {
+      const lee = duneLeeRow(items.filter((i) => i.role === 'dfTgt' && i.pts.length).map((i) => ({ label: (i as { label?: string }).label ?? 'DF Tgt', at: i.pts[0] })), cs, f, g);
+      if (lee) rows.push(lee);
+    }
   }
   return rows;
+}
+
+/**
+ * The dune lee (DW s17 para 7 e p 61: "Targets on the reverse slopes of high and steep dunes can not be effectively
+ * engaged by guns"). From each DF Tgt back toward the nearest gun area, every 30 m out to `withinM`: a crest of sand or
+ * dunes that rises `riseM` or more above the target (50 ft, the lowest of the desert's dunes, DW s2 para 1 a p 2) at an
+ * angle above `fallDeg` (the shell's angle of fall: E) hides it from the guns. The figures are GunDoctrine desert.duneLee
+ * (tools/planbuilder-test/dw.mjs keeps them equal). Null when no target has a sand crest near it (not dune country).
+ */
+export const DUNE_LEE = { riseM: 15, fallDeg: 20, withinM: 300, stepM: 30 } as const;
+export function duneLeeRow(tgts: { label: string; at: XY }[], guns: XY[], f: FitFrame, g: PlanGround): Check | null {
+  if (!tgts.length || !guns.length) return null;
+  const sandy = (c: number | null) => c !== null && /\b(sand|dunes?)\b/i.test(g.label(c));
+  const hid: string[] = [];
+  let read = 0, dune = false;
+  for (const t of tgts) {
+    const gun = guns.reduce((b, c) => (Math.hypot(c.x - t.at.x, c.y - t.at.y) < Math.hypot(b.x - t.at.x, b.y - t.at.y) ? c : b));
+    const L = Math.hypot(gun.x - t.at.x, gun.y - t.at.y);
+    if (L < 1) continue;
+    const ux = (gun.x - t.at.x) / L, uy = (gun.y - t.at.y) / L;
+    const w0 = toWorld(f, t.at), e0 = g.elev(w0.x, w0.y);
+    if (!(e0 === e0)) continue;
+    read++;
+    let worst: { rise: number; deg: number } | null = null;
+    for (let d = DUNE_LEE.stepM; d <= Math.min(DUNE_LEE.withinM, L); d += DUNE_LEE.stepM) {
+      const w = toWorld(f, { x: t.at.x + ux * d, y: t.at.y + uy * d });
+      const e = g.elev(w.x, w.y), c = g.cls(w.x, w.y);
+      if (!(e === e) || !sandy(c)) continue;
+      dune = true;
+      const rise = e - e0, deg = (Math.atan2(rise, d) * 180) / Math.PI;
+      if (rise >= DUNE_LEE.riseM && deg >= DUNE_LEE.fallDeg && (!worst || rise > worst.rise)) worst = { rise, deg }; // the crest: the highest qualifying point
+    }
+    if (worst) hid.push(`${t.label} under a ${Math.round(worst.rise)} m dune face at ${Math.round(worst.deg)}°`);
+  }
+  if (!read) return { name: 'Dune lee', st: 'unchecked', reason: 'the elevation at the DF Tgts is not loaded: targets on the reverse slopes of high, steep dunes cannot be effectively engaged by guns (DW p 61)' };
+  if (!dune) return null;
+  if (!hid.length) return { name: 'Dune lee', st: 'pass', reason: `none of the ${read} DF Tgts read lies under a dune face rising ${DUNE_LEE.riseM} m or more at over ${DUNE_LEE.fallDeg}° toward the guns (DW p 61: the reverse slopes of high, steep dunes cannot be effectively engaged by guns)` };
+  return {
+    name: 'Dune lee', st: 'warn',
+    reason: `${hid.length} of ${read} DF Tgts on a dune's reverse slope from the guns: ${hid.join('; ')} (DW s17 para 7 e p 61: targets on the reverse slopes of high and steep dunes cannot be effectively engaged by guns)`,
+    detail: { head: `${hid.length} DF Tgt${hid.length > 1 ? 's' : ''} in the dune lee`, why: `Targets on the reverse slopes of high and steep dunes cannot be effectively engaged by guns (DW s17 para 7 e p 61); a crest of ${DUNE_LEE.riseM} m (50 ft, the lowest dunes, DW p 2) or more within ${DUNE_LEE.withinM} m, steeper than the shell's fall (${DUNE_LEE.fallDeg}°, E), hides the target.`, items: hid, fix: ['Give these targets to the mortars (high angle) or to air / combat aviation', 'Move the gun area so the line of fire runs along the dunes, not across them', 'Air burst over troops in the open (DW p 61)'] },
+  };
 }
 
 /**

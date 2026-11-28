@@ -68,7 +68,7 @@ export interface AprcLimits {
   /** Attk: a quick attk from contact (the Time Calc takes contact to H: MIB pp 89, 96-97, Annex L; IBB p 133). Not a limitation: the planner's. */
   quick?: boolean;
   /**
-   * Attk: the climb from the SL to the obj, m (MW Annex F p 312). Not a limitation: the planner's. In mountains a Read
+   * Attk: the climb from the SL to the obj, m (MW Annex F p 313 para 3 c). Not a limitation: the planner's. In mountains a Read
    * takes it off the 30 m elevation through the Ground Guide; a climb typed here overrides the one read.
    */
   climbM?: number | null;
@@ -259,10 +259,29 @@ export const DP_HEADS: Array<[string, string]> = [
  * the str pt in mountains by MW pp 151-152, 166, 176 (R84). Prompts only: the planner judges.
  */
 export const DP_PROMPTS: Record<string, string[]> = {
+  fdls: [
+    'In desert: defended localities accepting large gaps (DW p 22), gr held by fire and not by men (GSP-1947 p 172); str pts at the comm centres and ITG, adm self-sufficient (DW pp 27-28)',
+    'In mountains: the dominating features astride the main axis and on its flks (MW p 147); features the En cannot afford to by-pass (GSP-1947 p 175); M fds thickest in the valleys / foothills (MW p 150); frontages comparatively narrow (OoW Vol I p 72)',
+    'On a DCB: a Bde up to 8,000-10,000 m (GSP-1947 p 119 para 5); all three Bns three up, depth from their own resources (pp 120-121)',
+  ],
+  adv: [
+    'Protective elms never so large as to weaken the main def (OoW Vol I p 13); posns held by covering tps and adv posns will not be reinforced (GSP-1947 p 105 para 10)',
+    'In desert: covering tps preferred to adv posns, more screens, stay-behind parties (OoW Vol I p 71); covering tps move by ni, canalise the En into a killing gr, a handover line (DW pp 24-25)',
+  ],
+  cpen: [
+    'A number of C pen posns planned and prepared right at the outset (GSP-1947 p 109 para 22); occupied within a Bn not later than 1.5-2 h after the En H, within a Bde 3 h (IBB p 310)',
+    'In desert: tac res in the C pen mode less preferred, not ruled out (DW p 27)',
+  ],
+  armr: [
+    'A tk wpns for the greatest density at the most vital area, never an even distribution (IBB p 73); ATGMs in bulk (OoW Vol I p 26); in desert concentrated on the most threatened tk apch, no dissipation (DW p 58)',
+    'A Div res: an Inf Bde or elms, the Armd Regt or its bulk and the LAT Bn, under the Inf Bde Comd (GSP-1947 p 122 para 3)',
+  ],
   res: [
     'Loc of the res by four factors: non-involvement (secure from fire, cover and concealment), availability (well fwd, in good time), dispersion (able to conc within the reaction time envisaged), the most likely En cap the plan rests on (OoW Vol I p 19)',
     'The three decisions: the point of employment, the timing of the counter manoeuvre, the dir (OoW Vol I p 20)',
     'Contingencies for its relocation should the En op unfold differently; its comd nominated at the outset (OoW Vol I pp 19-20)',
+    'In desert: one-third or more of the force as res, mainly armr, retained down to Bde (DW p 26), employed within 2-6 h (DW p 27)',
+    'In mountains: little value in a res upwards of Bn lvl from one central loc (MW p 169); split, positioned to launch at once or conc (GSP-1947 p 176)',
   ],
   strpt: [
     'In mountains: each Coy def posn at least a Pl str pt with 30 days staying power, on the most dominating feature difficult to reduce (MW p 152)',
@@ -288,6 +307,11 @@ const DEF_GR_MIB = [
   'Interdiction tgts: defiles on the En expected routes, assy areas and other sensitive locs essential to an attacker (MIB p 162)',
   'Spoiling attks: mnvr forces fwd of the def posn to disrupt the En op and his rear areas (MIB p 162)',
 ];
+/** The def's echelons and its main / secondary effort (GSP-1947 Inf Div in Battle; Aprc_Review.md, 28 Nov 2026). */
+const DEF_GR_IDB = [
+  'Three echelons: the protective dets, the main posn and the res, resources allotted to each (GSP-1947 p 104 para 5)',
+  'A main and a secondary def effort and adequate res; gaps accepted, covered by surveillance and counter-mobility measures (GSP-1947 p 104 para 4)',
+];
 /** Pri of work and prep time in mountains (R84, R88): MW pp 147, 172, 262. */
 const DEF_TS_MTN = [
   'In mountains, pri of work: fighting and amn bunkers with the comn trenches; protective M fds and wire; adm bunkers with ration and water storage; living bunkers (MW p 172)',
@@ -300,13 +324,23 @@ const DEF_ADM = [
   'Commodity pts set up by the Div S&T Bn within or ahead of the DAA (lsf p 24): AP open 24 h, reached by the B ech vehs (p 25); PP open 2-4 h, 24 h for armd fmns (p 26); Sup P 2 h daily on a timed programme (p 27)',
   "1st line holdings: ammo as the unit estb; rations 3 days in reserve, the next day's and an emergency pack a man; POL tanks full with 80 km for A and B vehs, 100 l a C veh, gen sets 3 days at 16 h a day (lsf p 23)",
   'Cas evac: CAP, RAP, ADS, FTC, base hospital (lsf Annex L pp 81-82); never more than 4 h without expert treatment, surgery within 12 h (lsf p 47)',
+  'In desert: def posns logistically self contained, able to fight for a pre-determined time without replenishment (DW p 21); str pts stocked with amn to fight on when isolated (DW p 85)',
 ];
 /** The attack's Time Calc (R69, R70 / R82, R85): guns, the quick attk, the uphill assault. */
 const ATTK_TS_BOOKS = [
   'Guns: depl excluding travel, a fd Bty 20 min by day and 40 by ni, a fd Regt 45 / 90 min; registration 20 min each plus 20 min (IBB p 122 para 5); the arty orders may govern H (IBB p 170 para 5)',
   'A quick attk, contact to H: a Coy 30-60 min, a Bn 60-100 min (MIB p 89); in an encounter a Coy at most 30-45 min, a Bn 1-2 h (IBB p 133): tick Quick attk in the Limitations box',
   'In mountains: the SL to the obj on the slant (30 degrees 1.16 to 70 degrees 2.93 times the map distance) and 1 h more for every 350 m of climb (MW Annex F pp 311-313): Read takes the climb off the 30 m elevation from the SL, else the FUP, to the obj; a climb typed in the Limitations box overrides it',
+  'In mountains: longer moves to the assy, the aslt and the reorg; time for the guns, the log units and dumping; a reserve time for the unexpected (MW pp 80-81); rates by day 3 km/h, by ni 0.5-1 km/h, plus 30-60 min for every 300 m of ascent (MW p 81 para 7 b)',
 ];
+/** The assault's frontage by echelon and ground (the attack's phases; Aprc_Review.md, 28 Nov 2026). */
+export const ATTK_FRONT = [
+  'Aslt frontage by ni: a Coy 250 m, a Bn two Coys up 450-650 m (IBB S47 para 17 a p 248); a Bde two Bns up from a brigaded FUP 1,100-1,500 m in the plains, each Bde a clear axis (GSP-1947 p 86 para 12 d); in desert up to 3,000-4,000 m, in mountains relatively compact, no figure (GSP-1947 p 87)',
+  "By day wider (OoW Vol II p 36); in desert the ni attk's frontage and depth are half the day's, more in bright moonlight (DW p 47)",
+  'Phases: thinking two down, the comd considers the phasing (GSP-1947 p 88); in mountains Bn attks in phases with liberal timings (MW p 82)',
+];
+/** The En res and their times (the attack's En caps): GSP-1947 beside IDD. */
+export const EN_RES = 'En res (Indian): a Bn a Coy from the depth to react in 35-40 min; a Bde a tk Sqn and about two Coys in 2-3 h; a Div an Inf Bde and a tk Regt less a Sqn in 4-6 h; a Corps 12-16 h (GSP-1947 p 83); IDD p 5 differs: a Bn about 1 h, a Bde 2-4 h, a Div 4-6 h';
 /** The En on a DCB (R92): Indian Defensive Doctrine. */
 const IDD_OBS = 'En on a DCB: wire ahead of the water obs, the def M fd beyond it 600-800 m deep (IDD p 3; 600 m on p 5), mines and wire in the obs and below the water line, steep banks (IDD p 5)';
 const IDD_ADV = "En on a DCB, its strengths (IDD pp 7-8): no assailable flk, a frontal aslt with heavy attrition; great delay, more with a twin ditch; inf separated from armr in the break-in; water regulated by headworks and regulators; obsn to the front and flks; bunkers that take air burst on own loc; no room for bridging on a twin ditch's middle bund";
@@ -344,7 +378,7 @@ function outlineDef(): AprcPart[] {
               headOnly('gr.ded.dp1', 'DP 1', DP_HEADS.map(([k, h]) => yours(`gr.ded.dp1.${k}`, h, DP_PROMPTS[k] ?? []))),
               yours('gr.ded.dp2', 'DP 2'),
             ]),
-            yours('gr.ded.common', 'Common Deductions', ['Bias of A tk def', 'Incl of BUAs into the def', 'Obs plan', 'Surv plan', 'Loc of adv posn', 'Pri of C attk objs', 'Anti-infil measures', 'A tk measures: addl A tk M fd in area __', 'Use of moon lt hrs for the prep of def', 'Emp of the Fd Pl Engrs', 'Emp of LAT / HAT elms', 'Emp of tks', 'Never start a deduction with "Keeping in view"', UA(8), UA(1, 'V'), ...DEF_GR_MIB]),
+            yours('gr.ded.common', 'Common Deductions', ['Bias of A tk def', 'Incl of BUAs into the def', 'Obs plan', 'Surv plan', 'Loc of adv posn', 'Pri of C attk objs', 'Anti-infil measures', 'A tk measures: addl A tk M fd in area __', 'Use of moon lt hrs for the prep of def', 'Emp of the Fd Pl Engrs', 'Emp of LAT / HAT elms', 'Emp of tks', 'Never start a deduction with "Keeping in view"', UA(8), UA(1, 'V'), ...DEF_GR_MIB, ...DEF_GR_IDB]),
           ]),
         ] },
         { id: 'en', title: 'En Sit', paras: [
@@ -508,11 +542,11 @@ function outlineAttk(): AprcPart[] {
             yoursA('gr.ded.comb', 'Pri of Comb of Apchs', 4, ['Mutual sp, cover, lesser terrain friction; taking more imp tac grs in one phase']),
             headOnly('gr.ded.aps', 'Attk Possibilities (APs)', [
               para('gr.ded.ap1', 'AP-1', {
-                prompts: ['To attk from Lt / Rt with two Pls up with tks in CS / fire sp / blocking posn, in two phases, starting the op in the early hrs / later part of the ni', MA(5)],
+                prompts: ['To attk from Lt / Rt with two Pls up with tks in CS / fire sp / blocking posn, in two phases, starting the op in the early hrs / later part of the ni', MA(5), 'A main attk on the decisive obj and a secondary attk in another area to fix the En and stop him reacting against the main one (GSP-1947 p 84 para 7)'],
                 children: [
                   yoursA('gr.ded.ap1.ph1', 'Phase 1', 5, ['Capturing __ and __ with a Pl / Pl plus each with tks in CS / fire sp, keeping a Pl in res; 45-60 mins']),
                   yoursA('gr.ded.ap1.ph2', 'Phase 2', 5, ['Capturing __ with a Pl with tks in CS / fire sp; 30-45 mins']),
-                  headOnly('gr.ded.ap1.depl', 'Depl Areas', [yoursA('gr.ded.ap1.fup', 'FUP', 5), yoursA('gr.ded.ap1.bof', 'BOF', 5), yoursA('gr.ded.ap1.faa', 'FAA', 5)]),
+                  headOnly('gr.ded.ap1.depl', 'Depl Areas', [yoursA('gr.ded.ap1.fup', 'FUP', 5, ['Not less than 1,000-1,200 m from the obj in the plains, less in broken gr and BUAs (IBB pp 201, 203)', 'In mountains no classic FUP: the tps do not form up in extended lines, they cross a designated place at H (MW p 85); with NVDs outside the eff range of MGs, behind cover (MW p 228)']), yoursA('gr.ded.ap1.bof', 'BOF', 5), yoursA('gr.ded.ap1.faa', 'FAA', 5)]),
                   yoursA('gr.ded.ap1.reorg', 'Reorg and DF Plan', 5, ['Reorg facing __ with a Pl in area __, a Pl facing __ in area __ and depth Pl in area __', 'Mk __ as DFs and __ as DF (SOS) for arty and mor']),
                   yoursA('gr.ded.ap1.fech', 'F Ech Route', 5, ['Along Rd / Tr __ with RV at __']),
                   yoursA('gr.ded.ap1.block', 'Blocking Posn', 5, ['If any: estb at __ with __ force, __ mins prior to H, using __ route']),
@@ -524,13 +558,13 @@ function outlineAttk(): AprcPart[] {
             headOnly('gr.ded.common', 'Common Deductions', [
               yoursA('gr.ded.c.bof', 'Loc of Base of Fire', 5, ['Domination, cover, dist from the obj and ability to eff engage the obj area, irrespective of the AP']),
               yoursA('gr.ded.c.fech', 'F Ech Route', 5, ['The only maj Rd through the obj area that facilitates the mov of vehs']),
-              yoursA('gr.ded.c.reorg', 'Reorg Plan', 5, ['Domination, defensibility of gr, obsn and F of F: fwd loc on / in area __, depth along __']),
+              yoursA('gr.ded.c.reorg', 'Reorg Plan', 5, ['Domination, defensibility of gr, obsn and F of F: fwd loc on / in area __, depth along __', 'Reorg at once: patrolling fwd, adequate A tk def, the tks supporting the aslt stay till the RRs are sited (GSP-1947 p 91)', 'In desert it is easier to capture an obj than to hold it (DW p 46)']),
               yoursA('gr.ded.c.surprise', 'Surprise', 5, ['Area devoid of cover, mov by day observed: attk in the hrs of darkness', 'Proper cam and clt', 'All mov at ni']),
-              yoursA('gr.ded.c.armr', 'Use of Armr', 5, ['Side open, going easy, no maj A tk obs: tks in CS']),
-              yoursA('gr.ded.c.pnr', 'Tasks / Use of Aslt Pnr / Engr', 5, ['Accompany the aslt tps in xing obs', 'Recce, dev and improvement of xing sites', 'Neutralize dmls along br __', 'Improvement of Rd / Tr __ for carriage of F ech', 'Creating gaps in mine fd / wire obs']),
-              yoursA('gr.ded.c.timing', 'Timing of Attk', 6, ['The moon is in __ qtr and up till __ hrs: attk during the early / later part of the ni (weather too: cloudy / rainy)', 'Day, ni, dawn (cross the SL at first lt) or dusk, with their trade-offs (OoW Vol II pp 26-27)']),
+              yoursA('gr.ded.c.armr', 'Use of Armr', 5, ['Side open, going easy, no maj A tk obs: tks in CS', 'In desert: the dir of attk by the tk going (DW p 38); tks used in a ni attk under comd of the attacking inf (DW p 48)']),
+              yoursA('gr.ded.c.pnr', 'Tasks / Use of Aslt Pnr / Engr', 5, ['Accompany the aslt tps in xing obs', 'Recce, dev and improvement of xing sites', 'Neutralize dmls along br __', 'Improvement of Rd / Tr __ for carriage of F ech', 'Creating gaps in mine fd / wire obs', 'An aslt across an obs at a minimum of two places (GSP-1947 p 90 para 14)', 'In mountains: no breaching of M fds and no mine shoes; close in by the boulders, nullahs and dead gr (MW p 86)']),
+              yoursA('gr.ded.c.timing', 'Timing of Attk', 6, ['The moon is in __ qtr and up till __ hrs: attk during the early / later part of the ni (weather too: cloudy / rainy)', 'Day, ni, dawn (cross the SL at first lt) or dusk, with their trade-offs (OoW Vol II pp 26-27)', 'In mountains most attks at ni or under cover of poor visibility (MW p 82)']),
               yoursA('gr.ded.c.smk', 'Use of Smk', 6, ['To protect the mov from the FAA / FUP onwards where cover is less, from __ to __']),
-              yoursA('gr.ded.c.phases', 'Phases of Attk', 6, ['The dist between the objs, their depth and wide frontage: phases for each dir of attk (Lt / Rt / centre apch), Phase 1, Phase 2']),
+              yoursA('gr.ded.c.phases', 'Phases of Attk', 6, ['The dist between the objs, their depth and wide frontage: phases for each dir of attk (Lt / Rt / centre apch), Phase 1, Phase 2', ...ATTK_FRONT]),
               yoursA('gr.ded.c.flank', 'Flank Protection', 6, ['Both flanks open, no obs: task Pl __ to provide flank protection from area __ to __']),
             ]),
           ]),
@@ -554,7 +588,7 @@ function outlineAttk(): AprcPart[] {
               yoursA('en.opt2', 'Option 2', 7),
               para('en.lead', 'Leading En Option', { prompts: ['The most likely / leading En course or cap: Option __; all viable APs are analysed against it (OoW Vol II p 30)', 'Contingency plans for the others: see Exec, Contingency Plans (OoW Vol II p 30)'] }),
             ]),
-            yoursA('en.caps', 'En Caps', 7, ['Local adjustment', 'Local C attk', 'Reinforcement', 'Spoiling attk', 'Use of NVDs', 'Use of arty', 'Use of air', 'Obs laying cap', 'Conduct of BHL', 'Emp of screens and surv elms']),
+            yoursA('en.caps', 'En Caps', 7, [EN_RES, 'Local adjustment', 'Local C attk', 'Reinforcement', 'Spoiling attk', 'Use of NVDs', 'Use of arty', 'Use of air', 'Obs laying cap', 'Conduct of BHL', 'Emp of screens and surv elms']),
             headOnly('en.ded', 'Deductions', [
               headOnly('en.ded.basic', 'Basic Deductions', [
                 yoursA('en.ded.obj', 'Pri of Obj / Imp Tac Grs', 8, ['Keeping in view the En cap, pattern of depl and disposn on all imp tac grs: the pri from Gr and Weather stands cfm, or as changed']),
@@ -564,7 +598,7 @@ function outlineAttk(): AprcPart[] {
                   yoursA('en.ded.ap1.dir', 'Dir / Phases', 8, ['Cfm: capture of these objs renders the En def unbal and opens the main Rd', 'Modified: the En killing gr, swift reactions or wdr / rft cap: discard the apch, attk from __']),
                   yoursA('en.ded.ap1.depl', 'Depl Areas', '8-9', ['FUP: covered from the En fire / flanking', 'FAA: central to both dirs of attk', 'BOF: engages the En eff, irrespective of the dir of attk']),
                   yoursA('en.ded.ap1.reorg', 'Reorg / DF Plan', 9, ['The En cap to launch a C attk and assy its forces in these areas']),
-                  yoursA('en.ded.ap1.block', 'Blocking Posn', 9, ['The En cap to wdr / rft the area within __ mins: tks for the blocking posn instead of CS / fire sp']),
+                  yoursA('en.ded.ap1.block', 'Blocking Posn', 9, ['The En cap to wdr / rft the area within __ mins: tks for the blocking posn instead of CS / fire sp', EN_RES]),
                 ]),
               ]),
               headOnly('en.ded.common', 'Common Deductions', [
@@ -593,14 +627,14 @@ function outlineAttk(): AprcPart[] {
                 yoursA('own.ded.addl', 'Req of Addl Resources / Tps', 12, ['As per the assessment of tasks I req __ inf Sec, __ aslt pnr / engr Sec and __ armr Tp, where I have __: ask for addl resources from the Bn comd; if not provided, the almt of tps to task as per existing resources']),
               ]),
               headOnly('own.ded.common', 'Common Deductions', [
-                yoursA('own.ded.c.hold', 'Asst / Coord with Holding Tps', 13, ['Activity all over the front and feint attk (if nec) from the opposite dir', 'Asst in estb of BOF', 'Info about the En def, obs, lanes and gaps through the mine fd', 'Passage through lanes', 'Guidance arrangement', 'Protection of flanks']),
+                yoursA('own.ded.c.hold', 'Asst / Coord with Holding Tps', 13, ['A prelim op to clear the En outposts: an OP on his main posn, the guns fwd, a good SL (GSP-1947 p 89)', 'Activity all over the front and feint attk (if nec) from the opposite dir', 'Asst in estb of BOF', 'Info about the En def, obs, lanes and gaps through the mine fd', 'Passage through lanes', 'Guidance arrangement', 'Protection of flanks']),
                 yoursA('own.ded.c.bs', 'Emp of BS / RRs', 13, ['Initially as part of BOF at area __', 'Subsequently for str of my reorg in area __']),
                 yoursA('own.ded.c.df', 'DF Plan', 13, ['A fd Bty aval in DS: exec my DF plan during reorg as deduced from Gr and Weather', AIR_SP]),
                 yoursA('own.ded.c.fwdwpn', 'Arrangements to Carry Fwd Wpns for BOF', 13),
                 yoursA('own.ded.c.ammo', 'Task for Fol Up Pls to Carry Ammo for Initial Reorg of Phase 1', 13),
                 yoursA('own.ded.c.nvd', 'Use of NVDs / GSRs', 13),
                 yoursA('own.ded.c.engr', 'Use of Engrs / Aslt Pnrs', 13),
-                para('own.ded.c.res', 'Emp of Res', { prompts: ['The three decisions: the point of application, the timing, the dir (OoW Vol II pp 31-32)', 'The greater the uncertainty in the attk, the greater the res; neither committed prematurely nor too late; located to exploit an unexpected success and to react to an unexpected En threat (OoW Vol II p 32)', 'Recreated when used; contingency plans for it with the fire sp integrated; be prep tasks (OoW Vol II p 32)'] }),
+                para('own.ded.c.res', 'Emp of Res', { prompts: ['The three decisions: the point of application, the timing, the dir (OoW Vol II pp 31-32)', 'The greater the uncertainty in the attk, the greater the res; neither committed prematurely nor too late; located to exploit an unexpected success and to react to an unexpected En threat (OoW Vol II p 32)', 'Recreated when used; contingency plans for it with the fire sp integrated; be prep tasks (OoW Vol II p 32)', 'In mountains a res on each axis, a central res of little value (MW p 82)', 'In desert the res inf heavy for the break-in, mech for the break-out (DW p 39)'] }),
               ]),
             ]),
           ]),
@@ -740,12 +774,12 @@ function outlineWdr(): AprcPart[] {
           yours('gr.gen', 'Gen Description', ['MITG: the new def posn; the Gr read forward of it, toward the En, is the Gr the wdr crosses']),
           para('gr.apchs', 'Apchs', { draft: '', prompts: ['The En apchs onto the new posn: the ways the follow-up takes (' + O3(24, '2') + ')', 'Cross-country going allows dispersion against air, but eases the En armr wide outflanking movs (' + O3(8, '5a') + ')'] }),
           yours('gr.obs', 'Obs', ['Max use of natural and artificial obs; their significance a maj consideration in the loc of the new def and intmed posns and the grouping and tasks (' + O3(8, '5a') + ')', 'Time may not allow other maj artificial obs: make the existing natural obs more formidable (' + O3(14, '11c') + ')']),
-          para('gr.routes', 'Routes Back', { prompts: ['Routes, especially laterals: for redeployment, regrouping, committing the res and the wdr of units (' + O3(8, '5a') + ')', 'Parallel routes: wdr on several axes against congestion, delays and air tgts; routes converging on the axes from the outer flks protected (' + O3(8, '5a') + ')', 'Which routes to block and which to keep open for the wdr (' + O3(8, '5a') + ')'] }),
+          para('gr.routes', 'Routes Back', { prompts: ['Routes, especially laterals: for redeployment, regrouping, committing the res and the wdr of units (' + O3(8, '5a') + ')', 'Parallel routes: wdr on several axes against congestion, delays and air tgts; routes converging on the axes from the outer flks protected (' + O3(8, '5a') + ')', 'In desert: a broad front, the max routes incl cross-country (DW p 32)', 'Which routes to block and which to keep open for the wdr (' + O3(8, '5a') + ')'] }),
           yours('gr.cover', 'Cover'),
           yours('gr.met', 'Weather', ['Adverse weather is likely to favour the wdr: it impedes the En mobility and air; heavy rain, mist, fog, dust storms and thick haze may let it be done by day too (' + O3(9, '5b') + ')', 'Difficult terrain (bog, thick woods, hills) impedes mov but may make a daylight wdr the only practical means (' + O3('8-9', '5a') + ')']),
           headOnly('gr.ded', 'Deductions', [
-            para('gr.ded.newposn', 'Loc of the New Def Posn', { prompts: ['Normally laid down by the higher comd: future plans, the sit on the flks, the suitability of the Gr, its dist from the present posn (' + O3(39, '1') + ')', 'The line of no pen taken into consideration (' + O3(39, '3') + '); its selection, org and layout as in OoW Vol I (' + O3(39, '1') + ')'] }),
-            para('gr.ded.intmed', 'Intmed Posns', { prompts: ['Naturally strong, held with the min of tps, heavy damage to the En; so far apart that the En must redeploy before attacking the next: parallel ridges across the En adv; rivers, canals, unfordable streams, marshes and other obs, mines in front and on the flks; high Gr with good obsn and long F of F; concealed routes of wdr; a Rd network with good going, which helps the En too (' + O3(33, '16') + ')', 'Their number: the delay to impose, the dist to the new posn, the natural str of the Gr, the En and the tps aval; tps to prep and hold them are the maj limitation (' + O3(33, '17') + ')'] }),
+            para('gr.ded.newposn', 'Loc of the New Def Posn', { prompts: ['Normally laid down by the higher comd: future plans, the sit on the flks, the suitability of the Gr, its dist from the present posn (' + O3(39, '1') + ')', 'The Div Comd normally details a reserve Bde for the prep and occupation of the rear main posn (GSP-1947 p 145)', 'The line of no pen taken into consideration (' + O3(39, '3') + '); its selection, org and layout as in OoW Vol I (' + O3(39, '1') + ')'] }),
+            para('gr.ded.intmed', 'Intmed Posns', { prompts: ['Naturally strong, held with the min of tps, heavy damage to the En; so far apart that the En must redeploy before attacking the next: parallel ridges across the En adv; rivers, canals, unfordable streams, marshes and other obs, mines in front and on the flks; high Gr with good obsn and long F of F; concealed routes of wdr; a Rd network with good going, which helps the En too (' + O3(33, '16') + ')', 'Their number: the delay to impose, the dist to the new posn, the natural str of the Gr, the En and the tps aval; tps to prep and hold them are the maj limitation (' + O3(33, '17') + ')', 'Occupied where necessary to impose further delay (GSP-1947 p 144 para 12); leap-frogging at fmn lvl till the rear main posn; no posn abandoned until the next in the rear is organised and at least partially occupied (GSP-1947 p 149; IBB p 378)'] }),
             para('gr.ded.routes', 'Routes to Block and Keep Open', { prompts: ['Terrain and routes analysed for which routes are to be blocked and which kept open for the wdr (' + O3(8, '5a') + ')', 'Security dets to secure the defiles the wdr uses, with AD for them (' + O3(12, '9a') + ')'] }),
             para('gr.ded.time', 'Wdr by Ni or Day', { prompts: ['A ni wdr is usually preferred: secrecy, surprise, fewer cas; it starts so as to finish before daylight (' + O3('43-44', '1') + ')', 'A daylight wdr is normally avoided unless the weather or the Rds favour or need it (' + O3(40, '1') + ')'] }),
           ]),
@@ -762,7 +796,7 @@ function outlineWdr(): AprcPart[] {
           ]),
           para('ts.req', 'Time Req', { draft: '', table: blankTable(['S/No', 'Activity', 'Time (hrs)', 'Remarks'], ['a.', 'b.', 'c.', 'd.']), prompts: ['The dist between the orig and the new posn and the time to prep the latter calculated carefully (' + O3(10, '6b') + ')', 'A Bn needs at least 36 working hrs to prep its posns (OoW Vol I p 39)'] }),
           headOnly('ts.ded', 'Deductions', [
-            yours('ts.ded.timings', 'Essential Timings', ['Laid down by the highest comd: the time the posn is denied till; no rearward mov except recce parties before; all tps clear of a line by (' + O3(19, '17') + ')', 'By the subordinate comds: the time the posn is finally abandoned, the time thinning out may begin (' + O3(19, '18') + ')', 'Timings not tight, allowing each phase to complete (' + O3('18-19', '16') + ')']),
+            yours('ts.ded.timings', 'Essential Timings', ['Laid down by the highest comd: the time the posn is denied till; no rearward mov except recce parties before; all tps clear of a line by (' + O3(19, '17') + ')', 'By the subordinate comds: the time the posn is finally abandoned, the time thinning out may begin (' + O3(19, '18') + ')', 'Timings not tight, allowing each phase to complete (' + O3('18-19', '16') + ')', 'Beside it: the posn to be denied and no rearward mov always laid down (GSP-1947 p 147); thinning out and final abandonment (p 148)']),
             yours('ts.ded.common', 'Common Deductions', ['The time for delay related to the depth of the area: from the Gr, hrs or days to the dist; then the phases, intmed posns, the delaying actions of the covering tps and the time the En is held at each phase line (' + O3(10, '6c') + ')', 'A longer delay: the new posn at a sufficient dist, a series of intmed posns between (' + O3(9, '6a') + ')', 'Time short after an unsuccessful action: a hasty wdr, not a deliberate one (' + O3(10, '6b') + ')']),
           ]),
         ] },
@@ -770,12 +804,12 @@ function outlineWdr(): AprcPart[] {
           yours('en.comp', 'En Composn and Superiority', ['The En superiority in tps, armament and materiel, the En tactics and morale weighed objectively against own; the qualities of the En comds and the course they are likely to adopt (' + O3(10, '7a') + ')']),
           yours('en.caps', 'En Caps Against the Wdr', ['Airborne attk, air attk, turning mov and infiltration to interfere with the wdr; efforts to impede it (' + O3(11, '8b') + ')', 'Airborne or heliborne tps to seize defiles or brs and disrupt comns once the wdr is known (' + O3(46, '6') + ')']),
           para('own.str', 'Own Str as Related to that of the En', { draft: '', table: blankTable(['Ser', 'Arms', 'En', 'Own', 'Ratio'], ['a.', 'b.', 'c.', 'd.']) }),
-          yours('own.mob', 'Mobility', ['The En local superiority offset by own superior mobility or by the denial of mobility to the En (' + O3(10, '7a') + ')', 'In plain country, the En likely to lead with armr: fully mobile covering tps of armr, recce elms and motorised inf; tps left behind with armr if the En has it, and tpt to move speedily after the final extrication (' + O3(11, '7a') + ')', 'Max denial of mobility by interdiction and a coord obs and denial plan (' + O3(11, '7a') + ')']),
+          yours('own.mob', 'Mobility', ['In desert no unit is expected to wdr any distance on foot: tpt to lift all; a clean break to the next main posn, few features with delay potential on the routes (DW p 32)', 'The En local superiority offset by own superior mobility or by the denial of mobility to the En (' + O3(10, '7a') + ')', 'In plain country, the En likely to lead with armr: fully mobile covering tps of armr, recce elms and motorised inf; tps left behind with armr if the En has it, and tpt to move speedily after the final extrication (' + O3(11, '7a') + ')', 'Max denial of mobility by interdiction and a coord obs and denial plan (' + O3(11, '7a') + ')']),
           headOnly('own.ded', 'Deductions', [yours('own.ded.common', 'Common Deductions', ['Tps on the orig posn to deny it up to the time ordered; the time to wdr them (' + O3(19, '17d') + ')', 'The critical stage: the orig posn thinned out to release men for the posn in the rear, the rest on an extended frontage; all arty and air effort in their sp, the res placed to intervene at short notice (' + O3(24, '3') + ')', 'Balance: each gp formed for its role and able to op independently; no element over-burdened (' + O3(4, '10-11') + ')'])]),
         ] },
         { id: 'sec', title: 'Int, Security and Deception', paras: [
           yours('sec.int', 'Int', ['Early warning of En activities meant to disrupt the wdr: the higher HQ provides the int on the En intentions and moves (' + O3(11, '8a') + ')', 'EEIs: the str and composn of the main attacking force, the loc of the En armr (' + O3(11, '8b') + ')', 'All agencies: air recce, stay behind parties in En held territory, aggressive ptls (' + O3(12, '8c') + ')']),
-          yours('sec.sec', 'Security', ['Covering tps, rearguards and, if nec, flk gds; their protection by the terrain and the En str and eqpt (' + O3(12, '9a') + ')', 'Terrain restricting MT favours En infiltration: security elms mainly inf; open country favours mobile forces (' + O3(12, '9a') + ')', 'Def of the rear areas; security dets to secure the defiles the wdr uses, with AD (' + O3(12, '9a') + ')']),
+          yours('sec.sec', 'Security', ['Covering tps, rearguards and, if nec, flk gds; their protection by the terrain and the En str and eqpt (' + O3(12, '9a') + ')', 'Covering tps / rearguards keep contact and impose delay; mobile, their composn by the msn, terrain, weather and the En (GSP-1947 p 143 para 8)', 'Terrain restricting MT favours En infiltration: security elms mainly inf; open country favours mobile forces (' + O3(12, '9a') + ')', 'Def of the rear areas; security dets to secure the defiles the wdr uses, with AD (' + O3(12, '9a') + ')']),
           yours('sec.decep', 'Secrecy, Surprise and Deception', ['Conceal the actual day and time of the wdr; by ni, leave the En guessing at first lt whether the posn has been abandoned (' + O3('12-13', '10a') + ')', 'A cover plan early; all mov to the rear except routine tfc in the hrs of darkness; no abnormal action by fwd tps until the rear parties go; normal ptl to the last moment; need to know; dmls controlled and timed with care; armr and APCs thinned out with care (' + O3(13, '10c') + ')', 'Strict use of wrls; active measures: more ptls, arty fire to cover noises, simulating a build-up for attk (' + O3(14, '10c') + '); active and passive measures (' + O3(54, '8') + ')']),
         ] },
         { id: 'sp', title: 'Dmls, Air and Adm', paras: [

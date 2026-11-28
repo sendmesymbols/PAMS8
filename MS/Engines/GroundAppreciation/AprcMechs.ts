@@ -25,7 +25,7 @@ import type { AorDefLine, AorReading, AorSide } from '../GroundGuide/GroundGuide
 import { moonState } from '../GroundGuide/GroundGuideOcoka';
 import { BACKWARD_EVENTS, MA, UA, para, walk, type AprcBasis, type AprcConfirm, type AprcDoc, type AprcKind, type AprcLimits, type AprcPara, type AprcPatch, type AprcTable } from './AprcModel';
 import { BATTLE_PROC_H, attkFirst, clockAt, hplus, lightTimes, type AprcAttkIn, type AprcAttkPlanIn, type AprcCheckIn, type AprcHSumIn, type AprcLight, type AprcSymbolIn, type AprcWritten } from './AprcWrite';
-import { GUN_DEPL, QUICK_ATTK, QUICK_TEXT, gunUnitFor, mtnAssault } from './AprcBooks';
+import { BDE_DCB_TEXT, BDE_FRONT, BDE_FRONT_TEXT, BN_FRONT, BN_FRONT_TEXT, BN_OBS_TEXT, GROUND_DEF, GUN_DEPL, QUICK_ATTK, QUICK_TEXT, groundKind, gunUnitFor, mtnAssault, type AprcGroundKind } from './AprcBooks';
 
 const km = (m: number): string => (m / 1000).toFixed(1);
 const list = (a: string[], and = 'and'): string => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} ${and} ${a[a.length - 1]}`);
@@ -146,28 +146,63 @@ export interface AprcCoysUp {
 }
 
 /**
- * 2 up or 3 up from the Bn's FDL frontage. The pamphlet drives: a Bn two Coys up holds 4,500 m, three up 6,500 m
- * (IBB Annex U App 6 p 481); wider is an extended frontage (OoW Vol I p 5, pp 82-83). The guide's table beside it
- * (Understanding Aprc p 4: up to 6.5 km 2 up / 2 up, 7-10 km 3 up / 2 up, beyond 10.5 km 3 up / 3 up; between its bands
- * the nearer is taken).
+ * 2 up or 3 up from the Bn's FDL frontage. The pamphlet drives: in the plains a Bn normally holds 3,000-5,000 m (IBB S53
+ * para 4 c pp 276-277), and wider is an extended frontage (IBB S59; OoW Vol I p 5, pp 82-83), laid two Coys up on 4,500 m
+ * or three up on 6,500 m (IBB Annex U App 6 p 481: the extended frontages' annex, not the normal frontage). Along a canal or
+ * A tk ditch 24 m or more wide (IBB S60 p 331) three Coys up, up to 4,115 m (S61 p 333; Annex V p 483). Mountains and
+ * desert print no Bn figure (MW, DW): IBB's rows are taken and the book's rule said beside them. The guide's table beside
+ * it all (Understanding Aprc p 4: up to 6.5 km 2 up / 2 up, 7-10 km 3 up / 2 up, beyond 10.5 km 3 up / 3 up; between its
+ * bands the nearer is taken).
  */
-export function coysUp(frontM: number, maxCoys: number | null = null): AprcCoysUp {
-  const pam = frontM <= 4500 ? 2 : 3;
-  const ext = frontM > 6500;
+export function coysUp(frontM: number, maxCoys: number | null = null, o: { ground?: AprcGroundKind; obstacle?: string | null } = {}): AprcCoysUp {
+  const F = BN_FRONT;
+  const onObs = !!o.obstacle;
+  const pam = onObs ? 3 : frontM <= F.extTwoM ? 2 : 3;
+  const ext = frontM > (onObs ? F.obstacleM[1] : F.normalM[1]);
   const g = frontM <= 6750 ? { up: 2 as const, pls: 2 as const, coy: 2500, band: 'up to 6.5 km' } : frontM <= 10250 ? { up: 3 as const, pls: 2 as const, coy: 3000, band: '7-10 km' } : { up: 3 as const, pls: 3 as const, coy: 3500, band: 'beyond 10.5 km' };
   const gap = (frontM > 6500 && frontM < 7000) || (frontM > 10000 && frontM < 10500);
   const up = maxCoys !== null && maxCoys > 0 ? Math.min(pam, maxCoys) : pam;
+  const where = onObs
+    ? `along ${o.obstacle}, where a Bn three Coys up holds up to 4.1 km`
+    : `where a Bn normally holds 3-5 km${frontM > F.normalM[1] ? ' and, on an extended frontage, two Coys up 4.5 km and three up 6.5 km' : ''}`;
+  const groundWord = o.ground === 'mountains' ? ' In mountains frontages are comparatively narrow, with large gaps; MW prints no Bn figure, so IBB\'s are taken.' : o.ground === 'desert' ? ' In desert large gaps are accepted, the gr held by fire; DW prints no Bn figure, so IBB\'s are taken.' : '';
   const text =
-    `${up} Coys up, Pls ${g.pls} up: the FDLs run ${km(frontM)} km between bdys, where a Bn two Coys up holds 4.5 km and three up 6.5 km` +
-    `${ext ? ': an extended frontage, its gaps covered by mines, fire and ptls' : ''}${up < pam ? `; held to ${up} Coys up by the aim` : ''}. ` +
+    `${up} Coys up, Pls ${g.pls} up: the FDLs run ${km(frontM)} km between bdys, ${where}` +
+    `${ext ? ': an extended frontage, its gaps covered by mines, fire and ptls' : ''}${up < pam ? `; held to ${up} Coys up by the aim` : ''}.${groundWord} ` +
     `The guide: ${g.band}, ${g.up} up and Pls ${g.pls} up, a Coy front up to ${g.coy.toLocaleString('en-GB')} m${gap ? ' (between its bands: the nearer taken)' : ''}${g.up !== pam ? "; the pamphlet's figure is taken" : ''}. ` +
     'A Pl locality holds 600 m (the guide: 500 m at most, a gap of more than 500 m between Pls an extended frontage).';
   const basis: AprcBasis[] = [
-    rule('A Bn two Coys up 4,500 m of front and 3-4 km deep, three Coys up 6,500 m and 2.5-3 km deep (IBB Annex U App 6 p 481); a Pl locality 600 m (IBB Annex U App 5 p 480)'),
+    rule(onObs ? BN_OBS_TEXT : BN_FRONT_TEXT),
+    ...(onObs ? [rule(BN_FRONT_TEXT)] : []),
+    rule('A Pl locality 600 m (IBB Annex U App 5 p 480); frontages below Bn are not extended (IBB S59 para 6 b p 326)'),
     ...(ext ? [rule('Wide fronts mean gaps, covered by mines, fire and ptls (OoW Vol I p 5); a Bn may deploy three Coys up on an extended frontage, depth always kept (OoW Vol I pp 82-83)')] : []),
+    ...(o.ground === 'mountains' ? [rule('In mountains the frontages are comparatively narrow (OoW Vol I p 72); MW prints no Bn frontage')] : o.ground === 'desert' ? [rule('In desert defended localities accepting large gaps (DW p 22), gr held by fire and not by men (GSP-1947 p 172); DW prints no Bn frontage')] : []),
     rule(`Beside it, the guide: Bn AOR up to 6.5 km 2 up / 2 up (a Coy 2,500 m), 7-10 km 3 up / 2 up (3,000 m), beyond 10.5 km 3 up / 3 up (3,500 m); a Pl front 500 m at most (${UA(4)})`),
   ];
   return { up, plsUp: g.pls, ext, guideUp: g.up, text, basis };
+}
+
+/**
+ * The water line a line of def runs along when it is an obs the def can be laid on: 24 m or more wide (IBB S60 p 331), its
+ * width read off the apch that crosses it. Null when it is narrower or its width is not recorded.
+ */
+export function wideWaterOn(r: AorReading, l: AorDefLine | null): { name: string; widthM: number } | null {
+  if (!l?.obstacle) return null;
+  let w = 0;
+  for (const a of r.apchs) for (const ob of a.obstacles ?? []) if (ob.name === l.obstacle && ob.widthM !== null && ob.widthM > w) w = ob.widthM;
+  return w >= BN_FRONT.obstacleMinWidthM ? { name: l.obstacle, widthM: w } : null;
+}
+
+/** A Bde's front and depth by the yardstick, or on a DCB (24 m or more of water along the FDLs). */
+export function bdeFront(frontM: number, depthGapM: number | null, onObs: string | null): { text: string; basis: AprcBasis[] } {
+  const B = BDE_FRONT;
+  const [lo, hi] = onObs ? B.dcbM : B.wideM;
+  const vs = frontM > hi ? `wider than the ${km(hi)} km` : frontM < lo ? `narrower than the ${km(lo)} km` : `within the ${km(lo)}-${km(hi)} km`;
+  const deep = depthGapM !== null ? `; the depth line ${km(depthGapM)} km behind the FDLs, ${depthGapM < B.deepM[0] ? 'short of' : depthGapM > B.deepM[1] ? 'beyond' : 'within'} the 4-6 km yardstick` : '';
+  const text = onObs
+    ? `The FDLs run ${km(frontM)} km along ${onObs}, ${vs} a Bde may be given on a DCB: all three Bns three up, depth from their own resources${deep}.`
+    : `The FDLs run ${km(frontM)} km, ${vs} of the yardstick${deep}.`;
+  return { text, basis: onObs ? [rule(BDE_DCB_TEXT), rule(BDE_FRONT_TEXT)] : [rule(BDE_FRONT_TEXT)] };
 }
 
 export interface AprcDefLayout {
@@ -194,6 +229,12 @@ export interface AprcDefLayout {
   sides: AorSide[];
   /** The echelon of the AOR (a formation's addl lines of def are tested on their obs, OoW Vol I p 17). */
   echelon: string;
+  /** The ground as the books take it (mountains, desert, plains), from the AOR's country. */
+  ground: AprcGroundKind;
+  /** The water line along the FDLs when it is 24 m or more wide (IBB S60 p 331): the def laid along an obs. */
+  wideObs: { name: string; widthM: number } | null;
+  /** A Bde's front and depth against its yardstick (OoW Vol I Annex B; GSP-1947 p 119 on a DCB). */
+  bde: { text: string; basis: AprcBasis[] } | null;
 }
 
 /** A line's distance past the border along the apchs (the line through the MITG at the nearest apch's). */
@@ -277,8 +318,12 @@ export function layoutDef(r: AorReading, lim: AprcLimits = {}, echelon = 'Bn'): 
   }
   if (lim.salient) prompts.push(`A salient is def at its base: the FDLs on the line nearest its base (${UA(4)})`);
   if (lim.penetrated) prompts.push(`The En has pen the defs: the line of max pen is taken as the border and the def laid from it (${UA(4)})`);
-  const coys = fdl && echelon === 'Bn' ? coysUp(fdl.frontM, lim.maxCoys ?? null) : null;
-  const band: [number, number] = coys ? (coys.up <= 2 ? [3000, 4000] : [2500, 3000]) : [3000, 5000];
+  const ground = groundKind(r.country);
+  const wideObs = wideWaterOn(r, fdl);
+  const coys = fdl && echelon === 'Bn' ? coysUp(fdl.frontM, lim.maxCoys ?? null, { ground, obstacle: wideObs?.name ?? null }) : null;
+  // the depth line looked for at the pamphlet's depth: a Bn's normal 2-3 km (IBB p 277), on an extended frontage App 6's
+  // (3-4 km two up, 2.5-3 km three up, IBB p 481); a Bde's 4-6 km (OoW Vol I Annex B p 103); else the guide's 3-5 km
+  const band: [number, number] = coys ? (!coys.ext ? BN_FRONT.normalDepthM : coys.up <= 2 ? BN_FRONT.extDepthTwoM : BN_FRONT.extDepthThreeM) : echelon === 'Bde' ? BDE_FRONT.deepM : [3000, 5000];
   if (fdl && (!depth || dOf(depth) <= dOf(fdl))) depth = near(ls.filter((l) => dOf(l) > dOf(fdl!)), (l) => dOf(l) - dOf(fdl!), band);
   const ahead = fdl ? ls.filter((l) => dOf(l) < dOf(fdl!) && l !== strPt) : [];
   const fdlKm = fdl && Number.isFinite(dOf(fdl)) ? dOf(fdl) / 1000 : null;
@@ -298,7 +343,8 @@ export function layoutDef(r: AorReading, lim: AprcLimits = {}, echelon = 'Bn'): 
     if (detsWhere) reasons.push(`room for the protective dets ahead (${detsWhere})`);
   }
   const moved = !!fdl && (fdl.role !== 'FDLs' || (!!depth && depth.role !== 'Depth' && depth !== strPt));
-  return { fdl, depth, ahead, strPt, fdlKm, depthGapKm, screenKm, detsWhere, coys, reasons, basis, prompts, moved, border, sides, echelon };
+  const bde = fdl && echelon === 'Bde' ? bdeFront(fdl.frontM, depthGapKm !== null ? depthGapKm * 1000 : null, wideObs?.name ?? null) : null;
+  return { fdl, depth, ahead, strPt, fdlKm, depthGapKm, screenKm, detsWhere, coys, reasons, basis, prompts, moved, border, sides, echelon, ground, wideObs, bde };
 }
 
 /** The apch sides in pri (the reading's rank) and those a tk can use (a Rd along it and room for the corridor). */
@@ -306,6 +352,9 @@ export function apchPri(r: AorReading): { ranked: string[]; tank: string[] } {
   const ranked = [...r.apchs].sort((a, b) => a.rank - b.rank);
   return { ranked: ranked.map((a) => a.side), tank: ranked.filter((a) => a.roadsAlong.length && a.fits).map((a) => a.side) };
 }
+
+/** " along X" after a line's name, unless its name already says so ("Along Hakra Branch"). */
+const alongOf = (l: AorDefLine): string => (l.obstacle && !/^along\b/i.test(l.name) ? ` along ${l.obstacle}` : '');
 
 const mitgOf = (r: AorReading): string => (r.mitg.name && r.mitg.name !== 'MITG' ? r.mitg.name : 'the MITG');
 
@@ -328,42 +377,90 @@ export function writeLayoutDef(L: AprcDefLayout, r: AorReading): AprcPatch[] {
     prompts: L.prompts,
     src: 'gr',
   });
-  out.push({ id: 'gr.ded.dp1.fdls', draft: `Line ${L.fdl.id} (${L.fdl.name})${L.fdl.obstacle ? ` along ${L.fdl.obstacle}` : ''}${L.fdlKm !== null ? `, ${h1(L.fdlKm)} km past ${L.border}` : ''}${L.coys ? `: ${L.coys.text}` : '.'}`, state: 'judge', basis: [calc("From the lines of def and the aim's limitations"), ...(L.coys?.basis ?? [])], src: 'gr' });
-  if (L.depth && L.depthGapKm !== null)
-    out.push({ id: 'gr.ded.dp1.depth', draft: `Line ${L.depth.id} (${L.depth.name}), ${h1(L.depthGapKm)} km behind the FDLs.`, state: 'judge', basis: [rule(`A Bn two Coys up is 3-4 km deep, three up 2.5-3 km (IBB Annex U App 6 p 481); beside it, the guide: the depth on the next line 3-5 km behind the FDLs (${UA(3)})`)], src: 'gr' });
+  const G = L.ground === 'plains' ? null : GROUND_DEF[L.ground];
+  const gRules = (G?.rules ?? []).map(rule);
+  const fdlsGround = G?.fdls ? ` ${G.fdls}.` : '';
+  out.push({
+    id: 'gr.ded.dp1.fdls',
+    draft: `Line ${L.fdl.id} (${L.fdl.name})${alongOf(L.fdl)}${L.fdlKm !== null ? `, ${h1(L.fdlKm)} km past ${L.border}` : ''}${L.coys ? `: ${L.coys.text}` : L.bde ? `. ${L.bde.text}` : '.'}${fdlsGround}`,
+    state: 'judge',
+    basis: [calc("From the lines of def and the aim's limitations"), ...(L.coys?.basis ?? []).filter((b) => !(G && /^In (desert|mountains) /.test(b.text))), ...(L.bde?.basis ?? []), ...(L.wideObs ? [data(`${L.wideObs.name}: ${Math.round(L.wideObs.widthM)} m wide where the apchs cross it (the 1:50k map)`)] : []), ...(G ? gRules.slice(0, 1) : [])],
+    src: 'gr',
+  });
+  if (L.depth && L.depthGapKm !== null) {
+    const depthRule =
+      L.echelon === 'Bde'
+        ? rule(`${BDE_FRONT_TEXT}; beside it, the guide's Bn figure: the depth on the next line 3-5 km behind the FDLs (${UA(3)})`)
+        : rule(`${BN_FRONT_TEXT}; beside it, the guide: the depth on the next line 3-5 km behind the FDLs (${UA(3)})`);
+    out.push({ id: 'gr.ded.dp1.depth', draft: `Line ${L.depth.id} (${L.depth.name}), ${h1(L.depthGapKm)} km behind the FDLs.`, state: 'judge', basis: [depthRule], src: 'gr' });
+  }
   out.push(
     L.screenKm
       ? { id: 'gr.ded.dp1.screens', draft: `${h1(L.screenKm[0])}-${h1(L.screenKm[1])} km past ${L.border}, 1-1.5 km ahead of Line ${L.fdl.id}.`, state: 'judge', basis: [rule('A screen is provided in all circumstances (OoW Vol I Annex A p 102)'), rule(`Screens 1-1.5 km ahead of the FDLs (${UA('2-3')})`)], src: 'gr' }
       : { id: 'gr.ded.dp1.screens', draft: null, state: 'yours', basis: [], prompts: [`The FDLs lie less than 1 km past ${L.border}: no room for a screen ahead of them`], src: 'gr' },
   );
   const obs = L.ahead.filter((l) => l.obstacle);
+  const desert = L.ground === 'desert';
   out.push({
     id: 'gr.ded.dp1.adv',
-    draft: L.detsWhere ? `Protective dets ${L.detsWhere}${obs.length ? `; an adv posn on ${list(obs.map((l) => `${l.obstacle} (Line ${l.id})`), 'or')}, a natural obs, within own arty's reach from the main posn` : ''}.` : 'No room for protective dets ahead of the FDLs.',
+    draft: L.detsWhere
+      ? `Protective dets ${L.detsWhere}${obs.length && !desert ? `; an adv posn on ${list(obs.map((l) => `${l.obstacle} (Line ${l.id})`), 'or')}, a natural obs, within own arty's reach from the main posn` : ''}${desert && G?.adv ? `; ${G.adv}` : ''}. Never so large as to weaken the main def, and not reinforced.`
+      : 'No room for protective dets ahead of the FDLs.',
     state: 'judge',
-    basis: [rule('The adv posn usually stands on a natural obs, preferably within arty range of the main posn; it opens fire at long range and falls back before the main attk (OoW Vol I p 14)'), rule(`Recce elms 25-100 km out, covering tps 15-25 km, an adv posn 5-10 km, screens 1-1.5 km ahead of the FDLs; on def terrain or an obs they are an adv posn, else covering tps (${UA(2)})`)],
+    basis: [
+      rule('The adv posn usually stands on a natural obs, preferably within arty range of the main posn; it opens fire at long range and falls back before the main attk (OoW Vol I p 14)'),
+      rule('Protective elms not so large as to weaken the resistance of the main def (OoW Vol I p 13); posns held by covering tps and adv posns will not be reinforced (GSP-1947 p 105 para 10)'),
+      ...(desert ? gRules.slice(1, 2) : []),
+      rule(`Recce elms 25-100 km out, covering tps 15-25 km, an adv posn 5-10 km, screens 1-1.5 km ahead of the FDLs; on def terrain or an obs they are an adv posn, else covering tps (${UA(2)})`),
+    ],
     src: 'gr',
   });
   out.push({
     id: 'gr.ded.dp1.cpen',
-    draft: `${ranked[0] ? `On the ${ranked[0]} apch, the most threatened` : 'On the most threatened apch'}: about 1,500 m behind Line ${L.fdl.id}, 1,500 m of front.`,
+    draft: `${ranked[0] ? `On the ${ranked[0]} apch, the most threatened` : 'On the most threatened apch'}: about 1,500 m behind Line ${L.fdl.id}, 1,500 m of front; planned and prepared at the outset.${desert ? ' In desert the res in the C pen mode is less preferred, not ruled out.' : ''}`,
     state: 'judge',
-    basis: [rule(`A C pen posn: 1,500 m of front on the most threatened apch, 1,500 m behind the FDLs (${UA(14)})`), rule('Occupied while the fwd localities are not yet overrun: within a Bn not later than 1.5-2 h after the En H, within a Bde 3 h (IBB p 310)')],
+    basis: [
+      rule(`A C pen posn: 1,500 m of front on the most threatened apch, 1,500 m behind the FDLs (${UA(14)})`),
+      rule('Occupied while the fwd localities are not yet overrun: within a Bn not later than 1.5-2 h after the En H, within a Bde 3 h (IBB p 310)'),
+      rule('A number of C pen posns planned and prepared right at the outset (GSP-1947 p 109 para 22); previously prepared C pen posns occupied when a C attk is not possible (OoW Vol I p 52)'),
+      ...(desert ? gRules.slice(2, 3) : []),
+    ],
     src: 'gr',
   });
+  // the res: the guide's is a Bn's (armr, engrs, 2/3 of the depth Coy, never LAT / HAT); a Bde's follows OoW Vol I; the
+  // ground's rule (mountains split, desert a third mainly armr) is added where the AOR is such
+  const sited = 'Sited by non-involvement, availability, dispersion within the reaction time and the most likely En cap.';
+  const resOf =
+    L.echelon === 'Bde'
+      ? `The Bde res${L.depth ? ` behind Line ${L.depth.id}` : ''}: strong in armr, at least equal to the En in mobility and hitting power. ${sited}`
+      : `Armr, Engrs and two thirds of the depth Coy${L.depth ? `, behind Line ${L.depth.id}` : ''}; LAT and HAT never in res. ${sited}`;
   out.push({
     id: 'gr.ded.dp1.res',
-    draft: `Armr, Engrs and two thirds of the depth Coy${L.depth ? `, behind Line ${L.depth.id}` : ''}; LAT and HAT never in res. Sited by non-involvement, availability, dispersion within the reaction time and the most likely En cap.`,
+    draft: `${resOf}${G?.res ? ` ${G.res}.` : ''}`,
     state: 'judge',
-    basis: [rule(`Res: armr, engrs and 2/3 of the Coy in depth; LAT / HAT do not form part of it (${UA(6)})`), rule('Res located by non-involvement, availability, dispersion (able to conc within the reaction time) and the most likely En cap; the comd decides point, timing and direction (OoW Vol I pp 19-20)')],
+    basis: [
+      ...(L.echelon === 'Bde'
+        ? [rule('Res strong in armr, at least equal to the En in mobility and hitting power (OoW Vol I pp 18-19); a Div res is an Inf Bde or elms, the Armd Regt or its bulk and the LAT Bn, under the Inf Bde Comd (GSP-1947 s27 para 3 p 122)'), rule(`The guide's res (armr, engrs, 2/3 of the depth Coy, never LAT / HAT) is a Bn's (${UA(6)})`)]
+        : [rule(`Res: armr, engrs and 2/3 of the Coy in depth; LAT / HAT do not form part of it (${UA(6)})`)]),
+      rule('Res located by non-involvement, availability, dispersion (able to conc within the reaction time) and the most likely En cap; the comd decides point, timing and direction (OoW Vol I pp 19-20)'),
+      ...(L.ground === 'mountains' ? gRules.slice(1, 2) : desert ? gRules.slice(2, 3) : []),
+    ],
     src: 'gr',
   });
+  // A tk weapons densest on the most threatened tk apch, never spread evenly (IBB p 73; OoW Vol I p 26 in bulk; DW p 58)
   const tk = tank.length ? tank : ranked.slice(0, 1);
+  const tkMain = tk[0] ?? null, tkRest = tk.slice(1);
   out.push({
     id: 'gr.ded.dp1.armr',
-    draft: `Armr: in the protective dets, then in res. LAT: in the protective dets, then on the flk where the attk is expected. HAT: in the protective dets, then in the FDL gaps on the tk apch${tk.length ? ` (${list(tk)})` : ''}. CAF (Rangers, FC, Mjd): the least threatened posn or depth, not split up. Engrs: mine laying, then with the protective dets, then res or the least threatened flk.`,
+    draft: `Armr: in the protective dets, then in res. LAT: in the protective dets, then on the flk where the attk is expected. HAT: in the protective dets, then in bulk in the FDL gaps on the ${tkMain ? `${tkMain} ` : ''}tk apch, the most threatened${tkRest.length ? `; the ${list(tkRest)} only by what reaches it, never an even spread` : ''}. CAF (Rangers, FC, Mjd): the least threatened posn or depth, not split up. Engrs: mine laying, then with the protective dets, then res or the least threatened flk.`,
     state: 'judge',
-    basis: [rule(`Emp of addl resources (${UA('5-6')})`), rule('Armr is employed concentrated, in the SZ battle and as the main element of the res (OoW Vol I p 21)'), rule('Use of armr and ATGM if allotted is a head of the def plan (IBB S54 pp 281-282)')],
+    basis: [
+      rule(`Emp of addl resources (${UA('5-6')})`),
+      rule('Armr is employed concentrated, in the SZ battle and as the main element of the res (OoW Vol I p 21)'),
+      rule('A tk wpns distributed for the greatest density at the most vital area, no attempt at an even distribution (IBB p 73); ATGMs used in bulk (OoW Vol I p 26)'),
+      ...(desert ? gRules.slice(3, 4) : []),
+      rule('Use of armr and ATGM if allotted is a head of the def plan (IBB S54 pp 281-282)'),
+    ],
     src: 'gr',
   });
   return out;
@@ -439,9 +536,11 @@ export function courseDef(L: AprcDefLayout, r: AorReading, o: { check: AprcCheck
   const fwd = posn('fwd'), dep = posn('depth'), res = posn('res'), cpen = posn('cpen');
   const s: string[] = [], missing: string[] = [];
   const coys = (n: number) => `${n} Coy${n === 1 ? '' : 's'}`;
-  s.push(`Def along Line ${L.fdl.id}${L.fdl.obstacle ? ` along ${L.fdl.obstacle}` : ''} (${L.fdl.name}).`);
+  s.push(`Def along Line ${L.fdl.id}${alongOf(L.fdl)} (${L.fdl.name}).`);
   const fb = fwd.length ? fwd : uniq(L.fdl.buas);
-  if (fb.length) s.push(`FDLs comprising ${coys(fb.length)}, ${fb.length > 1 ? 'a Coy each in area' : 'in area'} ${list(fb)}.`);
+  // the Coys up the frontage gives (DP 1), when the BUAs on the line are fewer: the rest on the line, not left out
+  const more = !fwd.length && L.coys ? Math.max(0, L.coys.up - fb.length) : 0;
+  if (fb.length) s.push(`FDLs comprising ${coys(fb.length + more)}, ${fb.length > 1 ? 'a Coy each in area' : 'in area'} ${list(fb)}${more ? ` and ${more === 1 ? 'one' : more} more on Line ${L.fdl.id}` : ''}.`);
   else s.push(`FDLs comprising ${coys(L.coys?.up ?? 3)} on Line ${L.fdl.id}.`);
   const db = dep.length ? dep : L.depth ? uniq(L.depth.buas) : [];
   if (db.length) s.push(`Depth comprising ${coys(db.length)}, ${db.length > 1 ? 'a Coy each in area' : 'in area'} ${list(db)}.`);
@@ -529,6 +628,11 @@ export function visDef(L: AprcDefLayout, r: AorReading, o: { hMin: number | null
     ta = h - o.hMin;
   }
   steps.push({ ph: 'aslt', en: `Having carried out cfm recce, En is likely to attk on the ${main} apch from an FUP short of Line ${L.fdl.id}, armr in CS or fire sp, at ${ta !== null ? T(ta) : 'after last lt, not before 2200 hrs'}`, own: 'On cfm of the dir of attk, re-adj; launch a spoiling attk on the En FUP from the standing ptls; bring arty and mor fire on the En BOF' });
+  // the ground's own pattern of the En attk, beside the guide's linear model (MW pp 164-165; DW p 13)
+  if (L.ground === 'mountains')
+    steps.push({ ph: 'aslt', en: `En is likely to punish selected posts first and attk the feature covering the ${main} apch from multiple dirs, infiltrating to cut off own rft and C attk`, own: 'Link ptls between the posts and early warning on the routes in; reinforce from the less threatened localities; the routes to the posts from the rear secured' });
+  if (L.ground === 'desert')
+    steps.push({ ph: 'aslt', en: `En is likely to by-pass the localities and outflank the def, his armr round the open flk onto the depth and the adm areas`, own: 'Fight the battle outflanked: the str pts hold, adm self-sufficient; the res, mainly armr, employed early, within 2-6 h' });
   steps.push({ ph: 'aslt', en: `En is likely to breach the FDLs and take two Secs of the fwd Coy on the ${main} apch`, own: 'Call for DF (SOS); the Coy Comd launches a quick C attk by the depth Pl' });
   steps.push({ ph: 'catk', en: 'En is likely to take two Pls of the fwd Coy and widen the breach', own: 'Launch the C attk by the depth Coy (the Bn res)' });
   const p1 = ta !== null ? ta + 240 : null;
@@ -548,6 +652,8 @@ export function visDef(L: AprcDefLayout, r: AorReading, o: { hMin: number | null
     rule(`Best to the En, worst to own: the earliest times; "En is likely to", never "En will"; no own response in the Vis (${UA('9, 11')})`),
     rule('Beside the 1 km/h: an Indian Inf Div, augmented, advances 25 km a day against light opposition (KYE 2019 p 216)'),
     rule("Beside the guide's phases: an En Bn's Ph 1 is not yet complete 1.5-2 h after H, a Bde's Ph 1 not over 3 h after H (IBB S57 para 11 p 310); an En Bde attk goes in at least two phases to a depth of 2,000-3,000 m, with time between them for own C attk or C pen (IBB S57 para 17 p 312)"),
+    ...(L.ground === 'mountains' ? [rule('In mountains the En is likely to resort to selective punishment of certain posts; multidirectional attks on the important features, supported by infiltration to cut off own rft and C attk (MW pp 164-165); link ptls between the posts, the routes to them secured (MW p 164)')] : []),
+    ...(L.ground === 'desert' ? [rule('In desert the defender should be prepared to fight the battle outflanked (DW p 13 para a); the res employed as early as possible, within 2-6 h (DW p 27); str pts adm self-sufficient (DW p 28)')] : []),
     ...(o.hMin !== null ? [input('H: the En crosses the border; the Vis counts from it (the en options count from the Threat marker)')] : []),
     calc("Distances: each line's distance past the border along the apchs (the AOR reading); the screens 1.25 km ahead of the FDLs"),
   ];

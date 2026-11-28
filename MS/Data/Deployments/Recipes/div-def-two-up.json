@@ -14,7 +14,7 @@
   "name": "Div Def: two Bdes up, one in depth",
   "frontageRow": "Infantry division, two to three axes",
   "subRow": null,
-  "note": "An Inf Div with two Bdes forward on two axes and the third Bde in depth as the Div reserve (OoW Vol I Annex C p 104: a Bde of 10-12 km on each independent axis, 4-8 km deep; the gap between the axes is not labelled, so the Bde seeds 8 km either side of the centre are a decision (E); Annex D p 105: three axes on an extended frontage); each Bde 10-12 x 4-6 km (Annexes B-D); the Div reserve as early as possible within 2-6 h (DW pp 26-27). Armour concentrated as the main element of the reserve (OoW I s6 para 1 p 21). The Bdes' own layouts are built as Bde plans. AT Res (OOW1 s13 p 45: all formations facing a major tank threat create a well-balanced and mobile AT reserve; s6 p 26: a substantial portion of the AT weapons earmarked for the En tanks that bypass the main defences and hit the depth): laid beside the reserve, on the side away from the HQ (the place a decision, E). The three echelons of the defence (GSP 1947 Inf Div in Battle s23 paras 5-13 pp 104-106; OoW Vol I Annex A p 102): protective detachments, the main posn, the reserves. Protective detachments: covering troops and screens (GSP p 105 para 7 c, one of its three combinations); the covering troops well ahead of the main posn, each under the Comd fighting the battle of the main posn on its axis, never reinforced (p 105 para 10, p 106), so a C Tps group on each forward Bde's axis 4 km ahead of the FDL (Demo2 1-4 km ahead of the FDL minefields, basis O, PlanDoctrine securityZone) inside a Security Zone 10 km deep (securityZone.divOnIbM, O, its lower end); the screens are the Bdes' and Bns' own (p 106 para 11) and are laid on their plans. The Div reserve an Inf Bde, the Armd Regt or its bulk and the LAT Bn, the Bde Comd commanding it, given transport from the Div's pool (GSP s27 para 3 p 122), so it is timed mounted; as strong in armour as possible (s23 para 19 a p 107). Counter-penetration posns planned and prepared at the outset and occupied when the threat warrants (s23 paras 20-22 pp 108-109; the Div reserve occupies them, s27 para 5 b (5) p 123): one behind each forward Bde, drawn planned (dashed), 1 km behind its rear edge (cpen.behindFwdM.bde, E); their number and size depend on the threat (p 109 paras 21-22: none printed), so two of a Bn each is a decision (E).",
+  "note": "An Inf Div with two Bdes forward on two axes and the third Bde in depth as the Div reserve (OoW Vol I Annex C p 104: a Bde of 10-12 km on each independent axis, 4-8 km deep; the gap between the axes is not labelled, so the Bde seeds 8 km either side of the centre are a decision (E); Annex D p 105: three axes on an extended frontage); each Bde 10-12 x 4-6 km (Annexes B-D); the Div reserve as early as possible within 2-6 h (DW pp 26-27). Armour concentrated as the main element of the reserve (OoW I s6 para 1 p 21). The Bdes' own layouts are built as Bde plans. AT Res (OOW1 s13 p 45: all formations facing a major tank threat create a well-balanced and mobile AT reserve; s6 p 26: a substantial portion of the AT weapons earmarked for the En tanks that bypass the main defences and hit the depth): laid beside the reserve, on the side away from the HQ (the place a decision, E). The three echelons of the defence (GSP 1947 Inf Div in Battle s23 paras 5-13 pp 104-106; OoW Vol I Annex A p 102): protective detachments, the main posn, the reserves. Protective detachments: covering troops and screens (GSP p 105 para 7 c, one of its three combinations); the covering troops well ahead of the main posn, each under the Comd fighting the battle of the main posn on its axis, never reinforced (p 105 para 10, p 106), so a C Tps group on each forward Bde's axis 4 km ahead of the FDL (PlanDoctrine securityZone.divCtpsAheadM, O: Demo2 1-4 km ahead of the FDL minefields) inside a Security Zone 10 km deep from 500 m ahead of the FDL (securityZone.divDepthM, O: the lower end of divOnIbM); the screens are the Bdes' and Bns' own (p 106 para 11) and are laid on their plans. The Div reserve an Inf Bde, the Armd Regt or its bulk and the LAT Bn, the Bde Comd commanding it, given transport from the Div's pool (GSP s27 para 3 p 122), so it is timed mounted; as strong in armour as possible (s23 para 19 a p 107). Counter-penetration posns planned and prepared at the outset and occupied when the threat warrants (s23 paras 20-22 pp 108-109; the Div reserve occupies them, s27 para 5 b (5) p 123): one behind each forward Bde, drawn planned (dashed), 1 km behind its rear edge (cpen.behindFwdM.bde, E); their number and size depend on the threat (p 109 paras 21-22: none printed), so two of a Bn each is a decision (E).",
   "slots": [
     {
       "role": "fwdL",
@@ -155,36 +155,27 @@
           "acrossM": 0,
           "backM": -11000,
           "wM": 27000,
-          "hM": 10000
+          "hM": {
+            "doctrine": "securityZone.divDepthM"
+          }
         }
       }
     },
     {
-      "role": "ctpsL",
+      "role": "ctps",
       "kind": "point",
       "sym": "10121300",
       "label": "C Tps",
       "echelon": "16",
       "order": 6,
-      "shape": {
-        "at": [
-          -8000,
-          -9500
-        ]
-      }
-    },
-    {
-      "role": "ctpsR",
-      "kind": "point",
-      "sym": "10121300",
-      "label": "C Tps",
-      "echelon": "16",
-      "order": 6,
-      "shape": {
-        "at": [
-          8000,
-          -9500
-        ]
+      "rule": {
+        "perSlot": [
+          "fwdL",
+          "fwdR"
+        ],
+        "ahead": {
+          "doctrine": "securityZone.divCtpsAheadM"
+        }
       }
     },
     {

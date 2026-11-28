@@ -19,6 +19,7 @@ import type { Check, CheckState, PlanItem, XY } from './PlanSolve';
 import { solveRecipe } from './PlanSolve';
 import { detectTerrain, toLocal, toWorld, type FitFrame, type FitLayoutInput, type FitResult, type FittedLayout, type PlanGround } from './PlanFit';
 import type { OrbatSet } from './PlanOrbat';
+import type { TerrainSpec } from './PlanContext';
 import { mkPath, type LngLat } from '../MovePlanner/MoveGeo';
 import { clearAt, densityFor, dueAt, roadRulesFrom, simulate, speedFor, type MvRoadRules, type MvSerialIn } from '../MovePlanner/MoveRoad';
 import { atLocal, clockFrom, LightBook, todayIn } from '../MovePlanner/MoveTime';
@@ -73,11 +74,18 @@ export function advanceFigures(doc: DoctrineSet) {
     // an Armd Div on a broad front with two Bdes (OoW Vol II pp 52-53)
     divApart: r('div.axesApartM', [3000, 8000]),
     followUp: r('followUpBdeBackM', [8000, 8000])[0],
+    // an Inf Div on one axis (GSP 1947 s18 pp 76-80, Annex H p 203)
+    idivCtps: r('infDiv.ctpsAheadM', [16000, 24000]),
+    idivLdgPlMin: r('infDiv.ldgPlAheadMin', [20, 30]),
+    idivHar: r('infDiv.harApartM', [24000, 32000]),
+    idivFlank: r('infDiv.flankOutM', [3000, 8000]),
+    footGo: resolveRange(doc, doctrineAt(doc, 'moves.footKmh.go'))?.[0] ?? 4,
   };
 }
 
-/** Which advance the items are: a Bn group as the Adv Gd (it has a Bn HQ), an Armd Div on two axes, or the Armd Bde of Fig 2. */
-export function advanceKind(items: { role: string }[]): 'bn' | 'div' | 'bde' {
+/** Which advance the items are: an Inf Div on one axis (its harbour areas), a Bn group as the Adv Gd (it has a Bn HQ), an Armd Div on two axes, or the Armd Bde of Fig 2. */
+export function advanceKind(items: { role: string }[]): 'bn' | 'div' | 'bde' | 'idiv' {
+  if (items.some((i) => i.role === 'har1')) return 'idiv';
   if (items.some((i) => i.role === 'axisL' || i.role === 'axisR')) return 'div';
   if (items.some((i) => i.role === 'bnHq')) return 'bn';
   return 'bde';
@@ -94,6 +102,7 @@ export function advanceRows(items: { role: string; pts: XY[] }[], doc: DoctrineS
   const kind = advanceKind(items);
   if (kind === 'bn') return bnAdvanceRows(items, doc, hAt);
   if (kind === 'div') return divAdvanceRows(items, doc);
+  if (kind === 'idiv') return infDivAdvanceRows(items, doc, null);
   const F = advanceFigures(doc);
   const at = (role: string) => { const i = items.find((x) => x.role === role && x.pts.length); return i ? centre(i.pts) : null; };
   const head = at('sp');
@@ -244,6 +253,65 @@ export function divAdvanceRows(items: { role: string; pts: XY[] }[], doc: Doctri
   if (res && heads.length) {
     const d = Math.min(...heads) - res.y;
     rows.push({ name: 'Follow-up Bde', st: d >= F.followUp * 0.75 && d <= F.followUp * 1.25 ? 'pass' : 'warn', reason: `${fmtM(d)} behind the rearmost of the leading Bdes; Fig 2's note has the follow-up Bde about ${km(F.followUp)} behind the leading Bde (${SRC}; the first figure of the note is under the highlight, so the reading is uncertain): the Follow-in-Zone infantry clears and holds what the armour bypasses (OoW Vol II p 53)` });
+  }
+  return rows;
+}
+
+const GSP = 'GSP 1947 Inf Div in Battle';
+const ANX_H = `${GSP} Annex H p 203, read from the scanned diagram`;
+
+/**
+ * An Inf Div's advance to contact on one axis (recipe div-advance-inf; GSP 1947 s18 pp 76-80, Annex H p 203): the
+ * covering troops (mobile troops, flank guards), the Advance Guard of the leading Bde (Van Gd with the leading Pl(s)
+ * ahead of it, Main Gd, the artillery in the gap between them), the leading Bde's main body in its harbour area, the Div
+ * Tac HQ well forward in the main body, the follow-up Bde Gps in harbour areas 15-20 miles apart, the DAA at the rear.
+ * `country`: the ground kind where it rests (null: not read; the Country row is grey).
+ */
+export function infDivAdvanceRows(items: { role: string; pts: XY[] }[], doc: DoctrineSet, country: string | null): Check[] {
+  const F = advanceFigures(doc);
+  const at = (role: string) => { const i = items.find((x) => x.role === role && x.pts.length); return i ? centre(i.pts) : null; };
+  const sp = at('sp');
+  if (!sp) return [];
+  const rows: Check[] = [];
+  const need: [string, string][] = [['ctps', 'mobile troops'], ['flankL', 'a flank guard'], ['vanGd', 'the Van Gd'], ['mainGd', 'the Main Gd'], ['har1', "the leading Bde's main body"], ['har2', 'the follow-up Bde Gps']];
+  const miss = need.filter(([r]) => !at(r)).map(([, w]) => w);
+  rows.push({ name: 'Grouping', st: miss.length ? 'warn' : 'pass', reason: `${miss.length ? `missing ${miss.join(', ')}: ` : ''}covering troops (mobile troops, flank guards), the Advance Guard (Van Gd, Main Gd) found by the leading Bde, the leading Bde less its Advance Guard and the Div less the leading Bde (follow-up Bdes, artillery and other arms) as the main body (${GSP} s18 para 9 p 78; Annex H p 203)` });
+  rows.push(country === null
+    ? { name: 'Country', st: 'unchecked', reason: `the ground decides: in open country the Inf Div, lacking mobility, is not suitable to advance unless made mobile; in restricted or mountainous country it advances effectively (${GSP} s18 para 3 p 76); place it with the terrain data to read the ground` }
+    : country === 'mountains'
+      ? { name: 'Country', st: 'pass', reason: `mountains: in restricted terrain or mountainous country the Inf Div can undertake an advance effectively (${GSP} s18 para 3 p 76)` }
+      : { name: 'Country', st: 'warn', reason: `${country === 'desert' ? 'desert' : country === 'obstacle' ? 'open country with water obstacles' : 'open country'}: due to lack of mobility the Inf Div is not suitable to advance here unless made mobile, given MT or mechanised forces such as an Armd or Mech Bde (${GSP} s18 para 3 p 76); its mobility must be at par with the En's, if not greater (para 6 p 77)`, detail: { head: 'An Inf Div advancing in open country', why: 'On foot the Inf Div cannot keep constant pressure on a mobile En; the book allows it only made mobile (s18 paras 3, 6 pp 76-77).', fix: ['Make it mobile: MT from Corps and an Armd or Mech Bde under command (p 76 para 3), additional transport and mechanised elements for cross-country movement (p 77 para 6)', 'Or advance with the Armd Div (Div Advance, two Bdes)'] } });
+  const ct = at('ctps');
+  if (ct) {
+    const d = ct.y - sp.y, ok = d >= F.idivCtps[0] - 1 && d <= F.idivCtps[1] + 1;
+    rows.push({ name: 'Covering troops', st: ok ? 'pass' : 'warn', m: d, reason: `the mobile troops ${fmtM(d)} ahead of the Van Gd: approx 1 h or 10-15 miles (${km(F.idivCtps[0])}-${km(F.idivCtps[1])}) by the nature of the terrain, the range of comms, the En air and dispositions (${ANX_H}); tactically self-contained, under Div control at considerable distance in front, mobility at least the En's (s18 para 10 a-b p 79)` });
+  }
+  const lp = at('ldgPl'), v = at('vanGd'), m = at('mainGd'), ar = at('arty');
+  if (lp) {
+    const d = lp.y - sp.y, min = (d / 1000) * (60 / F.footGo), ok = min >= F.idivLdgPlMin[0] - 1 && min <= F.idivLdgPlMin[1] + 1;
+    rows.push({ name: 'Leading Pl', st: ok ? 'pass' : 'warn', m: d, reason: `${fmtM(d)} ahead of the Van Gd, about ${Math.round(min)} min at ${F.footGo} km/h on foot (IPB p 18): 20-30 min or the time required to deal with minor opposition; only the leading Pl(s) move deployed (${ANX_H})` });
+  }
+  if (v && m) rows.push({ name: 'Main Gd', st: m.y < v.y ? 'pass' : 'warn', reason: `${fmtM(v.y - m.y)} behind the Van Gd: its elements move tactically astride the axis but not deployed, far enough back that the Advance Guard does not get prematurely involved in the Van Gd's battle; the Van Gd less the leading Pl(s) moves tactically astride the axis, not deployed (${ANX_H}; the time printed for this gap is not legible in the scan)` });
+  if (v && m) rows.push(ar && ar.y < v.y && ar.y > m.y
+    ? { name: 'Arty with Adv Gd', st: 'pass', reason: `in the gap between the Van Gd and the Main Gd at first; then its batteries leapfrog, ensuring continuous support to the leading elements (${ANX_H}); the artillery less that under the Adv Gd regulates its move by the pace of the Adv Gd (ibid.)` }
+    : { name: 'Arty with Adv Gd', st: 'warn', reason: `${ar ? 'not' : 'no artillery'} in the gap between the Van Gd and the Main Gd: it initially moves there, then its batteries leapfrog, ensuring continuous support to the leading elements (${ANX_H})` });
+  const h1 = at('har1'), h2 = at('har2'), hn = at('harNext');
+  if (h1 && (h2 || hn)) {
+    const gaps = [h2 ? h2.y - h1.y : null, hn ? h1.y - hn.y : null].filter((g): g is number => g !== null).map((g) => -g);
+    const ok = gaps.every((g) => g >= F.idivHar[0] - 1 && g <= F.idivHar[1] + 1);
+    rows.push({ name: 'Harbour areas', st: ok ? 'pass' : 'warn', reason: `${gaps.map(fmtM).join(' and ')} apart: harbour areas for the Bde Gps and other Div elements selected by the Div, normally 15-20 miles (${km(F.idivHar[0])}-${km(F.idivHar[1])}) apart; units and formations moved forward from one harbour area to the next when given a clear run (${ANX_H}); chosen for the time gap behind the Adv Gd, terrain friction, the air threat and cover (s18 para 12 p 80)` });
+  }
+  const tac = at('divTac');
+  if (tac && m) rows.push({ name: 'Div Tac HQ', st: tac.y < m.y && (!h2 || tac.y > h2.y) ? 'pass' : 'warn', reason: `${fmtM(sp.y - tac.y)} behind the Van Gd's head: the Div Tac HQ moves well forward in the main body; control by the axis, bounds, report lines, control points, objectives and fire co-ordination measures (${GSP} s18 para 14 p 80)` });
+  const daa = at('daa');
+  if (daa && h1) {
+    const d = h1.y - daa.y;
+    rows.push({ name: 'DAA', st: d <= 48000 ? 'pass' : 'warn', m: d, limitM: 48000, limitSrc: 'lsf p 27', reason: `${fmtM(d)} behind the leading Bde's main body: its place and move dictated by the turn-round distance between the leading Bde's B Ech and the DAA / RPs, moved as little as the tactical plan and logistic support allow (${ANX_H}); first line turns round within 48 km of the RP, second line within 64 km (lsf p 27, Annex F p 72)${d > 48000 ? ': an RP forward near the leading Bde (lsf pp 4-5)' : ''}` });
+  }
+  const fl = (['flankL', 'flankR'] as const).map(at).filter((p): p is XY => !!p);
+  if (fl.length) {
+    const outs = fl.map((p) => Math.abs(p.x - sp.x)), ok = fl.length === 2 && outs.every((o) => o >= F.idivFlank[0] - 1 && o <= F.idivFlank[1] + 1);
+    rows.push({ name: 'Flank guards', st: ok ? 'pass' : 'warn', reason: `${outs.map(fmtM).join(' and ')} out from the axis${fl.length < 2 ? ' (one flank only)' : ''}: they watch the exposed flanks and give early warning, moving on a route parallel to the main axis or picketing the lines of approach; the LAT elements or the Corps recce regiment suit them (${GSP} s18 para 10 c p 79: no distance printed; ${km(F.idivFlank[0])}-${km(F.idivFlank[1])} is a decision, E)` });
   }
   return rows;
 }
@@ -747,7 +815,7 @@ export function bnGroundRows(axis: AdvAxis, f: FitFrame, g: PlanGround, doc: Doc
  * p 68); and the maintenance range: first line turns round within 48 km, second line within 64 km of the RP (lsf p 27,
  * Annex F p 72); beyond a day's turn-round an RP is set up forward (lsf pp 4-5).
  */
-export function advanceBookRows(lines: { label: string; s: number }[], hAt: string, kind: 'bn' | 'div' | 'bde' = 'bde'): Check[] {
+export function advanceBookRows(lines: { label: string; s: number }[], hAt: string, kind: 'bn' | 'div' | 'bde' | 'idiv' = 'bde'): Check[] {
   const rows: Check[] = [];
   const bnNight = kind === 'bn' ? '; at Bn level bounds and report lines at shorter intervals than by day, steadiness in probing rather than speed (IBB p 148 para 4 b (1), (2); IC s64 para 6 g (3), (4) p 281); a separate Adv Gd for each route (p 149 c (5)); the harbour, GPO and engineer recce parties well forward with the Adv Gd (p 149 c (4))' : '';
   if (hAt === 'last') rows.push({ name: 'By night', st: 'pass', reason: `a night advance: keep the distances manageable; strengthen the covering troops and the Adv Gd with infantry and ATGM, the flank guards too; the artillery relatively forward (OOW2 s5 pp 13-14); in the desert the night distances are reduced (OOW2 p 68)${bnNight}` });
@@ -799,7 +867,7 @@ export function advanceMarch(axis: AdvAxis, lines: { label: string; s: number }[
 /** An advance fitted where it rests (PlanFit.fitLayout hands it over): the click is the SP, the aim the axis. */
 /**
  * The advance in the desert (DW s11 pp 35-37, s15 para 4 p 55): on a very wide front, by combat groups, on multiple axes
- * to exploit weak points and disperse his reactions, the force able to concentrate; armour in the mobile troops and
+ * to exploit weak points and disperse the En reactions, the force able to concentrate; armour in the mobile troops and
  * advance guards outflanking opposition, the infantry clearing it after; flank protection and AD; by night cross-country
  * on unexpected routes, best against a weakly held posn. A Bde on one axis warns (p 55: a very wide front); a Div on
  * two axes and a Bn on its Bde's axis carry it as a note.
@@ -808,16 +876,16 @@ export function desertAdvanceRow(kind: 'bn' | 'div' | 'bde'): Check {
   const rules = 'armour in the mobile troops and advance guards outflanks the opposition, the infantry clears it after (DW p 55 para 4 b); flank guards and AD secure the manoeuvre (p 35 para 1 e); by night cross-country on unexpected routes, best against a weakly held posn (p 37 para 8); camel-borne or long-range patrols on the going astride the axes (p 36 para 3)';
   if (kind === 'bde') return {
     name: 'Desert', st: 'warn',
-    reason: `one axis: in the desert the advance goes on a very wide front, by combat groups, on multiple axes to exploit his weak points and disperse his reactions (DW s11 paras 1 a, 2 p 35; s15 para 4 p 55); ${rules}`,
+    reason: `one axis: in the desert the advance goes on a very wide front, by combat groups, on multiple axes to exploit the En weak points and disperse the En reactions (DW s11 paras 1 a, 2 p 35; s15 para 4 p 55); ${rules}`,
     detail: { head: 'One axis in the desert', why: 'Vast spaces, the air threat, lack of cover and of obstacles dictate an advance on a very wide front based on combat groups, contacting the En on a wide front to exploit flanks and weak spots (DW s15 para 4 p 55).', fix: ['Advance two Regt groups up on two axes (OoW Vol II pp 52-53), within supporting distance', 'Or the Armd Div two Bdes up (Div Advance)'] },
   };
   return { name: 'Desert', st: 'pass', reason: `${kind === 'div' ? 'two Bdes on two axes: the very wide front and multiple axes of the desert (DW pp 35, 55)' : 'the Bn on its Bde\'s axis, the formation on a very wide front by combat groups (DW pp 35, 55)'}; ${rules}` };
 }
 
-/** The ground kind for an advance: as set in the tab, else read where it rests (PlanFit.detectTerrain); null unknown. */
-function advanceGroundKind(inp: FitLayoutInput, frame: FitFrame, res: ReturnType<typeof solveRecipe>): string | null {
-  if (inp.terrain && inp.terrain !== 'auto') return inp.terrain;
-  return detectTerrain(inp.ground, frame, res, inp.recipe, inp.ctx.doc)?.kind ?? null;
+/** The ground for an advance: as set in the tab, else read where it rests (PlanFit.detectTerrain); null unknown. The card's Ground row shows it. */
+export function advanceGroundSpec(inp: FitLayoutInput, frame: FitFrame, res: ReturnType<typeof solveRecipe>): TerrainSpec | null {
+  if (inp.terrain && inp.terrain !== 'auto') return { kind: inp.terrain, source: 'user' };
+  return detectTerrain(inp.ground, frame, res, inp.recipe, inp.ctx.doc);
 }
 
 export function fitAdvance(inp: FitLayoutInput): FittedLayout | null {
@@ -830,7 +898,8 @@ export function fitAdvance(inp: FitLayoutInput): FittedLayout | null {
   const kind = advanceKind(base.items);
   if (kind === 'div') {
     const fd = fitDivAdvance(inp, base, frame);
-    if (fd && advanceGroundKind(inp, frame, base) === 'desert') {
+    if (fd) fd.terrain = advanceGroundSpec(inp, frame, base);
+    if (fd && fd.terrain?.kind === 'desert') {
       const dr = desertAdvanceRow('div');
       fd.res.rows.push(dr);
       if (fd.fit.rows !== fd.res.rows) fd.fit.rows.push(dr);
@@ -839,7 +908,8 @@ export function fitAdvance(inp: FitLayoutInput): FittedLayout | null {
   }
   const hAt = recipe.advance?.hAt ?? 'first';
   // a Bn Adv Gd: the axis from its main guard through the SP to 6 km ahead (it has no C Tps of its own)
-  const axis = routeAxis(base.items, frame, ground, kind === 'bn' ? { rear: 'mainGd', aheadM: 6000 } : {});
+  // an Inf Div: from the leading Bde's harbour area through the SP to its mobile troops
+  const axis = routeAxis(base.items, frame, ground, kind === 'bn' ? { rear: 'mainGd', aheadM: 6000 } : kind === 'idiv' ? { rear: 'har1' } : {});
   const gr = advanceGroundRows(base.items, frame, ground, ctx.doc, axis, null, recipe.advance?.rlApartM ?? null, hAt === 'last');
   // the axis arrow along the route, a little past the C Tps; the bounds on the water, the report lines on the lateral roads and railways
   const p = axis.path, a = p[p.length - 2], b = p[p.length - 1], L = Math.hypot(b.x - a.x, b.y - a.y) || 1;
@@ -847,19 +917,22 @@ export function fitAdvance(inp: FitLayoutInput): FittedLayout | null {
   const arrow = simplify([...p, { x: b.x + ((b.x - a.x) / L) * 300, y: b.y + ((b.y - a.y) / L) * 300 }], 25);
   // the Main Body's halting areas short of the bounds, sited on the ground (IBB p 160; OoW Vol II p 12); the march
   // timed along the axis (Recipe.march, the ORBAT's)
-  const ha = siteHaltingAreas(axis, gr.lines, frame, ground, ctx.doc);
+  // (an Inf Div's harbour areas are the Div's own, laid by the recipe: GSP Annex H p 203)
+  const ha = kind === 'idiv' ? { areas: {}, sites: [], row: null } : siteHaltingAreas(axis, gr.lines, frame, ground, ctx.doc);
   const raw = solveRecipe(recipe, ctx, { ...inp.opts, paths: { ...(inp.opts.paths ?? {}), axis: arrow }, geom: { ...(inp.opts.geom ?? {}), ...gr.rls, ...ha.areas } });
-  const marchRow = recipe.march && !axis.pending ? advanceMarch(axis, [...gr.lines, ...gr.rlLines].sort((a, b) => a.s - b.s), frame, ctx.doc, recipe.march, hAt) : null;
-  const rows = [...advanceRows(raw.items, ctx.doc, hAt), ...gr.rows, ...(kind === 'bn' ? bnGroundRows(axis, frame, ground, ctx.doc) : []), ...(ha.row ? [ha.row] : []), ...(marchRow ? [marchRow] : []), ...advanceBookRows(gr.lines, hAt, kind)];
-  if (advanceGroundKind(inp, frame, raw) === 'desert') rows.push(desertAdvanceRow(kind));
+  // the march from the ORBAT is the IABG's; an Inf Div's is the Move Planner's
+  const marchRow = recipe.march && kind !== 'idiv' && !axis.pending ? advanceMarch(axis, [...gr.lines, ...gr.rlLines].sort((a, b) => a.s - b.s), frame, ctx.doc, recipe.march, hAt) : null;
+  const gs = advanceGroundSpec(inp, frame, raw), gk = gs?.kind ?? null;
+  const rows = [...(kind === 'idiv' ? infDivAdvanceRows(raw.items, ctx.doc, gk) : advanceRows(raw.items, ctx.doc, hAt)), ...gr.rows, ...(kind === 'bn' ? bnGroundRows(axis, frame, ground, ctx.doc) : []), ...(ha.row ? [ha.row] : []), ...(marchRow ? [marchRow] : []), ...advanceBookRows(gr.lines, hAt, kind)];
+  if (kind !== 'idiv' && gk === 'desert') rows.push(desertAdvanceRow(kind));
   const fails = rows.filter((r) => r.st === 'fail').length, warns = rows.filter((r) => r.st === 'warn').length;
   const fit: FitResult = {
     nudges: {}, slides: [], killingGr: null, slots: {}, rows, approaches: [],
     score: Math.max(0, 100 - 25 * fails - 8 * warns), fails, warns,
     pending: axis.pending || ground.pending(), data: ground.dataLine(), from: null, fromAssumed: true,
   };
-  const res = { ...raw, mode: 'terrain' as const, rows, slots: [], assumptions: [`Fitted to the ground: ${fit.data}.`, axis.routed ? 'The axis is the least-cost way for tracks over the bundle\'s going, not a road route (the Move Planner\'s).' : 'The axis is straight from the SP: no way for tracks was found in the bundle\'s grid.', 'Fig 2\'s figures are read from the page text under the scan\'s highlights.'] };
-  return { recipe, res, raw, fit, frame, anchor: inp.anchor, bearing: inp.bearing, manual: {}, terrain: null, enemy: null, unit: null };
+  const res = { ...raw, mode: 'terrain' as const, rows, slots: [], assumptions: [`Fitted to the ground: ${fit.data}.`, axis.routed ? 'The axis is the least-cost way for tracks over the bundle\'s going, not a road route (the Move Planner\'s).' : 'The axis is straight from the SP: no way for tracks was found in the bundle\'s grid.', kind === 'idiv' ? 'Annex H\'s figures are read from the scanned diagram (GSP 1947 p 203).' : 'Fig 2\'s figures are read from the page text under the scan\'s highlights.'] };
+  return { recipe, res, raw, fit, frame, anchor: inp.anchor, bearing: inp.bearing, manual: {}, terrain: gs, enemy: null, unit: null };
 }
 
 /** A Div's two axes (axisL, axisR) from their tails to their heads: routed for tracks over the bundle's going, or as drawn. */
@@ -969,8 +1042,8 @@ export function checkAdvance(inp: FitLayoutInput, drawn: AdvDrawn): { rows: Chec
   // a Bn Adv Gd: who leads read along the axis as drawn, else from its main guard through the SP to 6 km ahead
   const bnAxis = kind === 'bn' ? axis ?? (() => { const mg = items.find((i) => i.role === 'mainGd')?.pts[0] ?? { x: head.x, y: head.y - 1500 }; return { path: [mg, head, { x: head.x, y: head.y + 6000 }], spAt: Math.hypot(head.x - mg.x, head.y - mg.y), routed: false, pending: false }; })() : null;
   const rows = [...advanceRows(items, ctx.doc, hAt), ...gr.rows, ...(bnAxis ? bnGroundRows(bnAxis, frame, ground, ctx.doc) : [])];
-  const need = kind === 'bn' ? ['sp', 'vanGd', 'vanTk', 'bnHq', 'mor', 'mainGd'] : ['sp', 'ctps', 'vanGd', 'mainGd', 'mainBody', 'flankL', 'flankR'];
-  return { rows, confirm: ['The march on the roads (the march table, the roads\' and bridges\' classes): the Move Planner', 'Halting areas along the axis'], pending: ground.pending(), read: Object.keys(drawn).map(names), missing: need.filter((r) => !drawn[r]).map(names) };
+  const need = kind === 'bn' ? ['sp', 'vanGd', 'vanTk', 'bnHq', 'mor', 'mainGd'] : kind === 'idiv' ? ['sp', 'ctps', 'ldgPl', 'vanGd', 'arty', 'mainGd', 'har1', 'divTac', 'har2', 'daa', 'flankL', 'flankR'] : ['sp', 'ctps', 'vanGd', 'mainGd', 'mainBody', 'flankL', 'flankR'];
+  return { rows, confirm: kind === 'idiv' ? ['The march on the roads (the march table, the roads\' and bridges\' classes): the Move Planner', 'The harbour areas reconnoitred and allotted by the Div staff, the traffic control plan with the provost reinforced (GSP s18 paras 12-13 p 80)', 'Who leads: tanks when the terrain favours, no A tk obstacles are known and the En has armour, the tanks between the range of the direct-firing weapons and the range of comms from the leading Pl (GSP Annex H p 203)'] : ['The march on the roads (the march table, the roads\' and bridges\' classes): the Move Planner', 'Halting areas along the axis'], pending: ground.pending(), read: Object.keys(drawn).map(names), missing: need.filter((r) => !drawn[r]).map(names) };
 }
 
 

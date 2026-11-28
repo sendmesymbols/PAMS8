@@ -8,7 +8,7 @@
  * - Clear axes: each Bde needs a clear axis of advance, and the gap between the assaulting Bdes gives the Div's attack
  *   frontage (para 12 d p 86). One up: the follow-up Bde goes through or round the leading Bde (para 11 b p 86).
  * - Main attack: delivered in strength on a narrow front, the troops in depth keeping the momentum (para 14 p 90); the
- *   secondary attack keeps the pressure on and draws his reserves (para 7 p 84). The Div reserve stands behind the main
+ *   secondary attack keeps the pressure on and draws the En reserves (para 7 p 84). The Div reserve stands behind the main
  *   attack, not the secondary.
  * - Div reserve: earmarked with its fire support to deal with the unexpected and keep the momentum, a fresh one made once
  *   it is committed (para 13 b (5) p 88). No time is printed for it: its distance and times are given, not judged.
@@ -73,7 +73,7 @@ export function divAttackRows(items: PlanItem[], recipe: Recipe, doc: DoctrineSe
       const s = centre(axisS.pts);
       const behindMain = Math.abs(rc.x - m.x) < Math.abs(rc.x - s.x);
       rows.push(behindMain
-        ? { name: 'Main attack', st: 'pass', reason: `${lab(at('bde'), 'the main attack Bde')} onto ${lab(obj, 'the main Obj')} with ${lab(res, 'the Div reserve')} behind it: the main attack in strength on a narrow front to rupture the defence, the troops in depth keeping the momentum (${G} s19 para 14 p 90); ${lab(at('bdeS'), 'the secondary attack')} onto ${lab(objS, 'its Obj')} keeps the pressure on, makes him fight on two fronts and draws his reserves early in the wrong direction (para 7 p 84)` }
+        ? { name: 'Main attack', st: 'pass', reason: `${lab(at('bde'), 'the main attack Bde')} onto ${lab(obj, 'the main Obj')} with ${lab(res, 'the Div reserve')} behind it: the main attack in strength on a narrow front to rupture the defence, the troops in depth keeping the momentum (${G} s19 para 14 p 90); ${lab(at('bdeS'), 'the secondary attack')} onto ${lab(objS, 'its Obj')} keeps the pressure on, makes the En fight on two fronts and draws the En reserves early in the wrong direction (para 7 p 84)` }
         : { name: 'Main attack', st: 'warn', reason: `${lab(res, 'the Div reserve')} stands behind the secondary attack: the depth belongs behind the main attack to keep its momentum (${G} s19 para 14 p 90)`, detail: { head: 'Reserve behind the secondary attack', fix: ['Move the Div reserve behind the main attack', 'Or make the attack it stands behind the main one'] } });
     } else rows.push({ name: 'Main attack', st: 'pass', reason: `one Bde up: the whole Div's weight on one axis, ${lab(at('bdeF'), 'the follow-up Bde')} and ${lab(res, 'the Div reserve')} in depth behind it (${G} s19 para 11 b pp 85-86; para 14 p 90)` });
   }
@@ -88,23 +88,23 @@ export function divAttackRows(items: PlanItem[], recipe: Recipe, doc: DoctrineSe
     rows.push({ name: 'Tasks in Bns', st: total <= held ? 'pass' : 'warn', m: total, limitM: held, limitSrc: 'GSP 1947 Annex A p 198', reason: `thinking two down: ${up} Bns in the assault, ${bdeRes} in the Bdes' reserves${whole.length ? `, ${whole.map((i) => lab(i, i.role)).join(' and ')} (${whole.length * 3} Bns)` : ''}: ${total} of the Div's ${held} (three Bdes of three Bns, ${G} Annex A p 198; s12 para 2 p 60); the tasks assessed in Bns, then turned into Bde tasks (s19 para 13 b (3)-(4) p 88)${total > held ? '; more than the Div holds: extra Bdes or units from Corps or Army (s11 para 2 p 59)' : ''}` });
   }
 
-  // the preliminary operation on his outposts (para 13 d p 89)
+  // the preliminary operation on the En outposts (para 13 d p 89)
   const objPs = items.filter((i) => /^objP/.test(i.role) && i.pts.length);
   if (objPs.length) {
     const sl = at('sl'), assy = at('assy');
     const slY = sl ? Math.max(...sl.pts.map((p) => p.y)) : 0, assyY = assy ? Math.max(...assy.pts.map((p) => p.y)) : -Infinity;
     const ok = objPs.every((o) => { const c = centre(o.pts); return c.y < slY && c.y > assyY; });
-    rows.push({ name: 'Prelim op', st: ok ? 'pass' : 'warn', reason: `${objPs.map((o) => lab(o, 'OBJ P')).join(', ')}: his outposts out of contact with his main posn, on the ground of the FUPs and SLs, cleared first so that his main posn is observed, the guns deploy well forward and a good SL is secured (${G} s19 para 13 d p 89); by each leading Bde's Res Bn, done before the assault Bns leave the Assy Areas for the FUPs (see the H-hour sum)${ok ? '' : '; an OBJ P lies beyond the SL or behind the Assy Areas: it is not the ground the attack forms up on'}. The force and the time are not printed: both are decisions (E)` });
-    confirm.push('His outposts where the recce finds them, and the time the preliminary operation needs before the move to the FUPs');
+    rows.push({ name: 'Prelim op', st: ok ? 'pass' : 'warn', reason: `${objPs.map((o) => lab(o, 'OBJ P')).join(', ')}: the En outposts out of contact with the En main posn, on the ground of the FUPs and SLs, cleared first so that the En main posn is observed, the guns deploy well forward and a good SL is secured (${G} s19 para 13 d p 89); by each leading Bde's Res Bn, done before the assault Bns leave the Assy Areas for the FUPs (see the H-hour sum)${ok ? '' : '; an OBJ P lies beyond the SL or behind the Assy Areas: it is not the ground the attack forms up on'}. The force and the time are not printed: both are decisions (E)` });
+    confirm.push('The En outposts where the recce finds them, and the time the preliminary operation needs before the move to the FUPs');
   }
 
-  // Ph 2: the Div reserve through the gap onto his depth (para 13 b (5)-(6) p 88; para 14-16 p 90)
+  // Ph 2: the Div reserve through the gap onto the En depth (para 13 b (5)-(6) p 88; para 14-16 p 90)
   const objC = at('objC'), fupC = at('fupC'), axisC = at('axisC');
   if (objC && fupC) {
     const ce = ext(objC.pts), fe = ext(fupC.pts);
     const toBox = (e: ReturnType<typeof ext>, p: XY) => Math.hypot(Math.max(0, e.x0 - p.x, p.x - e.x1), Math.max(0, e.y0 - p.y, p.y - e.y1));
     const gap = Math.min(...[...fupC.pts, P((fe.x0 + fe.x1) / 2, (fe.y0 + fe.y1) / 2)].map((p) => toBox(ce, p)));
-    rows.push({ name: 'Div phases', st: 'pass', reason: `Ph 1 ${lab(at('bde'), '1 Bde')} onto ${lab(obj, 'OBJ A')} and ${lab(at('bdeS'), '2 Bde')} onto ${lab(objS, 'OBJ B')}; Ph 2 ${lab(res, '3 Bde')} from FUP C between them onto ${lab(objC, 'OBJ C')}, his depth, the Ph 1 Objs held as the firm base on its flanks. Phased because the troops cannot take every task in one phase and the guns may have to move up to reach his depth (${G} s19 para 13 b (6) p 88); a quick reorganisation on each Ph 1 Obj forestalls his counter-attack and lets Ph 2 develop fast (para 16 pp 90-91); Ph 2 should go in before his Bde reserve can react, 2-3 h of his decision (p 83)` });
+    rows.push({ name: 'Div phases', st: 'pass', reason: `Ph 1 ${lab(at('bde'), '1 Bde')} onto ${lab(obj, 'OBJ A')} and ${lab(at('bdeS'), '2 Bde')} onto ${lab(objS, 'OBJ B')}; Ph 2 ${lab(res, '3 Bde')} from FUP C between them onto ${lab(objC, 'OBJ C')}, the En depth, the Ph 1 Objs held as the firm base on its flanks. Phased because the troops cannot take every task in one phase and the guns may have to move up to reach the En depth (${G} s19 para 13 b (6) p 88); a quick reorganisation on each Ph 1 Obj forestalls the En counter-attack and lets Ph 2 develop fast (para 16 pp 90-91); Ph 2 should go in before the En Bde reserve can react, 2-3 h of the En decision (p 83)` });
     rows.push({ ...fupFromObjCheck(doc, gap, null, { obj: `${lab(objC, 'OBJ C')}'s` }), name: 'FUP C from OBJ C' });
     const clear = num(doc, 'attack.phase2.clearObj1M', 300);
     const ph1 = [obj, objS].filter((x): x is PlanItem => !!x).map((x) => ext(x.pts));
@@ -113,8 +113,8 @@ export function divAttackRows(items: PlanItem[], recipe: Recipe, doc: DoctrineSe
     const gAxis = axisC ? Math.min(...ph1.map((e) => Math.min(...axisC.pts.map((p) => toBox(e, p))))) - widthOf(axisC) / 2 : Infinity;
     const g1 = Math.min(gFup, gAxis);
     rows.push({ name: 'Ph 2 through the gap', st: g1 >= clear - 1 ? 'pass' : 'warn', m: g1, limitM: clear, reason: `FUP C and the Ph 2 axis ${fmtM(Math.max(0, g1))} clear of the Ph 1 Objs (wants ${fmtM(clear)}: not through the troops reorganising on them, IBB p 186; PlanDoctrine attack.phase2.clearObj1M)` });
-    rows.push({ name: 'Fresh reserve', st: 'warn', reason: `${lab(res, '3 Bde')}, the Div reserve, is committed in Ph 2: once a reserve has been committed a fresh one must be constituted as quickly as possible (${G} s19 para 13 b (5) p 88); the plan names none`, detail: { head: 'No Div reserve after Ph 2', why: 'With the reserve Bde in Ph 2 the Div has nothing to meet the unexpected or his counter-attack on OBJ A and OBJ B (para 13 b (5) p 88; para 16 p 90).', fix: ['The Res Bns of the Ph 1 Bdes as the fresh Div reserve once OBJ A and OBJ B are firm', 'A Bde or units from Corps as the new reserve (s11 para 2 p 59)', 'One phase only, the reserve kept'] } });
-    confirm.push('His depth locality (OBJ C) by recce or air photo, and the guns\' reach onto it from their gun areas or after they move up');
+    rows.push({ name: 'Fresh reserve', st: 'warn', reason: `${lab(res, '3 Bde')}, the Div reserve, is committed in Ph 2: once a reserve has been committed a fresh one must be constituted as quickly as possible (${G} s19 para 13 b (5) p 88); the plan names none`, detail: { head: 'No Div reserve after Ph 2', why: 'With the reserve Bde in Ph 2 the Div has nothing to meet the unexpected or the En counter-attack on OBJ A and OBJ B (para 13 b (5) p 88; para 16 p 90).', fix: ['The Res Bns of the Ph 1 Bdes as the fresh Div reserve once OBJ A and OBJ B are firm', 'A Bde or units from Corps as the new reserve (s11 para 2 p 59)', 'One phase only, the reserve kept'] } });
+    confirm.push('The En depth locality (OBJ C) by recce or air photo, and the guns\' reach onto it from their gun areas or after they move up');
   } else if (res && obj) {
     // the Div reserve: earmarked with fire support; no time printed (para 13 b (5) p 88)
     const oe = ext(obj.pts);
@@ -134,10 +134,10 @@ const rectOf = (s: Slot | undefined) => s?.shape?.rect as { acrossM: number; bac
 
 /**
  * A Div attack with its options; the recipe passed in is not changed.
- * - prelim: his outposts on the ground of each leading Bde's FUP and SL (OBJ P), cleared first by its Res Bn (GSP s19
- *   para 13 d p 89). Placed 1.65 km in front of the Obj's near edge, just behind the FUP: his BOPs about 1.5 km ahead of his
+ * - prelim: the En outposts on the ground of each leading Bde's FUP and SL (OBJ P), cleared first by its Res Bn (GSP s19
+ *   para 13 d p 89). Placed 1.65 km in front of the Obj's near edge, just behind the FUP: the En BOPs about 1.5 km ahead of the En
  *   main posn (IpbTemplates def-bde, E); the force and the time are not printed (E).
- * - phases 2 (two up only): the Div reserve Bde from FUP C in the gap between the two Ph 1 Objs onto OBJ C, his depth
+ * - phases 2 (two up only): the Div reserve Bde from FUP C in the gap between the two Ph 1 Objs onto OBJ C, the En depth
  *   locality 1.5 km behind and between them (the Indian Bde two up holds 1500 m of depth, one Bn in depth, IDD pp 2-3; the
  *   place is a decision, E); FUP C 1000-1200 m from OBJ C by night (attack.fupFromObjM); PL 1 beyond the Ph 1 Objs; the
  *   LOE 1 km beyond OBJ C; the inter-Bde boundary ends short of FUP C.
@@ -158,7 +158,7 @@ export function withDivOptions(r: Recipe, doc: DoctrineSet, o: { phases: 1 | 2; 
       if (b) b.label = 'Res Bn (Prelim Op)';
     });
     suffix += '-pre';
-    notes.push(`Prelim op: his outposts (OBJ P) on the ground of the FUPs and SLs cleared first by each leading Bde's Res Bn, so that his main posn is observed, the guns deploy forward and a good SL is secured (GSP 1947 Inf Div in Battle s19 para 13 d p 89); OBJ P about 1.5 km ahead of his main posn (his BOPs, IpbTemplates def-bde, E); the force and the time are decisions (E).`);
+    notes.push(`Prelim op: the En outposts (OBJ P) on the ground of the FUPs and SLs cleared first by each leading Bde's Res Bn, so that the En main posn is observed, the guns deploy forward and a good SL is secured (GSP 1947 Inf Div in Battle s19 para 13 d p 89); OBJ P about 1.5 km ahead of the En main posn (the En BOPs, IpbTemplates def-bde, E); the force and the time are decisions (E).`);
   }
   const ra = rectOf(slot('obj')), rb = rectOf(slot('objS'));
   if (o.phases === 2 && ra && rb) {
@@ -178,7 +178,7 @@ export function withDivOptions(r: Recipe, doc: DoctrineSet, o: { phases: 1 | 2; 
     const res = slot('divRes');
     if (res) res.label = '3 Bde (Ph 2)';
     suffix += '-2ph';
-    notes.push(`Ph 2: the Div reserve Bde from FUP C in the gap between OBJ A and OBJ B onto OBJ C, his depth (GSP 1947 Inf Div in Battle s19 para 13 b (5)-(6) p 88); OBJ C 1.5 km behind and between the Ph 1 Objs (his depth Bn, IDD pp 2-3; the place E); a fresh Div reserve to be constituted once it is committed (p 88).`);
+    notes.push(`Ph 2: the Div reserve Bde from FUP C in the gap between OBJ A and OBJ B onto OBJ C, the En depth (GSP 1947 Inf Div in Battle s19 para 13 b (5)-(6) p 88); OBJ C 1.5 km behind and between the Ph 1 Objs (the En depth Bn, IDD pp 2-3; the place E); a fresh Div reserve to be constituted once it is committed (p 88).`);
   }
   if (!suffix) return r;
   out.id = `${r.id}${suffix}`;

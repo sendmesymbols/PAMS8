@@ -189,5 +189,148 @@ for (const id of ['div-def-two-up', 'div-def-three-axes']) {
   check('an Inf Div moves in 10 trains with its B vehs by road (Annex J para 1 f)', md.rail.trainsPerFmn.inf_div.bVehsByRoad === 10);
 }
 
+// ── H6: the C Tps and SZ read their doctrine paths (GSP s23 p 105 para 10, p 107) ─────────────────────────────────────────
+{
+  for (const id of ['div-def-two-up', 'div-def-three-axes']) {
+    const r = rec(id), res = S.solveRecipe(r, ctx);
+    const ct = res.items.filter((i) => i.role === 'ctps'), sz = item(res, 'sz');
+    const fwd = res.items.filter((i) => /^fwd/.test(i.role) && i.pts.length >= 3);
+    const front = Math.max(...fwd.flatMap((i) => i.pts.map((p) => p.y)));
+    const ahead = doc.plan.securityZone.divCtpsAheadM.value, deep = doc.plan.securityZone.divDepthM.value;
+    check(id + ': a C Tps group per forward Bde, ' + ahead + ' m ahead of the FDL (securityZone.divCtpsAheadM, GSP p 105)', ct.length === fwd.length && ct.every((c) => Math.abs(c.pts[0].y - front - ahead) < 600), ct.map((c) => Math.round(c.pts[0].y - front)).join(', '));
+    check(id + ': the SZ ' + deep / 1000 + ' km deep (securityZone.divDepthM, GSP p 107)', !!sz && Math.abs(Math.max(...ys(sz)) - Math.min(...ys(sz)) - deep) < 1, sz && String(Math.max(...ys(sz)) - Math.min(...ys(sz))));
+    check(id + ': the recipe names the doctrine paths, no figure written in', JSON.stringify(r).includes('securityZone.divCtpsAheadM') && JSON.stringify(r).includes('securityZone.divDepthM'));
+  }
+  const sz = doc.plan.securityZone;
+  check('the two figures carry their GSP refs (pp 105, 107)', sz.divCtpsAheadM.refs?.some((x) => x.book === 'GSP' && x.page === '105') && sz.divDepthM.refs?.some((x) => x.book === 'GSP' && x.page === '107'));
+}
+
+// ── H9: a Div on an obstacle with more than two Div-size approaches (GSP s26 para 5 p 119) ───────────────────────────────
+{
+  const Dc = await import('../../MS/Engines/DeploymentBuilder/PlanDcb.ts');
+  const lv = (e) => ({ '15': 1, '16': 2, '18': 3, '21': 4 })[e] ?? null;
+  const r = rec('div-def-two-up');
+  const two = Dc.divApproachesRow(r, 'obstacle', [{ id: 'A1', carries: '21' }, { id: 'A2', carries: '21' }, { id: 'A3', carries: '18' }], doc, lv);
+  const three = Dc.divApproachesRow(r, 'obstacle', [{ id: 'A1', carries: '21' }, { id: 'A2', carries: '21' }, { id: 'A3', carries: '21' }], doc, lv);
+  check('two Div-size approaches (a third for a Bde): pass', two?.st === 'pass' && two.m === 2, two?.reason);
+  check('three Div-size approaches: warn, with the book\'s words and a fix (more resources)', three?.st === 'warn' && three.m === 3 && /p 119/.test(three.reason) && three.detail?.fix?.length >= 2, three?.reason);
+  check('not on an obstacle, not a Div, or an attack: no row', Dc.divApproachesRow(r, 'plains', [{ id: 'A1', carries: '21' }, { id: 'A2', carries: '21' }, { id: 'A3', carries: '21' }], doc, lv) === null && Dc.divApproachesRow(rec('bde-def-two-up'), 'obstacle', [{ id: 'A1', carries: '21' }], doc, lv) === null && Dc.divApproachesRow(rec('div-attk-main-left'), 'obstacle', [{ id: 'A1' }], doc, lv) === null);
+  check('the limit is PlanDoctrine terrain.kinds.obstacle.divMajorApchsMax (2, GSP p 119)', doc.plan.terrain.kinds.obstacle.divMajorApchsMax.value === 2 && doc.plan.terrain.kinds.obstacle.divMajorApchsMax.refs?.[0]?.page === '119');
+}
+
+// ── H7 / H8: the withdrawal switches (GSP s30 paras 13-17 pp 144-145; OoW Vol III pp 33, 39-40) ─────────────────────────
+{
+  const Wf = await import('../../MS/Engines/DeploymentBuilder/PlanWithdrawalFmn.ts');
+  for (const id of ['bde-wdr-night', 'div-wdr-night']) {
+    const base = rec(id);
+    const n2 = S.solveRecipe(Wf.withWdrOptions(base, doc, { intPosns: 2, newPosnBy: 'fresh' }), ctx);
+    const n1 = S.solveRecipe(Wf.withWdrOptions(base, doc, { intPosns: 1, newPosnBy: 'fresh' }), ctx);
+    const n0r = Wf.withWdrOptions(base, doc, { intPosns: 0, newPosnBy: 'fresh' }), n0 = S.solveRecipe(n0r, ctx);
+    const ip = (s) => s.items.filter((i) => /^intPosn/.test(i.role)).length;
+    check(id + ': Int posns 2 / 1 / 0 draw 2 / 1 / 0 intermediate posns; the default (2) is today\'s plan', ip(n2) === 2 && ip(n1) === 1 && ip(n0) === 0 && ip(S.solveRecipe(base, ctx)) === 2, [ip(n2), ip(n1), ip(n0)].join('/'));
+    check(id + ': with none, row Int posns says the covering troops impose the delay alone (GSP p 145 para 15) and the hop to the new posn is judged', row(n0.rows, 'Int posns')?.st === 'pass' && /p 145/.test(row(n0.rows, 'Int posns').reason) && !!row(n0.rows, 'New posn hop'), row(n0.rows, 'New posn hop')?.reason?.slice(0, 80));
+    check(id + ': the variants carry their own ids (-w0, -w1) so the tab finds the family again', n0r.id === id + '-w0' && Wf.withWdrOptions(base, doc, { intPosns: 1, newPosnBy: 'fresh' }).id === id + '-w1');
+  }
+  const byRes = S.solveRecipe(Wf.withWdrOptions(rec('div-wdr-night'), doc, { intPosns: 2, newPosnBy: 'res' }), ctx);
+  check('Div: New posn by Res sends the reserve Bde to prepare the new posn (GSP p 145 para 17); the Reserve row warns, books differ (OoW Vol III p 40)', !!item(byRes, 'resNew') && !item(byRes, 'res') && row(byRes.rows, 'New posn prepared by')?.st === 'pass' && row(byRes.rows, 'Reserve')?.st === 'warn' && /books differ/i.test(row(byRes.rows, 'Reserve').detail?.why ?? ''), row(byRes.rows, 'Reserve')?.reason?.slice(0, 90));
+}
+
+// ── the Indian reserves ladder switch: IDD (default) or GSP p 83 ──────────────────────────────────────────────────────────
+{
+  const ipb = json('MS/Data/IpbDoctrine.json');
+  const ind = ipb.decisionPoints.reserves.indian, st = json('MS/Data/Settings.json');
+  const gsp = Object.fromEntries(ind.ladderGsp.map((x) => [x.lvl ?? x.level ?? x.id, x.h]));
+  check('the ladder from GSP p 83 sits beside IDD\'s: Bn 35-40 min, Bde 2-3 h, Div 4-6 h', ind.ladderGsp.length >= 3 && JSON.stringify(ind.ladderGsp).includes('0.58') && JSON.stringify(ind.ladderGsp).includes('[2,3]') && JSON.stringify(ind.ladderGsp).includes('[4,6]'), JSON.stringify(gsp));
+  check('Settings: extended.ipb.reserveLadder defaults to idd (today\'s times)', st.groundGuide.extended.ipb.reserveLadder === 'idd');
+  const gg = readFileSync(resolve(repo, 'MS/Engines/GroundGuide/GroundGuide.ts'), 'utf8');
+  check('the guide picks ladderGsp on gsp, else the IDD ladder', /reserveLadder === 'gsp'/.test(gg) && /ladderGsp/.test(gg));
+}
+
+// ── N3: relief in line and passage of lines (GSP s29 pp 134-140, s20 pp 93-96) ──────────────────────────────────────────
+{
+  for (const id of ['bde-relief', 'bde-passage']) {
+    const iss = V.validateRecipe(rec(id), { doc, symbols: ctx.symbols }).filter((i) => i.level === 'fail');
+    check(id + ' validates', !iss.length, iss.map((i) => i.msg).join('; '));
+  }
+  const rl = S.solveRecipe(rec('bde-relief'), ctx);
+  const names = ['Relief time', 'Relief routes', 'Order of relief', 'Command change', 'Artillery', 'By night'];
+  check('relief: the six rows, every one a pass on the recipe as laid', names.every((nm) => row(rl.rows, nm)?.st === 'pass'), names.map((nm) => (row(rl.rows, nm)?.st ?? 'none')).join(' '));
+  check('relief: 48 h for a Bde Gp (relief.bdeGpMinH, GSP p 134); command changes once more than half is relieved (pp 136-137)', /48 h/.test(row(rl.rows, 'Relief time').reason) && /p 134/.test(row(rl.rows, 'Relief time').reason) && /pp 136-137/.test(row(rl.rows, 'Command change').reason));
+  check('relief: an Assy area, a route and a guides RV for each incoming Bn', ['assyA', 'assyB', 'assyC', 'rtA', 'rtB', 'rtC', 'rvA', 'rvB', 'rvC'].every((r) => item(rl, r)));
+  const ps = S.solveRecipe(rec('bde-passage'), ctx);
+  const pn = ['Lanes', 'Passage points', 'Assy area', 'Handover', 'Holding fire'];
+  check('passage: the five rows, every one a pass', pn.every((nm) => row(ps.rows, nm)?.st === 'pass'), pn.map((nm) => (row(ps.rows, nm)?.st ?? 'none')).join(' '));
+  check('passage: the BHOL on the holding FDL, a lane and a passage point per assault Bn, a contact point', ['bhol', 'laneL', 'laneR', 'ppL', 'ppR', 'cp', 'holdL', 'holdR'].every((r) => item(ps, r)));
+  const ix = json('MS/Data/Deployments/Recipes/index.json');
+  check('index: the two families, Bde level', ['bde-relief', 'bde-passage'].every((fid) => ix.families.some((x) => x.id === fid && x.echelon === '18')));
+}
+
+// ── N6: anti-heliborne defence of a VP (GSP s28 pp 127-133) ─────────────────────────────────────────────────────────────
+{
+  const F = await import('../../MS/Engines/DeploymentBuilder/PlanFit.ts');
+  const r = rec('bn-anti-hb');
+  const iss = V.validateRecipe(r, { doc, symbols: ctx.symbols }).filter((i) => i.level === 'fail');
+  check('bn-anti-hb validates', !iss.length, iss.map((i) => i.msg).join('; '));
+  const geo = S.solveRecipe(r, ctx);
+  check('without the terrain the landing areas are assumed: Landing areas grey, never a pass', row(geo.rows, 'Landing areas')?.st === 'unchecked');
+  check('the plan: OPs, obstacles and a road block on each LA; local defence, IAG and DAG all pass', ['LAs watched', 'LAs obstructed', 'Exits blocked', 'Local defence', 'Immediate action', 'Deliberate action'].every((nm) => row(geo.rows, nm)?.st === 'pass'));
+  const flat = (cls) => ({ cls, elev: () => 200, going: () => ({ nogo: new Set(), caution: new Set() }), label: (c) => 'C' + c, sight: () => 0.9, avenues: () => null, pending: () => false, dataLine: () => 'synthetic ground' });
+  const fitAt = (g) => F.fitLayout({ recipe: r, ctx, opts: { alternates: 'none' }, ground: g, anchor: { x: 0, y: 0 }, bearing: 0, threat: null });
+  const las = (fl) => fl.res.items.filter((i) => /^la[A-C]$/.test(i.role));
+  const cOf = (it) => ({ x: it.pts.reduce((a, p) => a + p.x, 0) / it.pts.length, y: it.pts.reduce((a, p) => a + p.y, 0) / it.pts.length });
+  const vp = (fl) => item(fl.res, 'vp').pts[0];
+  // open level ground everywhere: three LAs, nearest first, clear of the local defence, apart
+  const open = fitAt(flat(() => 2));
+  const L = las(open), dv = L.map((i) => Math.hypot(cOf(i).x - vp(open).x, cOf(i).y - vp(open).y));
+  check('open ground: three LAs read, 600-1200 m from the VP (clearOfVpM), 800 m apart (laApartM)', L.length === 3 && dv.every((d) => d >= 590 && d <= 1200) && L.every((a, i) => L.every((b, j) => i === j || Math.hypot(cOf(a).x - cOf(b).x, cOf(a).y - cOf(b).y) >= 790)), dv.map(Math.round).join(', '));
+  const third = (it) => { const c = cOf(it), v0 = vp(open); return Math.floor((((Math.atan2(c.x - v0.x, c.y - v0.y) * 180) / Math.PI + 360) % 360) / 120); };
+  check('...all round: one LA in each third of the circle round the VP, lettered clockwise from north', new Set(L.map(third)).size === 3 && L.map(third).join('') === '012', L.map(third).join(''));
+  const se = fitAt(flat((x, y) => (x > 0 && y < 0 ? 2 : 9)));
+  check('...open ground on one side only: the three LAs still read there', las(se).length === 3 && las(se).every((i) => cOf(i).x > 0 && cOf(i).y < 0));
+  check('...Landing areas pass (3), its OP between each LA and the VP', row(open.res.rows, 'Landing areas')?.st === 'pass' && row(open.res.rows, 'Landing areas').m === 3 && ['A', 'B', 'C'].every((k) => { const op = item(open.res, 'op' + k).pts[0], la = cOf(item(open.res, 'la' + k)); return Math.hypot(op.x - vp(open).x, op.y - vp(open).y) < Math.hypot(la.x - vp(open).x, la.y - vp(open).y); }));
+  // woods / BUA within 2 km: the LAs lie beyond
+  const wood = fitAt(flat((x, y) => (Math.hypot(x, y) < 2000 ? 9 : 2)));
+  const dw = las(wood).map((i) => Math.hypot(cOf(i).x, cOf(i).y));
+  check('no land class within 2 km: the LAs are read beyond it', las(wood).length === 3 && dw.every((d) => d >= 2000), dw.map(Math.round).join(', '));
+  // steep everywhere: none, the rows grey
+  const steep = fitAt({ ...flat(() => 2), elev: (x) => 200 + x * 0.5 });
+  check('steep ground (27 degrees) everywhere: no LA, Landing areas warns, the LA rows grey, no LA drawn', las(steep).length === 0 && row(steep.res.rows, 'Landing areas')?.st === 'warn' && row(steep.res.rows, 'LAs watched')?.st === 'unchecked', row(steep.res.rows, 'Landing areas')?.reason?.slice(0, 60));
+  // the ground not loaded: grey
+  const unk = fitAt({ ...flat(() => null), pending: () => true });
+  check('the ground not loaded: Landing areas grey (still loading)', row(unk.res.rows, 'Landing areas')?.st === 'unchecked');
+  const ah = doc.plan.antiHb;
+  check('PlanDoctrine antiHb figures: E, decided and searched', ['searchM', 'laMinM', 'laApartM', 'clearOfVpM', 'slopeOkDeg', 'landClasses', 'opFromLaM'].every((k) => ah[k]?.basis === 'E' && ah[k].decided && ah[k].searched));
+}
+
+// ── N5: the Inf Div advance on one axis (GSP s18 pp 76-80, Annex H p 203) ─────────────────────────────────────────────
+{
+  const A = await import('../../MS/Engines/DeploymentBuilder/PlanAdvance.ts');
+  const F = await import('../../MS/Engines/DeploymentBuilder/PlanFit.ts');
+  const r = rec('div-advance-inf');
+  const iss = V.validateRecipe(r, { doc, symbols: ctx.symbols }).filter((i) => i.level === 'fail');
+  check('div-advance-inf validates', !iss.length, iss.map((i) => i.msg).join('; '));
+  const s = S.solveRecipe(r, ctx);
+  check('it reads as an Inf Div advance (its harbour areas); the Armd Bde, Bn and Armd Div advances keep their kinds', A.advanceKind(s.items) === 'idiv' && A.advanceKind(S.solveRecipe(rec('bde-advance-armd'), ctx).items) === 'bde' && A.advanceKind(S.solveRecipe(rec('bn-advance-one-up'), ctx).items) === 'bn' && A.advanceKind(S.solveRecipe(rec('div-advance-two-bde'), ctx).items) === 'div');
+  const rows = A.advanceRows(s.items, doc);
+  const names = ['Grouping', 'Covering troops', 'Leading Pl', 'Main Gd', 'Arty with Adv Gd', 'Harbour areas', 'Div Tac HQ', 'DAA', 'Flank guards'];
+  check('as laid: every Annex H row a pass', names.every((nm) => row(rows, nm)?.st === 'pass'), names.map((nm) => nm + ' ' + (row(rows, nm)?.st ?? 'none')).join(', '));
+  check('...the Country row grey without the ground (GSP p 76 para 3)', row(rows, 'Country')?.st === 'unchecked' && /p 76/.test(row(rows, 'Country').reason));
+  check('mob tps 1 h or 10-15 miles ahead (16-24 km), Har areas 15-20 miles apart (24-32 km), the Ldg Pl 20-30 min: Annex H p 203 figures', JSON.stringify(doc.plan.advance.infDiv.ctpsAheadM.value) === '[16000,24000]' && JSON.stringify(doc.plan.advance.infDiv.harApartM.value) === '[24000,32000]' && JSON.stringify(doc.plan.advance.infDiv.ldgPlAheadMin.value) === '[20,30]');
+  // moved: the mob tps 30 km out, the follow-up harbour 10 km behind, the arty behind the Main Gd, the DAA 60 km back
+  const mv = (it, dy) => ({ ...it, pts: it.pts.map((p) => ({ x: p.x, y: p.y + dy })) });
+  const ys0 = (role) => item(s, role).pts[0].y;
+  const bad = s.items.map((i) => (i.role === 'ctps' ? mv(i, -10000) : i.role === 'har2' ? mv(i, 18000) : i.role === 'arty' ? mv(i, ys0('mainGd') - ys0('arty') - 500) : i.role === 'daa' ? mv(i, -30000) : i));
+  const br = A.advanceRows(bad, doc);
+  check('moved out of the book: Covering troops, Harbour areas, Arty with Adv Gd and DAA warn', ['Covering troops', 'Harbour areas', 'Arty with Adv Gd', 'DAA'].every((nm) => row(br, nm)?.st === 'warn'), ['Covering troops', 'Harbour areas', 'Arty with Adv Gd', 'DAA'].map((nm) => nm + ' ' + row(br, nm)?.st).join(', '));
+  const flat = { cls: () => 2, elev: () => 200, going: () => ({ nogo: new Set(), caution: new Set() }), label: (c) => 'C' + c, sight: () => 0.9, avenues: null, pending: () => false, dataLine: () => 'synthetic ground' };
+  const fitAt = (terrain) => F.fitLayout({ recipe: r, ctx, opts: { alternates: 'none' }, ground: flat, anchor: { x: 0, y: 0 }, bearing: 0, threat: null, terrain });
+  const pl = fitAt('plains'), mt = fitAt('mountains');
+  check('fitted in open country: Country warns, made mobile or the Armd Div (p 76 para 3)', row(pl.res.rows, 'Country')?.st === 'warn' && pl.res.rows.find((x) => x.name === 'Country').detail?.fix?.length === 2);
+  check('fitted in mountains: Country passes (restricted or mountainous country)', row(mt.res.rows, 'Country')?.st === 'pass');
+  check('fitted: the axis read from the leading Bde\'s harbour to the mob tps, no IABG halting areas or march rows', !!row(pl.res.rows, 'Going on the axis') && /29\.0 km/.test(row(pl.res.rows, 'Going on the axis').reason) && !row(pl.res.rows, 'Halting areas') && !row(pl.res.rows, 'March'), row(pl.res.rows, 'Going on the axis')?.reason?.slice(0, 50));
+  const ix = json('MS/Data/Deployments/Recipes/index.json');
+  check('index: the Inf Div Advance family (inf-div), beside the Armd Div\'s', ix.families.some((x) => x.id === 'div-advance-inf' && x.unit === 'inf-div' && x.recipes.includes('div-advance-inf')));
+}
+
 console.log(`\n${n} checks, ${fails} failed`);
 process.exit(fails ? 1 : 0);

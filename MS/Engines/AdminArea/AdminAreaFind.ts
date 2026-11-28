@@ -42,6 +42,7 @@ import {
   lattice,
   metres,
   mountainGround,
+  desertGround,
   offsetPt,
   pct,
   pickRoad,
@@ -123,6 +124,18 @@ export interface AdminRules {
   order: { note: string; toneScore: Record<Tone, number>; toneSrc: string; weightsSrc: string; pre: Record<string, number>; preSrc: string };
   /** Mountain ground (AdminDoctrine.json mountains; MW s25 para 3 pp 264-265). */
   mountains: AdminMtnRules;
+  /** Desert ground (AdminDoctrine.json desert; DW s24 pp 79-83). */
+  desert: AdminDesRules;
+}
+
+/** Desert ground (AdminDoctrine.json desert): the test, and the book rules the Forward / Water rows and the note cite. */
+export interface AdminDesRules {
+  detectClasses: number[];
+  detectShare: Fig;
+  detectWithinM: Fig;
+  forward: BookRule;
+  water: BookRule;
+  stocks: BookRule;
 }
 
 /** A book rule with no figure of its own (its refs), as AdminDoctrine.json holds it. */
@@ -310,6 +323,19 @@ export function adminRulesFrom(doc: any): AdminRules {
     },
     weights: { beyond: 3, behind: 2, firm: 2, wet: 3, room: 2, air: 2, road: 2, avoid: 1, water: 1, buildings: 1, people: 1, slides: 3, partway: 1, helipad: 1, rock: 1, downwind: 1, ...(d.weights ?? {}) },
     mountains: mtnRulesFrom(d.mountains),
+    desert: desRulesFrom(d.desert),
+  };
+}
+
+function desRulesFrom(m: any): AdminDesRules {
+  const cl = m?.detectClasses?.value;
+  return {
+    detectClasses: Array.isArray(cl) ? cl.map(Number) : [12, 13, 14, 16],
+    detectShare: fig(m?.detectShare, 0.5, 'M'),
+    detectWithinM: fig(m?.detectWithinM, 3000, 'M'),
+    forward: bookRule(m?.forward, 'DW p 82: administrative areas as far forward as possible to reduce turn around distances'),
+    water: bookRule(m?.water, 'DW p 80: sweet water only in tobas and the green belt'),
+    stocks: bookRule(m?.stocks, 'DW p 82: mobile APs to the forward Bdes, petrol points well forward'),
   };
 }
 
@@ -383,6 +409,8 @@ export interface AdminTask {
   month?: number;
   /** Mountain ground: true / false as known (the Plan Builder's ground), undefined / null = read at the centre. */
   mountain?: boolean | null;
+  /** Desert ground: true / false as known, undefined / null = read at the centre (SiteScan.desertGround). */
+  desert?: boolean | null;
 }
 
 export interface AdminRow {
@@ -436,6 +464,8 @@ export interface AdminResult {
   orderRules: RuleRef[];
   /** Mountain ground: the MW checks were added (MW s25 para 3 pp 264-265). */
   mountain: boolean;
+  /** Desert ground read at the centre (or as given): the Forward / Water rows and the desert note were added. */
+  desert: boolean;
 }
 
 export interface AdminWhyNot {
@@ -597,6 +627,13 @@ function adminScorer(probe: SiteProbe, rules: any, task: AdminTask, R: AdminRule
   // ── mountain ground (MW s25 para 3 pp 264-265): the test as the gun finder's (SiteScan.mountainGround) ─────────────
   const M = R.mountains;
   const mtn = task.mountain ?? mountainGround(probe, task.centre, M.detectRiseM.value, M.detectWithinM.value) ?? false;
+  // ── desert ground (DW s24 pp 79-83): the Plan Builder's Auto desert test (SiteScan.desertGround) ─────────────────────
+  const D = R.desert;
+  const des = !mtn && (task.desert ?? desertGround(probe, task.centre, D.detectClasses, D.detectShare.value, D.detectWithinM.value) ?? false);
+  const dRefs = {
+    forward: [...figRefs(D.forward, 'As far forward as possible within easy turn-round (desert)', S), ...figRefs(D.detectShare, `Desert: ${pctV(D.detectShare.value)} of the ground within ${km(D.detectWithinM.value, 0)} bare, sand, dunes or salt pan`, S)],
+    water: figRefs(D.water, 'Sweet water only in tobas and the green belt; water points open round the clock (desert)', S),
+  };
   const snowy = (e0: number) => e0 >= M.snowAboveM.value && (task.month === undefined || M.snowMonths.value.includes(task.month));
   const mRefs = {
     slides: [
@@ -715,7 +752,7 @@ function adminScorer(probe: SiteProbe, rules: any, task: AdminTask, R: AdminRule
     }
     return { share: k ? rock / k : 0, known: k };
   };
-  const wantWater = K.needs.includes('water') || mtn;
+  const wantWater = K.needs.includes('water') || mtn || des;
   const wantBld = K.needs.includes('buildings');
   const wantEvac = K.needs.includes('evacRoad');
 
@@ -746,6 +783,17 @@ function adminScorer(probe: SiteProbe, rules: any, task: AdminTask, R: AdminRule
         why: `within ${pctV(tol)} of the figure counts as on it; within 1st line turn-round of forward units ${km(K.behind.turnRoundM.value, 0)}`,
         fix: off > tol ? "Far back: forward units' 1st line turn-round grows" : off < -tol ? 'Near the front for this operation' : undefined,
         rules: refs.behind,
+      });
+      // the desert: as far forward as possible, within easy turn-round of the field formations (DW s24 paras 7 h, 8 a p 82):
+      // an area behind the operation's figure warns there, beyond the en gun the Beyond row still holds it back
+      if (des) rows.push({
+        key: 'forward',
+        label: 'Forward (desert)',
+        value: off <= 0 ? `${km(c.fM)} behind, at or forward of the ${km(want.value, 0)} figure` : `${km(c.fM - want.value)} behind the ${km(want.value, 0)} figure`,
+        tone: off <= 0 ? 'ok' : 'warn',
+        why: 'in the desert administrative areas are sited as far forward as possible to reduce the turn-round, within easy turn-round of the field formations, and protected: vehicle endurance falls in low gear (DW s24 paras 7 h, 8 a p 82)',
+        fix: off > 0 ? 'Forward toward the figure, still clear of the en guns (Beyond row); protect it (AD, local defence)' : undefined,
+        rules: uniqRefs([...refs.behind, ...dRefs.forward]),
       });
     }
     const unknownGround = r.known < r.n * C.minKnownShare.value;
@@ -890,9 +938,9 @@ function adminScorer(probe: SiteProbe, rules: any, task: AdminTask, R: AdminRule
         label: 'Water',
         value: w ? `${w.label} ${metres(w.distM)} ${compass(bearingOf(c.at, [w.x, w.y]))}` : `none recorded within ${km(R.needs.waterM.value)}`,
         tone: w ? 'ok' : 'warn',
-        why: `a water point within ${km(R.needs.waterM.value)}${mtn ? '; in mountains near a stream or lake (MW p 264), water being seldom found on the heights (p 266)' : ''}`,
-        fix: w ? undefined : mtn ? 'Near a stream or lake; water by mule or porter to the heights' : 'Plan water by bowser; recce wells',
-        rules: mtn ? uniqRefs([...refs.water, ...mRefs.water]) : refs.water,
+        why: `a water point within ${km(R.needs.waterM.value)}${mtn ? '; in mountains near a stream or lake (MW p 264), water being seldom found on the heights (p 266)' : des ? '; in the desert sweet water is found only in the tobas and the green belt, the wells low-yield and brackish (DW pp 66, 80); water points kept open round the clock (p 86)' : ''}`,
+        fix: w ? undefined : mtn ? 'Near a stream or lake; water by mule or porter to the heights' : des ? 'Water by bowser from the green belt, storage at the source and at the area (DW p 80); recce the tobas and tube wells' : 'Plan water by bowser; recce wells',
+        rules: mtn ? uniqRefs([...refs.water, ...mRefs.water]) : des ? uniqRefs([...refs.water, ...dRefs.water]) : refs.water,
       });
     }
     if (wantBld) {
@@ -935,7 +983,7 @@ function adminScorer(probe: SiteProbe, rules: any, task: AdminTask, R: AdminRule
     return { rank: 0, at: c.at, axisDeg: c.axis, ring: rectRing(c.at, c.axis, frontM, depthM), score, tone, verdict, rows, read: r, road, threatM: c.tM, frontM: c.fM, fixes: rows.filter((x) => x.fix).map((x) => `${x.label}: ${x.fix}`), why: [] };
   };
 
-  return { K, frontM, depthM, refs, gates, read, readFails, pre, build, reach, mtn, mRefs };
+  return { K, frontM, depthM, refs, gates, read, readFails, pre, build, reach, mtn, mRefs, des };
 }
 
 /** Why each site stands where it does (as GunDeploymentFind.explainOrder). */
@@ -1036,7 +1084,13 @@ export function findAdminSites(probe: SiteProbe, rules: any, task: AdminTask, R:
   if (!picked.length) notes.push(`No ${K.short} site in this circle${rejectedWhy.length ? `: ${rejectedWhy.map((r) => `${pct(r.share)} ${GATE_TEXT[r.gate]}`).join(', ')}` : ''}. Look further back or widen the circle.`);
   if (!task.threat?.length) notes.push('No threat place: distance from his guns not checked (mark the threat or pick it on the map).');
   if (A.mtn) notes.unshift(mountainNote(R));
-  return { sites: picked, tried: pts.length, rejected, rejectedWhy, notes, frontM, depthM, rule: K, kindRefs: A.refs.kind, orderRules: adminOrderRefs(R), mountain: A.mtn };
+  if (A.des) notes.unshift(desertNote());
+  return { sites: picked, tried: pts.length, rejected, rejectedWhy, notes, frontM, depthM, rule: K, kindRefs: A.refs.kind, orderRules: adminOrderRefs(R), mountain: A.mtn, desert: A.des };
+}
+
+/** What desert ground adds (DW s24 pp 79-83, s26 p 86), and what to confirm. */
+export function desertNote(): string {
+  return 'Desert ground (half the ground within 3 km bare, sand, dunes or salt pan): the checks for admin areas in the desert are added: Forward, as far forward as possible within easy turn-round of the field formations, and protected (DW s24 paras 7 h, 8 a p 82), and the Water row for every kind (sweet water only in the tobas and the green belt, p 80; water points open round the clock, p 86). Plan mobile ammunition points down to the forward Bdes, petrol points well forward and supply points within the turn-round of first line transport (para 8 b-d p 82); avoid frequent moves of the administrative echelons (para 8 e p 83); allow the lift of mines and defence stores (para 7 g p 82). The AD covers the critical logistic installations after the reserves and HQs (DW s18 para 5 p 63).';
 }
 
 /** What mountain ground adds, and what the bundle cannot read (MW s24-25 pp 263-265). */

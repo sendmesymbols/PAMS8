@@ -125,7 +125,7 @@ import { GroundGuideKeyNotice, type KeyNoticeContent, type KeyNoticeKey } from '
 import { catalogKey } from './GroundGuideSpeed';
 import type { GroundGuideOcoka, IpbApchAa, IpbAirView, IpbAirZone, IpbApchView, IpbDecisionView, IpbFireView, IpbTemplateView, IpbWxView, OcokaMapPlan, OcokaMapSight, OcokaThreatMode } from './GroundGuideTypes';
 import { GroundGuideScope, type ScopeFrame, type ScopeSource } from './GroundGuideScope';
-import { aorInputKey, buildAorGrid, readAor, type AorClassTables, type AorInput, type AorReading, type AorSide } from './GroundGuideAor';
+import { AOR_MOUNTAIN_RISE_M, aorInputKey, buildAorGrid, readAor, type AorClassTables, type AorInput, type AorReading, type AorSide } from './GroundGuideAor';
 import { aorText, type AorFrame } from './GroundGuideScopeAor';
 import { GroundGuideAorSheet } from './GroundGuideAorSheet';
 import { buildScopeScene, overCodes, scopeHalf, scopeLevel } from './GroundGuideScopeScene';
@@ -1142,6 +1142,7 @@ export default class GroundGuide {
         flag('extended.ipb.decision', ip.decision, (b) => (next.extended.ipb.decision = b));
         flag('extended.ipb.mapDecision', ip.mapDecision, (b) => (next.extended.ipb.mapDecision = b));
         num('extended.ipb.reactionH', ip.reactionH, 0, 12, (n) => (next.extended.ipb.reactionH = n));
+        pick('extended.ipb.reserveLadder', ip.reserveLadder, ['idd', 'gsp'] as const, (x) => (next.extended.ipb.reserveLadder = x));
         flag('extended.ipb.air', ip.air, (b) => (next.extended.ipb.air = b));
         flag('extended.ipb.mapAir', ip.mapAir, (b) => (next.extended.ipb.mapAir = b));
         flag('extended.ipb.airspace', ip.airspace, (b) => (next.extended.ipb.airspace = b));
@@ -3737,7 +3738,9 @@ export default class GroundGuide {
       catkLabel: catk?.label ?? '',
       catkCues: (D.decisionPoints?.counterAttack?.indicators?.value as string[] | undefined) ?? null,
       // Reading the En defence (own attack): when the Indian reserves can react (IDD p 5).
-      reserves: v.side !== 'enemy' ? ((D.decisionPoints?.reserves?.indian?.ladder as DecArgs['reserves']) ?? null) : null,
+      // the ladder by the setting: IDD p 5 (default) or GSP 1947 p 83 (the books differ)
+      reserves: v.side !== 'enemy' ? (((ip.reserveLadder === 'gsp' ? D.decisionPoints?.reserves?.indian?.ladderGsp : D.decisionPoints?.reserves?.indian?.ladder) as DecArgs['reserves']) ?? null) : null,
+      reservesSrc: ip.reserveLadder === 'gsp' ? 'GSP 1947 p 83' : 'IDD p 5',
       coa: v.side === 'enemy'
         ? {
             fire: v.fire ? Object.fromEntries(v.fire.lines.map((l) => [l.id, l.coveredPct])) : undefined,
@@ -4821,6 +4824,8 @@ export default class GroundGuide {
     for (let ty = Math.max(0, Math.floor(y0 / ts)); ty <= Math.min(n - 1, Math.floor(y1 / ts)); ty++)
       for (let tx = Math.max(0, Math.floor(x0 / ts)); tx <= Math.min(n - 1, Math.floor(x1 / ts)); tx++) cache.request(cls, z, tx, ty);
     const grid = buildAorGrid((layer, x, y) => cache.peek(layer, z, x, y), cls, z, ts, lat, x0, y0, x1, y1, f, tables.rank);
+    // The rise of the ground round the MITG: slope classes in a low desert are dune faces, not mountains (aorCountry).
+    const relief = this._aorRelief(anchor, lat);
     // Features over the same ground, and the borders.
     const cMerc: MercXY = [(ring.reduce((a, p) => a + p[0], 0) + anchor[0]) / (ring.length + 1), (ring.reduce((a, p) => a + p[1], 0) + anchor[1]) / (ring.length + 1)];
     let radiusM = 0;
@@ -4828,7 +4833,7 @@ export default class GroundGuide {
     radiusM += 2500;
     const feats = this._features?.sceneNear(cMerc, radiusM) ?? { points: [], lines: [], pending: false };
     const borders = this._aorBorderLines();
-    if (grid.g.pending || feats.pending || borders === null) return { frame, key, input: null };
+    if (grid.g.pending || relief.pending || feats.pending || borders === null) return { frame, key, input: null };
     const PLACE = new Set(['city', 'district_hq', 'town', 'village_imp', 'village']);
     const BRIDGE = new Set(['bridge', 'bridge_iron', 'boat_bridge', 'viaduct']);
     const places: AorInput['places'] = [];
@@ -4876,8 +4881,46 @@ export default class GroundGuide {
       lines,
       bridges,
       itg,
+      reliefM: relief.m,
+      mountainRiseM: Number((IPB_TEMPLATES as any).mountainTest?.riseM ?? AOR_MOUNTAIN_RISE_M),
     };
     return { frame, key, input };
+  }
+
+  /**
+   * How far the ground within 5 km of `at` rises (IpbTemplates mountainTest withinM; its riseM decides mountains), from
+   * the bundle's elevation two zooms below the finest (about 60-75 m a pixel, a few tiles). `m` null when the bundle has
+   * no elevation there or its reader is off; `pending` while a tile is on its way.
+   */
+  private _aorRelief(at: MercXY, lat: number): { m: number | null; pending: boolean } {
+    const mf = this._manifest, cache = this._cache, L = this._sectionLayers();
+    if (!mf || !cache || !L.elevHi || !L.elevLo) return { m: null, pending: false };
+    const withinM = Number((IPB_TEMPLATES as any).mountainTest?.withinM ?? 5000);
+    const z = Math.max(mf.zoom.min, mf.zoom.max - 2), ts = mf.tileSize, n = 2 ** z;
+    const [cx, cy] = mercToPx(at[0], at[1], z, ts);
+    const r = withinM / mPerPx(lat, z, ts);
+    const st = Math.max(1, Math.floor(r / 40));
+    let lo = Infinity, hi = -Infinity, pending = false;
+    for (let dy = -r; dy <= r; dy += st) {
+      for (let dx = -r; dx <= r; dx += st) {
+        if (dx * dx + dy * dy > r * r) continue;
+        const px = Math.floor(cx + dx), py = Math.floor(cy + dy);
+        const tx = Math.floor(px / ts), ty = Math.floor(py / ts);
+        if (tx < 0 || ty < 0 || tx >= n || ty >= n) continue;
+        const a = cache.peek(L.elevHi, z, tx, ty), b = cache.peek(L.elevLo, z, tx, ty);
+        if (a === undefined || b === undefined) {
+          pending = true;
+          continue;
+        }
+        if (!a || !b) continue;
+        const i = (py - ty * ts) * ts + (px - tx * ts);
+        if (a[i] === 255) continue;
+        const e = a[i] * 256 + b[i] - 500;
+        if (e < lo) lo = e;
+        if (e > hi) hi = e;
+      }
+    }
+    return { m: hi >= lo ? Math.round(hi - lo) : null, pending };
   }
 
   /** Read and draw the rail's AOR scale: the reading is worked out once per AOR, off the frame. */

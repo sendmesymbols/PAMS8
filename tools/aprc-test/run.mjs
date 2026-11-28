@@ -125,6 +125,8 @@ doc.sources = ['Land cover (2021)', '1:50k map (Survey of Pakistan)'];
 {
   const P = (id) => M.find(doc, id);
   check('Gr: Gen Description drafted', P('gr.gen').state === 'gr' && /Canal plains\./.test(P('gr.gen').draft) && /GO on 78 % of the AOR, SLOW-GO 19 %, NO-GO 3 % in 1 patch/.test(P('gr.gen').draft), P('gr.gen').draft);
+  const gwR = W.writeGround({ ...gin, reading: { ...reading, reliefM: 77, country: 'Desert' } }).patches.find((x) => x.id === 'gr.gen');
+  check('Gr: Gen Description says how far the ground rises when read, and the country rule is in the basis (DW pp 2-3; mountainTest E)', /^Desert: the ground within 5 km of Qila Mor rises 77 m\./.test(gwR.draft) && gwR.basis.some((b) => b.kind === 'calc' && /dune faces \(DW pp 2-3\)/.test(b.text) && /the rise from the 30 m elevation/.test(b.text)) && /^Canal plains\./.test(P('gr.gen').draft) && P('gr.gen').basis.some((b) => /no elevation read, the classes alone/.test(b.text)), gwR.draft);
   check('Gr: Gen Description names the water lines and the Rd density', /2 water lines lie across the apchs: Sukh Nala \(nala\) and Lakhan Disty \(canal\)/.test(P('gr.gen').draft) && /Rd density 1\.4 km per km²/.test(P('gr.gen').draft));
   const ap = P('gr.apchs');
   check('Gr: three apchs in Lt, Cen, Rt order', ap.children.map((c) => c.head).join('|') === 'Lt Apch|Cen Apch|Rt Apch');
@@ -725,7 +727,7 @@ const ad = M.newDoc('attk');
   const LP = (id) => lp.find((x) => x.id === id);
   check('mechs: lines of def in pri with the reasons for pri 1', /^Pri of lines of def: \(1\) Line X \(FDLs\), \(2\) Line Y \(depth\), \(3\) Line W \(protective dets\), \(4\) Line Z \(str pt Qila Mor\)\. Reasons for Line X as pri 1: \(a\) It draws str from the gr: along Lakhan Disty/.test(LP('gr.ded.lines.pri').draft) && LP('gr.ded.lines.pri').state === 'judge', LP('gr.ded.lines.pri').draft);
   check('mechs: DP 1 FDLs with Coys up; screens 1-1.5 km ahead (OoW Vol I Annex A p 102 first)', /^Line X \(Kot Jaimal – Dhok Rai\) along Lakhan Disty, 3 km past the Intl Border: 3 Coys up, Pls 2 up/.test(LP('gr.ded.dp1.fdls').draft) && LP('gr.ded.dp1.screens').draft === '1.5-2 km past the Intl Border, 1-1.5 km ahead of Line X.' && LP('gr.ded.dp1.screens').basis[0].text.includes('OoW Vol I Annex A p 102'), LP('gr.ded.dp1.fdls').draft);
-  check('mechs: adv posn on a natural obs (OoW Vol I p 14), C pen, res and armr by the guide', /Protective dets on Line W \(Sukh Nala\); an adv posn on Sukh Nala \(Line W\)/.test(LP('gr.ded.dp1.adv').draft) && LP('gr.ded.dp1.adv').basis[0].text.includes('OoW Vol I p 14') && /^On the Lt apch, the most threatened: about 1,500 m behind Line X/.test(LP('gr.ded.dp1.cpen').draft) && LP('gr.ded.dp1.cpen').basis.some((b) => /IBB p 310/.test(b.text)) && /LAT and HAT never in res/.test(LP('gr.ded.dp1.res').draft) && /HAT: in the protective dets, then in the FDL gaps on the tk apch \(Lt and Cen\)/.test(LP('gr.ded.dp1.armr').draft), LP('gr.ded.dp1.armr').draft);
+  check('mechs: adv posn on a natural obs (OoW Vol I p 14), C pen, res and armr by the guide', /Protective dets on Line W \(Sukh Nala\); an adv posn on Sukh Nala \(Line W\)/.test(LP('gr.ded.dp1.adv').draft) && LP('gr.ded.dp1.adv').basis[0].text.includes('OoW Vol I p 14') && /^On the Lt apch, the most threatened: about 1,500 m behind Line X/.test(LP('gr.ded.dp1.cpen').draft) && LP('gr.ded.dp1.cpen').basis.some((b) => /IBB p 310/.test(b.text)) && /LAT and HAT never in res/.test(LP('gr.ded.dp1.res').draft) && /HAT: in the protective dets, then in bulk in the FDL gaps on the Lt tk apch, the most threatened; the Cen only by what reaches it, never an even spread/.test(LP('gr.ded.dp1.armr').draft) && LP('gr.ded.dp1.armr').basis.some((b) => /IBB p 73/.test(b.text)), LP('gr.ded.dp1.armr').draft);
   const doc0 = M.newDoc('def');
   check('mechs: the new DP heads and the Vis are in the def outline', ['gr.ded.dp1.cpen', 'gr.ded.dp1.res', 'gr.ded.dp1.armr', 'en.vis', 'ts.data.time-now', 'ts.data.first-lt', 'ts.data.last-lt', 'anx.sketch'].every((id) => M.find(doc0, id)) && M.find(M.newDoc('attk'), 'anx.sketch') && M.numberOf(doc0, 'anx.sketch') === '1');
 
@@ -944,7 +946,7 @@ const ad = M.newDoc('attk');
   {
     const all = [];
     M.walk(w0, (p) => p.prompts.forEach((x) => all.push(x)));
-    const plain = all.filter((x) => !/\((OoW Vol III|OoW Vol I|Understanding Aprc|lsf|SO's Hbk)|OoW Vol III p|OoW Vol I p/.test(x) && !/^(With reasons|On the same lines|MITG: the new def posn)/.test(x));
+    const plain = all.filter((x) => !/\((OoW Vol III|OoW Vol I|Understanding Aprc|lsf|SO's Hbk|GSP-1947|DW|IBB)|OoW Vol III p|OoW Vol I p|GSP-1947 p/.test(x) && !/^(With reasons|On the same lines|MITG: the new def posn)/.test(x));
     check('wdr R78: every book prompt carries its book and page; never "his / he" for the En', !plain.length && !all.some((x) => /\b(his|he)\b/i.test(x)), plain.join(' | '));
   }
   const wn = M.normalizeDoc(JSON.parse(JSON.stringify({ ...M.newDoc('wdr'), limits: { deny: '0300 D+1', noMovBefore: '1900 D Day', clearLine: 'Line Y', clearBy: '0500 D+1', newPosn: 'Qila Mor', byDay: 1, junk: 2 } })));
@@ -1013,6 +1015,103 @@ const ad = M.newDoc('attk');
   check('books R74: the sketch annex lists the line of denial, on the trace or not (OoW Vol I pp 17-18)', skD.table.rows.length === sk0.table.rows.length + 1 && lastD[1] === 'Line of denial: Line Y, given by the higher comd with the msn' && lastD[2] === 'On the trace: Line Y, "Line of Denial"' && /OoW Vol I pp 17-18/.test(lastD[3]) && /^Not on the trace: no Line Q in the reading$/.test(skN.table.rows[skN.table.rows.length - 1][2]) && X.writeSketch('attk', [], null, null, { denial: 'Y', lines: ['Y'] })[0].table.rows.length === 14);
   const wdD = X.writeMechs({ ...mIn({ kind: 'def', limits: { denial: 'Y' } }), hHour: '06:00' }).patches.find((x) => x.id === 'anx.sketch');
   check('books R74: a def Read with a line of denial set carries it to the sketch annex', wdD.table.rows.some((r) => r[1] === 'Line of denial: Line Y, given by the higher comd with the msn'));
+}
+
+// ── the five books re-read for the Aprc (Aprc_Review.md, 28 Nov 2026): GSP-1947, IBB, OoW Vol I / II, MW, DW ─────────
+{
+  const X = await import('../../MS/Engines/GroundAppreciation/AprcMechs.ts');
+  const B = await import('../../MS/Engines/GroundAppreciation/AprcBooks.ts');
+  const fs = await import('node:fs');
+  const hasB = (p, re) => !!p && p.basis.some((b) => re.test(b.text));
+  const hasP = (p, re) => !!p && p.prompts.some((x) => re.test(x));
+
+  // F1: a Bn normally 3-5 km in the plains (IBB pp 276-277); Annex U App 6 is the extended frontages' annex
+  const n48 = X.coysUp(4800), n55 = X.coysUp(5500);
+  check('five F1: a Bn normally holds 3-5 km (IBB S53 para 4 c pp 276-277); 5.5 km is extended, 4.8 km is not', !n48.ext && n55.ext && n48.up === 3 && n48.basis[0].text.includes('IBB S53 para 4 c pp 276-277') && /where a Bn normally holds 3-5 km/.test(n48.text) && /extended frontage, its gaps covered/.test(n55.text) && /two Coys up 4\.5 km and three up 6\.5 km/.test(n55.text), n55.text);
+  const o40 = X.coysUp(4000, null, { obstacle: 'BRB Canal' }), o45 = X.coysUp(4500, null, { obstacle: 'BRB Canal' });
+  check('five F1: along a canal / A tk ditch three Coys up up to 4,115 m (IBB S61 p 333; Annex V p 483)', o40.up === 3 && !o40.ext && o45.ext && /along BRB Canal, where a Bn three Coys up holds up to 4\.1 km/.test(o40.text) && o40.basis[0].text.includes('IBB S61 p 333') && o40.basis[0].text.includes('IBB S60 p 331'), o40.text);
+  const m40 = X.coysUp(4000, null, { ground: 'mountains' }), d40 = X.coysUp(4000, null, { ground: 'desert' });
+  check('five F1: mountains and desert print no Bn figure, IBB taken and the book\'s rule beside (OoW Vol I p 72; DW p 22)', /MW prints no Bn figure/.test(m40.text) && m40.basis.some((b) => /OoW Vol I p 72/.test(b.text)) && /DW prints no Bn figure/.test(d40.text) && d40.basis.some((b) => /DW p 22/.test(b.text) && /GSP-1947 p 172/.test(b.text)));
+  check('five F1: frontages below Bn not extended (IBB S59 para 6 b p 326)', n48.basis.some((b) => /IBB S59 para 6 b p 326/.test(b.text)));
+
+  // wide water along the FDLs: 24 m or more (IBB S60 p 331)
+  const wet = JSON.parse(JSON.stringify(reading));
+  wet.apchs.forEach((a) => a.obstacles.forEach((ob) => { if (ob.name === 'Lakhan Disty') ob.widthM = 60; }));
+  check('five F1: the water along a line counts as an obs only at 24 m or more (a 9 m disty does not)', X.wideWaterOn(reading, reading.lines[1]) === null && X.wideWaterOn(wet, wet.lines[1])?.widthM === 60 && X.wideWaterOn(wet, wet.lines[2]) === null);
+  const Lw = X.layoutDef(wet, {}, 'Bn');
+  const lpw = X.writeLayoutDef(Lw, wet);
+  check('five F1: on a 60 m canal the Bn goes three Coys up along it, extended past 4.1 km, its width named', Lw.wideObs?.name === 'Lakhan Disty' && Lw.coys.up === 3 && Lw.coys.ext && /along Lakhan Disty, where a Bn three Coys up holds up to 4\.1 km/.test(lpw.find((x) => x.id === 'gr.ded.dp1.fdls').draft) && hasB(lpw.find((x) => x.id === 'gr.ded.dp1.fdls'), /Lakhan Disty: 60 m wide/));
+
+  // F5: a Bde's depth at the yardstick's 4-6 km (OoW Vol I Annex B p 103); on a DCB GSP-1947 p 119
+  const Lb = X.layoutDef(reading, {}, 'Bde');
+  const lpb = X.writeLayoutDef(Lb, reading);
+  const Pb = (id) => lpb.find((x) => x.id === id);
+  check('five F5: a Bde\'s front against the yardstick, OoW Vol I Annex B p 103', !Lb.coys && /The FDLs run 7\.6 km, narrower than the 10\.0 km of the yardstick; the depth line 1\.3 km behind the FDLs, short of the 4-6 km yardstick\./.test(Pb('gr.ded.dp1.fdls').draft) && hasB(Pb('gr.ded.dp1.fdls'), /OoW Vol I Annex B p 103/) && hasB(Pb('gr.ded.dp1.depth'), /OoW Vol I Annex B p 103/), Pb('gr.ded.dp1.fdls').draft);
+  const Lbw = X.writeLayoutDef(X.layoutDef(wet, {}, 'Bde'), wet).find((x) => x.id === 'gr.ded.dp1.fdls');
+  check('five F5: a Bde on a DCB: up to 8-10 km, all three Bns three up (GSP-1947 p 119 para 5, pp 120-121)', /along Lakhan Disty, narrower than the 8\.0 km a Bde may be given on a DCB: all three Bns three up/.test(Lbw.draft) && hasB(Lbw, /GSP-1947 s26 para 5 p 119/) && hasB(Lbw, /pp 120-121/), Lbw.draft);
+  const Lf2 = X.layoutDef(reading, { fwd: true }, 'Bde');
+  check('five F5: a Bde\'s depth line looked for 4-6 km behind the FDLs, not the guide\'s Bn 3-5 km', Lf2.fdl.id === 'Y' && Lf2.depth?.id === 'Z');
+
+  // F2: the res by echelon and ground
+  check('five F2: a Bde\'s res is not the guide\'s Bn res: no "never LAT / HAT", OoW Vol I pp 18-19 and GSP-1947 p 122 cited', /^The Bde res behind Line Y: strong in armr, at least equal to the En in mobility and hitting power\./.test(Pb('gr.ded.dp1.res').draft) && !/LAT and HAT never/.test(Pb('gr.ded.dp1.res').draft) && hasB(Pb('gr.ded.dp1.res'), /GSP-1947 s27 para 3 p 122/) && hasB(Pb('gr.ded.dp1.res'), /OoW Vol I pp 18-19/), Pb('gr.ded.dp1.res').draft);
+  const mtn = { ...reading, country: 'Mountains' }, des = { ...reading, country: 'Desert' };
+  const Lm = X.layoutDef(mtn, {}, 'Bn'), Ld = X.layoutDef(des, {}, 'Bn');
+  const lpm = X.writeLayoutDef(Lm, mtn), lpd = X.writeLayoutDef(Ld, des);
+  const Pm = (id) => lpm.find((x) => x.id === id), Pd = (id) => lpd.find((x) => x.id === id);
+  check('five F2: in mountains the res split, a central one of little value upwards of Bn lvl (MW p 169; GSP-1947 p 176)', /In mountains: split, each part close to its valley/.test(Pm('gr.ded.dp1.res').draft) && hasB(Pm('gr.ded.dp1.res'), /MW p 169/) && hasB(Pm('gr.ded.dp1.res'), /GSP-1947 p 176/));
+  check('five F2: in desert a third or more, mainly armr, down to Bde, within 2-6 h (DW pp 26-27)', /one third or more of the force, mainly armr, kept down to Bde, employed within 2-6 h/.test(Pd('gr.ded.dp1.res').draft) && hasB(Pd('gr.ded.dp1.res'), /DW p 26/) && hasB(Pd('gr.ded.dp1.res'), /DW p 27/));
+  check('five N5: mountains hold the dominating features astride the main axis (MW p 147; GSP-1947 p 175); desert localities with large gaps (DW p 22)', /In mountains: hold the dominating features astride the main axis/.test(Pm('gr.ded.dp1.fdls').draft) && hasB(Pm('gr.ded.dp1.fdls'), /MW p 147/) && /In desert: deny the vital gr only/.test(Pd('gr.ded.dp1.fdls').draft) && hasB(Pd('gr.ded.dp1.fdls'), /DW p 22/) && !/In mountains|In desert/.test(X.writeLayoutDef(X.layoutDef(reading, {}, 'Bn'), reading).find((x) => x.id === 'gr.ded.dp1.fdls').draft));
+
+  // F3 and N4: A tk in bulk; protective dets never reinforced; C pen at the outset
+  const lp0 = X.writeLayoutDef(X.layoutDef(reading, {}, 'Bn'), reading);
+  const P0 = (id) => lp0.find((x) => x.id === id);
+  check('five N4: protective dets never so large as to weaken the main def, never reinforced (OoW Vol I p 13; GSP-1947 p 105 para 10)', /Never so large as to weaken the main def, and not reinforced\./.test(P0('gr.ded.dp1.adv').draft) && hasB(P0('gr.ded.dp1.adv'), /GSP-1947 p 105 para 10/) && hasB(P0('gr.ded.dp1.adv'), /OoW Vol I p 13/));
+  check('five N4: C pen posns planned and prepared at the outset (GSP-1947 p 109 para 22; OoW Vol I p 52)', /planned and prepared at the outset\.$/.test(P0('gr.ded.dp1.cpen').draft) && hasB(P0('gr.ded.dp1.cpen'), /GSP-1947 p 109 para 22/) && hasB(P0('gr.ded.dp1.cpen'), /OoW Vol I p 52/));
+  check('five N5: in desert covering tps rather than an adv posn (OoW Vol I p 71), the C pen mode less preferred (DW p 27), ATGMs concentrated (DW p 58)', /covering tps rather than an adv posn/.test(Pd('gr.ded.dp1.adv').draft) && !/an adv posn on Sukh Nala/.test(Pd('gr.ded.dp1.adv').draft) && hasB(Pd('gr.ded.dp1.adv'), /OoW Vol I p 71/) && /less preferred, not ruled out/.test(Pd('gr.ded.dp1.cpen').draft) && hasB(Pd('gr.ded.dp1.armr'), /DW p 58/));
+
+  // N6: the En attk by the ground (MW pp 164-165; DW p 13)
+  const vm = X.visDef(Lm, mtn, { hMin: 360, night: null }), vd = X.visDef(Ld, des, { hMin: 360, night: null }), v0 = X.visDef(X.layoutDef(reading, {}, 'Bn'), reading, { hMin: 360, night: null });
+  check('five N6: in mountains the En punishes selected posts, multidirectional, infiltrating (MW pp 164-165)', vm.steps.some((x) => /punish selected posts first and attk the feature covering the Lt apch from multiple dirs, infiltrating/.test(x.en)) && vm.basis.some((b) => /MW pp 164-165/.test(b.text)) && vm.steps.length === v0.steps.length + 1);
+  check('five N6: in desert the En outflanks the def, fight the battle outflanked (DW p 13)', vd.steps.some((x) => /by-pass the localities and outflank the def/.test(x.en) && /Fight the battle outflanked/.test(x.own)) && vd.basis.some((b) => /DW p 13 para a/.test(b.text)) && !v0.basis.some((b) => /MW pp 164-165|DW p 13/.test(b.text)));
+
+  // F4 / N7: the Time Req's mines and guns by ground
+  const mines = { frontM: 6100, engr: 'Engr Fd Coy', handH: 63, mechH: 21, perPl: 780, src: "SO's Hbk 2019 p 439" };
+  const base = { move: null, prep: { h: [36, 36], src: 'OoW Vol I p 39' }, mines, guns: 'Bty' };
+  const tD = W.writeTimeReq({ ...base, ground: 'Desert' }), tP = W.writeTimeReq({ ...base, ground: 'Plains' }), tM = W.writeTimeReq({ ...base, ground: 'Mountains' });
+  const mRow = (t) => t.patches[0].table.rows.find((r) => r[1] === 'Protective M fd laying');
+  const gRow = (t) => t.patches[0].table.rows.find((r) => r[1] === 'Depl of the DS fd Bty');
+  check('five F4: in desert the M fd by hand (MMLs fail in loose sand, DW p 65); elsewhere the MMLs\' shorter time', mRow(tD)[2] === '63' && /MMLs only on the dhars, by hand on the soft sand/.test(mRow(tD)[3]) && tD.patches[0].basis.some((b) => /DW p 65/.test(b.text)) && mRow(tP)[2] === '21' && !/dhars/.test(mRow(tP)[3]) && tD.reqH - tP.reqH === 63 - 36 && W.minesHours(mines, 'Desert').h === 63 && W.minesHours(mines, 'Desert').sand && W.minesHours(mines, 'Plains').h === 21 && W.minesHours(null, 'Desert').h === null);
+  check('five N7: guns by section near hairpin bends in mountains (MW pp 240, 244); towed guns in loose sand (DW p 60)', /single wpn|singly or by sections near the hairpin bends/.test(gRow(tM)[3]) && tM.patches[0].basis.some((b) => /MW p 240/.test(b.text) && /MW p 244/.test(b.text)) && /towed guns are hard to move in loose sand, SP guns ideal/.test(gRow(tD)[3]) && tD.patches[0].basis.some((b) => /DW p 60/.test(b.text)) && !/hairpin|loose sand/.test(gRow(tP)[3]));
+
+  // F7 / F8: the attack's FUP and dir by ground
+  const av = (o) => ({ id: 'A', rank: 1, onto: 'left', label: 'Lt flanking', lengthM: 6200, goPct: 80, minWidthM: 1400, waterLines: 1, assaultM: 1100, assaultNogoPct: 0, fupWhere: '1.1 km W of Qila Mor', ...o });
+  const e = { objective: 'Qila Mor', mover: 'dismounted inf', aaFor: 'Bn', mcWidthM: 500, fupM: 1100, start: 'own start', startAssumed: false, avenues: [av({ id: 'L' }), av({ id: 'R', rank: 2, onto: 'right', label: 'Rt flanking' })], turn: null };
+  const fupOf = (c) => W.writeAttkDir({ ...e, country: c }).patches.find((x) => x.id === 'gr.ded.ap1.fup');
+  const dirOf = (c) => W.writeAttkDir({ ...e, country: c }).patches.find((x) => x.id === 'gr.ded.apch');
+  check('five F7: in mountains no classic FUP, a designated place crossed at H (MW p 85), MGs\' range with NVDs (MW p 228)', hasB(fupOf('Mountains'), /no classic FUP.*MW p 85.*MW p 228/) && hasB(fupOf('Canal plains'), /1000-1200 m, out of the En NVD and SA reach \(IBB p 201\)/) && !hasB(fupOf('Canal plains'), /MW p 85/));
+  check('five F8: in mountains frontal attks have little chance, along ridges and spurs (MW pp 78-79); desert by the tk going (DW pp 34, 38; OoW Vol II p 68)', hasB(dirOf('Mountains'), /MW pp 78-79/) && hasB(dirOf('Desert'), /DW pp 34, 38/) && hasB(dirOf('Desert'), /OoW Vol II p 68/) && !hasB(dirOf(null), /MW pp 78-79|DW pp 34, 38/));
+
+  // N1-N3, N8-N12: the outline's heads to consider, each with its book and page
+  const da = M.newDoc('attk'), dd = M.newDoc('def'), dw = M.newDoc('wdr');
+  check('five N1: aslt frontages by echelon and ground under Phases of Attk (IBB p 248; GSP-1947 pp 86-87; DW p 47; GSP-1947 p 88)', hasP(M.find(da, 'gr.ded.c.phases'), /GSP-1947 p 86 para 12 d/) && hasP(M.find(da, 'gr.ded.c.phases'), /IBB S47 para 17 a p 248/) && hasP(M.find(da, 'gr.ded.c.phases'), /DW p 47/) && hasP(M.find(da, 'gr.ded.c.phases'), /thinking two down.*GSP-1947 p 88/));
+  check('five N2: main and secondary attk (p 84), prelim ops (p 89), an obs aslt at two places (p 90), reorg with the tks till the RRs are sited (p 91)', hasP(M.find(da, 'gr.ded.ap1'), /GSP-1947 p 84 para 7/) && hasP(M.find(da, 'own.ded.c.hold'), /GSP-1947 p 89/) && hasP(M.find(da, 'gr.ded.c.pnr'), /GSP-1947 p 90 para 14/) && hasP(M.find(da, 'gr.ded.c.reorg'), /GSP-1947 p 91/));
+  check('five N3: the En res times under En Caps and Blocking Posn (GSP-1947 p 83, IDD p 5 beside)', hasP(M.find(da, 'en.caps'), /35-40 min.*2-3 h.*4-6 h.*12-16 h \(GSP-1947 p 83\); IDD p 5 differs/) && hasP(M.find(da, 'en.ded.ap1.block'), /GSP-1947 p 83/));
+  check('five N12: mountains and desert in the attack (MW pp 80-82, 85-86; DW pp 38-39, 46-48)', hasP(M.find(da, 'gr.ded.ap1.fup'), /MW p 85/) && hasP(M.find(da, 'gr.ded.c.pnr'), /MW p 86/) && hasP(M.find(da, 'gr.ded.c.timing'), /MW p 82/) && hasP(M.find(da, 'own.ded.c.res'), /MW p 82/) && hasP(M.find(da, 'own.ded.c.res'), /DW p 39/) && hasP(M.find(da, 'gr.ded.c.armr'), /DW p 48/) && hasP(M.find(da, 'gr.ded.c.reorg'), /DW p 46/) && hasP(M.find(da, 'ts.calc'), /MW pp 80-81/));
+  check('five N4 / N11: the def\'s echelons and main / secondary effort (GSP-1947 p 104); DP heads by ground and on a DCB', hasP(M.find(dd, 'gr.ded.common'), /GSP-1947 p 104 para 4/) && hasP(M.find(dd, 'gr.ded.common'), /GSP-1947 p 104 para 5/) && hasP(M.find(dd, 'gr.ded.dp1.fdls'), /GSP-1947 p 119 para 5/) && hasP(M.find(dd, 'gr.ded.dp1.adv'), /GSP-1947 p 105 para 10/) && hasP(M.find(dd, 'gr.ded.dp1.cpen'), /GSP-1947 p 109 para 22/) && hasP(M.find(dd, 'gr.ded.dp1.armr'), /IBB p 73/) && hasP(M.find(dd, 'gr.ded.dp1.res'), /MW p 169/) && hasP(M.find(dd, 'plan.adm'), /DW p 21/));
+  check('five N10: the wdr: GSP-1947 s30 beside OoW Vol III; no wdr on foot in desert (DW p 32)', hasP(M.find(dw, 'gr.ded.intmed'), /GSP-1947 p 149; IBB p 378/) && hasP(M.find(dw, 'gr.ded.newposn'), /GSP-1947 p 145/) && hasP(M.find(dw, 'ts.ded.timings'), /GSP-1947 p 147/) && hasP(M.find(dw, 'sec.sec'), /GSP-1947 p 143 para 8/) && hasP(M.find(dw, 'own.mob'), /DW p 32/) && hasP(M.find(dw, 'gr.routes'), /DW p 32/));
+
+  // F6: cites
+  const modelSrc = fs.readFileSync(new URL('../../MS/Engines/GroundAppreciation/AprcModel.ts', import.meta.url), 'utf8');
+  check('five F6: the climb\'s rule is MW Annex F p 313 para 3 c (not p 312); the amn lift\'s rows add to 101, its total 123 kept', !/Annex F p 312\)/.test(modelSrc) && /MW Annex F p 313 para 3 c/.test(modelSrc) && B.liftDraft('def', 'Bn').basis.some((b) => /rows add to 101, its printed total 123 is kept/.test(b.text)));
+  // the line's name already says "Along X": not "along X" twice; the ground's rule once in the FDLs' basis
+  const named = { ...des, lines: des.lines.map((l) => (l.id === 'X' ? { ...l, name: 'Along Lakhan Disty' } : l)) };
+  const fdN = X.writeLayoutDef(X.layoutDef(named, {}, 'Bn'), named).find((x) => x.id === 'gr.ded.dp1.fdls');
+  const crN = X.courseDef(X.layoutDef(named, {}, 'Bn'), named, { check: null, prepFrom: null, readyBy: null });
+  check('five: a line named "Along X" is not followed by "along X" again; the desert rule once in the basis', /^Line X \(Along Lakhan Disty\), 3 km past/.test(fdN.draft) && /^Def along Line X \(Along Lakhan Disty\)\./.test(crN.text) && fdN.basis.filter((b) => /DW p 22/.test(b.text)).length === 1 && Pm('gr.ded.dp1.fdls').basis.filter((b) => /OoW Vol I p 72/.test(b.text)).length === 1, fdN.draft);
+  const two = { ...wet, lines: wet.lines.map((l) => (l.id === 'X' ? { ...l, buas: ['Kot Jaimal', null, 'Dhok Rai'] } : l)) };
+  const crT = X.courseDef(X.layoutDef(two, {}, 'Bn'), two, { check: null, prepFrom: null, readyBy: null });
+  check('five F1: Course A takes the Coys up of DP 1 when the BUAs on the line are fewer (3 up along the canal, 2 BUAs)', /FDLs comprising 3 Coys, a Coy each in area Kot Jaimal and Dhok Rai and one more on Line X\./.test(crT.text) && /FDLs comprising 3 Coys, a Coy each in area Kot Jaimal, Nurpur and Dhok Rai\./.test(X.courseDef(X.layoutDef(reading, {}, 'Bn'), reading, { check: null, prepFrom: null, readyBy: null }).text), crT.text);
+  check('five: groundKind takes the AOR\'s country', B.groundKind('Mountains') === 'mountains' && B.groundKind('Desert') === 'desert' && B.groundKind('Canal plains') === 'plains' && B.groundKind(null) === 'plains');
 }
 
 function dClockOf(X, m) {

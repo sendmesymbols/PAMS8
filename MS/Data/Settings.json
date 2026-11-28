@@ -822,6 +822,7 @@
         "decision": true,
         "mapDecision": true,
         "reactionH": 0,
+        "reserveLadder": "idd",
         "hHour": "",
         "air": true,
         "mapAir": true,

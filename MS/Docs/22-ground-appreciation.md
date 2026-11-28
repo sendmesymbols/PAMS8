@@ -401,6 +401,39 @@ consider are prompts in the outlines (`AprcModel.ts`); the drafts ride in `write
 The heads a Read adds (`readHeads`) stay on a later Read where the planner wrote in them, or where the reading behind them
 was not taken that time; otherwise they go with the condition.
 
+## The five books re-read (28 Nov 2026)
+
+GSP-1947 *Infantry Division in Battle* (cited "GSP-1947"), IBB, OoW Vol I / II, Mountain Warfare and Desert Warfare,
+checked against the module: findings and their status in `Aprc_Review.md` (repo root). Every page was checked in the PDF.
+The ground comes from the AOR reading's country (`AprcBooks.groundKind`: Mountains, Desert, else the plains).
+
+- **Frontage (fix):** a Bn normally holds 3,000-5,000 m in the plains (IBB S53 para 4 c pp 276-277); past it the frontage
+  is extended, laid two Coys up on 4,500 m or three up on 6,500 m (IBB Annex U App 6 p 481, the extended frontages'
+  annex). Along a water line 24 m or more wide (IBB S60 p 331; `wideWaterOn`) three Coys up to 4,115 m (IBB S61 p 333,
+  Annex V p 483). Mountains and desert print no Bn figure: IBB's are taken, the book's rule beside (OoW Vol I p 72; DW
+  p 22, GSP-1947 p 172). Course A takes DP 1's Coys up when the line has fewer BUAs.
+- **A Bde (fix):** its depth line is looked for 4-6 km behind the FDLs, and DP 1 FDLs gives its front against the
+  yardstick of 10-12 km (OoW Vol I Annex B p 103), or on a DCB up to 8,000-10,000 m with all three Bns three up
+  (GSP-1947 p 119 para 5, pp 120-121). Its res is no longer the guide's Bn res: strong in armr, as mobile as the En (OoW
+  Vol I pp 18-19), a Div res holding the LAT Bn beside it (GSP-1947 p 122 para 3).
+- **By ground (DP 1, `AprcBooks.GROUND_DEF`):** mountains hold the dominating features astride the main axis, the M fds
+  thickest in the valleys, the res split (MW pp 147, 150, 169; GSP-1947 pp 175-176); desert localities with large gaps,
+  held by fire, str pts adm self-sufficient, covering tps rather than an adv posn, a third or more as res mainly armr
+  within 2-6 h, the C pen mode less preferred, ATGMs concentrated (DW pp 21-28, 58; OoW Vol I p 71).
+- **A tk (fix):** HAT in bulk on the most threatened tk apch, never spread evenly (IBB p 73; OoW Vol I p 26).
+- **Protective dets and C pen:** never so large as to weaken the main def, never reinforced (OoW Vol I p 13; GSP-1947 p 105
+  para 10); C pen posns planned and prepared at the outset (GSP-1947 p 109 para 22).
+- **Vis:** a mountain step (selective punishment of posts, multidirectional attks with infiltration, MW pp 164-165) and a
+  desert one (he outflanks the def; fight the battle outflanked, DW p 13).
+- **Time Req:** in desert the M fd is timed by hand, MMLs fail in loose sand (DW p 65; `minesHours`, also the essential
+  timings); the guns row says sections near hairpin bends in mountains (MW pp 240, 244), towed guns in loose sand (DW p 60).
+- **Attack:** FUP in mountains (no classic FUP, MW p 85; NVDs, p 228); the dir of attk carries MW pp 78-79 / DW pp 34, 38
+  (`AprcAttkIn.country`); heads for the aslt frontage by echelon and ground (IBB p 248; GSP-1947 pp 86-88; DW p 47), main and
+  secondary attk, prelim ops, an obs aslt at two places, reorg (GSP-1947 pp 84, 89-91), the En res times (GSP-1947 p 83, IDD
+  p 5 beside), mountain and desert heads (MW pp 80-86; DW pp 38-39, 46-48).
+- **Withdrawal:** GSP-1947 s30 beside OoW Vol III (pp 143-149; IBB p 378), and no wdr on foot in desert (DW p 32).
+- **Cites:** the climb rule is MW Annex F p 313 para 3 c; the def's amn lift (123 mules) notes that its rows add to 101.
+
 ## Not built yet
 
 - The attack: the en's option against AP-1 (his sec disposns, killing areas, C attk objs) is not read from the ground; the

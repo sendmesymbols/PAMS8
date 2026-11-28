@@ -408,6 +408,8 @@ export interface GroundGuideIpbOptions {
   mapDecision: boolean;
   /** Hours the own action takes on top of the book's 2 h lead for a decision point (p 30), 0 to 12. */
   reactionH: number;
+  /** The Indian reserves' reaction ladder read in the Decision tab: IDD p 5 (Bn about 1 h) or GSP 1947 p 83 (Bn 35-40 min); the books differ. */
+  reserveLadder: 'idd' | 'gsp';
   /** H hour as "HH:MM" (the enemy's start), for clock times and night on the time ladder; empty: times as H+. */
   hHour: string;
   /**
@@ -1704,7 +1706,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   sections: { ground: true, roads: true, buildings: true, weather: true, obstacles: true, style: 'compact', radiusKm: 3, roadDensity: true, roadDensityKm: 5, roadDensityStyle: 'rows', roadDensityLead: 'afterRain', detail: true, gStyle: 'auto', rStyle: 'auto', oStyle: 'auto', bStyle: 'auto', wStyle: 'auto' },
   speed: { enabled: true, card: 'line', light: 'day', road: 'convoy', load: 'combat', mover: 'auto', legend: true },
   scope: { enabled: true, side: 'right', tab: true, topPx: 54, extScale: 'area' },
-  extended: { keys: true, lasts: 'symbol', threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapApproaches: true, mapBetter: true, layerFire: true, layerKeyGr: true, layerApchs: false, layerAir: false, layerDecision: false, overlay: 'auto', ipb: { readFor: 'defence', apchEnd: 'objective', fupM: 1100, turn: true, mover: 'auto', season: 'coding', avlbSpanM: 18, paint: 'hatch', apchs: true, hq: 'auto', mapCorridors: true, labels: 'auto', createAs: 'attack', fire: true, mapFire: true, proforma: true, pfHead1: '', pfHead2: '', decision: true, mapDecision: true, reactionH: 0, hHour: '', air: true, mapAir: true, airspace: true, wind: true, airBand: 'contour', lzClass: 4, lzPoints: 4, template: 'auto', mapTemplate: true, lrWeights: {} }, eye: 'auto', surface: true },
+  extended: { keys: true, lasts: 'symbol', threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapApproaches: true, mapBetter: true, layerFire: true, layerKeyGr: true, layerApchs: false, layerAir: false, layerDecision: false, overlay: 'auto', ipb: { readFor: 'defence', apchEnd: 'objective', fupM: 1100, turn: true, mover: 'auto', season: 'coding', avlbSpanM: 18, paint: 'hatch', apchs: true, hq: 'auto', mapCorridors: true, labels: 'auto', createAs: 'attack', fire: true, mapFire: true, proforma: true, pfHead1: '', pfHead2: '', decision: true, mapDecision: true, reactionH: 0, reserveLadder: 'idd', hHour: '', air: true, mapAir: true, airspace: true, wind: true, airBand: 'contour', lzClass: 4, lzPoints: 4, template: 'auto', mapTemplate: true, lrWeights: {} }, eye: 'auto', surface: true },
   aor: { keys: true, scale: 'spot', layout: 'deductions', style: 'trace', orient: 'north', source: 'echelon', box: null, echelon: 'auto', leadKm: 4, corridorM: 0, profile: 'tracked' },
 };
 

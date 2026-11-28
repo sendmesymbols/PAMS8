@@ -169,7 +169,8 @@ export function writeGround(g: AprcGroundIn): AprcWritten {
 
   // 5. Gen Description
   {
-    const s: string[] = [`${r.country}.`];
+    const rel = r.reliefM ?? null;
+    const s: string[] = [`${r.country}${rel !== null ? `: the ground within 5 km of ${mitg} rises ${rel} m` : ''}.`];
     const gd = g.ground;
     if (gd && (gd.elevationM !== null || gd.landform || gd.slopeBand)) {
       const bits = [gd.elevationM !== null ? `${Math.round(gd.elevationM)} m` : '', gd.landform ? gd.landform.toLowerCase() : '', gd.slopeBand ? `slope ${gd.slopeBand.toLowerCase()}` : '', gd.rough ? gd.rough.toLowerCase() : ''].filter(Boolean);
@@ -187,7 +188,11 @@ export function writeGround(g: AprcGroundIn): AprcWritten {
     }
     if (g.roads) s.push(`Rd density ${g.roads.density.toFixed(1)} km per km² within ${km(g.roads.radiusM)} km of ${mitg}, ${pct(g.roads.allWeatherPct)} all-weather${g.roads.exitDirs.length ? `; ways out ${g.roads.exitDirs.join(', ')}` : ''}.`);
     if (r.msr) s.push(`MSR: ${aorName(r.msr.name)}${r.msr.cls ? ` ${r.msr.cls}` : ''}, ${km(r.msr.distM)} km from ${mitg}.`);
-    patches.push({ id: 'gr.gen', draft: s.join(' '), state: 'gr', basis: [goingData, featData, data('People: the population grid (an estimate, not a census)'), frameIn] });
+    const countryCalc = calc(
+      'Country from the AOR\'s classes: mountains where slope classes pass 15 % and the ground within 5 km rises 400 m or more (IpbTemplates mountainTest, E); on lower ground the slopes are dune faces (DW pp 2-3) or broken ground and the other classes decide; desert over 30 %; else riverine, built-up, canal plains or plains' +
+        (rel !== null ? '; the rise from the 30 m elevation' : '; no elevation read, the classes alone'),
+    );
+    patches.push({ id: 'gr.gen', draft: s.join(' '), state: 'gr', basis: [goingData, featData, data('People: the population grid (an estimate, not a census)'), countryCalc, frameIn] });
   }
 
   // 6. Apchs
@@ -685,6 +690,8 @@ export interface AprcAttkIn {
   /** Where the approaches start, in words, and whether it was taken (no start on the map). */
   start: string;
   startAssumed: boolean;
+  /** The AOR's country ('Mountains', 'Desert' ...): the FUP and the dir of attk by the ground's own book. */
+  country?: string | null;
 }
 
 /** Differences smaller than these are not called better or worse between Lt and Rt (a method setting, as WEIGH_MIN). */
@@ -733,9 +740,18 @@ export function writeAttkDir(e: AprcAttkIn): AprcWritten {
   // the user's rule (22 Nov 2026 memory: frontal attk dangerous): the turning and flanking apchs first, frontal last
   const order = attkFirst(e)!.order;
   const avIn = data(`The IPB reading: apchs for ${e.aaFor} onto ${e.objective} from ${e.start}${e.startAssumed ? ' (taken)' : ''}, corridors ${km(e.mcWidthM)} km wide, coded GO / SLOW-GO / NO-GO by the book's criteria (${e.mover})`);
-  const flankRule = rule('Flanking before frontal: a frontal attk has a small chance (user\'s rule); "being flanking in nature" (Mechs of Aprc (Attk) pp 3-4)');
+  const mtn = e.country === 'Mountains', des = e.country === 'Desert';
+  const flankRule = rule(
+    `Flanking before frontal: a frontal attk has a small chance (user's rule); "being flanking in nature" (Mechs of Aprc (Attk) pp 3-4)` +
+      (mtn ? '; in mountains frontal attks against well prep, dominating posns have little chance, attk along the gradient, ridges and spurs; the objs the hill features on either flk of the main axis and in his rear that dominate his defs (MW pp 78-79)' : '') +
+      (des ? '; in desert the attk seeks his flks and LOC, its dir chosen by the tk going (DW pp 34, 38); envelopment the most common mnvr there (OoW Vol II p 68)' : ''),
+  );
   const turnRule = rule('A turning apch round the obj onto a choke on the En MSR blocks the En wdr and rft (OoW Vol II s6; IBB S35 p 140); Aim limitation b (Mechs of Aprc (Attk) p 1)');
-  const fupRule = rule(`FUP ${km(e.fupM)} km short of the obj: 1000-1200 m, out of the En NVD and SA reach (IBB p 201)`);
+  const fupRule = rule(
+    mtn
+      ? `FUP ${km(e.fupM)} km short of the obj: in mountains no classic FUP: the tps do not form up in extended lines, they cross a designated place at H (MW p 85); with NVDs the forming up is done outside the eff range of MGs and behind cover (MW p 228); in the plains 1000-1200 m, less in broken gr (IBB pp 201, 203)`
+      : `FUP ${km(e.fupM)} km short of the obj: 1000-1200 m, out of the En NVD and SA reach (IBB p 201)`,
+  );
   const one = (a: AprcAttkAvenue): string =>
     `${ONTO_WORD[a.onto ?? ''] ?? a.label}: ${km(a.lengthM)} km, GO on ${pct(a.goPct)}, narrowest ${km(a.minWidthM)} km, ${a.waterLines ? plural(a.waterLines, 'water line') : 'no water line'}${a.assaultM !== null ? `; the assault ${km(a.assaultM)} km from the FUP${a.assaultNogoPct ? ` (${pct(a.assaultNogoPct)} NO-GO)` : ''}` : ''}`;
   const lt = onto.find((a) => a.onto === 'left'), rt = onto.find((a) => a.onto === 'right');
@@ -1328,6 +1344,16 @@ export const TIME_REQ_SPECIMEN: Array<[string, number]> = [
 export const BATTLE_PROC_H = 12;
 
 /**
+ * The protective M fd's hours: the shorter of by hand and with MMLs; in desert the hand time, as MMLs fail in loose sand
+ * and lay only on the dhars (DW p 65). `sand`: the MML time was set aside for it.
+ */
+export function minesHours(m: AprcTimeIn['mines'] | null | undefined, ground: string | null | undefined): { h: number | null; sand: boolean } {
+  if (!m) return { h: null, sand: false };
+  const sand = ground === 'Desert' && m.handH !== null && m.mechH !== null && m.mechH < m.handH;
+  return { h: sand ? m.handH : [m.handH, m.mechH].filter((x): x is number => x !== null).sort((a, b) => a - b)[0] ?? null, sand };
+}
+
+/**
  * Time Req: the rows the data gives (the move in, the prep of the main def, the protective M fd) and the guide's specimen
  * rows for the rest. Two totals: one row after the other, as the guide's specimen adds them (Sec II sheet 7), and the
  * critical path (battle procedure, the move, the prep of the main def or the M fd, whichever is longer), the floor.
@@ -1354,10 +1380,13 @@ export function writeTimeReq(t: AprcTimeIn): AprcWritten & { reqH: number | null
     const g = GUN_DEPL.fd[t.guns];
     const [nr0, nr1] = GUN_DEPL.niNoRecceH[t.guns];
     all += g.ni / 60;
-    rows.push([ser(), `Depl of the DS fd ${t.guns}`, (g.ni / 60).toFixed(1), `By ni ${g.ni} min (${g.day} by day), excluding travel; registration ${GUN_DEPL.regEachMin} min each plus ${GUN_DEPL.regPlusMin}; without daylight recce a ${t.guns} ${nr0 === nr1 ? nr0 : `${nr0}-${nr1}`} h`]);
+    const gunGround = t.ground === 'Mountains' ? '. In mountains towed guns go singly or by sections near the hairpin bends, the firing unit by sections at two or three places' : t.ground === 'Desert' ? '. In desert towed guns are hard to move in loose sand, SP guns ideal' : '';
+    rows.push([ser(), `Depl of the DS fd ${t.guns}`, (g.ni / 60).toFixed(1), `By ni ${g.ni} min (${g.day} by day), excluding travel; registration ${GUN_DEPL.regEachMin} min each plus ${GUN_DEPL.regPlusMin}; without daylight recce a ${t.guns} ${nr0 === nr1 ? nr0 : `${nr0}-${nr1}`} h${gunGround}`]);
     basis.push(rule(`Guns: ${GUN_DEPL_TEXT}`));
+    if (t.ground === 'Mountains') basis.push(rule('In mountains towed wpns deploy only in small areas near hairpin bends, a single wpn or a section (MW p 240); the firing unit by sections at two or three places (MW p 244)'));
+    if (t.ground === 'Desert') basis.push(rule('In desert, in areas of loose sand towed guns are difficult to move; SP guns ideal (DW p 60)'));
   }
-  const minesH = t.mines ? [t.mines.handH, t.mines.mechH].filter((x): x is number => x !== null).sort((a, b) => a - b)[0] ?? null : null;
+  const { h: minesH, sand: sandMines } = minesHours(t.mines, t.ground);
   const pg = t.ground ? PREP_GROUND[t.ground] ?? null : null;
   if (t.prep) {
     all += t.prep.h[0];
@@ -1376,9 +1405,10 @@ export function writeTimeReq(t: AprcTimeIn): AprcWritten & { reqH: number | null
       ser(),
       'Protective M fd laying',
       minesH === null ? '' : String(minesH),
-      `${km(t.mines.frontM)} km of front by ${t.mines.engr}: by hand ${t.mines.handH ?? '–'} h${t.mines.mechH !== null ? `, with MMLs ${t.mines.mechH} h` : ''} (${t.mines.perPl} mixed clusters a Pl in 24 h)`,
+      `${km(t.mines.frontM)} km of front by ${t.mines.engr}: by hand ${t.mines.handH ?? '–'} h${t.mines.mechH !== null ? `, with MMLs ${t.mines.mechH} h` : ''} (${t.mines.perPl} mixed clusters a Pl in 24 h)${sandMines ? '; in desert the MMLs only on the dhars, by hand on the soft sand: the hand time taken' : ''}`,
     ]);
     basis.push(rule(`Mine laying: ${t.mines.src}`), data('Front: the FDLs line of the AOR reading'));
+    if (sandMines) basis.push(rule('In desert mechanical mine laying is not successful in loose sand: MMLs on the dhars, manual laying on the soft sand (DW p 65)'));
   } else rows.push([ser(), 'Protective M fd laying', '', '']);
   for (const [what, h] of TIME_REQ_SPECIMEN.slice(3)) {
     all += h;

@@ -22,6 +22,9 @@ import { attackBreach, attackFactors, attackTimes, atOnObj, counterAttack, findA
 import { findPhase2, goingRow, type Phase2Find, findPhaseN } from './PlanPhase';
 import { addTankTimes, defTankRows, findTankSpots, type TankFind, type TankMode, tankFupVsEnAtgm } from './PlanTanks';
 import { artyRows } from './PlanArty';
+import { divApproachesRow } from './PlanDcb';
+import { fitAntiHb, isAntiHb } from './PlanAntiHb';
+import type { VisibilityReading } from '../GroundGuide/GroundGuideOcoka';
 import { attackFrontRows, fdlCurve, frontEdges, frontLocal, frontRows, frontValid, nearestOnFront, rayAhead, readFront, shapeToFront, standDist, type EnFront, type FrontEdges, type FrontShape, type LocalFront } from './PlanEnFront';
 import { adDefileRows, adMountainRows, adRows } from './PlanAD';
 import type { ForceSides } from './PlanContext';
@@ -62,6 +65,8 @@ export interface PlanGround {
   pending(): boolean;
   /** The data's dates for the report. */
   dataLine(): string;
+  /** The month's visibility at a world point (the bundle's NOAA GSOD grid, `grotbc.visibility`); null while it loads or when absent. */
+  visibility?(x: number, y: number, month: number): VisibilityReading | null;
 }
 
 export interface FitFrame {
@@ -1284,6 +1289,8 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   if (inp.recipe.task === 'advance') return fitAdvance(inp);
   // a withdrawal: the routes back, the embussing points, the intermediate posn against the En guns (PlanWithdrawal)
   if (inp.recipe.task === 'withdrawal') return fitWithdrawal(inp);
+  // anti para / heliborne: the likely landing areas read round the VP (PlanAntiHb)
+  if (isAntiHb(inp.recipe)) return fitAntiHb(inp);
   // a canal defence: laid along the canal first (PlanCrossing.canalPrep: the posns' seeds moved, the shapes re-laid),
   // then fitted and checked as any defence; the canal's own rows join the defence's
   const canal = isCanalLayout(inp.recipe.layout) ? canalPrep(inp) : null;
@@ -1391,6 +1398,9 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   if (recipe.task === 'attack') merged.rows.push(...attackFront(raw, frame, inp.front ?? null));
   const at = recipe.task === 'attack' ? null : atCoverRow(raw, recipe, unit, fit.approaches, frame, ctx.doc, enemy);
   if (at) merged.rows.push(at);
+  // a Div on an obstacle: no more than two Div-size major approaches without more resources (GSP 1947 s26 para 5 p 119)
+  const dva = divApproachesRow(recipe, terrain.kind, fit.approaches, ctx.doc, levelOf);
+  if (dva) merged.rows.push(dva);
   // tank Sqns grouped to a defence: their leaguers on the ground
   if (recipe.defTanks) merged.rows.push(...defTankRows(raw.items, recipe, frame, ground, ctx.doc, fit.from ?? null));
   // the artillery's gun area: its reach (his FUP for his type in defence) and its ground
@@ -1451,6 +1461,13 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   for (const r of layoutRows(raw.items, recipe, ctx.doc, elevAt)) { const i = merged.rows.findIndex((m) => m.name === r.name); if (i >= 0) merged.rows[i] = r; else merged.rows.push(r); }
   // what the ground's books add to the rows (mountains, desert, night: PlanContext.groundNotes)
   merged.rows = groundNotes(merged.rows, ctx.doc, terrain.kind, recipe.task, recipe.echelon, recipe.task === 'attack' ? !!inp.night : null);
+  // the desert defence's siting measured on the ground's roads and BUAs (DW s7 para 5 a p 22), in place of the grey row
+  if (terrain.kind === 'desert' && recipe.task === 'defence') {
+    const posns = raw.items.filter((i) => ['fwd', 'depth', 'res', 'round'].includes(recipe.slots.find((s) => s.role === i.role)?.kind ?? '') && i.pts.length >= 3);
+    const sr = desertSitingRow(posns, frame, ground, ctx.doc);
+    const i = merged.rows.findIndex((m) => m.name === 'Sited to deny');
+    if (sr && i >= 0) merged.rows[i] = sr;
+  }
   // Auto ranks on every check the plan shows, the geometry ones (frontage, depth, gaps) as well as the ground's
   const all = [...merged.rows, ...merged.slots.flatMap((s) => s.checks)];
   fit.fails = all.filter((c) => c.st === 'fail').length;
@@ -1563,6 +1580,45 @@ export function atCoverRow(res: SolveResult, recipe: Recipe, unit: UnitBrief | n
     };
   }
   return { name: 'AT cover', st: worst, reason: `${parts.join('; ')} (ATGM ${(atgm / 1000).toFixed(1)} km${rr ? `, RR ${rr} m` : ""})${held}${rules}` };
+}
+
+/**
+ * The desert defence sited to deny (DW s7 para 5 a p 22: communication centres, tactically significant BUAs and admin
+ * areas, and the ground dominating the MSRs; the loss of desert tracts in itself is insignificant, s4 para 2 p 7): an MSR
+ * (the road network's MSR flag) or a main road (motorway, trunk, primary, secondary) within `terrain.kinds.desert.siting.roadReachM` of a posn, or a
+ * tactically significant BUA (city, district HQ, town, important village) within `buaM` of one. Neither: warn. Grey while the roads load or without the Movement probe.
+ */
+// a tactically significant BUA: a city, district HQ, town or important village (a small village or goth is not, E); a main road: an MSR
+// (the network's MSR flag) or a motorway, trunk, primary or secondary road (most desert tracks are fair weather, DW p 2)
+const SITING_PLACES: ReadonlySet<string> = new Set(['city', 'district_hq', 'town', 'village_imp']);
+const SITING_MAIN: ReadonlySet<string> = new Set(['motorway', 'trunk', 'primary', 'secondary']);
+export function desertSitingRow(posns: { label?: string; pts: XY[] }[], f: FitFrame, g: PlanGround, doc: DoctrineSet): Check | null {
+  const mov = g.mov?.() ?? null;
+  if (!posns.length) return null;
+  const roadM = resolveRange(doc, doctrineAt(doc, 'terrain.kinds.desert.siting.roadReachM'))?.[0] ?? 2000;
+  const buaM = resolveRange(doc, doctrineAt(doc, 'terrain.kinds.desert.siting.buaM'))?.[0] ?? 1000;
+  const src = 'DW s7 para 5 a p 22: the main defences deny communication centres, tactically significant BUAs and administrative areas, and the ground dominating the MSRs; the loss of desert tracts is insignificant (s4 para 2 p 7)';
+  if (!mov) return { name: 'Sited to deny', st: 'unchecked', reason: `the roads and BUAs are not read here: confirm on the map (${src})` };
+  let msr: { name: string; d: number; who: string } | null = null, aw: { name: string; d: number; who: string } | null = null, bua: { name: string; d: number; who: string } | null = null;
+  for (const p of posns) {
+    const c = toWorld(f, { x: p.pts.reduce((a, q) => a + q.x, 0) / p.pts.length, y: p.pts.reduce((a, q) => a + q.y, 0) / p.pts.length });
+    const who = p.label ?? 'a posn';
+    for (const r of mov.roads(c.x, c.y, roadM)) {
+      const nm = String(r.attrs.n ?? r.attrs.r ?? r.attrs.t ?? 'a road');
+      if (r.attrs.m === 1 && (!msr || r.distM < msr.d)) msr = { name: nm, d: r.distM, who };
+      else if (SITING_MAIN.has(String(r.attrs.t)) && (!aw || r.distM < aw.d)) aw = { name: nm, d: r.distM, who };
+    }
+    for (const b of mov.features(c.x, c.y, buaM, SITING_PLACES)) if (!bua || b.distM < bua.d) bua = { name: b.name ?? b.label, d: b.distM, who };
+  }
+  if (g.pending()) return { name: 'Sited to deny', st: 'unchecked', reason: `the roads and BUAs round the posns are still loading (${src})` };
+  const fm = (x: { name: string; d: number; who: string }) => `${x.name} ${Math.round(x.d / 10) * 10} m from ${x.who}`;
+  const found = [msr && `the MSR ${fm(msr)}`, aw && `the main Rd ${fm(aw)}`, bua && `the BUA ${fm(bua)}`].filter(Boolean) as string[];
+  if (found.length) return { name: 'Sited to deny', st: 'pass', reason: `${found.join('; ')}: the posns dominate it (within ${roadM} m of a Rd, ${buaM} m of a BUA, E) (${src})` };
+  return {
+    name: 'Sited to deny', st: 'warn',
+    reason: `no MSR or main Rd within ${roadM} m and no town or important village within ${buaM} m of the posns: a defence of open desert space (${src})`,
+    detail: { head: 'Holding desert space, not what matters', why: 'In the desert the main defences are sited to deny communication centres, tactically significant BUAs and administrative areas and the ground dominating the MSRs; the loss or capture of desert tracts is tactically insignificant, and to be strong everywhere is imprudent (DW s7 para 5 a p 22; s4 para 2 p 7).', fix: ['Site the defence astride the MSR or the communication centre the task protects', 'Hold the open ground with mobile / mechanised task forces, mines and surveillance instead (DW p 23 paras 5 e-f)'] },
+  };
 }
 
 /**

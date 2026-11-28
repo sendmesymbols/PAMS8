@@ -98,6 +98,13 @@
       "file": "Material/Literature/1. Books/8. Mountain Warfare.pdf"
     },
     {
+      "id": "dw",
+      "name": "Desert Warfare, GSP-1972 (Pakistan Army): logistic support in the desert (pp 79-87)",
+      "short": "Desert Warfare",
+      "dataDate": "2002",
+      "file": "Material/Literature/1. Books/7. Desert Warfare.pdf"
+    },
+    {
       "id": "oow1",
       "name": "Operations of War Vol I Defence: level ground and water for a locality (p 77)",
       "short": "OoW Vol I Defence",
@@ -2118,7 +2125,38 @@
       "refs": [
         { "book": "mw", "page": "265", "quote": "distributed to each sector and mobile logistic support elements", "role": "rule", "checked": { "status": "ok", "pdfPage": 249, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf" } },
         { "book": "mw", "page": "263", "quote": "useful. From road head onward, animal transport should take over.", "role": "rule", "checked": { "status": "ok", "pdfPage": 247, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf" } },
-        { "book": "mw", "page": "264", "quote": "should be resorted to as the last resort.", "role": "rule", "checked": { "status": "ok", "pdfPage": 248, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf" } }
+        { "book": "mw", "page": "264", "quote": "should be resorted to as the last resort.", "role": "rule", "checked": { "status": "ok", "pdfPage": 248, "on":"2026-11-28", "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf" } }
+      ]
+    }
+  },
+  "desert": {
+    "note": "Desert ground (DW s24 pp 79-83): the test is the Plan Builder's Auto desert (half the ground within 3 km bare desert, sand, dunes or salt pan). On it the finder adds Forward (as far forward as possible within easy turn-round), the Water row for every kind (sweet water only in tobas and the green belt) and the desert note (mobile APs and petrol points well forward, protected, moves avoided).",
+    "detectClasses": { "value": [12, 13, 14, 16], "basis": "M", "src": "The desert test's classes (bare desert, sand, dunes, salt pan), as PlanDoctrine terrain.detect.desert and IpbTemplates desertTest" },
+    "detectShare": { "value": 0.5, "basis": "M", "src": "Half the ground read, as PlanDoctrine terrain.detect.desert" },
+    "detectWithinM": { "value": 3000, "basis": "M", "src": "Read within 3 km of the centre, as PlanDoctrine terrain.detect.desert" },
+    "forward": {
+      "basis": "R",
+      "src": "DW s24 para 7 h p 82: administrative areas sited as forward as possible to reduce turn around distances, and protected; para 8 a p 82: all administrative echelons well forward and within easy turn round distance of field formations, vehicle endurance being reduced in low gear. On desert ground an area behind the operation's figure warns (Forward row)",
+      "refs": [
+        { "book": "dw", "page": "82", "quote": "Administrative areas should be sited as forward as possible to reduce turn around distances", "role": "rule", "checked": { "status": "ok", "pdfPage": 82, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf" } },
+        { "book": "dw", "page": "82", "quote": "vehicle endurance in desert is reduced owing to extended operations in low gear", "role": "rule", "checked": { "status": "ok", "pdfPage": 82, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf" } }
+      ]
+    },
+    "water": {
+      "basis": "R",
+      "src": "DW s24 para 2 a p 80: the desert belt is devoid of sweet water except rain water collected in tobas, water sources mostly in the green belt at a distance; s26 para 1 d p 86: water points kept open round the clock. On desert ground every kind gets the Water row",
+      "refs": [
+        { "book": "dw", "page": "80", "quote": "Water sources are mostly found in the", "role": "rule", "checked": { "status": "ok", "pdfPage": 80, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf" } },
+        { "book": "dw", "page": "86", "quote": "Water points must be kept open round the clock", "role": "rule", "checked": { "status": "ok", "pdfPage": 86, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf" } }
+      ]
+    },
+    "stocks": {
+      "basis": "R",
+      "src": "DW s24 para 8 b-d p 82: mobile ammunition points decentralised down to the forward Bdes, petrol points opened well forward, supply points within the turn round distance of first line transport; para 8 e p 83: frequent moves of administrative echelons avoided; para 7 g p 82: transport of mines and defence stores",
+      "refs": [
+        { "book": "dw", "page": "82", "quote": "mobile ammunition points may have to be made functional and decentralised down to forward brigades", "role": "rule", "checked": { "status": "ok", "pdfPage": 82, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf" } },
+        { "book": "dw", "page": "82", "quote": "Petrol points will also have to be opened well forward", "role": "rule", "checked": { "status": "ok", "pdfPage": 82, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf" } },
+        { "book": "dw", "page": "83", "quote": "frequent move of administrative echelons should be avoided", "role": "rule", "checked": { "status": "ok", "pdfPage": 83, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf" } }
       ]
     }
   },

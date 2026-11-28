@@ -22,6 +22,7 @@ import type { DoctrineSet, Recipe } from './PlanRecipes';
 import { doctrineAt, resolveRange } from './PlanRecipes';
 import type { Check, XY } from './PlanSolve';
 import { buaAttackRows, buaDefRows, fixingRows, mobileRows } from './PlanBua';
+import { infilRows } from './PlanInfil';
 
 type Item = { role: string; label?: string; pts: XY[] };
 const P = (x: number, y: number): XY => ({ x, y });
@@ -61,6 +62,7 @@ export function layoutRows(items: Item[], recipe: Recipe, doc: DoctrineSet, elev
   if (recipe.layout === 'bua') return recipe.task === 'attack' ? buaAttackRows(items, recipe, doc) : buaDefRows(items, recipe, doc);
   if (recipe.layout === 'fixing') return fixingRows(items, recipe, doc);
   if (recipe.layout === 'mobile') return mobileRows(items, recipe, doc);
+  if (recipe.layout === 'infiltration') return infilRows(items, recipe, doc);
   if (!isMountainRecipe(recipe)) return [];
   if (recipe.task === 'attack') return recipe.layout === 'salient' ? salientAttackRows(items, doc, elevAt) : recipe.layout === 'salient-wedge' ? wedgeAttackRows(items, doc, elevAt) : mtnAttackRows(items, doc, elevAt);
   return mtnDefRows(items, recipe, doc, elevAt);

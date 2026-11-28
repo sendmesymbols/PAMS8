@@ -1,0 +1,369 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": false
+  },
+  "id": "bde-relief",
+  "family": "bde-relief",
+  "layout": "relief",
+  "echelon": "18",
+  "unit": "inf-bde",
+  "basis": "D",
+  "name": "Bde Relief in Line (two Bns up)",
+  "frontageRow": "Brigade, two battalions up",
+  "subRow": null,
+  "note": "A relief in line (GSP 1947 Inf Div in Battle s29 pp 134-140): a Bde in defence relieved by an incoming Bde, which takes over all its responsibilities while the relieved Bde is withdrawn (para 1 p 134). The posns are the Bde two up as it stands (the Bde Def two up layout: two Bns forward, one in depth, OoW Vol I Annexes B-D). A Bde Gp needs at least 48 h for the planning and conduct of a relief; the warning order gives the times, the nights, the priorities on the routes, the size of the advance parties and the order in which the units are relieved (para 4 pp 134-135). Recce by day of the existing defence and its obstacles, the relief routes, the assembly areas, the debussing and turn-round area and the admin installations (para 5 f p 137): each incoming Bn has an Assy area behind, a relief route forward and a guides RV at the posn it takes over (their places E); one debus and turn-round point (E). The relief is by stages, rear to front or front to rear (para 5 d p 136); command changes as late as possible, once communications work, normally when more than half is relieved, the forward Bns relieved (para 5 e p 137); the relieved artillery stays until the forward units are relieved (para 5 k p 138); by night as a rule, normal activity kept up for secrecy (paras 5 c, g, h pp 135-137); a joint HQ during the relief (para 5 m p 139).",
+  "slots": [
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Left Bn",
+      "echelon": "16",
+      "order": 1,
+      "size": {
+        "wM": 4500,
+        "hM": 3000
+      },
+      "seed": {
+        "acrossM": -3000,
+        "backM": -2000
+      },
+      "rule": {
+        "side": "L"
+      },
+      "terrainRule": {
+        "across": "approach.main",
+        "prefer": [
+          "itg",
+          "highGround"
+        ]
+      }
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Right Bn",
+      "echelon": "16",
+      "order": 1,
+      "size": {
+        "wM": 4500,
+        "hM": 3000
+      },
+      "seed": {
+        "acrossM": 3000,
+        "backM": -2000
+      },
+      "rule": {
+        "side": "R"
+      },
+      "terrainRule": {
+        "across": "approach.secondary",
+        "prefer": [
+          "itg",
+          "highGround"
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "Depth Bn (Res)",
+      "echelon": "16",
+      "order": 2,
+      "size": {
+        "wM": 4500,
+        "hM": 3000
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": 1000
+      },
+      "rule": {
+        "behind": [
+          "fwdL",
+          "fwdR"
+        ],
+        "coversGap": [
+          "fwdL",
+          "fwdR"
+        ],
+        "reach": {
+          "slots": [
+            "fwdL",
+            "fwdR"
+          ]
+        }
+      }
+    },
+    {
+      "role": "atRes",
+      "kind": "point",
+      "sym": "15111200",
+      "label": "AT Res",
+      "order": 6,
+      "shape": {
+        "at": [
+          1500,
+          1000
+        ]
+      }
+    },
+    {
+      "role": "killingGr",
+      "kind": "area",
+      "sym": "25242300",
+      "label": "K1",
+      "order": 3,
+      "terrainOnly": true,
+      "rule": {
+        "inRangeOf": [
+          "fwdL",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main.chokepoint"
+      }
+    },
+    {
+      "role": "atMines",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "inFrontOf": [
+          "fwdL",
+          "fwdR"
+        ],
+        "distM": {
+          "doctrine": "standoff.obstacleInFrontM"
+        },
+        "depthM": {
+          "doctrine": "standoff.protectiveMinefieldDepthM"
+        }
+      }
+    },
+    {
+      "role": "fdl",
+      "kind": "line",
+      "sym": "25140400",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "joins": [
+          "fwdL",
+          "fwdR"
+        ],
+        "edge": "front"
+      }
+    },
+    {
+      "role": "dfTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "DF Tgt",
+      "count": {
+        "doctrine": "df.perBn"
+      },
+      "order": 7,
+      "rule": {
+        "ahead": {
+          "doctrine": "df.closeMinFromFdlM.medium"
+        },
+        "of": [
+          "fwdL",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main"
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bde HQ (joint)",
+      "order": 4,
+      "shape": {
+        "at": [
+          -1200,
+          3200
+        ]
+      }
+    },
+    {
+      "role": "assyA",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy (1st Bn)",
+      "order": 5,
+      "shape": {
+        "rect": {
+          "acrossM": -3000,
+          "backM": 9000,
+          "wM": 1500,
+          "hM": 1000
+        }
+      }
+    },
+    {
+      "role": "assyB",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy (2nd Bn)",
+      "order": 5,
+      "shape": {
+        "rect": {
+          "acrossM": 3000,
+          "backM": 9000,
+          "wM": 1500,
+          "hM": 1000
+        }
+      }
+    },
+    {
+      "role": "assyC",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy (3rd Bn)",
+      "order": 5,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": 11000,
+          "wM": 1500,
+          "hM": 1000
+        }
+      }
+    },
+    {
+      "role": "debus",
+      "kind": "point",
+      "sym": "25131500",
+      "label": "Debus / turn-round",
+      "order": 5,
+      "shape": {
+        "at": [
+          0,
+          7000
+        ]
+      }
+    },
+    {
+      "role": "rtA",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "Relief route 1",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            -3000,
+            8500
+          ],
+          [
+            -3000,
+            -100
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rtB",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "Relief route 2",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            3000,
+            8500
+          ],
+          [
+            3000,
+            -100
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rtC",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "Relief route 3",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            0,
+            10500
+          ],
+          [
+            0,
+            2600
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rvA",
+      "kind": "point",
+      "sym": "25130500",
+      "label": "Guides RV",
+      "order": 5,
+      "shape": {
+        "at": [
+          -3000,
+          300
+        ]
+      }
+    },
+    {
+      "role": "rvB",
+      "kind": "point",
+      "sym": "25130500",
+      "label": "Guides RV",
+      "order": 5,
+      "shape": {
+        "at": [
+          3000,
+          300
+        ]
+      }
+    },
+    {
+      "role": "rvC",
+      "kind": "point",
+      "sym": "25130500",
+      "label": "Guides RV",
+      "order": 5,
+      "shape": {
+        "at": [
+          0,
+          3100
+        ]
+      }
+    }
+  ],
+  "alternates": [],
+  "supplementary": "perSecondaryApproach",
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "gaps",
+    "depth",
+    "flanks",
+    "exposure",
+    "killingGr",
+    "reserveReach",
+    "dfMinRange"
+  ]
+}

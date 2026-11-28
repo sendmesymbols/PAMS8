@@ -250,9 +250,9 @@ export function bnFrontageCheck(doc: DoctrineSet, kind: TerrainKind, nFwd: numbe
  *   areas and the ground dominating the MSRs (p 22 para 5 a); the loss of desert tracts is insignificant (p 7 para 2).
  *   Not measured (the probe's roads carry no MSR class): grey, confirm on the map.
  * - Strong points (Coy, Bn): concentric circles round a strongly held inner core, mines, at comm centres / ITG, in depth
- *   to canalise him, pivots for the counter-attack, administratively self-sufficient and stocked with ammunition to
+ *   to canalise the En, pivots for the counter-attack, administratively self-sufficient and stocked with ammunition to
  *   fight on when bypassed (pp 27-28, 85); the defender prepared to fight the battle outflanked (p 13).
- * - Covering troops (Bde, Div): occupied by night, armour based, engaging at long range, deflecting or canalising him
+ * - Covering troops (Bde, Div): occupied by night, armour based, engaging at long range, deflecting or canalising the En
  *   into a killing ground, a handover line (pp 24-25, 56 para 6 a).
  * - Desert prep (Coy, Bn): trenches revetted with frames, 6 h a weapon crew with the frames ready, 4-6 h more to make
  *   them; a Bn's main defence on a forward slope 114,994 sandbags, double on forward and reverse slopes; the revetting
@@ -263,8 +263,8 @@ function desertDefenceRows(rows: Check[], planEch: string): Check[] {
   const put = (c: Check) => { const r = rows.find((x) => x.name === c.name); if (r) { if (!r.reason.includes('(DW')) r.reason += `; ${c.reason}`; } else out.push(c); };
   const bnUp = ['16', '17', '18', '21'].includes(planEch), small = planEch === '15' || planEch === '16';
   if (bnUp) put({ name: 'Sited to deny', st: 'unchecked', reason: 'confirm on the map: in the desert the main defences are sited to deny communication centres, tactically significant BUAs and administrative areas, and the ground dominating the MSRs (DW s7 para 5 a p 22); the loss or capture of desert tracts remains tactically insignificant, and to be strong everywhere is imprudent (DW s4 para 2 p 7)' });
-  if (small) put({ name: 'Strong points', st: 'pass', reason: 'desert: strong points in concentric circles round a strongly prepared and held inner core, reinforced with mines, at communication centres and ITG, in depth to canalise him into the killing zones, the pivots for own counter-attacks (DW s7 para 11 pp 27-28); administratively self-sufficient, stocked with ammunition to fight on when bypassed (pp 28, 85); the defender prepared to fight the battle outflanked (p 13)' });
-  if (planEch === '18' || planEch === '21') put({ name: 'Covering troops', st: 'pass', reason: 'desert: the covering troops occupy their prepared posns by night, recce and layout groups first; armour based (armour is ideally suited to the SZ battle); they engage at long range, force him to deploy early, deflect him off the axis or canalise him into a killing ground, fight from successive delaying posns or leap-frog back; a handover line, once crossed by their last elements, passes the battle to the main defences (DW s7 para 9 pp 24-25; s15 para 6 a p 56)' });
+  if (small) put({ name: 'Strong points', st: 'pass', reason: 'desert: strong points in concentric circles round a strongly prepared and held inner core, reinforced with mines, at communication centres and ITG, in depth to canalise the En into the killing zones, the pivots for own counter-attacks (DW s7 para 11 pp 27-28); administratively self-sufficient, stocked with ammunition to fight on when bypassed (pp 28, 85); the defender prepared to fight the battle outflanked (p 13)' });
+  if (planEch === '18' || planEch === '21') put({ name: 'Covering troops', st: 'pass', reason: 'desert: the covering troops occupy their prepared posns by night, recce and layout groups first; armour based (armour is ideally suited to the SZ battle); they engage at long range, force the En to deploy early, deflect the En off the axis or canalise the En into a killing ground, fight from successive delaying posns or leap-frog back; a handover line, once crossed by their last elements, passes the battle to the main defences (DW s7 para 9 pp 24-25; s15 para 6 a p 56)' });
   if (small) put({ name: 'Desert prep', st: 'pass', reason: 'desert: trenches crumble in loose sand: revetted with frames of local wood, grass and shrub, 6 h a weapon crew with the frames ready, 4-6 h more to make them (DW Annex B paras 4-5 pp 96-97); a Bn\'s main defence on a forward slope takes 114,994 sandbags, double for forward and reverse slopes, half with a single wall (Annex A pp 93-95); the revetting material of a Coy on 1, of a Bn on 5 x 2½-ton vehicles (Annex B para 7 p 97): a major lift (DW p 9 para 11)' });
   return out;
 }
@@ -312,7 +312,7 @@ export function groundNotes(rows: Check[], doc: DoctrineSet, kind: TerrainKind, 
         r.reason += `; in the desert by hand alone it takes ${r.m! >= 9999 ? 'more than the time there is' : `about ${Math.round(r.m!)} h`} against the ${r.limitM} h: the MMLs lay only on the dhars (DW p 65)`;
         r.detail = { head: 'Minefield by MML on sand', why: 'Mechanical mine laying is not successful in loose sand: a combination of MML on the dhars and laying by hand on soft sand (DW s19 para 2 a (2) p 65). The time here rests on the MMLs.', fix: ['More engineer or infantry Pls laying by hand', 'Begin the minefield earlier, or lay the dhars by MML first and the sand by hand', 'Tracked towing vehicles for the MMLs on the firmer stretches (DW p 65)'] };
       }
-      add('AT cover', 'desert: the ATGMs kept able to concentrate on the most threatened tank approach, not dissipated (DW s16 para 4 b-c p 58); the defensive minefields channel his armour into pre-selected areas (DW p 23 para 5 d)');
+      add('AT cover', 'desert: the ATGMs kept able to concentrate on the most threatened tank approach, not dissipated (DW s16 para 4 b-c p 58); the defensive minefields channel the En armour into pre-selected areas (DW p 23 para 5 d)');
       if (task === 'defence') out.push(...desertDefenceRows(out, planEch));
       // the form of defence: mobile preferred in the Thar (no natural obstacles, little infrastructure), area and mobile
       // combined in Cholistan (semi-desert, BUAs, canals, roads) (DW s7 para 4 c p 22)

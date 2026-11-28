@@ -14,6 +14,7 @@
     "E": "a decision taken on the user's behalf: decided (date), searched (where it was looked for), the reason in note; shown as \"Decision, no book figure\""
   },
   "sources": {
+    "KYE": {"title":"Know Your Enemy 2019 (Sixth Edition), MI Dte (SECRET)","file":"Material/Literature/1. Books/KYE/5. Know Your Enemy 2019.pdf","cite":"PDF page (pdf N)"},
     "IC": {
       "title": "The Rifle Company, Platoon and Section in Battle",
       "file": "Material/IC.pdf",
@@ -401,6 +402,12 @@
         "label": "Obstacle",
         "basis": "D",
         "bnFrontageRow": "Battalion along a canal",
+        "divMajorApchsMax": {
+          "value": 2,
+          "basis": "D",
+          "src": "GSP 1947 Inf Div in Battle s26 para 5 p 119: a Div should normally not be asked to defend more than two divisional size major approaches unless it is allocated additional resources. Judged on the fit's approaches that carry an En Div (PlanDcb.divApproachesRow).",
+          "refs": [{ "book": "GSP", "page": "119", "quote": "A division should normally not be asked to defend more than two divisional size major approaches unless it is allocated additional resources", "role": "rule", "checked": { "status": "ok", "pdfPage": 119, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf" } }]
+        },
         "bdeFrontageM": {
           "value": [8000, 10000],
           "basis": "D",
@@ -619,6 +626,29 @@
               }
             }
           ]
+        },
+        "siting": {
+          "note": "The desert defence's Sited to deny row measured (PlanFit.desertSitingRow): an MSR or all-weather road within roadReachM of a posn, or a BUA within buaM.",
+          "roadReachM": {
+            "value": 2000,
+            "basis": "E",
+            "decided": "2026-11-28",
+            "searched": "DW s7 para 5 a p 22, s4 para 2 p 7 (the rule, no distance); OOW1 pp 14-27 (dominating ground, no distance)",
+            "src": "Ground 'dominating the MSRs': a road within the reach of the posns' AT weapons, taken as 2 km (the ATGM's reach in the ORBAT is about 2 km, and in the desert movement is seen 5-20 km, DW p 7). DW p 22 the rule.",
+            "refs": [
+              { "book": "DW", "page": "22", "quote": "ground dominating the MSRs", "role": "rule", "checked": { "status": "ok", "pdfPage": 22, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf" } }
+            ]
+          },
+          "buaM": {
+            "value": 1000,
+            "basis": "E",
+            "decided": "2026-11-28",
+            "searched": "DW s7 para 5 a p 22 (deny tactically significant built up areas, no distance); IBB S58 pp 319-324 (BUA defence, no distance to deny one from outside)",
+            "src": "A BUA counts as denied when a posn lies within 1 km of it (the posns' small arms and MGs cover its edge). DW p 22 the rule.",
+            "refs": [
+              { "book": "DW", "page": "22", "quote": "tactically significant built up and administrative areas", "role": "rule", "checked": { "status": "ok", "pdfPage": 22, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf" } }
+            ]
+          }
         },
         "rules": {
           "note": "The desert rules PlanContext.groundNotes, PlanAttack.attackBreach, PlanArty (Gun area) and PlanWithdrawal (Desert row) apply on desert ground (DW_Review.md, 27 Nov 2026). Rules, not figures: each cited so verify.py checks the words on the page.",
@@ -2219,6 +2249,25 @@
         }
       ]
     },
+    "vehNightKmh": {
+      "value": 8,
+      "basis": "D",
+      "src": "IPB p 18 (IpbDoctrine.rates.vehicleKmh): vehicles by night, blacked out, 8 km/h. The rate a withdrawal's vehicles drive back to the next posn (PlanWithdrawal Before daylight row).",
+      "refs": [
+        {
+          "book": "IPB",
+          "page": "18",
+          "quote": "16 KMPH (day) 8 KMPH (night, blacked out)",
+          "role": "rule",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 18,
+            "on": "2026-11-28",
+            "how": "pdftotext of Material/Literature/1. Books/11. Intelligence Preparation of the Battlefield.pdf"
+          }
+        }
+      ]
+    },
     "underFireFactor": {
       "value": 1.5,
       "basis": "E",
@@ -2280,6 +2329,8 @@
   },
   "securityZone": {
     "divOnIbM": { "value": [10000, 19000], "basis": "O", "src": "Demo2: IB to FDL; covering troops 1-4 km ahead of the FDL minefields" },
+    "divDepthM": { "value": 10000, "basis": "O", "src": "The Div defence's Security Zone as drawn (div-def-two-up, div-def-three-axes): the lower end of divOnIbM (Demo2: IB to FDL 10-19 km), its near edge 500 m ahead of the FDL. GSP 1947 Inf Div in Battle s23 paras 5-10 pp 104-105: the protective detachments are the first of the three echelons and fight the battle entirely ahead of the main position (para 15 p 107).", "refs": [{ "book": "GSP", "page": "107", "quote": "The battle is fought entirely ahead of the main position by a combination of the elements of protective detachments", "role": "context", "checked": { "status": "ok", "pdfPage": 107, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf" } }] },
+    "divCtpsAheadM": { "value": 4000, "basis": "O", "src": "A Div defence's covering troops group on each forward Bde's axis, measured from the forward posns' front edge: the far end of Demo2's 1-4 km ahead of the FDL minefields (divOnIbM). GSP 1947 Inf Div in Battle s23 para 10 pp 105-106: covering troops may be deployed well ahead of the main position, each under the Comd fighting the battle of the main position on its axis, never reinforced.", "refs": [{ "book": "GSP", "page": "105", "quote": "Covering troops may be deployed well ahead of the", "role": "context", "checked": { "status": "ok", "pdfPage": 105, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf" } }, { "book": "GSP", "page": "105", "quote": "Positions occupied by covering troops and advance positions will not be reinforced", "role": "context", "checked": { "status": "ok", "pdfPage": 105, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf" } }] },
     "bdeM": {
       "value": [3000, 5000],
       "basis": "E",
@@ -2775,6 +2826,135 @@
       "note": "An Armd Div advancing on a broad front with two Bdes (recipe div-advance-two-bde): after the break-out the Armd Div 'should preferably advance on a broad front with two brigades. Each brigade can either advance with two regiment groups up or with one regiment group' (OoW Vol II pp 52-53); in the desert on a very wide front, on multiple axes, by combat groups (DW pp 35, 55).",
       "refs": [{ "book": "OOW2", "page": "52", "quote": "advance on a broad front with two brigades", "role": "rule", "checked": { "status": "ok", "pdfPage": 58, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/3. Operations of War (Volume-II) Offensive Operations.pdf" } }, { "book": "DW", "page": "55", "quote": "must be on very wide front and based on combat groups", "role": "rule", "checked": { "status": "ok", "pdfPage": 55, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf" } }],
       "axesApartM": { "value": [3000, 8000], "basis": "E", "decided": "2026-11-24", "searched": "OoW Vol II pp 9-12, 52-53 (two Bdes, no distance between their axes printed); DW pp 35, 55 (a wide front, multiple axes, no figure); MIB p 84 (parallel columns 'within supporting distance of each other', no figure); the Strike Corps bridgehead 8 km wide (PlanDoctrine crossing) the two Bdes break out of", "note": "How far apart the two Bde axes run: at least far enough that one blocked route or one En position does not stop both, at most the width of the bridgehead the Div breaks out of, so the Bdes stay within supporting distance; outside it warns.", "src": "How far apart the two Bde axes run: at least far enough that one blocked route or one En position does not stop both, at most the width of the bridgehead the Div breaks out of, so the Bdes stay within supporting distance; outside it warns." }
+    },
+    "infDiv": {
+      "note": "An Inf Div advancing to contact on one axis (recipe div-advance-inf; PlanAdvance.infDivAdvanceRows; GSP 1947 Inf Div in Battle s18 pp 76-80 and Annex H p 203). Annex H is a scanned diagram with no text layer: its notes are read from the scan (low resolution) and the refs below quote the text pages that send the reader to it; the gap between the Van Gd and the Main Gd is not legible and is not used.",
+      "refs": [
+        {
+          "book": "GSP",
+          "page": "76",
+          "quote": "In open country, the infantry division due to lack of mobility is not suitable to carryout advance",
+          "role": "rule",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 76,
+            "on": "2026-11-28",
+            "how": "pdftotext of Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf"
+          }
+        },
+        {
+          "book": "GSP",
+          "page": "80",
+          "quote": "The divisional tactical headquarters moves well forward in the main body",
+          "role": "rule",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 80,
+            "on": "2026-11-28",
+            "how": "pdftotext of Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf"
+          }
+        }
+      ],
+      "ctpsAheadM": {
+        "value": [
+          16000,
+          24000
+        ],
+        "basis": "D",
+        "src": "GSP 1947 Annex H p 203 (scanned diagram): \"Distance between van gd and mob tps will be approx 1 hr or 10-15 miles as per: a. Nature of terrain. b. Range of comms. c. En air and dispositions.\" 10-15 miles = 16.1-24.1 km, held as 16-24 km.",
+        "refs": [
+          {
+            "book": "GSP",
+            "page": "78",
+            "quote": "Diagrammatic layout of an infantry division in advance is given in Annex H",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 78,
+              "on": "2026-11-28",
+              "how": "pdftotext of Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf"
+            }
+          },
+          {
+            "book": "GSP",
+            "page": "79",
+            "quote": "It operates under divisional control at considerable distance in front",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 79,
+              "on": "2026-11-28",
+              "how": "pdftotext of Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf"
+            }
+          }
+        ]
+      },
+      "ldgPlAheadMin": {
+        "value": [
+          20,
+          30
+        ],
+        "basis": "D",
+        "src": "GSP 1947 Annex H p 203 (scanned diagram), Van Gd note 3: \"Distance between ldg pl and van gd 20-30 mins or time required to deal with minor oppsn\"; note 2: \"Ldg pl(s) only move deployed\".",
+        "refs": [
+          {
+            "book": "GSP",
+            "page": "78",
+            "quote": "Diagrammatic layout of an infantry division in advance is given in Annex H",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 78,
+              "on": "2026-11-28",
+              "how": "pdftotext of Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf"
+            }
+          }
+        ]
+      },
+      "harApartM": {
+        "value": [
+          24000,
+          32000
+        ],
+        "basis": "D",
+        "src": "GSP 1947 Annex H p 203 (scanned diagram), System of Mov of Main Bodies of Ldg Bde and Div, note 4 Har Areas: \"For Bde Gps and other div elms selected by div. Normally 15-20 miles apart\"; note 1: units / fmns moved fwd from one har to another har area when given clear run. 15-20 miles = 24.1-32.2 km, held as 24-32 km.",
+        "refs": [
+          {
+            "book": "GSP",
+            "page": "78",
+            "quote": "Diagrammatic layout of an infantry division in advance is given in Annex H",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 78,
+              "on": "2026-11-28",
+              "how": "pdftotext of Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf"
+            }
+          },
+          {
+            "book": "GSP",
+            "page": "80",
+            "quote": "The divisional staff is responsible for overall co-ordination and allocation of harbour areas to the brigades and units during move",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 80,
+              "on": "2026-11-28",
+              "how": "pdftotext of Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf"
+            }
+          }
+        ]
+      },
+      "flankOutM": {
+        "value": [
+          3000,
+          8000
+        ],
+        "basis": "E",
+        "decided": "2026-11-28",
+        "searched": "GSP 1947 s18 para 10 c p 79 (a route parallel to the main axis or picketing lines of approach: no distance) and Annex H p 203 (none); OoW Vol II Fig 2 p 9 (15-20 km, an Armd Div); IBB p 133 (800 m cleared either side at Bn level)",
+        "src": "How far out an Inf Div's flank guards move: on a parallel route within reach of the axis, between the Bn's 800 m (IBB p 133) and the Armd Div's 15-20 km (OoW Vol II Fig 2); a decision."
+      }
     }
   },
   "divArty": {
@@ -6746,6 +6926,76 @@
       ]
     }
   },
+  "antiHb": {
+    "note": "Anti para / heliborne defence of a VP (recipe bn-anti-hb, PlanAntiHb.ts; GSP 1947 Inf Div in Battle s28 pp 127-133). The landing figures are the Ground Guide Air tab's (IpbDoctrine air.slope, air.clear, air.landingPoints) held here for the Plan Builder.",
+    "searchM": {
+      "value": 3000,
+      "basis": "E",
+      "decided": "2026-11-28",
+      "searched": "GSP 1947 Inf Div in Battle s28 pp 127-133 (no figure), OoW Vol I pp 61-63, IBB pp 126, 343-344, MW p 258: no distance printed",
+      "src": "How far round the VP the fit looks for likely landing areas. IBB pp 343-344: against a forward Bn his heliborne force lands between the Bde reserve and a forward Bn, or on a bridge or communication centre behind the forward Bde: within a few km of its objective."
+    },
+    "laMinM": {
+      "value": 150,
+      "basis": "E",
+      "decided": "2026-11-28",
+      "searched": "GSP 1947 Inf Div in Battle s28 pp 127-133 (no figure), OoW Vol I pp 61-63, IBB pp 126, 343-344, MW p 258; IpbDoctrine air.landingPoints (FM 3-21.38 sizes)",
+      "src": "A landing area clear over a patch this wide: four Mi-17 class landing points of 80 m (IpbDoctrine air.landingPoints class 4, points 4) laid two by two, less the overlap of their clear circles."
+    },
+    "laApartM": {
+      "value": 800,
+      "basis": "E",
+      "decided": "2026-11-28",
+      "searched": "GSP 1947 Inf Div in Battle s28 pp 127-133 (no figure), OoW Vol I pp 61-63, IBB pp 126, 343-344, MW p 258: no figure",
+      "src": "Landing areas taken at least this far apart, so each is a separate landing site with its own OP and road block."
+    },
+    "clearOfVpM": {
+      "value": 600,
+      "basis": "E",
+      "decided": "2026-11-28",
+      "searched": "GSP 1947 Inf Div in Battle s28 pp 127-133 (no figure), OoW Vol I pp 61-63, IBB pp 126, 343-344, MW p 258: no figure",
+      "src": "Landing areas read beyond the local defence force round the VP (a Coy posn of 1500 x 600-800 m, PlanDoctrine size.coy)."
+    },
+    "slopeOkDeg": {
+      "value": 7,
+      "basis": "E",
+      "decided": "2026-11-28",
+      "searched": "GSP 1947 Inf Div in Battle s28 pp 127-133 (no figure), OoW Vol I pp 61-63, IBB pp 126, 343-344, MW p 258; IpbDoctrine air.slope",
+      "src": "Level enough to land: up to 7 degrees, as IpbDoctrine air.slope (FM 3-21.38 via the ArcGIS HLZ slope guide, T); 7-15 degrees only with care and not counted here."
+    },
+    "landClasses": {
+      "value": [
+        0,
+        2,
+        12,
+        16,
+        17,
+        18,
+        23,
+        38
+      ],
+      "basis": "E",
+      "decided": "2026-11-28",
+      "searched": "GSP 1947 Inf Div in Battle s28 pp 127-133 (no figure), OoW Vol I pp 61-63, IBB pp 126, 343-344, MW p 258; IpbDoctrine air.clear",
+      "src": "Ground classes a helicopter can land on, as IpbDoctrine air.clear.landClasses (the Air tab's reading of the class list)."
+    },
+    "opFromLaM": {
+      "value": 400,
+      "basis": "E",
+      "decided": "2026-11-28",
+      "searched": "GSP 1947 Inf Div in Battle s28 pp 127-133 (no figure), OoW Vol I pp 61-63, IBB pp 126, 343-344, MW p 258: no distance printed",
+      "src": "An OP this far from its landing area toward the VP: close enough to report the landing and stay in visual contact, out of the landing area itself (GSP s28 para 5 a p 129: the posts remain in visual contact to report his movement)."
+    }
+  },
+  "relief": {
+    "note": "A relief in line (recipe bde-relief, PlanRelief.ts; GSP 1947 Inf Div in Battle s29 pp 134-140).",
+    "bdeGpMinH": {
+      "value": 48,
+      "basis": "D",
+      "src": "GSP 1947 Inf Div in Battle s29 para 4 p 134: a brigade group will need at least 48 hours for proper planning and conduct of a relief operation.",
+      "refs": [{ "book": "GSP", "page": "134", "quote": "A brigade group will need at least 48 hours for proper planning and conduct of a relief operation", "role": "rule", "checked": { "status": "ok", "pdfPage": 134, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf" } }]
+    }
+  },
   "divAttack": {
     "note": "The Div attack (recipes div-attk-*, PlanDivAttack.ts; GSP 1947 Inf Div in Battle s19 pp 84-91): the Div's Bns against which the tasks in Bns are counted (thinking two down, s19 para 13 b (3)-(4), (6) p 88).",
     "bnsInDiv": {
@@ -6756,6 +7006,35 @@
         { "book": "GSP", "page": "9", "quote": "based on three infantry brigades and a balanced proportion of supporting arms and services", "role": "rule", "checked": { "status": "ok", "pdfPage": 9, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf" } },
         { "book": "GSP", "page": "60", "quote": "An infantry brigade consists of a headquarter and three infantry battalions", "role": "rule", "checked": { "status": "ok", "pdfPage": 60, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf" } }
       ]
+    }
+  },
+  "infiltration": {
+    "note": "The attack by infiltration (recipe bn-attk-infiltration, PlanInfil.infilRows): IBB S45 pp 221-230; DW s12 para 19 p 48.",
+    "basis": "D",
+    "src": "IBB S45: lanes (para 14 p 225), gap shoulders (para 23 p 228), RV and firm base (para 21 p 227), link-up 24-36 h (para 10 p 223), within the Div artillery (para 7 p 222), lanes through minefields 2-3 nights (para 25 p 228); DW s12 para 19 p 48 (the desert best suited; RV / firm base near the Obj with multiple routes; medium guns; seize and hold)",
+    "refs": [
+      { "book": "IBB", "page": "225", "quote": "A suggested grouping for a battalion infiltration operation", "role": "rule", "checked": { "status": "ok", "pdfPage": 242, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf" } },
+      { "book": "IBB", "page": "228", "quote": "shoulders of the gaps are secured by the leading troops", "role": "rule", "checked": { "status": "ok", "pdfPage": 245, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf" } },
+      { "book": "IBB", "page": "227", "quote": "Should have alternative routes to the Forming Up Place", "role": "rule", "checked": { "status": "ok", "pdfPage": 244, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf" } },
+      { "book": "IBB", "page": "223", "quote": "link-up with the infiltrating force must be established within 24-36 hours", "role": "rule", "checked": { "status": "ok", "pdfPage": 240, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf" } },
+      { "book": "IBB", "page": "222", "quote": "will normally be operating within divisional artillery range", "role": "rule", "checked": { "status": "ok", "pdfPage": 239, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf" } },
+      { "book": "IBB", "page": "228", "quote": "Clearance of minefield, may even take 2 to 3 nights", "role": "rule", "checked": { "status": "ok", "pdfPage": 245, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf" } },
+      { "book": "DW", "page": "48", "quote": "The desert with its vast area of operation are best suited for attack by infiltration", "role": "rule", "checked": { "status": "ok", "pdfPage": 48, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf" } },
+      { "book": "DW", "page": "48", "quote": "A suitable rendezvous (RV)/firm base is selected in the vicinity of the objective", "role": "rule", "checked": { "status": "ok", "pdfPage": 48, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf" } }
+    ],
+    "shoulderWithinM": {
+      "value": 1000,
+      "basis": "E",
+      "decided": "2026-11-28",
+      "searched": "IBB S45 para 23 p 228 (the shoulders secured, no distance); IC s45 (no infiltration distances)",
+      "src": "Troops count as holding a gap's shoulder within 1 km of where the lane crosses the En FDL (a Pl's reach on the shoulder); IBB p 228 the rule"
+    },
+    "rvNearObjM": {
+      "value": 3000,
+      "basis": "E",
+      "decided": "2026-11-28",
+      "searched": "DW s12 para 19 a p 48 ('in the vicinity of the objective', no distance); IBB S45 para 21 p 227 (no distance)",
+      "src": "The RV counts as in the vicinity of the Obj within 3 km of it: the firm base short of the FUP, the FUP a night's 1000-1200 m from the Obj (IBB p 201); DW p 48 the rule"
     }
   },
   "withdrawal": {
@@ -6829,7 +7108,7 @@
       "value": 300,
       "basis": "E",
       "decided": "2026-11-27",
-      "searched": "IC s92 para 8 c p 487 ('near their own RV'), para 14 p 488 ('well forward'); IBB s75 paras 11-20 pp 379-383; OOW3 s9 pp 44-48: no distance printed",
+      "searched": "IC s92 para 8 c p 487 ('near their own RV'), para 14 p 488 ('well forward'); IBB s75 paras 11-20 pp 379-383; OOW3 s9 pp 43-47: no distance printed",
       "note": "How near the rear party RV their embussing point must be: the 300 m the recipe sets between the Bn RV and the Bn EP. 'Well forward' is read as ahead of every Coy and Bn EP and behind the rear parties."
     },
     "thinOutBeforeDenialMin": {
@@ -7173,12 +7452,127 @@
       "value": 457,
       "basis": "E",
       "decided": "2026-11-27",
-      "searched": "DW s9 paras 1-4 pp 32-33 ('cannot be expected to withdraw any distance on foot': no distance printed); IBB s75 paras 14, 20 pp 381, 383 (Coy RV 200-500 yd; Coy embussing points 1500-2000 m, a plains figure); OOW3 s9 pp 44-48; IC s92 pp 484-488; MIB pp 223-231: no desert walking distance printed",
+      "searched": "DW s9 paras 1-4 pp 32-33 ('cannot be expected to withdraw any distance on foot': no distance printed); IBB s75 paras 14, 20 pp 381, 383 (Coy RV 200-500 yd; Coy embussing points 1500-2000 m, a plains figure); OOW3 s9 pp 43-47; IC s92 pp 484-488; MIB pp 223-231: no desert walking distance printed",
       "src": "The longest walk from a posn to its embussing point on a desert withdrawal (PlanWithdrawal Desert row): no distance is printed, so the vehicles are taken to the Coy RV, the far end of IBB's 200-500 yd (457 m), the least walk any withdrawal has; beyond it the row warns. DW p 32 the rule.",
       "refs": [
         { "book": "DW", "page": "32", "quote": "cannot be expected to withdraw any distance on foot", "role": "rule", "checked": { "status": "ok", "pdfPage": 32, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf" } },
         { "book": "IBB", "page": "381", "quote": "rendezvous (probably 200 to 500 yards in rear)", "role": "context", "checked": { "status": "ok", "pdfPage": 398, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf" } }
       ]
+    },
+    "beltWaterWithinM": {
+      "value": 1500,
+      "basis": "E",
+      "decided": "2026-11-28",
+      "searched": "OOW3 s12 paras 1, 5 a pp 54-56 (the primary demolition belt on a natural obstacle, part of the new posn, its weapons covering the crossing places: no distance printed); IC s43 para 2 p 144 (standing patrols 1000-1500 m out); IBB S63 para 2 b p 340 (mask posns 300-500 m ahead)",
+      "src": "How far in front of the new posn's front edge a river or canal counts as the water its primary demolition belt stands on (PlanWithdrawal New posn obstacle row): within the reach of the posn's direct fire and its standing patrols, 1.5 km."
+    },
+    "timeSpace": {
+      "note": "Time and space in a withdrawal (PlanWithdrawalFmn.timeSpaceRow; OOW3 s2 para 6 pp 9-10, s6 para 6 a p 29): the depth from the old FDL to the new posn's at the En's contested rate of advance, against the delay ordered or the new posn's preparation (readyBy.bnPosnH, OOW1 p 39), judged at the fastest.",
+      "enAdvanceKmDay": {
+        "note": "The En's rate of advance in a contested battle, km a day, by formation (KYE 2019, the En's own figures). Mech takes the Armd Div's (no Mech figure printed); mountain ground the Mtn Div's.",
+        "armd": {
+          "value": [
+            24,
+            30
+          ],
+          "basis": "D",
+          "src": "KYE 2019 PDF p 92: an Armd Div is capable of advancing up to 24-30 km per day in a contested battle.",
+          "refs": [
+            {
+              "book": "KYE",
+              "page": "pdf 92",
+              "quote": "24-30 km per day in contested battle",
+              "role": "rule",
+              "checked": {
+                "status": "ok",
+                "pdfPage": 92,
+                "on": "2026-11-28",
+                "how": "pdftotext of Material/Literature/1. Books/KYE/5. Know Your Enemy 2019.pdf"
+              }
+            }
+          ]
+        },
+        "inf": {
+          "value": [
+            10,
+            25
+          ],
+          "basis": "D",
+          "src": "KYE 2019 PDF p 216: an Inf Div, suitably augmented, advances up to 25 km in a day against light opposition, with a total capability of 50 km in five days (calc: 10 km a day over the five days, the low end).",
+          "refs": [
+            {
+              "book": "KYE",
+              "page": "pdf 216",
+              "quote": "Adv up to 25 km in a day against",
+              "role": "rule",
+              "checked": {
+                "status": "ok",
+                "pdfPage": 216,
+                "on": "2026-11-28",
+                "how": "pdftotext of Material/Literature/1. Books/KYE/5. Know Your Enemy 2019.pdf"
+              }
+            },
+            {
+              "book": "KYE",
+              "page": "pdf 216",
+              "quote": "total cap of adv 50 km",
+              "role": "rule",
+              "checked": {
+                "status": "ok",
+                "pdfPage": 216,
+                "on": "2026-11-28",
+                "how": "pdftotext of Material/Literature/1. Books/KYE/5. Know Your Enemy 2019.pdf"
+              }
+            }
+          ]
+        },
+        "mountain": {
+          "value": [
+            8,
+            10
+          ],
+          "basis": "D",
+          "src": "KYE 2019 PDF p 217: a Mtn Div can advance at an average rate of 8-10 km per day on more than one axis.",
+          "refs": [
+            {
+              "book": "KYE",
+              "page": "pdf 217",
+              "quote": "avg rate of 8-10 km per day",
+              "role": "rule",
+              "checked": {
+                "status": "ok",
+                "pdfPage": 217,
+                "on": "2026-11-28",
+                "how": "pdftotext of Material/Literature/1. Books/KYE/5. Know Your Enemy 2019.pdf"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "dayWeatherMinPct": {
+      "value": 25,
+      "basis": "E",
+      "decided": "2026-11-28",
+      "searched": "OOW3 s2 para 5 b p 9 and s8 para 1 p 40 (a day withdrawal when the weather favours it: no share printed)",
+      "src": "A daylight withdrawal waits for a day of fog, haze or dust: a month with a view under 2 km, or fog and haze, on a quarter of its days (one day in four) gives such a day within the week (PlanWithdrawal Weather row)."
+    },
+    "hqArteryM": {
+      "value": 1000,
+      "basis": "E",
+      "decided": "2026-11-28",
+      "searched": "OOW3 s14 para 16 p 65 (HQs \"as close as possible to the main artery or the existing signals communication centres\": no distance)",
+      "src": "How far a withdrawing formation's HQ may be from a metalled road or an existing signal centre (telephone exchange, post office, wireless station) and still count as by the artery (PlanWithdrawal HQ by the artery row)."
+    },
+    "buaRunM": {
+      "value": 150,
+      "basis": "M",
+      "src": "Method setting: a route back counts as running through a built-up area where five or more 30 m cells in a row on it are built-up (class 3), not where it clips one house (PlanWithdrawal Civil population row; OOW3 s16 p 69)."
+    },
+    "defileSharedM": {
+      "value": 500,
+      "basis": "M",
+      "src": "Method setting: crossings of the water on different routes back within this distance of each other are read as one defile that every route shares (PlanWithdrawal Defiles on routes row). OOW3 s9 para 6 p 46 (airborne or heliborne troops seize defiles or bridges), s2 para 5 a p 8 (several axes): no distance printed."
     },
     "delay": {
       "note": "The Bn delaying action (recipe bn-delay, PlanDelay.ts): MIB s28 pp 231-246; OOW3 s6 pp 28-35.",
@@ -7495,6 +7889,13 @@
           }
         }
       ],
+      "roadDenialDepthM": {
+        "value": 4800,
+        "basis": "E",
+        "decided": "2026-11-28",
+        "searched": "OOW3 s12 para 5 c p 57 (a road denial band \"may need to be several miles deep\": no figure)",
+        "src": "The road denial band's depth: \"several miles\" taken as three miles (4.8 km), laid from behind the first covering troops toward the next posn back, less where the space runs out (PlanWithdrawalFmn Delay means row)."
+      },
       "axesMergeM": {
         "value": 200,
         "basis": "M",

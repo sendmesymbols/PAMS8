@@ -48,6 +48,16 @@
       ]
     },
     {
+      "id": "bn-anti-hb",
+      "name": "Bn Anti-Heliborne",
+      "task": "defence",
+      "echelon": "16",
+      "unit": "inf-bn-std",
+      "recipes": [
+        "bn-anti-hb"
+      ]
+    },
+    {
       "id": "mib-def-mob",
       "name": "MIB Gp Mobile Def",
       "task": "defence",
@@ -84,6 +94,16 @@
         "bn3-attk-right-flank",
         "bn3-attk-left-flank",
         "bn3-attk-frontal"
+      ]
+    },
+    {
+      "id": "bn-attk-infil",
+      "name": "Bn Attk (Infil)",
+      "task": "attack",
+      "echelon": "16",
+      "unit": "inf-bn-std",
+      "recipes": [
+        "bn-attk-infiltration"
       ]
     },
     {
@@ -205,6 +225,16 @@
       ]
     },
     {
+      "id": "div-advance-inf",
+      "name": "Inf Div Advance",
+      "task": "advance",
+      "echelon": "21",
+      "unit": "inf-div",
+      "recipes": [
+        "div-advance-inf"
+      ]
+    },
+    {
       "id": "div-bridgehead",
       "name": "Div Bridgehead",
       "task": "crossing",
@@ -317,6 +347,26 @@
       "unit": "inf-bde",
       "recipes": [
         "bde-attk-two-up"
+      ]
+    },
+    {
+      "id": "bde-relief",
+      "name": "Bde Relief in Line",
+      "task": "defence",
+      "echelon": "18",
+      "unit": "inf-bde",
+      "recipes": [
+        "bde-relief"
+      ]
+    },
+    {
+      "id": "bde-passage",
+      "name": "Bde Passage of Lines",
+      "task": "attack",
+      "echelon": "18",
+      "unit": "inf-bde",
+      "recipes": [
+        "bde-passage"
       ]
     },
     {

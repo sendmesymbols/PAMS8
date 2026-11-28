@@ -16,6 +16,8 @@ import { doctrineAt, resolveRange, slotSizeM, frontageRow, FOOTPRINT_KINDS, SMAL
 import { withdrawalGeometryRows } from './PlanWithdrawal';
 import { divAttackRows } from './PlanDivAttack';
 import { dcbRows } from './PlanDcb';
+import { passageRows, reliefRows } from './PlanRelief';
+import { antiHbRows, isAntiHb } from './PlanAntiHb';
 import { fupFromObjCheck } from './PlanContext';
 
 export type CheckState = 'pass' | 'warn' | 'fail' | 'unchecked';
@@ -548,6 +550,12 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     rows.push(...wd.rows);
     for (const [n, why] of wd.grey ?? [['Routes hidden', 'the routes back in the En view from the threat marker or the En FUP'], ['Behind an obstacle', 'water between the old posn and the intermediate posn']]) rows.push({ name: n, st: 'unchecked', reason: `${NT}: ${why}` });
     conf.push(...wd.confirm);
+  } else if (isAntiHb(recipe)) {
+    // anti para / heliborne defence of a VP (GSP 1947 s28 pp 127-133): its own rows, the landing areas assumed until fitted
+    const e = ext(allPts); frontageM = e.x1 - e.x0; depthM = e.y1 - e.y0;
+    const ah = antiHbRows(items, recipe, doc, null);
+    rows.push(...ah.rows);
+    conf.push(...ah.confirm);
   } else if (!isAttack) {
     const fpPts = fp.flatMap((b) => [boxPt(b.c, -b.w / 2, -b.h / 2, b.turn), boxPt(b.c, b.w / 2, b.h / 2, b.turn)]);
     const e = ext(fpPts.length ? fpPts : allPts);
@@ -651,6 +659,10 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     }
     // a Bde on a ditch cum bund (GSP 1947 s26 pp 118-121): its depth the Bns' own, three up, gaps, contingency posns
     conf.push(...dcbRows(items, recipe, doc, rows).confirm);
+    // a relief in line (GSP 1947 s29 pp 134-140)
+    const rl = reliefRows(items, recipe, doc);
+    rows.push(...rl.rows);
+    conf.push(...rl.confirm);
     const nFwd = recipe.slots.filter((s) => s.kind === 'fwd').length;
     if (opts.alternates !== 'none') rows.push({ name: 'Alternates', st: alts.length >= Math.min(nFwd, (recipe.alternates ?? []).length) ? 'pass' : 'warn', reason: `${alts.length} placed, clear of the other posns${alts.length ? `; moves ${alts.map((a) => `${a.label} ${a.min} min`).join(', ')}` : ''}` });
     // the Mor Pl as a whole from one posn, split in two sections only if the Bn front cannot be covered from it; on a wide
@@ -776,6 +788,10 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     const dv = divAttackRows(items, recipe, doc);
     rows.push(...dv.rows);
     conf.push(...dv.confirm);
+    // a passage of lines (GSP 1947 s20 pp 93-96)
+    const pl = passageRows(items, recipe);
+    rows.push(...pl.rows);
+    conf.push(...pl.confirm);
     // two phases (PlanPhase): Obj 2 behind Obj 1, the follow-up Coys round Obj 1 to FUP 2, Obj 1 the firm base
     const obj2 = at('obj2'), fup2 = at('fup2'), axis2 = at('axis2');
     const fus = items.filter((i) => i.role === 'fu1' || i.role === 'fu2');

@@ -1,0 +1,260 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "bn-anti-hb",
+  "family": "bn-anti-hb",
+  "layout": "anti-hb",
+  "echelon": "16",
+  "unit": "inf-bn-std",
+  "basis": "D",
+  "task": "defence",
+  "name": "Bn Anti-Heliborne: a VP guarded",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "pivot": "vp",
+  "note": "Anti para / heliborne defence of a vulnerable point (GSP 1947 Inf Div in Battle s28 pp 127-133). The En may land to seize dominating ground, crossings or defiles, isolate a strong point, attack a formation HQ, block the entry of reserves, capture airfields or delay a withdrawal (para 2 p 127). The Comd finds the probable landing sites and likely objectives from the map and the ground (para 6 p 130): with the terrain the fit reads the likely landing areas (LA) round the VP (open ground a helicopter can land on, level, clear over a landing patch, nearest first; PlanDoctrine antiHb, from IpbDoctrine's LZ figures), else three are assumed 2 km out (E). Each LA under an OP (para 5 a pp 128-129), denied by obstacles (poles, stakes, mines, para 11 a p 131) and with a road block on the way to the VP (para 11 b p 131; para 13 a (5) p 132); a local defence force at the VP covering the landing areas and the objective (para 9 pp 130-131: a Coy, E); an immediate action group, mobile, to engage the En while landing (para 13 a p 132: a Pl, E) and a deliberate action group, a combined arms mobile force with armour, to destroy the En (para 10 p 131, para 13 b pp 132-133: a Coy group with tanks, E). At Div level reliance is on mobile reserves, the paucity of troops not permitting all landing areas to be held (para 4 p 128). Click the VP to guard.",
+  "slots": [
+    {
+      "role": "vp",
+      "kind": "point",
+      "sym": "25271225",
+      "label": "VP",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "defVp",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "Local Def (Coy)",
+      "echelon": "15",
+      "order": 1,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": 0,
+          "wM": 1500,
+          "hM": 700
+        }
+      }
+    },
+    {
+      "role": "laA",
+      "kind": "area",
+      "sym": "25242304",
+      "label": "LA A",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": -1700,
+          "backM": -1000,
+          "wM": 300,
+          "hM": 300
+        }
+      }
+    },
+    {
+      "role": "obA",
+      "kind": "obstacle",
+      "sym": "25270200",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "rect": {
+          "acrossM": -1700,
+          "backM": -1000,
+          "wM": 400,
+          "hM": 400
+        }
+      }
+    },
+    {
+      "role": "opA",
+      "kind": "point",
+      "sym": "25160100",
+      "label": "OP A",
+      "order": 3,
+      "shape": {
+        "at": [
+          -1355,
+          -797
+        ]
+      }
+    },
+    {
+      "role": "rbA",
+      "kind": "point",
+      "sym": "25271204",
+      "label": "Rd Blk A",
+      "order": 3,
+      "shape": {
+        "at": [
+          -850,
+          -500
+        ]
+      }
+    },
+    {
+      "role": "laB",
+      "kind": "area",
+      "sym": "25242304",
+      "label": "LA B",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 1700,
+          "backM": -1000,
+          "wM": 300,
+          "hM": 300
+        }
+      }
+    },
+    {
+      "role": "obB",
+      "kind": "obstacle",
+      "sym": "25270200",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "rect": {
+          "acrossM": 1700,
+          "backM": -1000,
+          "wM": 400,
+          "hM": 400
+        }
+      }
+    },
+    {
+      "role": "opB",
+      "kind": "point",
+      "sym": "25160100",
+      "label": "OP B",
+      "order": 3,
+      "shape": {
+        "at": [
+          1355,
+          -797
+        ]
+      }
+    },
+    {
+      "role": "rbB",
+      "kind": "point",
+      "sym": "25271204",
+      "label": "Rd Blk B",
+      "order": 3,
+      "shape": {
+        "at": [
+          850,
+          -500
+        ]
+      }
+    },
+    {
+      "role": "laC",
+      "kind": "area",
+      "sym": "25242304",
+      "label": "LA C",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": 2000,
+          "wM": 300,
+          "hM": 300
+        }
+      }
+    },
+    {
+      "role": "obC",
+      "kind": "obstacle",
+      "sym": "25270200",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": 2000,
+          "wM": 400,
+          "hM": 400
+        }
+      }
+    },
+    {
+      "role": "opC",
+      "kind": "point",
+      "sym": "25160100",
+      "label": "OP C",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          1600
+        ]
+      }
+    },
+    {
+      "role": "rbC",
+      "kind": "point",
+      "sym": "25271204",
+      "label": "Rd Blk C",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          1000
+        ]
+      }
+    },
+    {
+      "role": "iag",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "IAG (Pl, mobile)",
+      "echelon": "14",
+      "order": 4,
+      "shape": {
+        "at": [
+          500,
+          500
+        ]
+      }
+    },
+    {
+      "role": "dag",
+      "kind": "point",
+      "sym": "10120500",
+      "label": "DAG (Coy gp + tks)",
+      "echelon": "15",
+      "order": 4,
+      "shape": {
+        "at": [
+          0,
+          3500
+        ]
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bn HQ",
+      "order": 4,
+      "shape": {
+        "at": [
+          -600,
+          900
+        ]
+      }
+    }
+  ],
+  "checks": []
+}

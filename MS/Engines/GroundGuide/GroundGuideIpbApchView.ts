@@ -29,6 +29,8 @@ const SHADES_EN = ['#ff5a60', '#ff8a8d', '#ffc3c5', '#e9aab6', '#d98892', '#f0b8
 const SHADES_OWN = ['#8ec1ea', '#b5d8f2', '#d6e9f8', '#9fb7d9', '#7fa6cf', '#c9d8ea'];
 const SVGNS = 'http://www.w3.org/2000/svg';
 const STYLE_ID = 'ms-ground-guide-ipb-apch-style';
+/** Hours after H, minutes when under an hour (the GSP ladder's Bn 35-40 min). */
+const hMin = (h: number) => (h < 1 ? `${Math.round(h * 60)} min` : `${h}`);
 const CSS = `
 .ms-gia-pic{display:block;border-radius:8px;background:#11161b}
 /* The pictures are drawn at 380-420 px; a Detail column can be 260-300 px and the band 260 px high: they scale down to
@@ -1072,7 +1074,7 @@ export function decisionTiles(o: GroundGuideOcoka): HTMLElement[] {
     // Reading the En defence: when each level of his reserve can react (IDD p 5; IC s114 para 14 pp 671-672 beside, the
     // books differ: OcokaDoctrine enemyMarch.reserves), against own time onto the Obj.
     const list = el('div', 'ms-gx-list');
-    for (const r of dv.reserves) list.append(el('div', undefined, `${r.level} res`), el('div', undefined, `${r.fromH === r.toH ? `H+${r.fromH}` : `H+${r.fromH} to H+${r.toH}`}${r.from === 'decision' ? ' after his decision' : ''}${r.what ? ` · ${r.what}` : ''}`));
+    for (const r of dv.reserves) list.append(el('div', undefined, `${r.level} res`), el('div', undefined, `${r.fromH === r.toH ? `H+${hMin(r.fromH)}` : `H+${hMin(r.fromH)} to H+${hMin(r.toH)}`}${r.from === 'decision' ? ' after his decision' : ''}${r.what ? ` · ${r.what}` : ''}`));
     const best = [...dv.profiles].filter((p) => p.viable).sort((p, q) => p.endH[0] - q.endH[0])[0];
     out.push(tile('En Reserves · When They Can React', list, note(`Indian Defensive Doctrine p 5: Bn about 1 h, Bde 2-4 h after the attack starts, Div 4-6 h, Corps 12-16 h after the decision. The books differ: IC s114 para 14 pp 671-672 (Foxland) gives his Bn's committed depth Coy 30-45 min of the attack, his Bde's Sqn and about two Coys 2-3 h and his Div's reserve 4-6 h of the decision to employ them, and GSP 1947 Inf Div in Battle p 83 the same (the Bn's Coy within 35-40 min of the attack); the earlier Bn figure is IC's and GSP's.${best ? ` Own fastest Apch ${best.aa} crosses the area ${hPlus(best.endH[0])} at the earliest.` : ''} Be firm on the Obj and sited against them before they can come in.`)));
   }
@@ -1124,7 +1126,7 @@ export function decisionText(o: GroundGuideOcoka): string[] {
     for (const t of dv.tais) L.push(`  ${t.id} on ${t.aa}: ${t.why}; ${hPlus(t.earliestH)} at the earliest.`);
     for (const d of dv.dps) L.push(`  ${d.id} ${clock(dv, d.earliestH)}, ${whereDp(d)}: ${d.decision}.`);
   }
-  for (const r of dv.reserves ?? []) L.push(`  ${r.text} (IDD p 5).`);
+  for (const r of dv.reserves ?? []) L.push(`  ${r.text}.`);
   for (const n of dv.notes) L.push(`  ${n}`);
   return L;
 }

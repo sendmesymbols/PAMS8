@@ -1985,7 +1985,14 @@ blank (`____`) or listed under Confirm on Gr.
 - **Demolition:** bridges within 1 km of where an approach crosses water. None carries a load class in this bundle.
 - **Laterals:** metalled roads of class 30 and up that touch two approaches.
 - **Going:** GO / SLOW-GO / NO-GO shares in the AOR, NO-GO areas in it and beyond it, and the country (Canal plains, Plains,
-  Riverine, Desert, Mountains, Built-up), from the class shares.
+  Riverine, Desert, Mountains, Built-up), from the class shares (`aorCountry`). Slope classes (sloping 7-15°, moderate,
+  steep, escarpment) over 15 % make Mountains only where the ground within 5 km of the MITG also rises 400 m or more
+  (IpbTemplates `mountainTest`, E, the same test as the IPB templates, the gun / admin finders and the Plan Builder;
+  `reliefM` read from the bundle's elevation two zooms below the finest, `_aorRelief`). On lower ground the slopes are
+  dune faces (dunes 50-300 ft, a vertical slip face: DW pp 2-3) or broken ground and the other classes decide (28 Nov
+  2026: the Thar round Mithi read Mountains, its ground rising 73 m, and Islamkot at 72 m; the Karoonjhar hills at
+  Nagarparkar, 307 m, read Plains). Without elevation the classes alone decide, as before. The reading carries `reliefM`; the Aprc's Gen Description prints it.
+  `node tools/ipb-test/desert.mjs` G4.
 
 **The rail.** Every option of the mockup is kept. They switch on the fly from the rail's foot, and also from the settings,
 Ctrl+K and the API.

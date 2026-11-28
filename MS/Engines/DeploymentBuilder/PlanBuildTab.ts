@@ -70,7 +70,7 @@ import movementSpeeds from '../../Data/MovementSpeeds.json';
 import { waterRulesFrom } from '../MovementGuide/MovementGuideWater';
 import { checkCrossing, hRel as hClock, withMinefield, type Light } from './PlanCrossing';
 import { withdrawalGeom, checkWithdrawal } from './PlanWithdrawal';
-import { isFmnWithdrawal } from './PlanWithdrawalFmn';
+import { isFmnWithdrawal, withWdrOptions } from './PlanWithdrawalFmn';
 import { layoutRows } from './PlanMountain';
 import type { PlanEntry, PlacementHooks, PlacementEnd, DrawnRead } from './DeploymentBuilderEngine';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
@@ -131,7 +131,7 @@ const STEPS = ['Task', 'Enemy', 'Place', 'Check', 'Create'];
 const LAYOUT_LABEL: Record<string, string> = {
   'two-up': 'Two up', 'three-up': 'Three up', 'one-up': 'One up', 'all-round': 'All round', canal: 'Canal', 'canal-three-up': 'Canal, three up', ditch: 'AT ditch', extended: 'Extended', 'rev-slope': 'Reverse slope', night: 'By night', frontal: 'Frontal',
   'left-flank': 'Lt flank', 'right-flank': 'Rt flank',
-  line: 'Line', l: 'L', v: 'V', patrol: 'Out and back', 'two-ops': 'Two OPs', 'three-ops': 'Three OPs', 'four-bn': 'Four Bns', 'armd-lead': 'Armd Bde leading', 'two-bde': 'Two Bdes', area: 'Area', screen: 'Screen', 'three-axes': 'Three axes', 'main-left': 'Two up, main Lt', 'main-right': 'Two up, main Rt', delay: 'Delay', 'by-day': 'By day', ridge: 'Ridge', salient: 'Salient', mobile: 'Mobile def', valleys: 'Valleys', 'salient-wedge': 'Salient, wedge',
+  line: 'Line', l: 'L', v: 'V', patrol: 'Out and back', 'two-ops': 'Two OPs', 'three-ops': 'Three OPs', 'four-bn': 'Four Bns', 'armd-lead': 'Armd Bde leading', 'two-bde': 'Two Bdes', area: 'Area', screen: 'Screen', 'three-axes': 'Three axes', 'main-left': 'Two up, main Lt', 'main-right': 'Two up, main Rt', relief: 'Relief in line', passage: 'Passage of lines', 'anti-hb': 'Anti-heliborne', 'inf-div': 'Inf Div, one axis', delay: 'Delay', 'by-day': 'By day', ridge: 'Ridge', salient: 'Salient', mobile: 'Mobile def', infiltration: 'Infiltration', valleys: 'Valleys', 'salient-wedge': 'Salient, wedge',
 };
 const MOVER_LABEL: Record<Mover, string> = { wheeled: 'Wheeled', tracked: 'Tanks', dismounted: 'On foot' };
 const MOVERS: Mover[] = ['wheeled', 'tracked', 'dismounted'];
@@ -141,7 +141,7 @@ const footSpeeds = (): PlFootSpeeds => {
   return { ground: f.ground ?? { open: [4, 3] }, road: f.road?.track ?? [4, 3], toblerA: Array.isArray(f.slope?.a) ? f.slope.a[0] : 3.5, toblerB: typeof f.slope?.b === 'number' ? f.slope.b : 0.05 };
 };
 /** A recipe id without the two-phase suffix (PlanPhase.twoPhaseRecipe adds -2ph). */
-const baseId = (id: string) => id.replace(/-ad$/, '').replace(/-gun$/, '').replace(/-inu$/, '').replace(/-rcs$/, '').replace(/-en$/, '').replace(/-mf$/, '').replace(/-tk[cf]$/, '').replace(/-tkd\d$/, '').replace(/-amf$/, '').replace(/-2ph1?$/, '').replace(/-pre$/, '');
+const baseId = (id: string) => id.replace(/-ad$/, '').replace(/-gun$/, '').replace(/-inu$/, '').replace(/-rcs$/, '').replace(/-en$/, '').replace(/-mf$/, '').replace(/-tk[cf]$/, '').replace(/-tkd\d$/, '').replace(/-amf$/, '').replace(/-2ph1?$/, '').replace(/-pre$/, '').replace(/-w[012]r?m?$/, '');
 const WORD: Record<CheckState, string> = { pass: 'Pass', warn: 'Warn', fail: 'Fail', unchecked: 'Not checked' };
 const RGB: Record<CheckState, [number, number, number]> = { pass: [47, 168, 98], warn: [238, 138, 31], fail: [229, 72, 77], unchecked: [127, 136, 147] };
 const esc = (s: unknown) => Utils.escapeHtml(String(s ?? ''));
@@ -445,6 +445,13 @@ export class PlanBuildTab {
   private _mfAttk = false;
   /** A Div attack's preliminary operation on his outposts (PlanDivAttack.withDivOptions; GSP 1947 s19 para 13 d p 89). */
   private _divPrelim = false;
+  /** A formation withdrawal's intermediate posns and who prepares a Div's new posn (PlanWithdrawalFmn.withWdrOptions; GSP 1947 p 145). */
+  private _wdrIntPosns: 0 | 1 | 2 = 2;
+  private _wdrNewPosnBy: 'fresh' | 'res' = 'fresh';
+  /** A withdrawal: the delay the higher Comd orders, hours; null = the new posn's prep (PlanWithdrawalFmn.timeSpaceRow). */
+  private _wdrDelayH: number | null = null;
+  /** A Bde / Div withdrawal: lay the delay means (stay-behind parties, subsidiary belts, road denial band; withWdrOptions). */
+  private _wdrMeans = false;
   private _plRules = plRulesFrom(platoonDoctrine);
   private _speeds = footSpeeds();
   /** An ambush's target: wheeled, tanks or on foot (M walks it while placing). */
@@ -838,6 +845,24 @@ export class PlanBuildTab {
     }
     // an advance: its march serials from the ORBAT and the Move Planner's road rules (PlanAdvance.marchFromOrbat), the
     // report lines' spacing and the march's H as set
+    // a Bde / Div withdrawal: its intermediate posns and who prepares the new posn (PlanWithdrawalFmn.withWdrOptions), cached
+    // and the delay the higher Comd orders (Recipe.wdrDelayH; OOW3 p 10 para 6 c)
+    if (base?.task === 'withdrawal' && base.layout !== 'delay' && base.layout !== 'by-day') {
+      let v: Recipe = base;
+      if (isFmnWithdrawal(base) && (this._wdrIntPosns !== 2 || this._wdrMeans || (this._wdrNewPosnBy === 'res' && base.echelon === '21'))) {
+        const key = `${base.id}:wdr:${this._wdrIntPosns}:${this._wdrNewPosnBy}:${this._wdrMeans ? 'm' : ''}`;
+        let w = this._ph2.get(key);
+        if (!w) { w = withWdrOptions(base, this._doc, { intPosns: this._wdrIntPosns, newPosnBy: this._wdrNewPosnBy, means: this._wdrMeans }); this._ph2.set(key, w); }
+        v = w;
+      }
+      if (this._wdrDelayH !== null) {
+        const key = `${v.id}:delay:${this._wdrDelayH}`;
+        let d = this._ph2.get(key);
+        if (!d) { d = { ...v, wdrDelayH: this._wdrDelayH }; this._ph2.set(key, d); }
+        v = d;
+      }
+      if (v !== base) return v;
+    }
     if (base?.task === 'advance') {
       if (!this._orbat) return { ...base, advance: { rlApartM: this._rlApartKm * 1000, hAt: this._hAt } };
       const key = `${base.id}:mv:${this._rlApartKm}:${this._hAt}`;
@@ -1630,6 +1655,10 @@ export class PlanBuildTab {
       case 'enType': this._enType = (val as any) || 'auto'; this._solve(); if (this._mode === 'check' && this._checkRecs) this._runCheck(); break;
       case 'night': this._night = val === 'on'; this._solve(); break;
       case 'phases': this._setPhases(val === '3' ? 3 : val === '2' ? 2 : 1); break;
+      case 'wdrIp': this._wdrIntPosns = val === '0' ? 0 : val === '1' ? 1 : 2; this._swapPlan(`Intermediate posns: ${this._wdrIntPosns}`); break;
+      case 'wdrDelay': this._wdrDelayH = val === 'prep' ? null : Number(val) || null; this._swapPlan(this._wdrDelayH === null ? 'Time and space against the new posn\'s preparation (OOW1 p 39)' : `Delay ordered: ${this._wdrDelayH} h (OOW3 p 10 para 6 c)`); break;
+      case 'wdrMeans': this._wdrMeans = val === 'on'; this._swapPlan(this._wdrMeans ? 'Delay means laid: stay-behind parties, subsidiary belts, a road denial band (OOW3 pp 36, 56-57)' : 'Delay means left to the confirm list'); break;
+      case 'wdrNew': this._wdrNewPosnBy = val === 'res' ? 'res' : 'fresh'; this._swapPlan(this._wdrNewPosnBy === 'res' ? 'The reserve Bde prepares and holds the new posn (GSP 1947 p 145)' : 'Fresh troops prepare the new posn (OOW3 p 39)'); break;
       case 'prelim': this._divPrelim = val === 'on'; this._swapPlan(this._divPrelim ? 'Prelim op: his outposts on the ground of the FUPs cleared first by each leading Bde\'s Res Bn' : 'No preliminary operation'); break;
       case 'ph2Coys': this._setCoys(val === '1' ? 1 : 2); break;
       case 'tanks': this._setTanks(val === 'close' || val === 'fire' ? val : 'none'); break;
@@ -1773,7 +1802,7 @@ export class PlanBuildTab {
             : task === 'ambush' ? 'Click the KZ on the Rd'
               : task === 'patrol' ? 'Click the SP'
                 : task === 'recce' ? (this._isScreen ? 'Click the Wdr RV in the main posn' : 'Click the SP')
-                  : isCanalLayout(r?.layout) ? 'Click the point on the canal' : r?.layout === 'ditch' ? 'Click the point on the ditch' : 'Click where the HQ goes';
+                  : isCanalLayout(r?.layout) ? 'Click the point on the canal' : r?.layout === 'ditch' ? 'Click the point on the ditch' : r?.layout === 'anti-hb' ? 'Click the VP to guard' : 'Click where the HQ goes';
       return { step: 'Step 1 of 2', text: first };
     }
     const second = task === 'crossing' ? 'Aim across to the far bank, then click'
@@ -3132,7 +3161,12 @@ export class PlanBuildTab {
     const syms = readSymbols(records).filter((s) => s.pbRole && s.pbRecipe === recipeId);
     const base0 = this._recipes.get(baseId(recipeId));
     // an advance read with the report lines' spacing and the march's H as set (as the build lays it)
-    const base = base0?.task === 'advance' ? this._rcpBase(base0.id) ?? base0 : base0;
+    // a Bde / Div withdrawal read as it was built: its int posns and who prepares the new posn from the id (-w0, -w1r ...)
+    const wv = base0?.task === 'withdrawal' ? /-w([012])(r?)(m?)$/.exec(recipeId) : null;
+    let base = base0?.task === 'advance' ? this._rcpBase(base0.id) ?? base0
+      : wv && base0 ? withWdrOptions(base0, this._doc, { intPosns: Number(wv[1]) as 0 | 1 | 2, newPosnBy: wv[2] ? 'res' : 'fresh', means: !!wv[3] }) : base0;
+    // the delay as now set in the tab (it is not carried on the plan's id)
+    if (base?.task === 'withdrawal' && this._wdrDelayH !== null) base = { ...base, wdrDelayH: this._wdrDelayH };
     if (!base || !syms.length) { this._msg = 'Nothing of that plan to read.'; this._render(); return; }
     const mfd = /-mf(-en)?(-gun)?(-ad)?$/.test(recipeId) ? withMinefield(base, this._doc) : base;
     // the artillery and AD it was built with (pbMeta.arty, .ad): their gun areas and FUs back on the plan so their
@@ -3650,6 +3684,23 @@ export class PlanBuildTab {
           { on: !this._mfAttk, label: 'None', data: 'mf:off', title: 'No minefield known in front of the Obj' },
           { on: this._mfAttk, label: 'In front', data: 'mf:on', title: 'The En protective minefield about 200 m in front of the Obj, 250-300 m deep (IC s111.5, s107): a lane for each assault Coy, breached before H (Breach row; the engineers in the Engrs row)' }])))
       : '';
+    const delayRow = res.recipe.task === 'withdrawal' && res.recipe.layout !== 'delay' && res.recipe.layout !== 'by-day'
+      ? row('Delay', seg([
+        { on: this._wdrDelayH === null, label: 'Prep', data: 'wdrDelay:prep', title: 'No delay ordered: time and space against the new posn\'s preparation, a Bn 36 working hours (OOW1 s8 para 7 p 39); a Bn withdrawal then shows no Time and space row' },
+        ...[24, 48, 72, 96].map((h) => ({ on: this._wdrDelayH === h, label: `${h} h`, data: `wdrDelay:${h}`, title: `The higher Comd orders the En held forward of the new posn for ${h} h (OOW3 s2 para 6 c p 10; s6 para 6 a p 29)` }))]))
+      : '';
+    const wdr = delayRow + (res.recipe.task === 'withdrawal' && isFmnWithdrawal(res.recipe)
+      ? row('Int posns', seg([
+        { on: this._wdrIntPosns === 2, label: '2', data: 'wdrIp:2', title: 'Two intermediate posns as OoW Vol III Annex P draws them (p 75)' },
+        { on: this._wdrIntPosns === 1, label: '1', data: 'wdrIp:1', title: 'One intermediate posn: their number by the Comd\'s appreciation (GSP 1947 s30 para 13 p 144; OOW3 p 33 para 17)' },
+        { on: this._wdrIntPosns === 0, label: 'None', data: 'wdrIp:0', title: 'No intermediate posn: to save infantry, avoided if the covering troops can do the job (GSP 1947 s30 para 15 p 145)' }]))
+        + (res.recipe.echelon === '21' ? row('New posn by', seg([
+          { on: this._wdrNewPosnBy === 'fresh', label: 'Fresh tps', data: 'wdrNew:fresh', title: 'Fresh troops prepare the new main posn, the reserve Bde kept for counter-attacks (OOW3 s7 paras 2-5 pp 39-40)' },
+          { on: this._wdrNewPosnBy === 'res', label: 'Res Bde', data: 'wdrNew:res', title: 'The reserve Bde prepares and holds the new main posn, as GSP 1947 s30 para 17 p 145 has it normally: no reserve left forward' }])) : '')
+        + row('Delay means', seg([
+          { on: !this._wdrMeans, label: 'Off', data: 'wdrMeans:off', title: 'Stay-behind parties, subsidiary belts and road denial bands left to the confirm list' },
+          { on: this._wdrMeans, label: 'On', data: 'wdrMeans:on', title: 'Lay them: two stay-behind parties (OOW3 s6 para 27 p 36: the most effective means to impose delay), a subsidiary demolition belt in front of each intermediate posn and a road denial band across the whole front (s12 para 5 b-c pp 56-57)' }]))
+      : '');
     const sq = this._tankSqn;
     const tankFacts = res.recipe.task === 'attack' && this._tanks !== 'none' && sq
       ? `<div class="pb-hint"><b>A Sqn</b> ${esc(tankSqnText(sq))}${this._tanks === 'close' && sq.tpTanks ? `; Close sp sends ${sq.tanks - sq.tpTanks} and leaves a Tp of ${sq.tpTanks} on the BOF's flank` : ''} · ${esc(sq.src)} · main gun ranges are not printed for the tank types (only the Al-Zarrar's), so the doctrine's night 800 / 1600 m stands</div>`
@@ -3659,7 +3710,7 @@ export class PlanBuildTab {
       { on: this._alternates === 'hidden', label: 'Created, hidden', data: 'alt:hidden' }, { on: this._alternates === 'visible', label: 'Shown', data: 'alt:visible' }, { on: this._alternates === 'none', label: 'None', data: 'alt:none' }])) : '';
     return `
       <div class="pb-group">${row('Operation', tasks)}${row('Unit', units)}${this._unitTypeRow(res.recipe)}</div>
-      <div class="pb-group">${row('Layout', layout)}${this._isSmall || this._isCrossing ? this._smallRows(res.recipe.task) : this._groundRow()}${this._isCrossing ? this._engrRow(res.recipe) : ''}${attack}${tankFacts}${draw}${alts}</div>
+      <div class="pb-group">${row('Layout', layout)}${this._isSmall || this._isCrossing ? this._smallRows(res.recipe.task) : this._groundRow()}${this._isCrossing ? this._engrRow(res.recipe) : ''}${attack}${wdr}${tankFacts}${draw}${alts}</div>
       <div class="pb-plan">
         <div class="pb-sum">${esc(this._auto ? `${fam?.name ?? ''}: Auto (best layout where it rests)` : res.recipe.name)} <span class="pb-dim">${fmtM(res.frontageM)} × ${fmtM(res.depthM)} · ${res.items.length} symbols${fam?.unit ? ` · ${esc(fam.name)} (ORBAT)` : ''}</span></div>
         ${this._preview(res)}

@@ -3163,7 +3163,7 @@
 #deploymentBuilderWidget .pb-sum .pb-dim { margin-left: 6px; font-size: var(--pb-fs-ctl); font-weight: 400; }
 #deploymentBuilderWidget .pb-dim { color: var(--pb-dim); }
 #deploymentBuilderWidget .pb-hint { margin: 6px 0 0; color: var(--pb-dim); font-size: var(--pb-fs-ctl); }
-#deploymentBuilderWidget .pb-p { margin: 6px 0; max-width: 65ch; }
+#deploymentBuilderWidget .pb-p { margin: 6px 0; }
 #deploymentBuilderWidget .pb-p.pb-dim { font-size: var(--pb-fs-ctl); }
 #deploymentBuilderWidget .pb-body > .pb-p:first-child, #deploymentBuilderWidget .pb-body > .pb-msg + .pb-p { margin-top: 0; }
 #deploymentBuilderWidget .pb-p b, #deploymentBuilderWidget .pb-hint b { color: var(--ms-text); font-weight: 600; }
