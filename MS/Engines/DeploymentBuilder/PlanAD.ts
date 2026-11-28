@@ -108,7 +108,8 @@ export function adOnPlan(a: AdType, doc: DoctrineSet, ground: string | null = nu
  */
 const VP: [RegExp, string, number, number][] = [
   [/^bridge\d*$/, 'the bridge', 1, 1],
-  [/^gunArea\d*$/, 'the gun area', 1, 3],
+  // a Bty laid by section in the mountains (PlanArty.withGunSections: gunAreaS2, gunArea2S3 ...): every section a gun area
+  [/^gunArea\d*(S\d+)?$/, 'the gun area', 1, 3],
   [/^hq$/, 'the HQ', 2, 2],
   [/^tkHarbour\d*$/, 'the tank Assy area', 2, 2],
   [/^(assy\d*|vwa)$/, 'the Assy area', 3, 3],
@@ -152,7 +153,8 @@ const SITE_DEG = [-40, 40, 180, -100, 100, 0];
  */
 export function withAd(r: Recipe, doc: DoctrineSet, a: AdOnPlan): Recipe {
   if (r.ad) return r;
-  const vps = vpsOf(r, doc, a.ground ?? null);
+  // a Bty's later sections share the FUs sited round its first (within 2 km of it, inside the FUs' reach): no FUs of their own
+  const vps = vpsOf(r, doc, a.ground ?? null).filter((v) => !/^gunArea\d*S\d+$/.test(v.role));
   if (!vps.length) return r;
   const out: Recipe = JSON.parse(JSON.stringify(r));
   const at = new Map<string, number>();
@@ -203,7 +205,8 @@ export function adRows(items: { role: string; pts: XY[] }[], recipe: Pick<Recipe
     const c = centre(v.pts);
     const n = fus.filter((u) => u.f.effM - Math.hypot(u.c.x - c.x, u.c.y - c.y) >= a.releaseM).length;
     const no = v.role.match(/(\d+)$/)?.[1];
-    const label = (v as any).label ? `${what} (${(v as any).label})` : no ? `${what} ${no}` : what;
+    const sec = v.role.match(/S(\d+)$/)?.[1];
+    const label = (v as any).label ? `${what} (${(v as any).label})` : sec ? `${what} Sec ${sec}` : no ? `${what} ${no}` : what;
     if (pri === 1 && n === 0) worse('fail');
     else if (pri === 1 && n < a.minFus) worse('warn');
     else if (n === 0) worse('warn');

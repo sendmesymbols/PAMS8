@@ -326,7 +326,8 @@
       "echelon": "18",
       "unit": "inf-bde",
       "recipes": [
-        "bde-attk-mtn-salient"
+        "bde-attk-mtn-salient",
+        "bde-attk-mtn-salient-wedge"
       ]
     },
     {

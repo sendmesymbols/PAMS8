@@ -139,7 +139,7 @@ export interface Recipe {
 export const SMALL_TASKS: readonly string[] = ['ambush', 'patrol', 'recce'];
 
 export const TASKS = ['defence', 'attack', 'crossing', 'advance', 'ambush', 'patrol', 'recce', 'withdrawal'] as const;
-export const LAYOUTS = ['two-up', 'three-up', 'one-up', 'all-round', 'canal', 'rev-slope', 'frontal', 'left-flank', 'right-flank', 'two-phase', 'night', 'line', 'l', 'v', 'patrol', 'two-ops', 'three-ops', 'four-bn', 'two-bde', 'area', 'screen', 'armd-lead', 'three-axes', 'delay', 'by-day', 'ridge', 'penetrant', 'lateral', 'pass', 'valley', 'mtn', 'bua', 'fixing', 'extended', 'canal-three-up', 'ditch', 'main-left', 'main-right', 'salient', 'mobile', 'valleys'] as const;
+export const LAYOUTS = ['two-up', 'three-up', 'one-up', 'all-round', 'canal', 'rev-slope', 'frontal', 'left-flank', 'right-flank', 'two-phase', 'night', 'line', 'l', 'v', 'patrol', 'two-ops', 'three-ops', 'four-bn', 'two-bde', 'area', 'screen', 'armd-lead', 'three-axes', 'delay', 'by-day', 'ridge', 'penetrant', 'lateral', 'pass', 'valley', 'mtn', 'bua', 'fixing', 'extended', 'canal-three-up', 'ditch', 'main-left', 'main-right', 'salient', 'mobile', 'valleys', 'salient-wedge'] as const;
 /** A defence laid along a canal by PlanCrossing.canalPrep (IBB Annex V p 483 / App 8 p 484): two up, or three up as the annex draws it. */
 export const isCanalLayout = (layout: string | undefined | null): boolean => layout === 'canal' || layout === 'canal-three-up';
 export const ECHELONS = ['13', '14', '15', '16', '17', '18', '21'] as const;

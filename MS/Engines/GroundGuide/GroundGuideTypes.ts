@@ -684,6 +684,8 @@ export interface IpbApchAa {
     top: ['valley' | 'nullah' | 'ridge' | 'slope', 'valley' | 'nullah' | 'ridge' | 'slope' | null];
     shares: Record<'valley' | 'nullah' | 'ridge' | 'slope', number>;
     floorM: number | null;
+    /** A road or track along it, % of its length within `mountainApproach.road.nearM` (the class grid's road classes). */
+    road?: { pct: number; hardPct: number };
     say: string[];
     hardest?: boolean;
   };

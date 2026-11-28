@@ -36,7 +36,7 @@ const nameOf = (i: { role: string; label?: string }) => (i.label ?? i.role).repl
 /** The mountain defence layouts and the attack (recipe layouts). */
 export const MTN_DEF_LAYOUTS = ['ridge', 'penetrant', 'lateral', 'pass', 'valley', 'salient', 'valleys'] as const;
 /** The mountain attacks: the multidirectional Bn attack (MW s7) and the reduction of a salient (MW s9). */
-export const MTN_ATK_LAYOUTS = ['mtn', 'salient'] as const;
+export const MTN_ATK_LAYOUTS = ['mtn', 'salient', 'salient-wedge'] as const;
 export const isMountainRecipe = (r: Recipe) => (r.task === 'defence' && (MTN_DEF_LAYOUTS as readonly string[]).includes(r.layout)) || (r.task === 'attack' && (MTN_ATK_LAYOUTS as readonly string[]).includes(r.layout));
 
 /**
@@ -62,7 +62,7 @@ export function layoutRows(items: Item[], recipe: Recipe, doc: DoctrineSet, elev
   if (recipe.layout === 'fixing') return fixingRows(items, recipe, doc);
   if (recipe.layout === 'mobile') return mobileRows(items, recipe, doc);
   if (!isMountainRecipe(recipe)) return [];
-  if (recipe.task === 'attack') return recipe.layout === 'salient' ? salientAttackRows(items, doc, elevAt) : mtnAttackRows(items, doc, elevAt);
+  if (recipe.task === 'attack') return recipe.layout === 'salient' ? salientAttackRows(items, doc, elevAt) : recipe.layout === 'salient-wedge' ? wedgeAttackRows(items, doc, elevAt) : mtnAttackRows(items, doc, elevAt);
   return mtnDefRows(items, recipe, doc, elevAt);
 }
 
@@ -94,6 +94,24 @@ export interface FeatureRead {
   over: { at: XY; m: number; dM: number } | null;
   /** Share of the samples with a height. */
   known: number;
+}
+
+/**
+ * The rear area of a defence on mountain ground (MW s21 pp 232-238): what of it the plan holds (the HQ, gun areas, C Pen
+ * posns, bridges, admin installations, para 3 pp 232-233), what the En's infiltrators do there (para 4 p 233) and the
+ * measures (p 237). A row to confirm: the plan carries no guard or patrol plan to judge. Null when the plan holds none.
+ */
+export function rearAreaRow(items: { role: string; label?: string; pts: XY[] }[]): Check | null {
+  const has = (re: RegExp) => items.filter((i) => re.test(i.role) && i.pts.length);
+  const parts: string[] = [];
+  const n = (k: number, one: string, many: string) => (k ? `${k === 1 ? `the ${one}` : `${k} ${many}`}` : '');
+  const hq = has(/^hq$/), guns = has(/^gunArea/), cpen = has(/^cpen/), br = has(/^bridge/), adm = has(/^(adm|baa|daa|ech|ads)/i);
+  for (const p of [n(hq.length, hq[0]?.label ?? 'HQ', 'HQs'), n(guns.length, 'gun area', 'gun areas'), n(cpen.length, 'C Pen posn', 'C Pen posns'), n(br.length, 'bridge', 'bridges'), n(adm.length, 'admin area', 'admin areas')]) if (p) parts.push(p);
+  if (!parts.length) return null;
+  return {
+    name: 'Rear area', st: 'unchecked',
+    reason: `on the plan: ${parts.join(', ')}: in the mountains the En's infiltrating parties reach the rear area easily, and its logistic and command elements cluster on the few roads and choke points (MW s21 para 2 p 232); the rear area holds the formation's Tac HQ, the admin installations, the gun areas and wagon lines, the C Pen posns, the bridges, defiles, landing grounds, helicopter sites and transformers (para 3 pp 232-233); the En infiltrates behind the FDLs to raid the admin installations, destroy the guns and the important bridges, set off slides to block the roads, and seize the defiles or occupy the C Pen posns (para 4 a, c p 233): a guard or patrol plan for each, diversions built beforehand for the important bridges, convoys with AA weapons mounted (p 237): plan and confirm them`,
+  };
 }
 
 /**
@@ -370,6 +388,51 @@ function salientAttackRows(items: Item[], doc: DoctrineSet, elevAt?: ElevAt): Ch
       rows.push({ name: 'Infiltration to the base', st: deep ? 'pass' : 'warn', reason: `${infil.label ?? 'the infiltration force'}: ${fmtM(Math.max(0, along(I)))} beyond the tip toward the base (${fmtM(archR)} or more, M): infiltration can lead to early seizure of the vital objective in the rear (MW s9 para 10 p 132), from relatively less important and lightly held sectors, overnight (para 4 p 128)` });
     } else rows.push({ name: 'Infiltration to the base', st: 'warn', reason: 'no infiltration force: the base is attacked by envelopment combined with infiltration (MW s9 para 5 a p 128; para 10 p 132)' });
   } else rows.push({ name: 'Front fixed', st: 'warn', reason: 'no fixing force facing the arch: a salient is reduced by fixing the En from the front while his base is attacked by envelopment combined with infiltration (MW s9 para 5 a p 128)' });
+  rows.push(...salientCommonRows(items, obj, doc, elevAt));
+  return rows;
+}
+
+/**
+ * The second form of manoeuvre against the En's salient (MW s9 para 9 p 130; Figure 5 p 131): the salient divided through
+ * a wedge for subsequent reduction. The main attack comes in from a flank and the secondary up through the tip, their
+ * Objs meeting in its middle; a fixing force holds the other flank; infiltration to the base blocks his reinforcement.
+ */
+function wedgeAttackRows(items: Item[], doc: DoctrineSet, elevAt?: ElevAt): Check[] {
+  const rows: Check[] = [];
+  const at = (role: string) => items.find((i) => i.role === role && i.pts.length);
+  const obj = at('obj'), objS = at('objS'), axis = at('axis'), axisS = at('axisS'), fix = at('fix'), infil = at('infil');
+  if (!obj) return rows;
+  const O = centre(obj.pts);
+  const link = num(doc, 'mountain.salient.wedgeLinkM', 1500), flankDeg = num(doc, 'mountain.salient.flankMinDeg', 45);
+  const dirOf = (a: Item) => { const p = a.pts[0], q = a.pts[a.pts.length - 1], d = dist(p, q) || 1; return P((q.x - p.x) / d, (q.y - p.y) / d); };
+  const rule = 'the salient may be divided through a wedge for subsequent reduction (MW s9 para 9 p 130; Figure 5 p 131): the main attack in from a flank, the secondary up through the tip to meet it, a fixing force on the other flank';
+  if (objS && axis && axisS) {
+    const S = centre(objS.pts), gap = dist(O, S);
+    const u = dirOf(axis), v = dirOf(axisS), deg = (Math.acos(Math.max(-1, Math.min(1, u.x * v.x + u.y * v.y))) * 180) / Math.PI;
+    const ok = gap <= link && deg >= flankDeg;
+    rows.push({
+      name: 'Wedge', st: ok ? 'pass' : 'warn',
+      reason: `${obj.label ?? 'OBJ A'} and ${objS.label ?? 'OBJ B'} ${fmtM(gap)} apart (meet within ${fmtM(link)}, M), the main axis ${Math.round(deg)}° off the secondary (from a flank at ${flankDeg}° or more, M): ${rule}`,
+      ...(ok ? {} : { detail: { head: gap > link ? 'The two attacks do not meet' : 'The main attack does not come from a flank', why: 'A wedge divides the salient only where the main and secondary attacks join in its middle; apart, each is a frontal attack on a strongly held approach (MW s9 para 4 a p 127, para 9 p 130).', fix: ['Lay OBJ A and OBJ B side by side in the middle of the salient', 'Bring the main attack in from a flank, the secondary up through the tip', 'Or attack the base from both flanks (Figure 4: Salient)'] } }),
+    });
+  } else rows.push({ name: 'Wedge', st: 'warn', reason: `no secondary attack through the tip: ${rule}` });
+  const mainSide = axis ? Math.sign(centre(axis.pts).x - O.x) || -1 : -1;
+  const fixSide = fix ? Math.sign(centre(fix.pts).x - O.x) : 0;
+  rows.push(fix && fixSide && fixSide !== mainSide
+    ? { name: 'Flank fixed', st: 'pass', reason: `${items.find((i) => /^bnFix/.test(i.role))?.label ?? 'a force'} fixes the flank opposite the main attack (MW s9 Figure 5 p 131); his reserves committed in the wrong direction or fixed from the outset (para 5 d p 129)` }
+    : { name: 'Flank fixed', st: 'warn', reason: `${fix ? 'the fixing force is on the same flank as the main attack' : 'no fixing force'}: in the wedge the other flank is fixed while the main and secondary attacks divide the salient (MW s9 Figure 5 p 131)` });
+  if (infil) {
+    const I = centre(infil.pts), deep = I.y > Math.max(O.y, objS ? centre(objS.pts).y : O.y);
+    rows.push({ name: 'Infiltration to the base', st: deep ? 'pass' : 'warn', reason: `${infil.label ?? 'the infiltration force'} ${deep ? 'beyond' : 'short of'} the wedge toward the base: infiltration can lead to early seizure of the vital objective in the rear (MW s9 para 10 p 132), blocking his reinforcement of the divided parts` });
+  } else rows.push({ name: 'Infiltration to the base', st: 'warn', reason: 'no infiltration force to the base (MW s9 para 10 p 132)' });
+  rows.push({ name: 'Reduce in parts', st: 'unchecked', reason: 'once divided, each part of the salient is reduced in turn (MW s9 para 9 p 130); command on exterior lines from several directions is difficult and the wireless screened by the ground: detailed coordination at command and staff levels (para 11 p 132): plan the reduction of each part' });
+  rows.push(...salientCommonRows(items, obj, doc, elevAt));
+  return rows;
+}
+
+/** The rows both reductions of a salient share: assembly, a reserve per axis, deception, the arty and DAA split, the Obj. */
+function salientCommonRows(items: Item[], obj: Item, doc: DoctrineSet, elevAt?: ElevAt): Check[] {
+  const rows: Check[] = [];
   const assy = items.filter((i) => /^assy/.test(i.role) && i.pts.length);
   rows.push({ name: 'Assembly', st: assy.length >= 2 ? 'pass' : 'warn', reason: `${assy.length} Assy Area${assy.length === 1 ? '' : 's'}: the deployment areas are few and strung out along the roads and tracks, so a sizeable force assembles at more than one location, which needs detailed coordination and helps surprise (MW s9 para 8 a, b, d p 130)` });
   const res = items.filter((i) => /^res/.test(i.role) && i.pts.length);

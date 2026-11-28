@@ -252,6 +252,31 @@ const centre = (pts: XY[]): XY => ({ x: pts.reduce((s, p) => s + p.x, 0) / pts.l
 const km = (m: number) => `${(m / 1000).toFixed(1)} km`;
 
 /**
+ * A gun-area role's item and its sections (G on mountain ground lays `<role>S2`, `<role>S3`, ...: withGunSections), the
+ * first section first; a gun area not laid by section is the one item. Empty when the role is not on the plan.
+ */
+export function gunSectionsOf<T extends { role: string; pts: XY[] }>(items: T[], role: string): T[] {
+  const re = new RegExp(`^${role}S(\\d+)$`);
+  const first = items.filter((i) => i.role === role && i.pts.length);
+  const more = items.filter((i) => re.test(i.role) && i.pts.length).sort((p, q) => Number(re.exec(p.role)![1]) - Number(re.exec(q.role)![1]));
+  return [...first, ...more];
+}
+
+/**
+ * Reach from a gun area laid by sections: a point is in range when any section has it between the gun's minimum and its
+ * planning range; its distance is the one from the nearest such section (else from the nearest section). With one area
+ * these read exactly as from its centre.
+ */
+function reachFrom(cs: XY[], plan: number, min: number) {
+  const rs = (p: XY) => cs.map((c) => Math.hypot(p.x - c.x, p.y - c.y));
+  const ok = (r: number) => r <= plan && r >= min;
+  return {
+    inRange: (p: XY) => rs(p).some(ok),
+    distTo: (p: XY) => { const all = rs(p), good = all.filter(ok); return good.length ? Math.min(...good) : Math.min(...all); },
+  };
+}
+
+/**
  * A Div defence's artillery rows (OoW Vol I p 83): Arty groups, each forward Bde (each major approach) with a group behind
  * it whose guns reach out past the En FUP in front of it (`enemyFupM`), the DF plan by sectors; Arty reinforcement, the Med
  * / Hy Regts in the Div Arty and the reinforcing Regt the extended frontage wants (a warn on the three-axes layout, OoW
@@ -259,7 +284,7 @@ const km = (m: number) => `${(m / 1000).toFixed(1)} km`;
  */
 function divArtyRows(items: { role: string; pts: XY[] }[], recipe: Recipe, a: ArtyOnPlan, enemyFupM: number | null, f: FitFrame | null, g: PlanGround | null): Check[] {
   const regts = a.regts?.length ? a.regts : [a];
-  const areas = regts.map((r, i) => ({ r, it: items.find((x) => x.role === gunRole(i) && x.pts.length) })).filter((x): x is { r: ArtyOnPlan; it: { role: string; pts: XY[] } } => !!x.it);
+  const areas = regts.map((r, i) => ({ r, it: items.find((x) => x.role === gunRole(i) && x.pts.length), secs: gunSectionsOf(items, gunRole(i)) })).filter((x): x is { r: ArtyOnPlan; it: { role: string; pts: XY[] }; secs: { role: string; pts: XY[] }[] } => !!x.it);
   if (!areas.length) return [];
   const label = (role: string) => recipe.slots.find((s) => s.role === role)?.label ?? role;
   const fwd = items.filter((i) => /^fwd/.test(i.role) && i.pts.length >= 3).map((i) => ({ role: i.role, x: centre(i.pts).x, front: Math.max(...i.pts.map((p) => p.y)) }));
@@ -271,7 +296,8 @@ function divArtyRows(items: { role: string; pts: XY[] }[], recipe: Recipe, a: Ar
   const parts = fwd.map((b) => {
     const mine = areas.filter((x) => groupOf(centre(x.it.pts)).role === b.role);
     const tgt = { x: b.x, y: b.front + beyond };
-    const reach = mine.filter((x) => { const c = centre(x.it.pts); const q = Math.hypot(tgt.x - c.x, tgt.y - c.y); return q <= x.r.weapon.planM; });
+    // a Regt laid by sections reaches when any of its sections does
+    const reach = mine.filter((x) => x.secs.some((sc) => { const c = centre(sc.pts); const q = Math.hypot(tgt.x - c.x, tgt.y - c.y); return q <= x.r.weapon.planM; }));
     if (!mine.length || reach.length < mine.length) short++;
     return `${label(b.role)}: ${mine.length ? `${mine.map((x) => x.r.name).join(', ')}${reach.length < mine.length ? `, ${mine.length - reach.length} short of ${beyond ? `the En FUP ${km(beyond)} out` : 'its front'}` : beyond ? `, past the En FUP ${km(beyond)} out` : ''}` : 'no group behind it'}`;
   });
@@ -282,7 +308,7 @@ function divArtyRows(items: { role: string; pts: XY[] }[], recipe: Recipe, a: Ar
   rows.push({ name: 'Arty reinforcement', st: extended ? 'warn' : 'pass', reason: `${heavy.length ? `${heavy.map((r) => r.name).join(', ')} in the Div Arty` : 'no Med or Hy Regt in the Div Arty'}; on extended frontages the Div Arty is reinforced by a minimum of one Med / Hy Regt (OoW Vol I p 83)${extended ? ': three Bdes up on three axes is such a frontage (OoW Vol I Annex D p 105): ask Corps for it' : ': confirm with Corps if the frontage is extended'}`,
     ...(extended ? { detail: { head: 'Reinforcing Med / Hy Regt not in the plan', why: 'On an extended frontage the Div Arty alone cannot cover every approach in strength (OoW Vol I p 83).', fix: ['Ask Corps for a Med / Hy Regt and give it the main approach'] } } : {}) });
   if (f && g) {
-    const read = areas.map(({ r, it }) => ({ r, s: gunGround(it.pts, f, g, !r.weapon.sp) })).filter((x) => x.s !== null) as { r: ArtyOnPlan; s: number }[];
+    const read = areas.map(({ r, secs }) => ({ r, s: worstGround(secs, f, g, !r.weapon.sp) })).filter((x) => x.s !== null) as { r: ArtyOnPlan; s: number }[];
     const worst = read.length ? Math.min(...read.map((x) => x.s)) : null;
     const gst: CheckState = worst === null ? 'unchecked' : worst >= a.room[0] ? 'pass' : worst >= a.room[1] ? 'warn' : 'fail';
     rows.push({ name: 'Gun area', st: gst, reason: `${read.length ? read.map((x) => `${x.r.name} ${Math.round(x.s * 100)} %`).join(', ') + ` of the area is ground a gun position may take (the bundle's Gun Position going${read.some((x) => !x.r.weapon.sp) ? '; loose sand not counted for the towed guns, DW p 60' : ''}); ${Math.round(a.room[0] * 100)} % wanted (GunDoctrine room)` : 'their ground not loaded'}; ${a.areaSrc}` });
@@ -301,42 +327,48 @@ export function artyRows(items: { role: string; pts: XY[] }[], recipe: Recipe, e
   const a = recipe.arty as ArtyOnPlan | undefined;
   if (a && recipe.task === 'crossing') return crossArtyRows(items, a, f, g, backOf);
   if (a && recipe.echelon === '21' && recipe.task === 'defence') return divArtyRows(items, recipe, a, enemyFupM, f, g);
-  const ga = items.find((i) => i.role === 'gunArea' && i.pts.length);
+  // the gun area, or its sections (G on mountain ground: MW s22 para 6 a (1) p 244, a Bty by sections in two or three places)
+  const secs = gunSectionsOf(items, 'gunArea');
+  const ga = secs[0];
   if (!a || !ga) return [];
-  const ys = ga.pts.map((p) => p.y);
-  const C = centre(ga.pts), gFront = Math.max(...ys);
+  const many = secs.length > 1;
+  const cs = secs.map((s) => centre(s.pts));
+  const gFront = Math.max(...secs.flatMap((s) => s.pts.map((p) => p.y)));
   const plan = a.weapon.planM, min = a.weapon.minM;
-  const inRange = (p: XY) => { const r = Math.hypot(p.x - C.x, p.y - C.y); return r <= plan && r >= min; };
+  const { inRange, distTo } = reachFrom(cs, plan, min);
   const rows: Check[] = [];
   const what = `${a.name} (${a.guns} x ${a.weapon.name}, planning range ${km(plan)}${min ? `, min ${km(min)}` : ''})`;
+  const its = many ? `its ${secs.length} sections, the nearest` : 'its gun area';
   if (recipe.task === 'attack') {
     const fup = items.find((i) => i.role === 'fup');
     const fy = fup ? centre(fup.pts).y : 0;
     const d = fy - gFront;
     const tgts = ['obj', 'loe', 'obj2'].map((r) => items.find((i) => i.role === r)).filter((i): i is NonNullable<typeof i> => !!i);
-    const far = tgts.flatMap((t) => t.pts).reduce((m, p) => Math.max(m, Math.hypot(p.x - C.x, p.y - C.y)), 0);
+    const far = tgts.flatMap((t) => t.pts).reduce((m, p) => Math.max(m, distTo(p)), 0);
     const out = tgts.filter((t) => !t.pts.every(inRange)).map((t) => t.role === 'loe' ? 'the LOE' : t.role === 'obj2' ? 'Obj 2' : 'the Obj');
     const inBand = d >= a.band[0] - 1 && d <= a.band[1] + 1;
     const st: CheckState = out.length ? 'fail' : inBand ? 'pass' : 'warn';
-    rows.push({ name: 'Arty reach', st, reason: `${what}: its gun area ${fmtM(Math.max(0, d))} behind the FUP (${km(a.band[0])}-${km(a.band[1])}: ${a.bandSrc}); ${out.length ? `${out.join(' and ')} out of range: the guns forward, or a longer gun` : `the Obj${tgts.some((t) => t.role === 'loe') ? ' and the LOE' : ''} in range, the furthest point ${km(far)} from the guns`}` });
+    rows.push({ name: 'Arty reach', st, reason: `${what}: ${its} ${fmtM(Math.max(0, d))} behind the FUP (${km(a.band[0])}-${km(a.band[1])}: ${a.bandSrc}); ${out.length ? `${out.join(' and ')} out of range${many ? ' of every section' : ''}: the guns forward, or a longer gun` : `the Obj${tgts.some((t) => t.role === 'loe') ? ' and the LOE' : ''} in range, the furthest point ${km(far)} from ${many ? 'the nearest section in range' : 'the guns'}`}` });
   } else {
     const fdl = items.find((i) => i.role === 'fdl');
     const frontY = fdl ? Math.max(...fdl.pts.map((p) => p.y)) : 0;
     const d = frontY - gFront;
-    const beyond = Math.max(0, plan - (frontY - C.y));
+    const beyond = Math.max(0, ...cs.map((c) => plan - (frontY - c.y)));
     const df = items.filter((i) => i.role === 'dfTgt' && i.pts.length);
     const dfOut = df.filter((t) => !inRange(t.pts[0])).length;
     const fupOk = enemyFupM === null || beyond >= enemyFupM;
     const inBand = d >= a.band[0] - 1 && d <= a.band[1] + 1;
     const st: CheckState = dfOut || !fupOk ? 'warn' : inBand ? 'pass' : 'warn';
-    rows.push({ name: 'Arty reach', st, reason: `${what}: its gun area ${fmtM(Math.max(0, d))} behind the FDL (${km(a.band[0])}-${km(a.band[1])}: ${a.bandSrc}); its guns reach ${km(beyond)} beyond the FDL${enemyFupM !== null ? `, ${fupOk ? 'past' : 'short of'} the En FUP ${km(enemyFupM)} out` : ''}${df.length ? `; ${df.length - dfOut} of ${df.length} DF Tgts in range` : ''}${a.band[1] < a.band[0] ? `; no band: a third of its range (${km(a.band[1])}) is short of the ${km(a.band[0])} it must stand back: a longer gun` : !inBand ? `; outside the band${d < a.band[0] ? ': too near the front, the En overruns it early (OoW I p 70)' : ': too far back, the fire does not reach deep'}` : ''}` });
+    rows.push({ name: 'Arty reach', st, reason: `${what}: ${its} ${fmtM(Math.max(0, d))} behind the FDL (${km(a.band[0])}-${km(a.band[1])}: ${a.bandSrc}); its guns reach ${km(beyond)} beyond the FDL${enemyFupM !== null ? `, ${fupOk ? 'past' : 'short of'} the En FUP ${km(enemyFupM)} out` : ''}${df.length ? `; ${df.length - dfOut} of ${df.length} DF Tgts in range` : ''}${a.band[1] < a.band[0] ? `; no band: a third of its range (${km(a.band[1])}) is short of the ${km(a.band[0])} it must stand back: a longer gun` : !inBand ? `; outside the band${d < a.band[0] ? ': too near the front, the En overruns it early (OoW I p 70)' : ': too far back, the fire does not reach deep'}` : ''}` });
   }
   if (f && g) {
     const towed = !a.weapon.sp;
-    const rd = gunGroundRead(ga.pts, f, g, towed);
+    // by sections: the worst-placed section speaks for the Bty
+    const reads = secs.map((x) => gunGroundRead(x.pts, f, g, towed)).filter((x): x is { s: number; sand: number } => !!x);
+    const rd = !reads.length ? null : many ? reads.reduce((w, x) => (x.s < w.s ? x : w)) : reads[0];
     const s = rd?.s ?? null;
     const st: CheckState = s === null ? 'unchecked' : s >= a.room[0] ? 'pass' : s >= a.room[1] ? 'warn' : 'fail';
-    rows.push({ name: 'Gun area', st, reason: `${s === null ? 'its ground not loaded' : `${Math.round(s * 100)} % of it is ground a gun position may take (the bundle's Gun Position going)${sandText(rd!.sand, towed)}; ${Math.round(a.room[0] * 100)} % wanted, under ${Math.round(a.room[1] * 100)} % the guns cannot keep 100 m apart (GunDoctrine room)${st === 'fail' ? ': move it (G while placing)' : ''}`}; ${a.areaSrc}. Level, crest, firm soil, access and concealment: G while placing sites it with the Gun Deployment finder` });
+    rows.push({ name: 'Gun area', st, reason: `${s === null ? 'its ground not loaded' : `${Math.round(s * 100)} % of ${many ? `its worst section (of ${secs.length})` : 'it'} is ground a gun position may take (the bundle's Gun Position going)${sandText(rd!.sand, towed)}; ${Math.round(a.room[0] * 100)} % wanted, under ${Math.round(a.room[1] * 100)} % the guns cannot keep 100 m apart (GunDoctrine room)${st === 'fail' ? ': move it (G while placing)' : ''}`}; ${a.areaSrc}. Level, crest, firm soil, access and concealment: G while placing sites it with the Gun Deployment finder` });
   }
   return rows;
 }
@@ -348,6 +380,12 @@ export function artyRows(items: { role: string; pts: XY[] }[], recipe: Recipe, e
  */
 function gunGround(pts: XY[], f: FitFrame, g: PlanGround, towed = false): number | null {
   return gunGroundRead(pts, f, g, towed)?.s ?? null;
+}
+
+/** gunGround over a gun area's sections: the worst read (one area: its own share); null when none is read. */
+function worstGround(secs: { pts: XY[] }[], f: FitFrame, g: PlanGround, towed = false): number | null {
+  const v = secs.map((sc) => gunGround(sc.pts, f, g, towed)).filter((x): x is number => x !== null);
+  return v.length ? Math.min(...v) : null;
 }
 
 /**
@@ -388,7 +426,7 @@ function crossArtyRows(items: { role: string; pts: XY[] }[], a: ArtyOnPlan, f: F
   // diagonal to the aim), else the plan's y
   const back = backOf ?? ((p: XY) => -p.y);
   const regts = a.regts?.length ? a.regts : [a];
-  const areas = regts.map((r, i) => ({ r, it: items.find((x) => x.role === gunRole(i) && x.pts.length) })).filter((x): x is { r: ArtyOnPlan; it: { role: string; pts: XY[] } } => !!x.it);
+  const areas = regts.map((r, i) => ({ r, it: items.find((x) => x.role === gunRole(i) && x.pts.length), secs: gunSectionsOf(items, gunRole(i)) })).filter((x): x is { r: ArtyOnPlan; it: { role: string; pts: XY[] }; secs: { role: string; pts: XY[] }[] } => !!x.it);
   if (!areas.length) return [];
   const fups = items.filter((i) => /^fup/.test(i.role) && i.pts.length);
   const fb = fups.length ? fups.reduce((s, i) => s + back(centre(i.pts)), 0) / fups.length : 0;
@@ -396,23 +434,23 @@ function crossArtyRows(items: { role: string; pts: XY[] }[], a: ArtyOnPlan, f: F
   const deep = items.filter((i) => /^(obj3|ph2|bh)$/.test(i.role) && i.pts.length);
   const word = (i: { role: string }) => ({ ph1: 'PL 1', ph1a: 'PL 1', ph1b: 'PL 1', ph2: 'PL 2', bh: 'the BH', obj: 'the Obj', obj1: 'Obj 1', obj2: 'Obj 2', obj3: 'Obj 3' } as Record<string, string>)[i.role] ?? i.role;
   let nearAll = 0, deepAny = false, offBand = 0;
-  const parts = areas.map(({ r, it }) => {
-    // its front edge (the point nearest the water) behind the FUPs' middle
-    const C = centre(it.pts), d = Math.min(...it.pts.map(back)) - fb;
-    const reach = (p: XY) => { const q = Math.hypot(p.x - C.x, p.y - C.y); return q <= r.weapon.planM && q >= r.weapon.minM; };
+  const parts = areas.map(({ r, secs }) => {
+    // its front edge (the point nearest the water) behind the FUPs' middle; laid by sections, the nearest section's
+    const d = Math.min(...secs.flatMap((sc) => sc.pts.map(back))) - fb;
+    const { inRange: reach, distTo } = reachFrom(secs.map((sc) => centre(sc.pts)), r.weapon.planM, r.weapon.minM);
     const nOut = [...new Set(near.filter((t) => !t.pts.every(reach)).map(word))];
     const dOut = [...new Set(deep.filter((t) => !t.pts.every(reach)).map(word))];
     if (!nOut.length) nearAll++;
     if (deep.length && !dOut.length) deepAny = true;
     const inBand = d >= r.band[0] - 1 && d <= r.band[1] + 1;
     if (!inBand) offBand++;
-    const far = [...near, ...deep].flatMap((t) => t.pts).reduce((m, p) => Math.max(m, Math.hypot(p.x - C.x, p.y - C.y)), 0);
+    const far = [...near, ...deep].flatMap((t) => t.pts).reduce((m, p) => Math.max(m, distTo(p)), 0);
     return `${r.name} ${fmtM(Math.max(0, d))} behind the FUPs (${km(r.band[0])}-${km(r.band[1])}${inBand ? '' : ', outside its band'}): ${nOut.length ? `${nOut.join(', ')} out of range` : 'the break-in in range'}${deep.length ? `, ${dOut.length ? `${dOut.join(', ')} out` : 'the deep line in range'}` : ''} (furthest ${km(far)}, plan ${km(r.weapon.planM)})`;
   });
   const st: CheckState = !nearAll ? 'fail' : nearAll < areas.length || (deep.length && !deepAny) || offBand ? 'warn' : 'pass';
   const rows: Check[] = [{ name: 'Arty reach', st, reason: `${a.name}${a.unit === 'div' ? ` (${areas.length} Regts, ${a.guns} guns)` : ` (${a.guns} x ${a.weapon.name})`}: ${parts.join('; ')}${deep.length && !deepAny ? '; no Regt reaches the deep line: the Med Regts forward after the break-in, or Corps Arty' : ''}. Band: ${a.bandSrc}` }];
   if (f && g) {
-    const shares = areas.map(({ r, it }) => ({ r, s: gunGround(it.pts, f, g, !r.weapon.sp) }));
+    const shares = areas.map(({ r, secs }) => ({ r, s: worstGround(secs, f, g, !r.weapon.sp) }));
     const read = shares.filter((x) => x.s !== null) as { r: ArtyOnPlan; s: number }[];
     const worst = read.length ? Math.min(...read.map((x) => x.s)) : null;
     const gst: CheckState = worst === null ? 'unchecked' : worst >= a.room[0] ? 'pass' : worst >= a.room[1] ? 'warn' : 'fail';

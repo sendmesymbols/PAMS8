@@ -1,0 +1,410 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "bde-attk-mtn-salient-wedge",
+  "family": "bde-attk-mtn",
+  "layout": "salient-wedge",
+  "echelon": "18",
+  "unit": "inf-bde",
+  "basis": "D",
+  "task": "attack",
+  "name": "Bde Attk (Mtn): reduction of a salient, a wedge through it",
+  "frontageRow": "Brigade, night attack in plains, two battalions up",
+  "assaultRow": "Battalion, night attack, two companies up",
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "The En's salient projects toward us (an enclave for us, MW s9 para 2 a p 124); its approaches are few, obvious and strongly held (para 4 a p 127). The second form of manoeuvre of MW s9 para 9 p 130: the salient divided through a wedge for subsequent reduction, laid on Figure 5 (p 131): the main attack from a flank into the middle of the salient, the secondary attack up through its tip to meet it, a fixing force on the other flank, an infiltration force to the base to block his reinforcement (para 10 p 132). Each part is then reduced in turn. Assembly at more than one place (para 8 p 130); the artillery split across the prongs and the DAA in two (para 13-14 p 133). Figure 4 (the base from both flanks) is bde-attk-mtn-salient.",
+  "slots": [
+    {
+      "role": "obj",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ A (middle: the wedge)",
+      "order": 1,
+      "shape": {
+        "rect": {
+          "acrossM": -900,
+          "backM": -3300,
+          "wM": 1500,
+          "hM": 1000
+        }
+      }
+    },
+    {
+      "role": "objTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "",
+      "order": 1,
+      "shape": {
+        "at": [
+          -900,
+          -3300
+        ]
+      }
+    },
+    {
+      "role": "assy",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy (Left Bn)",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": -6500,
+          "backM": 1500,
+          "wM": 1500,
+          "hM": 1000
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ],
+        "prefer": [
+          "roadAccess"
+        ]
+      }
+    },
+    {
+      "role": "fup",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -3000,
+            -3050
+          ],
+          [
+            -2700,
+            -3550
+          ]
+        ]
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "sl",
+      "kind": "line",
+      "sym": "25140303",
+      "label": "SL",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -2600,
+            -2950
+          ],
+          [
+            -2600,
+            -3650
+          ]
+        ]
+      },
+      "terrainRule": {
+        "onGround": "linearFeature"
+      }
+    },
+    {
+      "role": "axis",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -2600,
+            -3300
+          ],
+          [
+            -1700,
+            -3300
+          ]
+        ],
+        "widthM": 450
+      }
+    },
+    {
+      "role": "bnMain",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Left Bn (Main Attk, from the flank)",
+      "echelon": "16",
+      "order": 3,
+      "shape": {
+        "at": [
+          -3300,
+          -3300
+        ]
+      }
+    },
+    {
+      "role": "objS",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ B (middle: meets OBJ A)",
+      "order": 1,
+      "shape": {
+        "rect": {
+          "acrossM": 500,
+          "backM": -3300,
+          "wM": 1500,
+          "hM": 1000
+        }
+      }
+    },
+    {
+      "role": "assyS",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy (Right Bn)",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 1500,
+          "backM": 2200,
+          "wM": 1500,
+          "hM": 1000
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ],
+        "prefer": [
+          "roadAccess"
+        ]
+      }
+    },
+    {
+      "role": "fupS",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            250,
+            -500
+          ],
+          [
+            750,
+            -500
+          ]
+        ]
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "axisS",
+      "kind": "area",
+      "sym": "25151404",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            500,
+            -1100
+          ],
+          [
+            500,
+            -2750
+          ]
+        ],
+        "widthM": 450
+      }
+    },
+    {
+      "role": "bnSec",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Right Bn (Sp Attk, through the tip)",
+      "echelon": "16",
+      "order": 3,
+      "shape": {
+        "at": [
+          500,
+          -200
+        ]
+      }
+    },
+    {
+      "role": "fix",
+      "kind": "line",
+      "sym": "25341100",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            6200,
+            -2600
+          ],
+          [
+            4600,
+            -2900
+          ]
+        ]
+      }
+    },
+    {
+      "role": "bnFix",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Depth Bn less A, C Coys (fixes the R flank)",
+      "echelon": "16",
+      "order": 3,
+      "shape": {
+        "at": [
+          6700,
+          -2500
+        ]
+      }
+    },
+    {
+      "role": "assyF",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy (Depth Bn)",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 6500,
+          "backM": 1500,
+          "wM": 1500,
+          "hM": 1000
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ],
+        "prefer": [
+          "roadAccess"
+        ]
+      }
+    },
+    {
+      "role": "infilLane",
+      "kind": "line",
+      "sym": "25140800",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "pts": [
+          [
+            -4300,
+            -2500
+          ],
+          [
+            -1600,
+            -3800
+          ],
+          [
+            -300,
+            -5700
+          ]
+        ]
+      }
+    },
+    {
+      "role": "infil",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "A Coy (Depth Bn) + Cdo Pls: infiltrate, block the base",
+      "echelon": "15",
+      "order": 4,
+      "shape": {
+        "at": [
+          0,
+          -6000
+        ]
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "C Coy (Depth Bn): Bde Res, main axis",
+      "echelon": "15",
+      "order": 4,
+      "shape": {
+        "at": [
+          -3600,
+          -2800
+        ]
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bde HQ",
+      "order": 4,
+      "shape": {
+        "at": [
+          -2500,
+          1800
+        ]
+      }
+    },
+    {
+      "role": "loe",
+      "kind": "line",
+      "sym": "25140900",
+      "label": "LOE",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            -4500,
+            -5600
+          ],
+          [
+            4500,
+            -5600
+          ]
+        ]
+      }
+    }
+  ],
+  "checks": [
+    "fupDistance",
+    "assaultFrontage",
+    "reserveReach",
+    "approaches"
+  ]
+}

@@ -35,12 +35,14 @@ import { counterAttack } from './PlanAttack';
 import { defTankRows, tankGoingRow } from './PlanTanks';
 import { artyRows } from './PlanArty';
 import { adRows } from './PlanAD';
-import { layoutRows } from './PlanMountain';
+import { layoutRows, rearAreaRow } from './PlanMountain';
 import type { Recipe } from './PlanRecipes';
 import { airLiftOf, airLiftRow } from './PlanAvn';
 
 /** The roles AD cover reads back: the FUs and the vulnerable points. */
 const AD_ROLES = /^(ad\d+|gunArea\d*|hq|assy\d*|vwa|res|bridge\d*)$/;
+/** A built plan's gun areas: each Regt's (gunArea, gunArea2 ...) and the sections G laid on mountain ground (gunAreaS2, gunArea2S3 ...). */
+const GUN_ROLES = /^gunArea\d*(S\d+)?$/;
 import { engrShare, inundation, ownEngrTypes } from './PlanEngr';
 import type { ForceSides } from './PlanContext';
 
@@ -792,7 +794,9 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
     const artyMeta = mp.built?.meta?.arty;
     if (artyMeta) {
       const own = (role: string) => mp.syms.filter((x) => x.side === 'own' && x.pbRole === role && x.pts.length).map((x) => ({ role, pts: x.pts.map((v) => toLocal(frame, v)) }));
-      rows.push(...artyRows([...own('gunArea'), ...own('fdl'), ...own('dfTgt')], { ...recipe, task: 'defence', arty: artyMeta }, enemyFupM(doc, enemy.type)[0], frame, opts.ground));
+      // every Regt's gun area and every section of one laid by sections (gunArea, gunArea2 ...; gunAreaS2 ...: G on mountain ground)
+      const guns = mp.syms.filter((x) => x.side === 'own' && x.pbRole && GUN_ROLES.test(x.pbRole) && x.pts.length).map((x) => ({ role: x.pbRole!, pts: x.pts.map((v) => toLocal(frame, v)) }));
+      rows.push(...artyRows([...guns, ...own('fdl'), ...own('dfTgt')], { ...recipe, task: 'defence', arty: artyMeta }, enemyFupM(doc, enemy.type)[0], frame, opts.ground));
     }
     // the AD it was built with (pbMeta.ad): its FUs and the VPs read from their symbols, judged as the build did
     const adMeta = mp.built?.meta?.ad;
@@ -854,7 +858,7 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
   ];
   const unclear = [...mp.unclear];
   if (terrain.source === 'assumed') unclear.push(`Ground taken as plains (${terrain.why}): set it if the plan stands on an obstacle, desert or mountains, which allow wider frontages`);
-  return { task: 'defence', title, planEch, read, unclear, posns, slots, rows: groundNotes([...rows, ...mountainRowsOf(mp, doc, opts, frame)], doc, terrain.kind, 'defence', planEch ?? '16', null), groups: [], enemy, terrain, threat: mp.threat, frame, fit, whatIf: whatIfRes, confirm, assumptions, mapped: mp };
+  return { task: 'defence', title, planEch, read, unclear, posns, slots, rows: groundNotes([...rows, ...mountainRowsOf(mp, doc, opts, frame), ...(terrain.kind === 'mountain' ? [rearAreaRow(mp.syms.filter((s) => s.side === 'own' && s.pbRole).map((s) => ({ role: s.pbRole!, label: s.label, pts: s.pts })))].filter((r): r is Check => !!r) : [])], doc, terrain.kind, 'defence', planEch ?? '16', null), groups: [], enemy, terrain, threat: mp.threat, frame, fit, whatIf: whatIfRes, confirm, assumptions, mapped: mp };
 }
 
 function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): CheckReport {
@@ -900,7 +904,7 @@ function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Chec
       const F0 = centroid(fu.pts), O0 = centroid(ob.pts), L = Math.hypot(O0.x - F0.x, O0.y - F0.y) || 1;
       const u = P((O0.x - F0.x) / L, (O0.y - F0.y) / L);
       const loc = (p: XY) => P(((p.x - F0.x) * u.y - (p.y - F0.y) * u.x) / k, ((p.x - F0.x) * u.x + (p.y - F0.y) * u.y) / k);
-      const items = ['gunArea', 'fup', 'obj', 'obj2', 'loe'].flatMap((r) => byRole(r).map((s) => ({ role: r, pts: s.pts.map(loc) })));
+      const items = [...own.filter((s) => s.pbRole && GUN_ROLES.test(s.pbRole) && s.pts.length).map((s) => ({ role: s.pbRole!, pts: s.pts.map(loc) })), ...['fup', 'obj', 'obj2', 'loe'].flatMap((r) => byRole(r).map((s) => ({ role: r, pts: s.pts.map(loc) })))];
       rows.push(...artyRows(items, { task: 'attack', arty: artyMeta } as any, null));
     }
   }

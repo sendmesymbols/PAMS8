@@ -961,7 +961,7 @@ export default class GroundAppreciation {
         gin.attack = true;
         gin.threatMarked = !!start;
         gin.startWords = start ? `${start.label ? `${start.label} ` : ''}${this._where(r, this._ground(r, start.merc))}` : null;
-        if (ipb?.view?.wx) gin.wx = { marginal: ipb.view.wx.rows.filter((x: any) => x.status === 'marg').map((x: any) => `${x.mission} (${x.element})`), unfavourable: ipb.view.wx.rows.filter((x: any) => x.status === 'unfav').map((x: any) => `${x.mission} (${x.element})`) };
+        if (ipb?.view?.wx) gin.wx = { marginal: ipb.view.wx.rows.filter((x: any) => x.status === 'marg').map((x: any) => `${x.mission} (${x.element})`), unfavourable: ipb.view.wx.rows.filter((x: any) => x.status === 'unfav').map((x: any) => `${x.mission} (${x.element})`), mtn: ipb.view.wx.mtn?.notes?.length ? { elevM: ipb.view.wx.mtn.elevM ?? null, notes: ipb.view.wx.mtn.notes.map((x: any) => x.text) } : null };
         const w = writeGround(gin);
         applyPatches(doc, w.patches, 'gr');
         doc.confirm.unshift(...tag(w.confirm, 'gr'));
@@ -1032,7 +1032,7 @@ export default class GroundAppreciation {
           gin.threatMarked = true;
           gin.threatWords = threat.words;
         }
-        if (ipb?.wx) gin.wx = { marginal: ipb.wx.rows.filter((x: any) => x.status === 'marg').map((x: any) => `${x.mission} (${x.element})`), unfavourable: ipb.wx.rows.filter((x: any) => x.status === 'unfav').map((x: any) => `${x.mission} (${x.element})`) };
+        if (ipb?.wx) gin.wx = { marginal: ipb.wx.rows.filter((x: any) => x.status === 'marg').map((x: any) => `${x.mission} (${x.element})`), unfavourable: ipb.wx.rows.filter((x: any) => x.status === 'unfav').map((x: any) => `${x.mission} (${x.element})`), mtn: ipb.wx.mtn?.notes?.length ? { elevM: ipb.wx.mtn.elevM ?? null, notes: ipb.wx.mtn.notes.map((x: any) => x.text) } : null };
         const w = writeGround(gin);
         applyPatches(doc, w.patches, 'gr');
         doc.confirm.unshift(...tag(w.confirm, 'gr'));

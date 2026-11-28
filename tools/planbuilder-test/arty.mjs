@@ -201,5 +201,26 @@ check('the ground reads the Gun Position going (rules.json profiles.gun), not th
   check('...Create on Map gets one PAA per section (the plan document)', doc1.doc.poObj.plnOrdrOverlay.flatMap((o) => o.syms).filter((x) => /Sec \d/.test(String(x.de.AMPLIFIER?.UNIQUE_DESIG ?? ''))).length === 3);
 }
 
+// ── gun sections read back: Arty reach from the nearest section in range; Check my plan reads every section ─────────
+{
+  const ga0 = rT.items.find((i) => i.role === 'gunArea');
+  const back = ga0.pts.map((p) => ({ x: p.x, y: p.y - 20000 }));
+  const twoSec = A.withGunSections(rT, [{ role: 'gunArea', name: 'Fd Regt', rings: [back, ga0.pts] }]);
+  check('gunSectionsOf: the gun area and its sections, the first section first', A.gunSectionsOf(twoSec.items, 'gunArea').map((i) => i.role).join(',') === 'gunArea,gunAreaS2');
+  const rs = A.artyRows(twoSec.items, t1, null)[0];
+  check('by sections: Arty reach takes the Obj and LOE from the nearest section in range (Sec 1 20 km back is out of range, Sec 2 reaches): "its 2 sections"', rs?.name === 'Arty reach' && rs.st !== 'fail' && /its 2 sections, the nearest/.test(rs.reason) && /from the nearest section in range/.test(rs.reason), rs?.reason);
+  const both = A.withGunSections(rT, [{ role: 'gunArea', name: 'Fd Regt', rings: [back, back.map((p) => ({ x: p.x + 500, y: p.y }))] }]);
+  const rf = A.artyRows(both.items, t1, null)[0];
+  check('...every section out of range: fails, "out of range of every section"', rf?.st === 'fail' && /out of range of every section/.test(rf.reason), rf?.reason);
+  check('...one gun area: the row word for word as before (no "sections")', reachT[0].reason === A.artyRows(rT.items, t1, null)[0].reason && !/sections/.test(reachT[0].reason));
+  // Check my plan on a built Bn Attk whose Fd Regt was laid by sections
+  const pd = S.toPlanDocument(twoSec, (pid, ov, id, de) => ({ plnOrdrSymbolPK: { plnOrdrSymbolId: id }, drawEss: JSON.stringify(de) }), (pid, id, name, seq, syms) => ({ plnOrdrSymbolSet: syms }), 1);
+  const k = 1 / Math.cos((31.5 * Math.PI) / 180), y0 = 3700000;
+  const syms = K.readSymbols(K.recordsFromPlanDoc(pd.doc)).map((s) => ({ ...s, pts: s.pts.map((p) => ({ x: p.x * k, y: y0 + p.y * k })), pbRole: pd.roles[s.id], pbRecipe: t1.id, pbMeta: { arty: t1.arty } }));
+  check('...the built plan carries both sections\' roles (gunArea, gunAreaS2)', Object.values(pd.roles).filter((r) => /^gunArea/.test(r)).sort().join(',') === 'gunArea,gunAreaS2');
+  const ar = row(K.checkPlan(syms, doc, {}).rows, 'Arty reach');
+  check('Check my plan reads every section back: Arty reach from the nearest section in range, as the build gave it', ar?.st === rs.st && /its 2 sections, the nearest/.test(ar.reason), ar?.reason);
+}
+
 console.log(`\n${n} checks, ${fails} failed`);
 process.exit(fails ? 1 : 0);

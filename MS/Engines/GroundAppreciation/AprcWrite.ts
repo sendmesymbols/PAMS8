@@ -107,7 +107,7 @@ export interface AprcGroundIn {
   crop?: { tallPct: number; hidesPct: number } | null;
   obsn?: Partial<Record<AorSide, AprcObsn | null>>;
   /** The IPB weather values for the month: missions that are marginal or unfavourable. */
-  wx?: { marginal: string[]; unfavourable: string[] } | null;
+  wx?: { marginal: string[]; unfavourable: string[]; mtn?: { elevM: number | null; notes: string[] } | null } | null;
   light?: AprcLight | null;
   /** Obstacle symbols drawn on the map, in words ("Minefield 1.2 km N of X"). */
   drawnObs?: string[];
@@ -290,6 +290,8 @@ export function writeGround(g: AprcGroundIn): AprcWritten {
     if (wx) s.push(`${wx.monthName}: ${wx.tmax !== null ? `max ${Math.round(wx.tmax)} °C` : ''}${wx.tmin !== null ? `, min ${Math.round(wx.tmin)} °C` : ''}, rain ${Math.round(wx.precMm)} mm${wx.windMs !== null ? `, wind ${wx.windMs.toFixed(1)} m/s` : ''}.`.replace(': ,', ':'));
     const v = g.visibility;
     if (v && (v.fogPct !== null || v.lt2kmPct !== null)) s.push(`Visibility: ${[v.fogPct !== null ? `fog on ${pct(v.fogPct)} of days` : '', v.hazePct !== null ? `haze or dust on ${pct(v.hazePct)}` : '', v.lt2kmPct !== null ? `under 2 km on ${pct(v.lt2kmPct)}` : '', v.meanViewKm !== null ? `mean view ${v.meanViewKm.toFixed(1)} km` : ''].filter(Boolean).join(', ')}${v.stationKm !== null && v.stationKm > 100 ? ` (nearest station ${Math.round(v.stationKm)} km away: a guide only)` : ''}.`);
+    // on mountain ground: Mountain Warfare's weather notes for the month and the area's height (the Ground Guide's Annex A)
+    if (g.wx?.mtn?.notes.length) s.push(`Mountains${g.wx.mtn.elevM != null ? ` (about ${g.wx.mtn.elevM} m)` : ''}: ${g.wx.mtn.notes.join(' ')}`);
     if (g.wx && (g.wx.marginal.length || g.wx.unfavourable.length)) s.push(`Against the IPB weather values: ${[g.wx.unfavourable.length ? `unfavourable for ${list(g.wx.unfavourable)}` : '', g.wx.marginal.length ? `marginal for ${list(g.wx.marginal)}` : ''].filter(Boolean).join('; ')}.`);
     const lt = g.light;
     if (lt) s.push(`On ${lt.date}: first lt ${lt.firstLight ?? 'none'}, last lt ${lt.lastLight ?? 'none'} hrs (${zoneWord(lt.utcOffsetH)}); moon ${lt.moonPct} % lit.`);
@@ -299,6 +301,7 @@ export function writeGround(g: AprcGroundIn): AprcWritten {
     if (v) basis.push(data('Visibility: the monthly station grid'));
     if (lt) basis.push(calc(`First and last light: the sun 6 degrees below the horizon, worked out from date and place; times in ${zoneWord(lt.utcOffsetH)} (groundAppreciation.utcOffsetH), not the computer's zone`));
     if (g.wx && (g.wx.marginal.length || g.wx.unfavourable.length)) basis.push(rule('Weather critical values: IPB book Annex A pp 19-20'));
+    if (g.wx?.mtn?.notes.length) basis.push(rule('Mountain weather: Mountain Warfare (GSP-1973) pp 9-10, 69-71, 229-230, 288-289, 298, by the month and the height of the area'));
     patches.push({ id: 'gr.met', draft: s.length > 1 ? s.join(' ') : null, state: s.length > 1 ? 'gr' : 'yours', basis, prompts: s.length > 1 ? [] : ['Temperature, rain, visibility, first and last light, moon'] });
     confirm.push({ text: 'Met conditions are the mean of the month: take the forecast before H.', paras: ['gr.met'] });
   }

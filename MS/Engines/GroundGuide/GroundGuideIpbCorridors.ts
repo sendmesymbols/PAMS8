@@ -1335,6 +1335,63 @@ export function mountainApproach(line: ArrayLike<number>, elevAt: (x: number, y:
   return { kind, top: [order[0], counts[order[1]] ? order[1] : null], shares, floorM, samples };
 }
 
+/** A road reading along an approach (IpbDoctrine `mountainApproach.road`). */
+export interface MtnRoadRules {
+  /** Samples along the approach, metres apart. */
+  stepM: number;
+  /** A road or track counts as along the way when one lies within this distance of the sample, metres. */
+  nearM: number;
+}
+export const MTN_ROAD_DEFAULTS: MtnRoadRules = { stepM: 100, nearM: 200 };
+export function mtnRoadRulesFrom(doc: any): MtnRoadRules {
+  const r = doc?.mountainApproach?.road ?? {};
+  const pos = (v: unknown, fb: number): number => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : fb);
+  return { stepM: pos(r.stepM, MTN_ROAD_DEFAULTS.stepM), nearM: pos(r.nearM, MTN_ROAD_DEFAULTS.nearM) };
+}
+export interface MtnRoad {
+  /** Share of the samples with a road or a track within `nearM`, %. */
+  pct: number;
+  /** Share with a road (a hard road class), %. */
+  hardPct: number;
+  samples: number;
+}
+
+/**
+ * Whether a road or track runs along an approach (MW s7 para 4 a p 78: the river / valley approach "may be served with a
+ * road or good track"): every `stepM` along its line the class grid is searched within `nearM` (a square of cells) for a
+ * road or track. `roadAt(x, y)`: 2 a road (hard road class), 1 a track, 0 neither or no data, for a grid cell. The line and
+ * the result as `mountainApproach`. Null when the line is too short.
+ */
+export function mountainRoadAlong(line: ArrayLike<number>, roadAt: (x: number, y: number) => number, resM: number, R: MtnRoadRules = MTN_ROAD_DEFAULTS): MtnRoad | null {
+  const n = Math.floor(line.length / 2);
+  if (n < 2 || !(resM > 0)) return null;
+  const cum = [0];
+  for (let i = 1; i < n; i++) cum.push(cum[i - 1] + Math.hypot(line[2 * i] - line[2 * i - 2], line[2 * i + 1] - line[2 * i - 1]) * resM);
+  const total = cum[n - 1];
+  if (!(total > 0)) return null;
+  const rc = Math.max(1, Math.round(R.nearM / resM));
+  const steps = Math.max(1, Math.round(total / R.stepM));
+  let any = 0, hard = 0, samples = 0, i = 1;
+  for (let k = 0; k < steps; k++) {
+    const d = ((k + 0.5) * total) / steps;
+    while (i < n - 1 && cum[i] < d) i++;
+    const L = cum[i] - cum[i - 1];
+    if (!(L > 0)) continue;
+    const t = Math.max(0, Math.min(1, (d - cum[i - 1]) / L));
+    const px = Math.floor(line[2 * i - 2] + (line[2 * i] - line[2 * i - 2]) * t), py = Math.floor(line[2 * i - 1] + (line[2 * i + 1] - line[2 * i - 1]) * t);
+    let best = 0;
+    for (let yy = py - rc; yy <= py + rc && best < 2; yy++) for (let xx = px - rc; xx <= px + rc; xx++) {
+      const r = roadAt(xx, yy);
+      if (r > best) { best = r; if (best >= 2) break; }
+    }
+    samples++;
+    if (best >= 1) any++;
+    if (best >= 2) hard++;
+  }
+  if (!samples) return null;
+  return { pct: Math.round((100 * any) / samples), hardPct: Math.round((100 * hard) / samples), samples };
+}
+
 /**
  * The difficult approach of two or more read (MW p 79: normally lightly held; IpbDoctrine `mountainApproach.hardest`,
  * E): the most hours along it at the book's day rates when every one has them, else the least GO. Null for fewer than two.

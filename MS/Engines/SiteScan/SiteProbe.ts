@@ -15,13 +15,15 @@ import { MovementGuideProbe } from '../MovementGuide/MovementGuideProbe';
 import { ClimateGrid } from '../GroundGuide/GroundGuideGoing';
 import { sightTables, type SightTables } from '../GroundGuide/GroundGuideOcoka';
 import { OCOKA_DOCTRINE } from '../GroundGuide/GroundGuideOcokaRead';
-import type { SiteFeature, SiteProbe, SiteRoad } from './SiteScan';
+import { WindLoader, windAt } from '../GroundGuide/GroundGuideWind';
+import type { SiteFeature, SiteProbe, SiteRoad, SiteWind } from './SiteScan';
 import { mercToLngLat } from './SiteScan';
 
 export class SiteBundle implements SiteProbe {
   private _probe: MovementGuideProbe;
   private _ready = false;
   private _climate: ClimateGrid | null = null;
+  private _wind: WindLoader | null = null;
   private _tables: { key: string; t: SightTables } | null = null;
   private _onChange: () => void;
 
@@ -48,6 +50,7 @@ export class SiteBundle implements SiteProbe {
   async configure(base: string, opts: { cacheTiles: number; useWorker: boolean }): Promise<boolean> {
     this._ready = false;
     this._climate = null;
+    this._wind = null;
     try {
       this._ready = await this._probe.configure(base, opts);
     } catch {
@@ -56,6 +59,9 @@ export class SiteBundle implements SiteProbe {
     if (this._ready) {
       const c = (this._probe.manifest as any)?.grotbc?.climate;
       if (c?.index && c?.data) this._climate = new ClimateGrid(`${base}/${c.index}`, `${base}/${c.data}`, () => this._onChange());
+      // the wind grid (ERA5 normal), fetched on the first windAt
+      const w = (this._probe.manifest as any)?.grotbc?.wind;
+      if (typeof w?.index === 'string' && typeof w?.data === 'string') this._wind = new WindLoader(`${base}/${w.index}`, `${base}/${w.data}`, () => this._onChange());
     }
     return this._ready;
   }
@@ -63,6 +69,7 @@ export class SiteBundle implements SiteProbe {
   destroy(): void {
     this._ready = false;
     this._climate = null;
+    this._wind = null;
     this._probe.destroy();
   }
 
@@ -118,6 +125,25 @@ export class SiteBundle implements SiteProbe {
     if (!this._climate) return null;
     const [lng, lat] = mercToLngLat(x, y);
     return this._climate.precAt(lng, lat);
+  }
+
+  /** The wind grid is still on its way (a null `windAt` may only mean "not loaded yet"). */
+  get windLoading(): boolean {
+    const s = this._wind?.state;
+    return s === 'idle' || s === 'loading';
+  }
+
+  /**
+   * The month's usual wind at a Web Mercator point (GroundGuideWind.windAt with no steadiness cut: the finder judges the
+   * steadiness by its own doctrine figure); null while loading or without the wind grid.
+   */
+  windAt(x: number, y: number, month: number): SiteWind | null {
+    const g = this._wind?.get() ?? null;
+    if (!g) return null;
+    const [lng, lat] = mercToLngLat(x, y);
+    const r = windAt(g, lng, lat, month, 5, { steadyMin: 0, steadyWord: 0.6, lightKt: 3, turnDeg: 90 });
+    if (!r) return null;
+    return { fromDeg: r.all.fromDeg, steady: r.all.steady, meanMs: r.all.meanMs, dayFromDeg: r.day.fromDeg, nightFromDeg: r.night.fromDeg, dataDate: r.dataDate };
   }
 
   /**

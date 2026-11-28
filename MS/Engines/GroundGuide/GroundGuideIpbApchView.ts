@@ -1160,6 +1160,9 @@ export function apchText(o: GroundGuideOcoka): string[] {
     if (a.mtn) L.push(`  ${a.mtn.label}${a.mtn.hardest ? ' (the difficult one)' : ''}: ${a.mtn.say.join('. ')}.`);
   }
   if (v.aas.some((a) => a.mtn)) L.push(`Mountains: ${MTN_ROW}`);
+  // the weather notes of Mountain Warfare for the month and the area's height (the Wx tiles' Mountains block), once
+  const mw = v.wx?.mtn?.notes ?? [];
+  if (mw.length) L.push(`Mountain weather, ${MONTH[(v.wx!.month || 1) - 1]}${v.wx!.mtn!.elevM != null ? `, about ${v.wx!.mtn!.elevM} m` : ''} (notes, not coded): ${mw.map((x) => x.text).join(' ')}`);
   for (const x of v.crossovers) L.push(`Crossover ${x.id}: ${x.a} to ${x.b}, ${km(x.alongM)} in.`);
   for (const n of v.notes) L.push(n);
   L.push('Ranked on the going (a proposal). NO-GO does not mean impassable. Check on the ground.');

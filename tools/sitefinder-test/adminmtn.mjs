@@ -37,8 +37,9 @@ const RULES = {
   profiles: { wheeled: { nogo: [4, 20], caution: [] }, gun: { nogo: [4, 20], caution: [] }, tracked: { nogo: [4, 20], caution: [] } },
   grotbc: { soilStrength: { byProfile: { gun: 'wheeled_heavy', wheeled: 'wheeled', tracked: 'tracked' }, vehicles: { wheeled_heavy: { fine: [70, 115], coarse: [65, 100] }, wheeled: { fine: [55, 95], coarse: [50, 80] }, tracked: { fine: [45, 75], coarse: [25, 40] } } } },
 };
-function world({ elev, cls = () => 0, features = [], rci = 120 } = {}) {
+function world({ elev, cls = () => 0, features = [], rci = 120, wind = null } = {}) {
   return {
+    ...(wind ? { windAt: () => wind } : {}),
     cls: (x, y) => cls(...en([x, y])),
     elev: (x, y) => elev(...en([x, y])),
     layer: (k) => (k === 'cc' ? 2 << 4 : k === 'rci_dry' || k === 'rci_wet' ? rci : k === 'wet' ? 0 : k === 'bld' ? 0 : null),
@@ -91,8 +92,32 @@ const row = (rows, key) => rows.find((r) => r.key === key);
   check('...the same in July: passes, said why (out of the snow months)', jul?.tone === 'ok' && /out of the snow months/.test(jul.why), jul?.why);
   const low = row(rowsAt(steep30(1200), 0, 0, { month: 12 }), 'slides');
   check('...the same slope at 1,200 m in December: passes (below the snow, MW p 1)', low?.tone === 'ok');
+  // a single short pitch: 36 m of rise in 30 m (50°) at 400-430 m east; no 60 m step reads it over 33°
+  const pitch = world({ elev: (e) => 1200 + (e > 400 && e < 430 ? (e - 400) * 1.2 : e >= 430 ? 36 + (e - 430) * 0.085 : 0) });
+  const pt = row(rowsAt(pitch, 0, 0, { month: 7 }), 'slides');
+  check('a short steep pitch (36 m of rise in 30 m, 400 m east): read every 30 m on the grid it fails (over 35°), where the 60 m step read it under 35°', pt?.tone === 'bad' && /slope (3[6-9]|4\d|5\d)° above it/.test(pt.value) && /read every 30 m on the 30 m elevation grid/.test(pt.why), `${pt?.value} | ${pt?.why?.slice(-140)}`);
   const any = row(rowsAt(steep30(2500), 0, 0), 'slides');
   check('...no month given: every month counts (safety first): warns', any?.tone === 'warn');
+}
+
+// ── downwind: the valley's east side (it faces west) under a west wind and an east wind ───────────────────────────────
+{
+  const W = (fromDeg, steady = 0.8) => ({ fromDeg, steady, meanMs: 3, dayFromDeg: fromDeg, nightFromDeg: fromDeg, dataDate: '1990-2019 normal' });
+  const side = (wind) => world({ elev: (e) => 1000 + 0.35 * Math.max(0, Math.abs(e) - 300), wind });
+  const fromW = row(rowsAt(side(W(270)), 1500, 0, { month: 1 }), 'downwind');
+  check('the east side of a valley (it faces W) in a west wind: Downwind warns, the windward side (MW p 264: the downwind side of hills), fix the slope facing E', fromW?.tone === 'warn' && /slope faces W, wind from W/.test(fromW.value) && /MW p 264/.test(fromW.why) && /facing E/.test(fromW.fix ?? '') && /normal, not a forecast/.test(fromW.why), `${fromW?.value} | ${fromW?.fix}`);
+  const fromE = row(rowsAt(side(W(90)), 1500, 0, { month: 1 }), 'downwind');
+  check('...the same side in an east wind: the downwind (lee) side, passes', fromE?.tone === 'ok' && /wind from E/.test(fromE.value), fromE?.value);
+  const vr = row(rowsAt(side(W(270, 0.1)), 1500, 0, { month: 1 }), 'downwind');
+  check('...a variable wind (steadiness 0.1, under 0.3): not judged, said so, confirm on the ground', vr?.tone === 'unknown' && /wind variable/.test(vr.value) && /no steady direction/.test(vr.why), vr?.why?.slice(0, 200));
+  const nm = row(rowsAt(side(W(270)), 1500, 0), 'downwind');
+  check('...no month given: not judged (the wind normal is by month)', nm?.tone === 'unknown' && /no month given/.test(nm.value));
+  const flat = row(rowsAt(side(W(270)), 0, 0, { month: 1 }), 'downwind');
+  check('...on the level valley floor: no side of the hill to judge', flat?.tone === 'unknown' && /level Gr/.test(flat.value), flat?.value);
+  const noWind = row(rowsAt(side(null), 1500, 0, { month: 1 }), 'downwind');
+  check('...without the wind grid: not judged, said so', noWind?.tone === 'unknown' && /no wind grid read/.test(noWind.value));
+  const M = AR.mountains;
+  check('AdminDoctrine mountains: downwind rule (MW p 264, R) and its method settings leeDeg 90, aspectMinDeg 3, windSteadyMin 0.3 (M)', M.downwind.basis === 'R' && M.downwind.refs?.some((r) => r.page === '264') && M.leeDeg.value === 90 && M.leeDeg.basis === 'M' && M.aspectMinDeg.value === 3 && M.windSteadyMin.value === 0.3);
 }
 
 // ── helipad Gr: a 10° hillside with one level patch 1.2 km east; a recorded helipad ──────────────────────────────────
@@ -121,8 +146,8 @@ const row = (rows, key) => rows.find((r) => r.key === key);
 {
   const valley = world({ elev: (e) => 1000 + 0.35 * Math.max(0, Math.abs(e) - 300) });
   const res = A.findAdminSites(valley, RULES, task(at(1200, 0), { radiusM: 1200 }), AR);
-  check('the search on mountain ground: result marked mountain, the note leads (MW s25 para 3 pp 264-265, downwind and defence to confirm)', res.mountain === true && /Mountain ground/.test(res.notes[0]) && /downwind side/.test(res.notes[0]) && /pp 264-265/.test(res.notes[0]), res.notes[0]?.slice(0, 160));
-  check('...every site carries Slides, Part way up, Rock / gravel, Helipad Gr and Water', res.sites.length > 0 && res.sites.every((s) => ['slides', 'partway', 'rock', 'helipad', 'water'].every((k) => s.rows.some((r) => r.key === k))));
+  check('the search on mountain ground: result marked mountain, the note leads (MW s25 para 3 pp 264-265, defence to confirm)', res.mountain === true && /Mountain ground/.test(res.notes[0]) && /downwind side/.test(res.notes[0]) && /pp 264-265/.test(res.notes[0]), res.notes[0]?.slice(0, 160));
+  check('...every site carries Slides, Part way up, Downwind, Rock / gravel, Helipad Gr and Water', res.sites.length > 0 && res.sites.every((s) => ['slides', 'partway', 'downwind', 'rock', 'helipad', 'water'].every((k) => s.rows.some((r) => r.key === k))));
   const rec = A.adminLines(res, task(at(1200, 0)), (p) => `${Math.round(en(p)[0])}`, '');
   check('...the decision record cites Mountain Warfare with page numbers', rec.some((l) => /Mountain Warfare p 281/.test(l)) && rec.some((l) => /Mountain Warfare p 265/.test(l)));
   const plains = world({ elev: () => 200 });

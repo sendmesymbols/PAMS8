@@ -143,16 +143,18 @@ const assaultStep = (h) => h.steps.find((s) => /^Assault: SL to (the Obj|Obj 1)/
   const def = rec('bn-def-two-up');
   const withElev = (elev) => ({ ...flatG, elev });
   const angRow = (elev) => row(F.fitLayout(inpOf(def, withElev(elev), { terrain: 'mountain', threat: { x: 0, y: 8000 } })).res.rows, 'Weapon angles');
-  const steep = angRow((x, y) => 1500 + 0.3 * Math.max(0, 4000 - y)); // the ground falls 3 in 10 toward the En: ~17 deg down
+  const steep = angRow((x, y) => 1500 + 0.3 * Math.abs(x)); // a valley along the approach (x = 0): the Coys 3 in 10 above it, ~17 deg
   check('mountains, posns on a height 17° above the approach: Weapon angles warns, beyond the MG\'s 8.5° and the RR\'s 5° depression (MW p 221)', steep?.st === 'warn' && /beyond the MG's 8.5° and the RR's 5° depression/.test(steep.reason) && /MW s18 p 221/.test(steep.reason), steep?.reason?.slice(0, 300));
   check('...its Fix: RRs in the foothills on the lower spurs (p 225), shoulder fire within 400 m (p 223), range cards with the angle', steep?.detail?.fix?.some((x) => /foothills/.test(x) && /p 225/.test(x)) && steep.detail.fix.some((x) => /400 m/.test(x)) && steep.detail.fix.some((x) => /Range cards/.test(x)), JSON.stringify(steep?.detail?.fix));
-  const mid = angRow((x, y) => 1500 + 0.08 * Math.max(0, 4000 - y)); // ~6-7 deg down: past the RR, within the MG
+  const mid = angRow((x, y) => 1500 + 0.12 * Math.abs(x)); // ~7 deg down: past the RR, within the MG
   check('...about 7° down: past the RR\'s 5° only (its dead arc), the MG can still depress', mid?.st === 'warn' && /beyond the RR's 5° depression \(its dead arc\)/.test(mid.reason) && !/MG's 8.5°/.test(mid.reason.split(':')[0]), mid?.reason?.slice(0, 260));
-  const gentle = angRow((x, y) => 1500 + 0.04 * Math.max(0, 4000 - y)); // ~2 deg
+  const gentle = angRow((x, y) => 1500 + 0.03 * Math.abs(x)); // ~2 deg
   check('...about 2° down: within the weapons\' angles, passes', gentle?.st === 'pass' && /within the weapons' angles/.test(gentle.reason), gentle?.reason?.slice(0, 200));
-  const upHill = angRow((x, y) => 1500 + 0.2 * Math.max(0, y)); // the approach above the posns: ~11 deg up
+  const upHill = angRow((x, y) => 1500 - 0.2 * Math.abs(x)); // the approach on a ridge above the posns: ~11 deg up
   check('...the approach 11° above the posns: beyond the MG\'s 6° elevation on its mount (within the RR\'s 30°)', upHill?.st === 'warn' && /beyond the MG's 6° elevation on its mount/.test(upHill.reason), upHill?.reason?.slice(0, 260));
-  const plains = row(F.fitLayout(inpOf(def, withElev((x, y) => 1500 + 0.3 * Math.max(0, 4000 - y)), { terrain: 'plains', threat: { x: 0, y: 8000 } })).res.rows, 'Weapon angles');
+  const plains = row(F.fitLayout(inpOf(def, withElev((x, y) => 1500 + 0.3 * Math.abs(x)), { terrain: 'plains', threat: { x: 0, y: 8000 } })).res.rows, 'Weapon angles');
+  const bdeRow = row(F.fitLayout(inpOf(rec('div-def-mtn-valleys'), withElev((x, y) => 1500 + 0.3 * Math.abs(x)), { terrain: 'mountain', threat: { x: 0, y: 12000 } })).res.rows, 'Weapon angles');
+  check('a Div plan: no Weapon angles row (its posns are formations; the weapons are judged in the Bn plans)', !bdeRow, bdeRow?.reason);
   check('plains ground: no Weapon angles row (the mountain book\'s rule)', !plains);
   const wa = doc.plan.terrain.kinds.mountain.weaponAngles;
   check('PlanDoctrine weaponAngles: 6 / 8.5 / 30 / 5 deg, basis D, MW p 221', wa?.mgElevateDeg === 6 && wa.mgDepressDeg === 8.5 && wa.rrElevateDeg === 30 && wa.rrDepressDeg === 5 && wa.basis === 'D' && wa.refs.some((r) => r.page === '221'));
@@ -183,6 +185,13 @@ const assaultStep = (h) => h.steps.find((s) => /^Assault: SL to (the Obj|Obj 1)/
   const two = AD.adDefileRows(items, { ad }, [{ at: { x: 1500, y: 0 }, widthM: 300, label: 'Narrows 1' }, { at: { x: 9000, y: 0 }, widthM: 250, label: 'Narrows 2' }]);
   check('AD on defiles: a defile beyond every FU\'s reach warns (MW s22 para 7 p 247), its Fix a FU on a dominating feature over it', two[0]?.st === 'warn' && /Narrows 2, 250 m wide: 0 FUs/.test(two[0].reason) && /MW s22 para 7 p 247/.test(two[0].reason) && two[0].detail?.fix?.length === 3, two[0]?.reason);
   const one = AD.adDefileRows(items, { ad }, [{ at: { x: 1500, y: 0 }, widthM: 300, label: 'Narrows 1' }]);
+  // a Bty laid by section: every section is a gun area for AD cover; its later sections take no FUs of their own when sited
+  const ad2 = { ...ad, fus: [ad.fus[0], { ...ad.fus[0], name: 'FU 2' }] };
+  const secItems = [{ role: 'ad1', pts: [{ x: 0, y: 0 }] }, { role: 'ad2', pts: [{ x: 100, y: 0 }] }, { role: 'gunArea', pts: [{ x: 500, y: 0 }] }, { role: 'gunAreaS2', pts: [{ x: 9000, y: 0 }] }];
+  const cov = AD.adRows(secItems, { ad: ad2 }, 'mountain')[0];
+  check('AD cover counts every gun section (gunAreaS2): a section beyond the FU reach fails, named Sec 2', cov?.st === 'fail' && /the gun area Sec 2: 0 FUs/.test(cov.reason), cov?.reason);
+  const vpsSec = AD.vpsOf({ task: 'defence', echelon: '16', slots: [{ role: 'gunArea', kind: 'area', shape: { at: [0, 0] } }, { role: 'gunAreaS2', kind: 'area', shape: { at: [1500, 0] } }] }, doc, 'mountain').map((v) => v.role);
+  check('...vpsOf lists both sections (withAd then sites FUs round the first only)', vpsSec.includes('gunArea') && vpsSec.includes('gunAreaS2'), vpsSec.join(','));
   check('...each defile under a FU: passes; no AD or no defile: no row', one[0]?.st === 'pass' && !AD.adDefileRows(items, {}, [{ at: { x: 0, y: 0 }, widthM: 1 }]).length && !AD.adDefileRows(items, { ad }, []).length, one[0]?.reason);
 
   const mines = { name: 'Mines in time', st: 'pass', reason: 'protective minefield along 4.5 km of front, about 4,500 mixed clusters: the Engr Coy ...' };
@@ -209,6 +218,33 @@ const assaultStep = (h) => h.steps.find((s) => /^Assault: SL to (the Obj|Obj 1)/
   const rr = row(C.groundNotes([{ name: 'Reserve reach', st: 'pass', reason: 'x' }], doc, 'mountain', 'defence', '21', null), 'Reserve reach');
   check('a Div defence on mountain ground: Reserve reach names the split reserves (GSP p 122, p 176)', /GSP 1947 Inf Div in Battle s27 para 4 p 122/.test(rr.reason) && /s39 para 11 p 176/.test(rr.reason), rr.reason.slice(-260));
   check('...a Bn defence does not get the Div note', !/s27 para 4 p 122/.test(row(C.groundNotes([{ name: 'Reserve reach', st: 'pass', reason: 'x' }], doc, 'mountain', 'defence', '16', null), 'Reserve reach').reason));
+}
+
+// ── the wedge (MW s9 para 9 p 130, Figure 5 p 131) and the rear area (MW s21 pp 232-238) ─────────────────────────────
+{
+  const V = await import('../../MS/Engines/DeploymentBuilder/PlanRecipes.ts');
+  const M = await import('../../MS/Engines/DeploymentBuilder/PlanMountain.ts');
+  const w = rec('bde-attk-mtn-salient-wedge');
+  const wi = V.validateRecipe(w, { doc, symbols: ctx.symbols, file: 'bde-attk-mtn-salient-wedge.json' }).filter((i) => i.level === 'fail');
+  check('bde-attk-mtn-salient-wedge: valid, layout salient-wedge, in the Bde Attk (Mtn) family beside Figure 4', !wi.length && w.layout === 'salient-wedge' && json('MS/Data/Deployments/Recipes/index.json').families.some((f) => f.id === 'bde-attk-mtn' && f.recipes.includes('bde-attk-mtn-salient-wedge') && f.recipes.includes('bde-attk-mtn-salient')), wi.map((i) => i.msg).join('; '));
+  const wres = S.solveRecipe(w, ctx, {});
+  const wr = M.layoutRows(wres.items, w, doc);
+  check('...as laid: Wedge (OBJ A from the flank meets OBJ B through the tip), Flank fixed, Infiltration to the base pass; Reduce in parts a note (MW s9 para 9 p 130)', ['Wedge', 'Flank fixed', 'Infiltration to the base'].every((n) => row(wr, n)?.st === 'pass') && row(wr, 'Reduce in parts')?.st === 'unchecked' && /para 9 p 130/.test(row(wr, 'Wedge').reason), wr.map((r) => `${r.name}:${r.st}`).join(', '));
+  check('...the solver passes its FUP, assault frontage and reserve reach', ['FUP from the Obj', 'Assault frontage', 'Reserve reach'].every((n) => row(wres.rows, n)?.st === 'pass'), wres.rows.map((r) => `${r.name}:${r.st}`).join(', '));
+  const apart = JSON.parse(JSON.stringify(w));
+  apart.slots.find((s) => s.role === 'objS').shape.rect.acrossM = 3500;
+  const wa = row(M.layoutRows(S.solveRecipe(apart, ctx, {}).items, apart, doc), 'Wedge');
+  check('...OBJ B moved 4 km off OBJ A: Wedge warns, its Fix lays them side by side', wa?.st === 'warn' && /do not meet/.test(wa.detail?.head ?? ''), wa?.reason);
+  const sameSide = JSON.parse(JSON.stringify(w));
+  sameSide.slots.find((s) => s.role === 'fix').shape.pts = [[-6200, -2600], [-4600, -2900]];
+  check('...the fixing force on the main attack\'s flank: Flank fixed warns', row(M.layoutRows(S.solveRecipe(sameSide, ctx, {}).items, sameSide, doc), 'Flank fixed')?.st === 'warn');
+
+  const ra = M.rearAreaRow([{ role: 'hq', label: 'Div HQ', pts: [{ x: 0, y: 0 }] }, { role: 'gunArea', pts: [{ x: 1, y: 1 }] }, { role: 'cpenL', pts: [{ x: 2, y: 2 }] }, { role: 'cpenR', pts: [{ x: 3, y: 3 }] }]);
+  check('rearAreaRow: names what the plan holds (the HQ, gun area, 2 C Pen posns), the En\'s infiltration tasks (MW s21 para 4 p 233) and the measures (p 237); unchecked', ra?.st === 'unchecked' && /the Div HQ, the gun area, 2 C Pen posns/.test(ra.reason) && /para 4 a, c p 233/.test(ra.reason) && /p 237/.test(ra.reason), ra?.reason?.slice(0, 160));
+  check('...a plan with none of them: no row', M.rearAreaRow([{ role: 'fwdL', pts: [{ x: 0, y: 0 }] }]) === null);
+  const defFit = F.fitLayout(inpOf(rec('div-def-mtn-valleys'), flatG, { terrain: 'mountain' }));
+  check('a mountain Div defence fitted on mountain ground carries the Rear area row; plains do not', !!row(defFit.res.rows, 'Rear area') && !row(F.fitLayout(inpOf(rec('div-def-mtn-valleys'), flatG, { terrain: 'plains' })).res.rows, 'Rear area'));
+  check('PlanDoctrine mountain.salient.wedgeLinkM: 1500 m, M, MW p 130', doc.plan.mountain.salient.wedgeLinkM?.value === 1500 && doc.plan.mountain.salient.wedgeLinkM.basis === 'M');
 }
 
 // ── the doctrine: Annex F figures, backed ─────────────────────────────────────────────────────────────────────────────

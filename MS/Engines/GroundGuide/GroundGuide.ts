@@ -102,7 +102,7 @@ import { buildGridRect, mPerPx, mercToPx, pxToMerc, sightTables, sightTo, visibi
 import { IPB, WHY, codeIpb, ipbMoverOf, ipbReasonsAt, ipbRulesFrom, ipbSummaryText, type IpbCoding, type IpbMover, type IpbReason, type IpbStats } from './GroundGuideIpb';
 import { annexA, decide, decRatesFrom, mountainWxNotes, type DecAaIn, type DecArgs, type DecCls } from './GroundGuideIpbDecision';
 import { GroundGuideIpbMap } from './GroundGuideIpbMap';
-import { arrowHeadFrac, arrowTail, attackArrow, findCorridors, mountainApproach, mtnApchRulesFrom, mtnHardestIndex, simplifyLine, type IpbAa, type IpbFrame, type MtnApch } from './GroundGuideIpbCorridors';
+import { arrowHeadFrac, arrowTail, attackArrow, findCorridors, mountainApproach, mountainRoadAlong, mtnApchRulesFrom, mtnHardestIndex, mtnRoadRulesFrom, simplifyLine, type IpbAa, type IpbFrame, type MtnApch } from './GroundGuideIpbCorridors';
 import { assaultFrontage, echelonUp, groundKindAt, groundTestsFrom, objectiveFrontage, type AssaultFrontage, type ObjFrontage } from './GroundGuideFrontage';
 import { ipbAreas } from './GroundGuideIpbShapes';
 import { fireCoverage } from './GroundGuideIpbFire';
@@ -3862,6 +3862,15 @@ export default class GroundGuide {
     };
     const W: Record<string, string> = { valley: 'valley', nullah: 'nullah', ridge: 'ridge line', slope: 'side slope' };
     const book = (k: string, pg: string): string | null => (MA[k]?.text ? `${MA[k].text} (MW p ${pg})` : null);
+    // the roads and tracks the class grid carries (the IPB coding's road classes: IpbDoctrine coding.roads)
+    const RR = mtnRoadRulesFrom(IPB_DOCTRINE), IR = this._ipbRules;
+    const roadAt = (x: number, y: number): number => {
+      const gx = x + coding.x0, gy = y + coding.y0;
+      if (gx < 0 || gy < 0 || gx >= grid.w || gy >= grid.h) return 0;
+      const c = grid.cls[gy * grid.w + gx];
+      return IR.hard[c] ? 2 : IR.track[c] ? 1 : 0;
+    };
+    const roadMaj = Number(MA.road?.majority) > 0 ? Number(MA.road.majority) : 0.5;
     return (a: IpbAa) => {
       const m: MtnApch | null = mountainApproach(a.line, elevAt, coding.res, R);
       if (!m) return undefined;
@@ -3877,8 +3886,16 @@ export default class GroundGuide {
         const t = k === 'slope' ? book('alongRidges', '79; p 46') : book(k, '78');
         if (t) say.push(t);
       }
+      // a road or track along it (MW p 78: the valley approach may be served with a road or good track), from the map's roads
+      const rd = mountainRoadAlong(a.line, roadAt, coding.res, RR);
+      if (rd) {
+        const near = `within ${RR.nearM} m`;
+        if (rd.pct >= roadMaj * 100) say.push(`${rd.hardPct >= roadMaj * 100 ? 'A road' : 'A road or track'} ${near} along ${rd.pct} % of it${rd.hardPct >= roadMaj * 100 ? '' : ` (a road on ${rd.hardPct} %)`}${kinds.includes('valley') ? ': the obvious approach, served with a road or good track and well covered by the En (MW p 78)' : ': a way for vehicles as well as men on foot'}`);
+        else if (rd.pct > 0) say.push(`A road or track ${near} along only ${rd.pct} % of it: mostly a foot / mule approach${kinds.some((k) => k === 'nullah' || k === 'ridge') ? ', the infiltration and infantry approach of MW p 78' : ''}`);
+        else say.push(`No road or track recorded ${near} along it: a foot / mule approach${kinds.some((k) => k === 'nullah' || k === 'ridge') ? ', the infiltration and infantry approach of MW p 78' : ''}`);
+      }
       if (side === 'enemy' && kinds.some((k) => k === 'valley' || k === 'ridge')) { const t = book('listeningPosts', '52'); if (t) say.push(t); }
-      return { kind: m.kind, label, top: m.top, shares: m.shares, floorM: m.floorM, say };
+      return { kind: m.kind, label, top: m.top, shares: m.shares, floorM: m.floorM, ...(rd ? { road: { pct: rd.pct, hardPct: rd.hardPct } } : {}), say };
     };
   }
 

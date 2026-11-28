@@ -398,7 +398,8 @@ export default class AdminArea {
         EngineLogger.error(ENGINE, `Why not here? not read: ${(err as Error)?.message ?? err}`);
       }
     }
-    this._pending = b.pending() || (prec === null && b.climateLoading);
+    // on mountain ground the Downwind row waits for the wind grid (fetched on its first read)
+    this._pending = b.pending() || (prec === null && b.climateLoading) || (!!res?.mountain && b.windLoading);
     this._res = res;
     this._task = task;
     if (this._sel >= (res?.sites.length ?? 0)) this._sel = 0;

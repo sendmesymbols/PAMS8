@@ -63,6 +63,27 @@ export interface SiteProbe {
    * data, or the two are too far apart for one sight grid). Optional: finders that need no sight leave it out.
    */
   sight?(ox: number, oy: number, eyeM: number, tx: number, ty: number, targetM: number): number | null;
+  /**
+   * The month's usual wind at a point (month 1-12) from the bundle's wind grid (`grotbc.wind`, ERA5 normal): where it
+   * comes from as the four hours' mean vector, and how steady it is. Null while the grid is loading or without it.
+   * Optional: finders that need no wind leave it out.
+   */
+  windAt?(x: number, y: number, month: number): SiteWind | null;
+}
+
+/** The usual wind at a place in a month (SiteProbe.windAt). */
+export interface SiteWind {
+  /** Where it comes from, degrees true (the mean vector's), null when it has no mean direction at all. */
+  fromDeg: number | null;
+  /** |mean vector| / mean speed, 0-1: under the finder's threshold the direction is called variable. */
+  steady: number;
+  /** Mean speed, m/s. */
+  meanMs: number;
+  /** By day and by night (local 06-18 / 18-06), when they differ. */
+  dayFromDeg: number | null;
+  nightFromDeg: number | null;
+  /** The grid's own dates ("1990-2019 normal"). */
+  dataDate: string;
 }
 
 /** The mover's going and soil rule (built once per scan). */
@@ -506,7 +527,7 @@ export function soilRuleRef(rules: any, profile: string, figure: string): RuleRe
 
 // ── data: what a value was read from ────────────────────────────────────────────────────────────────────────────────
 
-export type DataKey = 'class' | 'elev' | 'cc' | 'wet' | 'soil' | 'rci' | 'bld' | 'features' | 'network' | 'population' | 'climate' | 'visibility' | 'landform' | 'terrain';
+export type DataKey = 'class' | 'elev' | 'cc' | 'wet' | 'soil' | 'rci' | 'bld' | 'features' | 'network' | 'population' | 'climate' | 'visibility' | 'landform' | 'terrain' | 'wind';
 
 const DATA_NAME: Record<DataKey, string> = {
   class: 'Gr class layer',
@@ -523,6 +544,7 @@ const DATA_NAME: Record<DataKey, string> = {
   visibility: 'Visibility grid',
   landform: 'Landform layer',
   terrain: 'Terrain type layer',
+  wind: 'Wind grid (the usual wind by month)',
 };
 
 /** A source's name for the user: never "NCGDB" (user, 7 Nov 2026): the 1:50k map. */
@@ -563,6 +585,7 @@ export function dataCatalog(manifest: any): (key: DataKey, figure: string) => Ru
       case 'population':
       case 'climate':
       case 'visibility':
+      case 'wind':
         return g[key]?.sources ?? [];
       default:
         return g.layers?.[key]?.sources ?? [];

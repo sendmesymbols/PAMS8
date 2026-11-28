@@ -31,7 +31,7 @@ import { fitAdvance } from './PlanAdvance';
 import { fitWithdrawal, type WithdrawalFind } from './PlanWithdrawal';
 import { findReverseSlope, type RevSlopeFind } from './PlanRevSlope';
 import type { PlFootSpeeds } from '../PlatoonGuide/PlatoonGuideRead';
-import { layoutRows } from './PlanMountain';
+import { layoutRows, rearAreaRow } from './PlanMountain';
 import { footKmh, approachCarries, applyContext, groundNotes, echelonLabel, enemyCorridorM, enemyFupM, enemyProfile, levelOf, type EnemySpec, type TerrainKind, type TerrainSpec } from './PlanContext';
 
 export interface GroundAvenue {
@@ -855,14 +855,19 @@ export function fitPlan(inp: FitInput): FitResult {
       let known = false;
       for (const b of fwdBoxes) {
         const e0 = readGround(g, f, b, foot).elev;
-        let bd = Infinity, eAp = NaN;
-        for (const w of main.path) { const l = toLocal(f, w); const d = boxDist(b, l); if (l.y > b.c.y && d < bd && d <= 2000) { bd = d; eAp = g.elev(w.x, w.y); } }
+        let bd = Infinity, eAp = NaN, lp: XY | null = null;
+        for (const w of main.path) { const l = toLocal(f, w); const d = boxDist(b, l); if (l.y > b.c.y && d < bd && d <= 2000) { bd = d; eAp = g.elev(w.x, w.y); lp = l; } }
         if (!Number.isFinite(e0) || !Number.isFinite(eAp)) continue;
         known = true;
         (e0 - eAp >= want ? high : low).push(`${b.label} ${Math.round(e0 - eAp)} m`);
-        // the angle the posn's weapons fire down (+) or up (-) onto the approach, from its edge (at least 50 m)
-        const dM = Math.max(50, bd);
-        angs.push({ label: b.label, dh: e0 - eAp, dM, deg: (Math.atan2(e0 - eAp, dM) * 180) / Math.PI });
+        // the angle the posn's weapons fire down (+) or up (-) onto the approach: from the middle of its front edge, where
+        // the forward weapons stand, its height read there, to the approach point (at least 50 m); Pl, Coy and Bn plans
+        // only (in a Bde or Div plan the posns are formations, their weapons in the Coy posns judged in the Bn plans)
+        if (lp && ['14', '15', '16'].includes(recipe.echelon)) {
+          const fp = boxPt(b, 0, b.h / 2), wf = toWorld(f, fp), eF = g.elev(wf.x, wf.y);
+          const e1 = Number.isFinite(eF) ? eF : e0, dM = Math.max(50, Math.hypot(fp.x - lp.x, fp.y - lp.y));
+          angs.push({ label: b.label, dh: e1 - eAp, dM, deg: (Math.atan2(e1 - eAp, dM) * 180) / Math.PI });
+        }
       }
       out.rows.push(!known ? { name: 'Dominates the approach', st: 'unchecked', reason: 'no elevation along the main approach in front' }
         : low.length ? { name: 'Dominates the approach', st: 'warn', reason: `${low.join(', ')} above ${main.id} where it passes in front (wants ${want} m or more, E): hold the dominating features astride and on the flanks of the axis (MW s12 para 2 p 147)` }
@@ -1394,6 +1399,8 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   if (recipe.ad) merged.rows.push(...adRows(raw.items, recipe, terrain.kind));
   // in the mountains: each fire unit on a dominating feature over the canalized run-ins (MW p 247)
   if (recipe.ad && terrain.kind === 'mountain') merged.rows.push(...adMountainRows(raw.items, recipe, (p) => toWorld(frame, p), (x, y) => ground.elev(x, y), ctx.doc));
+  // a defence on mountain ground: its rear area against infiltration (MW s21 pp 232-238)
+  if (terrain.kind === 'mountain' && recipe.task === 'defence') { const ra = rearAreaRow(raw.items); if (ra) merged.rows.push(ra); }
   if (canal) { merged.rows.push(...canal.rows); fit.crossing = canal.reading ?? undefined; fit.pending = fit.pending || canal.pending; }
   // the reverse slope's rows replace the solver's grey ones of the same name; its confirm list joins
   if (rs) { const fresh = new Set(rs.rows.map((r) => r.name)); merged.rows = merged.rows.filter((r) => !fresh.has(r.name)); merged.rows.push(...rs.rows); raw.confirm = [...raw.confirm, ...rs.confirm.filter((c) => !raw.confirm.includes(c))]; }

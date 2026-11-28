@@ -131,7 +131,7 @@ const STEPS = ['Task', 'Enemy', 'Place', 'Check', 'Create'];
 const LAYOUT_LABEL: Record<string, string> = {
   'two-up': 'Two up', 'three-up': 'Three up', 'one-up': 'One up', 'all-round': 'All round', canal: 'Canal', 'canal-three-up': 'Canal, three up', ditch: 'AT ditch', extended: 'Extended', 'rev-slope': 'Reverse slope', night: 'By night', frontal: 'Frontal',
   'left-flank': 'Lt flank', 'right-flank': 'Rt flank',
-  line: 'Line', l: 'L', v: 'V', patrol: 'Out and back', 'two-ops': 'Two OPs', 'three-ops': 'Three OPs', 'four-bn': 'Four Bns', 'armd-lead': 'Armd Bde leading', 'two-bde': 'Two Bdes', area: 'Area', screen: 'Screen', 'three-axes': 'Three axes', 'main-left': 'Two up, main Lt', 'main-right': 'Two up, main Rt', delay: 'Delay', 'by-day': 'By day', ridge: 'Ridge', salient: 'Salient', mobile: 'Mobile def', valleys: 'Valleys',
+  line: 'Line', l: 'L', v: 'V', patrol: 'Out and back', 'two-ops': 'Two OPs', 'three-ops': 'Three OPs', 'four-bn': 'Four Bns', 'armd-lead': 'Armd Bde leading', 'two-bde': 'Two Bdes', area: 'Area', screen: 'Screen', 'three-axes': 'Three axes', 'main-left': 'Two up, main Lt', 'main-right': 'Two up, main Rt', delay: 'Delay', 'by-day': 'By day', ridge: 'Ridge', salient: 'Salient', mobile: 'Mobile def', valleys: 'Valleys', 'salient-wedge': 'Salient, wedge',
 };
 const MOVER_LABEL: Record<Mover, string> = { wheeled: 'Wheeled', tracked: 'Tanks', dismounted: 'On foot' };
 const MOVERS: Mover[] = ['wheeled', 'tracked', 'dismounted'];

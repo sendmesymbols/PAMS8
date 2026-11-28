@@ -79,7 +79,22 @@ const MA = D.mountainApproach;
 const pages = (k) => (MA[k]?.refs ?? []).map((r) => `${r.book} ${r.page}`).join(',');
 check('valley, nullah, ridge: MW p 78', ['valley', 'nullah', 'ridge'].every((k) => MA[k]?.text && /MW 78/.test(pages(k))), ['valley', 'nullah', 'ridge'].map(pages).join(' | '));
 check('along ridges MW pp 79, 46; lightly held MW p 79; LPs MW p 52', /MW 79/.test(pages('alongRidges')) && /MW 46/.test(pages('alongRidges')) && /MW 79/.test(pages('lightlyHeld')) && /MW 52/.test(pages('listeningPosts')));
-const unchecked = ['valley', 'nullah', 'ridge', 'alongRidges', 'lightlyHeld', 'listeningPosts'].flatMap((k) => MA[k].refs).filter((r) => r.checked?.status !== 'ok');
+// ── a road or track along the approach (MW p 78: the valley approach may be served with a road or good track) ─────────
+{
+  const RR = C.mtnRoadRulesFrom(D);
+  check('road reading settings from IpbDoctrine mountainApproach.road (M, decided and searched; MW p 78 ref)', RR.stepM === 100 && RR.nearM === 200 && D.mountainApproach.road?.basis === 'M' && !!D.mountainApproach.road.decided && !!D.mountainApproach.road.searched && D.mountainApproach.road.refs?.some((r) => r.page === '78'), JSON.stringify(RR));
+  // a road 120 m (4 cells) north of the way all along it, 2 = a hard road
+  const roadN = (x, y) => (y === YC - 4 ? 2 : 0);
+  const all = C.mountainRoadAlong(line, roadN, RES, RR);
+  check('a road 120 m beside the way all along: 100 %, a road (hard) 100 %', all?.pct === 100 && all.hardPct === 100, JSON.stringify(all));
+  const far = C.mountainRoadAlong(line, (x, y) => (y === YC - 12 ? 2 : 0), RES, RR);
+  check('...the road 360 m off (beyond 200 m): 0 %, no road along it', far?.pct === 0, JSON.stringify(far));
+  const half = C.mountainRoadAlong(line, (x, y) => (y === YC + 3 && x < 155 ? 1 : 0), RES, RR);
+  check('...a track along about half of it: about 50 %, no hard road', half && half.pct >= 40 && half.pct <= 60 && half.hardPct === 0, JSON.stringify(half));
+  check('...no road data at all: 0 % (never invented)', C.mountainRoadAlong(line, () => 0, RES, RR)?.pct === 0);
+}
+
+const unchecked = ['valley', 'nullah', 'ridge', 'alongRidges', 'lightlyHeld', 'listeningPosts', 'road'].flatMap((k) => MA[k].refs).filter((r) => r.checked?.status !== 'ok');
 check('every mountainApproach ref found on its page by verify.py (checked ok)', unchecked.length === 0, unchecked.map((r) => `${r.page}: ${r.quote}`).join('; '));
 
 console.log(`\n${pass} passed, ${fail} failed`);

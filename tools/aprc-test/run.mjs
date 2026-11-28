@@ -361,6 +361,10 @@ M.setMine(doc, 'aim', 'To def <Qila Mor> & hold it.');
   const gw2 = W.writeGround({ ...gin, wx: { marginal: ['Tr veh day (vis)'], unfavourable: ['CAS (ceiling)'] } });
   const met = gw2.patches.find((x) => x.id === 'gr.met');
   check('weather: Annex A values in Met Conditions with the book cited', /unfavourable for CAS \(ceiling\); marginal for Tr veh day \(vis\)/.test(met.draft) && met.basis.some((b) => /Annex A pp 19-20/.test(b.text)));
+  const gw3 = W.writeGround({ ...gin, wx: { marginal: [], unfavourable: [], mtn: { elevM: 2600, notes: ['Fog lies thick in the valleys early in the morning (MW p 229).', 'Snow hides the tracks above 2500 m (MW p 298).'] } } });
+  const met3 = gw3.patches.find((x) => x.id === 'gr.met');
+  check('weather: on mountain ground the Met paragraph carries the MW notes (about 2600 m), Mountain Warfare in the basis', /Mountains \(about 2600 m\): Fog lies thick in the valleys early in the morning \(MW p 229\)\. Snow hides the tracks above 2500 m \(MW p 298\)\./.test(met3.draft) && met3.basis.some((b) => /Mountain Warfare \(GSP-1973\)/.test(b.text)));
+  check('...off the mountains no such line', !/Mountains \(about/.test(met.draft));
 }
 
 // ── tasks for DP 1 ───────────────────────────────────────────────────────────────────────────────────────────────

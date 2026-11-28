@@ -26,8 +26,9 @@
  * MW checks are added (MW s25 para 3 pp 264-265): Slides (no slope steep enough to slide above the area, p 281), Part
  * way up the slope (not the valley floor where the nullahs flood, p 9, nor the top, p 264), Helipad Gr (a helipad or
  * airfield recorded, or a level patch of 4° or less, within reach, p 265 / p 256), Rock / gravel (p 265), Water for
- * every kind (p 264; p 266), and the room row cites p 265. The downwind side and defensible ground are named in the
- * notes to confirm on the ground: the bundle does not read them.
+ * every kind (p 264; p 266), Downwind (the slope the area stands on against the month's usual wind from the bundle's
+ * wind grid: the downwind side of the hills, p 264), and the room row cites p 265. Defensible ground is named in the
+ * notes to confirm on the ground: the bundle does not read it.
  *
  * The best areas are returned ranked (at least an area's size apart), each with its rows (value, tone, why) and fixes.
  */
@@ -67,6 +68,9 @@ import {
   type Tone,
   type XY,
 } from '../SiteScan/SiteScan';
+
+/** The Slides row reads the slope above an admin area every 30 m, the elevation grid's own cell. */
+const SLIDE_STEP_M = 30;
 
 export interface Fig {
   value: number;
@@ -147,6 +151,15 @@ export interface AdminMtnRules {
   /** Rock / gravel: the share of the area on these classes. */
   rockClasses: number[];
   rockShare: Fig;
+  /**
+   * Downwind: the downwind side of the hills (MW p 264): the slope the area stands on faces within leeDeg of where the
+   * month's usual wind goes; under aspectMinDeg the ground is level (no side to judge); under windSteadyMin the wind is
+   * variable (no downwind side).
+   */
+  downwind: BookRule;
+  leeDeg: Fig;
+  aspectMinDeg: Fig;
+  windSteadyMin: Fig;
   /** Book rules cited by rows that have no figure of their own. */
   water: BookRule;
   room: BookRule;
@@ -178,6 +191,10 @@ function mtnRulesFrom(m: any): AdminMtnRules {
     helipadKinds: Array.isArray(m?.helipadKinds) ? m.helipadKinds.map(String) : ['40', '41', '42', '43', '44', '45', '46', '47'],
     rockClasses: Array.isArray(m?.rockClasses) ? m.rockClasses.map(Number) : [15],
     rockShare: fig(m?.rockShare, 0.3, 'M'),
+    downwind: bookRule(m?.downwind, 'MW p 264: the downwind side of hills'),
+    leeDeg: fig(m?.leeDeg, 90, 'M'),
+    aspectMinDeg: fig(m?.aspectMinDeg, 3, 'M'),
+    windSteadyMin: fig(m?.windSteadyMin, 0.3, 'M'),
     water: bookRule(m?.water, 'MW p 264: proximity to a stream or lake for water'),
     room: bookRule(m?.room, 'MW p 265: an area of sufficient size to allow proper dispersion'),
     confirm: bookRule(m?.confirm, 'MW p 264: the downwind side of hills; terrain which lends itself to defence'),
@@ -291,7 +308,7 @@ export function adminRulesFrom(doc: any): AdminRules {
       pre: { room: 2, firm: 2, wet: -4, floodWet: -2, floodDry: -0.5, concealDiv: 1.5, bua: -1, ...Object.fromEntries(Object.entries(d.order?.pre ?? {}).filter(([, v]) => typeof v === 'number')) } as Record<string, number>,
       preSrc: String(d.order?.pre?.src ?? 'finer reading'),
     },
-    weights: { beyond: 3, behind: 2, firm: 2, wet: 3, room: 2, air: 2, road: 2, avoid: 1, water: 1, buildings: 1, people: 1, slides: 3, partway: 1, helipad: 1, rock: 1, ...(d.weights ?? {}) },
+    weights: { beyond: 3, behind: 2, firm: 2, wet: 3, room: 2, air: 2, road: 2, avoid: 1, water: 1, buildings: 1, people: 1, slides: 3, partway: 1, helipad: 1, rock: 1, downwind: 1, ...(d.weights ?? {}) },
     mountains: mtnRulesFrom(d.mountains),
   };
 }
@@ -612,13 +629,24 @@ function adminScorer(probe: SiteProbe, rules: any, task: AdminTask, R: AdminRule
     rock: [...figRefs(M.rockShare, `Rock / stony Gr on ${pctV(M.rockShare.value)} or more of the area`, S), ...figRefs(M.confirm, 'Good soil conditions (rock, or gravel)', S), ...dat('class', 'Rocky Gr / scree / stony waste class')],
     water: figRefs(M.water, 'Water: a stream or lake near; seldom on the heights', S),
     room: figRefs(M.room, 'Room to disperse', S),
+    downwind: [
+      ...figRefs(M.downwind, 'The downwind side of hills', S),
+      ...figRefs(M.leeDeg, `The slope faces within ${M.leeDeg.value}° of where the wind goes`, S),
+      ...figRefs(M.aspectMinDeg, `Under ${M.aspectMinDeg.value}° of slope: level, no side to judge`, S),
+      ...figRefs(M.windSteadyMin, `Steadiness under ${M.windSteadyMin.value}: the wind variable`, S),
+      ...dat('wind', "The month's usual wind (a normal, not a forecast)"),
+      ...dat('elev', 'Heights round the place (the way its slope faces)'),
+    ],
   };
-  /** The steepest slope above the area, ground rising outward from it and standing above it, read 60 m at a time. */
+  /**
+   * The steepest slope above the area, ground rising outward from it and standing above it, read every 30 m: the
+   * elevation grid's own cell (at 60 m a pitch of 30-60 m was halved into two gentle steps and missed).
+   */
   const slideRead = (p: XY): { deg: number; distM: number; brg: number; e0: number } | null => {
     const e0 = probe.elev(p[0], p[1]);
     if (!Number.isFinite(e0)) return null;
     const reach = M.slideReachM.value + Math.hypot(frontM, depthM) / 2;
-    const step = 60;
+    const step = SLIDE_STEP_M;
     let worst = { deg: 0, distM: 0, brg: 0 }, known = 0;
     for (let b = 0; b < 16; b++) {
       const brg = b * 22.5;
@@ -644,6 +672,16 @@ function adminScorer(probe: SiteProbe, rules: any, task: AdminTask, R: AdminRule
     if (!Number.isFinite(e0) || !rel) return null;
     const relief = rel.maxM - rel.minM;
     return { f: relief > 0 ? (e0 - rel.minM) / relief : 0.5, reliefM: relief, minM: rel.minM, maxM: rel.maxM };
+  };
+  /** The way the ground at a place faces (the downslope bearing, degrees true) and its slope, from heights 60 m round it. */
+  const aspectRead = (p: XY): { aspect: number; deg: number } | null => {
+    const h = 60, e = (b: number) => { const q = offsetPt(p[0], p[1], b, h); return probe.elev(q[0], q[1]); };
+    const n = e(0), ea = e(90), so = e(180), w = e(270);
+    if (![n, ea, so, w].every(Number.isFinite)) return null;
+    // the gradient points uphill: east and north components of the rise; the slope faces the other way
+    const gx = (ea - w) / (2 * h), gy = (n - so) / (2 * h);
+    const grad = Math.hypot(gx, gy);
+    return { aspect: grad > 0 ? ((Math.atan2(-gx, -gy) * 180) / Math.PI + 360) % 360 : 0, deg: (Math.atan(grad) * 180) / Math.PI };
   };
   /** A recorded helipad / airfield within reach, else the nearest level patch (rings 150 m apart, 24 bearings). */
   const heliRead = (p: XY): { rec: { label: string; name: string | null; distM: number; brg: number } | null; patch: { distM: number; deg: number; brg: number } | null; known: boolean } => {
@@ -786,7 +824,7 @@ function adminScorer(probe: SiteProbe, rules: any, task: AdminTask, R: AdminRule
         label: 'Slides',
         value: !sl ? 'not read' : sl.deg > M.freshSnowDeg.value ? `slope ${Math.round(sl.deg)}° above it, ${metres(sl.distM)} ${compass(sl.brg)}` : `nothing over ${M.freshSnowDeg.value}° above it`,
         tone: !sl ? 'unknown' : slBad ? 'bad' : slWarn ? 'warn' : 'ok',
-        why: `free of danger from slides (MW p 264); snow slides are most dangerous on slopes over ${M.slideDeg.value}°, and deep new snow slides on slopes over ${M.freshSnowDeg.value}° for 2-3 days after a fall (p 281)${sl && sl.deg > M.freshSnowDeg.value && !slBad ? (snow ? `; at ${Math.round(sl.e0)} m snow lies here in the winter months` : '; below the snow, or out of the snow months: a warning only after a fall') : ''}`,
+        why: `free of danger from slides (MW p 264); snow slides are most dangerous on slopes over ${M.slideDeg.value}°, and deep new snow slides on slopes over ${M.freshSnowDeg.value}° for 2-3 days after a fall (p 281); read every ${SLIDE_STEP_M} m on the 30 m elevation grid, so a pitch shorter than a cell is not seen${sl && sl.deg > M.freshSnowDeg.value && !slBad ? (snow ? `; at ${Math.round(sl.e0)} m snow lies here in the winter months` : '; below the snow, or out of the snow months: a warning only after a fall') : ''}`,
         fix: slBad ? 'Away from the foot of the steep slope: a spur or a gentler hillside, the area clear of the run-out' : slWarn ? 'Watch the slope after a snowfall: keep the area clear for 2-3 days, or site it away from the slope' : undefined,
         rules: uniqRefs(mRefs.slides),
       });
@@ -802,6 +840,24 @@ function adminScorer(probe: SiteProbe, rules: any, task: AdminTask, R: AdminRule
         why: low ? 'on the valley floor: flash floods run in the nullahs (MW p 9); the book wants part way up the slope (p 264)' : high ? 'on the top: the book wants the downwind side of the hill and part way up the slope (p 264)' : 'part way up the slope, on the downwind side of the hill (MW p 264)',
         fix: low ? 'Up the side of the valley, clear of the nullah bed and its flood line' : high ? 'Down the downwind side, part way up the slope' : undefined,
         rules: uniqRefs(mRefs.partway),
+      });
+      // Downwind side of the hill (p 264): the slope it stands on against the month's usual wind (the wind grid)
+      const asp = aspectRead(c.at);
+      const wind = task.month !== undefined && probe.windAt ? probe.windAt(c.at[0], c.at[1], task.month) : null;
+      const flat = !!asp && asp.deg < M.aspectMinDeg.value;
+      const varWind = !!wind && (wind.fromDeg === null || wind.steady < M.windSteadyMin.value);
+      const goes = wind && wind.fromDeg !== null ? (wind.fromDeg + 180) % 360 : null;
+      const off = asp && goes !== null ? Math.abs((((asp.aspect - goes) % 360) + 540) % 360 - 180) : null;
+      const lee = off !== null && off <= M.leeDeg.value;
+      const turnTxt = wind && wind.dayFromDeg !== null && wind.nightFromDeg !== null && Math.abs((((wind.dayFromDeg - wind.nightFromDeg) % 360) + 540) % 360 - 180) >= 90 ? `; it turns: by day from ${compass(wind.dayFromDeg)}, by night from ${compass(wind.nightFromDeg)} (valley winds)` : '';
+      rows.push({
+        key: 'downwind',
+        label: 'Downwind',
+        value: task.month === undefined ? 'no month given' : !asp ? 'not read' : !wind ? 'no wind grid read' : flat ? `level Gr (${asp.deg.toFixed(0)}°)` : varWind ? `wind variable; slope faces ${compass(asp.aspect)}` : `slope faces ${compass(asp.aspect)}, wind from ${compass(wind.fromDeg!)}`,
+        tone: task.month === undefined || !asp || !wind || flat || varWind ? 'unknown' : lee ? 'ok' : 'warn',
+        why: `the downwind side of hills (MW p 264): the slope the area stands on faces within ${M.leeDeg.value}° of where the month's usual wind goes${wind && !varWind && wind.fromDeg !== null ? ` (the wind from ${compass(wind.fromDeg)}, steadiness ${wind.steady.toFixed(2)}${turnTxt})` : varWind ? ` (in this month the wind here has no steady direction, steadiness ${wind!.steady.toFixed(2)} under ${M.windSteadyMin.value}: confirm on the ground)` : ''}; the usual wind is a ${wind?.dataDate ?? '1990-2019'} normal, not a forecast${task.month === undefined ? '; give the month to read it' : ''}`,
+        fix: !lee && off !== null && !flat && !varWind && goes !== null ? `To the far side of the hill from the wind: the slope facing ${compass(goes)}` : undefined,
+        rules: uniqRefs(mRefs.downwind),
       });
       // Rock or gravel (p 265)
       const rk = rockRead(rectRing(c.at, c.axis, frontM, depthM));
@@ -986,7 +1042,7 @@ export function findAdminSites(probe: SiteProbe, rules: any, task: AdminTask, R:
 /** What mountain ground adds, and what the bundle cannot read (MW s24-25 pp 263-265). */
 export function mountainNote(R: AdminRules): string {
   const M = R.mountains;
-  return `Mountain ground (within ${km(M.detectWithinM.value, 0)} the ground rises ${M.detectRiseM.value} m or more): the checks for admin areas in mountains are added: slides, part way up the slope, rock or gravel, helipad Gr and water (MW s25 para 3 pp 264-265). Confirm on the ground the downwind side of the hill and terrain that lends itself to defence (para 3 c, d): the terrain data does not read them. Where the sectors give no mutual support, stocks go to each sector with mobile log elements (para 4 p 265); from the road head animal transport takes over, portering the last resort (s24 para 12 pp 263-264).`;
+  return `Mountain ground (within ${km(M.detectWithinM.value, 0)} the ground rises ${M.detectRiseM.value} m or more): the checks for admin areas in mountains are added: slides, part way up the slope, the downwind side of the hill (the month's usual wind), rock or gravel, helipad Gr and water (MW s25 para 3 pp 264-265). Confirm on the ground terrain that lends itself to defence (para 3 d): the terrain data does not read it. Where the sectors give no mutual support, stocks go to each sector with mobile log elements (para 4 p 265); from the road head animal transport takes over, portering the last resort (s24 para 12 pp 263-264).`;
 }
 
 /** "Why not here?": the place read with the same gates and checks as the search, set against the first site. */

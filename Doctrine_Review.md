@@ -13,7 +13,7 @@ engine lacks). Every item is a reader's finding: check the page before changing 
 **Mountain Warfare re-audit (27 Nov 2026):** see `MW_Review.md`. Done there: R85 on the Plan Builder side (the uphill assault
 on the slant + 1 h per 350 m, MW Annex F pp 311-313) and R87 (Ph 3 by recycled Coys warns in mountains, MW s17 pp 210-215);
 the MW section numbers in code and data corrected (attack s7, defence s12, not s1 / s2). R119 done the same day (gun areas by
-section on mountain ground, N2 there). Still open: R245 (mountain admin areas, N7).
+section on mountain ground, N2 there). R245 done 27-28 Nov (mountain admin areas: slides, part way up, rock / gravel, helipad ground, water, downwind; N7 there).
 
 **Applied in the Deployment Builder** (PlanDoctrine.json, recipes, Plan*.ts; every new ref found on its page by
 `verify.py --write`; all 19 Plan Builder suites pass; no tsc errors in the touched files):
