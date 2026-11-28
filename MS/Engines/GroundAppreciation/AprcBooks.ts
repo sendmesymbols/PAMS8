@@ -186,6 +186,12 @@ export const BN_OBS_TEXT = 'Along a canal or A tk ditch (24 m or more wide, IBB 
 export const BDE_FRONT_TEXT = 'A Bde 10-12 km wide and 4-6 km deep: only a yardstick, not to be followed rigidly (OoW Vol I Annex B p 103)';
 export const BDE_DCB_TEXT = 'A Bde on a DCB up to 8,000-10,000 m by the terrain and the second line tps allotted (GSP-1947 s26 para 5 p 119); normally all three Bns three up, depth from their own resources (pp 120-121)';
 
+/** The SZ's depth by sector, km (SZ Battle (C&SC) p 3 para 5): the Punjab plains none or 2-5, the desert 20-50; Kashmir and the north none. */
+export const SZ_BAND = { plains: [2, 5] as [number, number], desert: [20, 50] as [number, number] };
+export const SZ_TEXT = 'The SZ, between the IB and the main def posn, by sector: in Kashmir and the north an exaggerated fwd posture, no SZ battle; in the Punjab plains none or 2-5 km, too little to fight the C Tps battle on several DLs; in the desert and semi-desert 20-50 km, the classical SZ battle (SZ Battle (C&SC) p 3 paras 5-7)';
+/** A C Tps msn (SZ Battle p 4 para 8, pp 26-27 para 41 f-g): a delay for a time and / or a % of cas, "while remaining a viable force". */
+export const CTPS_MSN_TEXT = 'A C Tps msn: delay the En for a specified time, cause attrition, or a given % of cas (e.g. "delay the en for 48 hrs inflicting 30% cas"); mostly only the time is given; "while remaining a viable force", judged against its later tasks (SZ Battle p 4 para 8; pp 26-27 para 41 f-g)';
+
 /** The ground's own rules for the def's DP heads (mountains, desert), each with its book and page. */
 export const GROUND_DEF: Record<Exclude<AprcGroundKind, 'plains'>, { fdls: string; adv: string; res: string; atk: string; rules: string[] }> = {
   mountains: {

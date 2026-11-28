@@ -5323,7 +5323,7 @@ body.pb-docked .db-placement-instructions { display: none !important; }
 .pb-card .pb-c-keys .pb-c-step:empty { display: none; }
 .pb-card .pb-c-keys .pb-c-step b { color: #f7f8fa; font-weight: 700; margin-right: 8px; }
 /* a passing state (moving, fitting) over a reading: the reading stays, dimmed, the state in the head */
-.pb-card.is-stale .pb-c-body, .pb-card.is-stale .pb-c-fit { opacity: 0.45; transition: opacity 0.12s ease-out; }
+.pb-card.is-stale .pb-c-body, .pb-card.is-stale .pb-c-fit, .pb-card.is-stale .pb-c-fv { opacity: 0.45; transition: opacity 0.12s ease-out; }
 .pb-card .pb-c-status:empty { display: none; }
 .pb-card .pb-c-status { align-self: center; font-size: 12px; color: #8ec1ea; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .pb-card .pb-c-fold {
@@ -5332,20 +5332,66 @@ body.pb-docked .db-placement-instructions { display: none !important; }
 }
 .pb-card .pb-c-fold:hover { background: #2c343e; color: #f7f8fa; }
 .pb-card .pb-c-fold:focus-visible, .pb-card .pb-c-gc:focus-visible, .pb-card .pb-c-lay:focus-visible { outline: 2px solid #8ec1ea; outline-offset: 1px; }
-/* folded: the ledger away, the ground and the layouts (and the keys) stay, the verdict in the head */
-.pb-card.is-folded .pb-c-main, .pb-card.is-folded .pb-c-det { display: none; }
-.pb-card.is-folded .pb-c-pick { flex-basis: 100%; border-right: 0; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-.pb-card .pb-c-fv { flex: none; align-self: center; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 650; color: #dfe4ea; white-space: nowrap; }
-/* the body: the choices (Ground, Layouts) on the left, the ledger on the right; stacked when narrow. The dock's height is
-   capped (_dockCard): the body scrolls inside it, the head and the keys stay */
+/* the head's tally: fails, warns, passes, not checked; the word carries the verdict beside the icon and the colour */
+.pb-card .pb-c-fv { flex: 0 1 auto; align-self: center; min-width: 0; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; font-size: 12px; color: #c3cbd3; }
+.pb-card .pb-c-tl { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+.pb-card .pb-c-tl > .pb-ic { align-self: center; }
+.pb-card .pb-c-tl > b { font-size: 15.5px; font-weight: 750; color: #f7f8fa; }
+.pb-card .pb-c-tl.pb-fail > b { color: #ff8a8d; }
+.pb-card .pb-c-tl.pb-warn > b { color: #ffb46b; }
+/* The body is one band of columns across the map's whole width that never scrolls (the user, 28 Nov 2026: the mouse is
+   busy placing the plan, so a scrollbar hides what is below it; read like the Ground Guide's Detail, which never scrolls).
+   Left to right, the answer first: the worst row open (the widest), the other rows with the passes counted, then the
+   Ground and the Layouts (controls, on the panel tint). The card is a size container: under 1180 px the Ground and the
+   Layouts share one column, under 860 px the worst row sits over the others beside them. When a column is taller than the cap, _fitDock
+   tightens them in steps (is-tight, is-tighter) rather than scroll. */
+.pb-card { container: pbdock / inline-size; }
 .pb-card > .pb-c-h, .pb-card > .pb-c-keys { flex: none; }
-.pb-card .pb-c-body { flex: 1 1 auto; min-height: 0; display: flex; flex-wrap: wrap; align-items: stretch; overflow-y: auto; }
-.pb-card .pb-c-pick { flex: 0 1 470px; min-width: 260px; padding: 8px 14px 10px; display: grid; gap: 10px; align-content: start; background: #20262e; border-right: 1px solid rgba(255, 255, 255, 0.1); }
-.pb-card .pb-c-main { flex: 1 1 440px; min-width: 280px; }
-.pb-card .pb-c-sec { display: grid; gap: 6px; }
+.pb-card .pb-c-body { flex: 1 1 auto; min-height: 0; display: flex; align-items: stretch; overflow: hidden; }
+.pb-card .pb-c-col { min-width: 0; display: flex; flex-direction: column; }
+.pb-card .pb-c-col + .pb-c-col, .pb-card .pb-c-col + .pb-c-pick, .pb-card .pb-c-pick > .pb-c-col { border-left: 1px solid rgba(255, 255, 255, 0.1); }
+.pb-card .pb-c-lead { flex: 2.1 1 0; min-width: 340px; }
+.pb-card .pb-c-rest { flex: 1.1 1 0; min-width: 240px; }
+.pb-card .pb-c-pick { display: contents; }
+.pb-card .pb-c-sec { gap: 7px; padding: 10px 16px 12px; background: #20262e; }
+.pb-card .pb-c-sec.is-ground { flex: 0.6 1 0; min-width: 200px; }
+.pb-card .pb-c-sec.is-layouts { flex: 1.35 1 0; min-width: 300px; }
+.pb-card .pb-c-sec > .pb-c-det { margin-top: auto; padding-top: 2px; }
+@container pbdock (max-width: 1180px) {
+  .pb-card .pb-c-pick { display: flex; flex-direction: column; flex: 1.15 1 0; min-width: 290px; background: #20262e; border-left: 1px solid rgba(255, 255, 255, 0.1); }
+  .pb-card .pb-c-pick > .pb-c-col { flex: none; border-left: 0; min-width: 0; }
+  .pb-card .pb-c-pick > .pb-c-col + .pb-c-col { border-top: 1px solid rgba(255, 255, 255, 0.08); }
+}
+@container pbdock (max-width: 860px) {
+  /* two columns: the worst row over the other rows on the left, the Ground and the Layouts down the right */
+  .pb-card .pb-c-body { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .pb-card .pb-c-body:not(:has(> .pb-c-pick)) { grid-template-columns: minmax(0, 1fr); }
+  .pb-card .pb-c-lead { grid-column: 1; grid-row: 1; min-width: 0; }
+  .pb-card .pb-c-rest { grid-column: 1; grid-row: 2; min-width: 0; border-left: 0; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+  .pb-card .pb-c-pick { grid-column: 2; grid-row: 1 / span 2; min-width: 0; }
+}
+/* folded: the ledger away, the ground and the layouts side by side (and the keys) stay, the verdict in the head */
+.pb-card.is-folded .pb-c-lead, .pb-card.is-folded .pb-c-rest, .pb-card.is-folded .pb-c-det { display: none; }
+.pb-card.is-folded .pb-c-pick { display: flex; flex-direction: row; flex: 1 1 auto; border-left: 0; grid-column: 1 / -1; grid-row: 1 / -1; }
+.pb-card.is-folded .pb-c-pick > .pb-c-col { flex: 1.5 1 0; border-top: 0; }
+.pb-card.is-folded .pb-c-pick > .is-ground { flex: 0.6 1 0; }
+.pb-card.is-folded .pb-c-pick > .pb-c-col + .pb-c-col { border-left: 1px solid rgba(255, 255, 255, 0.1); }
+/* tightening (never a scrollbar): reasons and notes to two lines, then one; the second fix and the layouts' legend out */
+.pb-card .is-tight :is(.pb-c-x, .pb-c-det, .pb-c-wf .v:where(:not(:has(ol))), .pb-c-wf ol li > span, .pb-c-line .pb-card-dim, .pb-c-sum > span > span, .pb-c-sum > .pb-c-mv) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.pb-card .is-tight .pb-c-items li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-card .is-tight .pb-c-lr, .pb-card .is-tight.pb-c-sec, .pb-card .is-tight .pb-c-sec { padding-top: 7px; padding-bottom: 8px; }
+.pb-card .is-tighter :is(.pb-c-x, .pb-c-det, .pb-c-wf .v:where(:not(:has(ol))), .pb-c-wf ol li > span, .pb-c-line .pb-card-dim, .pb-c-sum > span > span, .pb-c-sum > .pb-c-mv) { -webkit-line-clamp: 1; }
+.pb-card .is-tighter .pb-c-wf ol li + li, .pb-card .is-tighter.is-layouts > .pb-c-det, .pb-card .is-tighter .is-layouts > .pb-c-det { display: none; }
+.pb-card .is-tighter .pb-c-gc, .pb-card .is-tighter .pb-c-lay { height: 24px; }
 .pb-card .pb-c-sl { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; color: #c3cbd3; text-transform: uppercase; }
 .pb-card .pb-c-sl > span { margin-left: auto; text-transform: none; font-weight: 400; }
 .pb-card .pb-c-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+/* the layouts as a ranked grid: every chip the same width in its column, the name left, the score right-aligned */
+.pb-card .pb-c-chips.is-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 4px; }
+.pb-card .pb-c-chips.is-grid .pb-c-lay { padding: 0 8px 0 7px; gap: 5px; }
+.pb-card .pb-c-chips.is-grid .pb-c-gc, .pb-card .pb-c-chips.is-grid .pb-c-lay { min-width: 0; }
+.pb-card .pb-c-lay .pb-c-ln { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.pb-card .pb-c-lay > b { margin-left: auto; }
 .pb-card .pb-c-gc, .pb-card .pb-c-lay {
   display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; border-radius: 6px; cursor: pointer;
   border: 1px solid rgba(255, 255, 255, 0.14); background: #262d36; color: #dfe4ea;
@@ -5392,11 +5438,14 @@ body.pb-docked .db-placement-instructions { display: none !important; }
 .pb-card .pb-c-bar { display: block; width: 100px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
 .pb-card .pb-c-bar > b { display: block; height: 100%; background: #8ec1ea; }
 /* the ledger: every fail and warn as a row, worst first; the first open */
-.pb-card .pb-c-lg { padding: 2px 0 4px; }
-.pb-card .pb-c-lr { padding: 10px 14px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.pb-card .pb-c-lr { padding: 10px 16px 11px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
 .pb-card .pb-c-lr:first-child { border-top: 0; }
-.pb-card .pb-c-lr.pb-c-more { padding: 7px 14px; font-size: 12px; color: #c3cbd3; }
-.pb-card .pb-c-lh { display: grid; grid-template-columns: 92px 1fr; gap: 4px 10px; align-items: center; }
+.pb-card .pb-c-lr.pb-c-more { padding: 7px 16px; font-size: 12px; color: #c3cbd3; }
+/* a row: the verdict and the check on one line, its head or reason under it the column's whole width */
+.pb-card .pb-c-lh { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 5px 10px; align-items: center; }
+.pb-card .pb-c-lh > .pb-c-x { grid-column: 1 / -1; }
+.pb-card .pb-c-lead .pb-c-lh > .pb-c-n { font-size: 15px; }
+.pb-card .pb-c-lead .pb-c-lh > .pb-c-x { color: #dfe4ea; }
 .pb-card .pb-c-vb { justify-self: start; display: inline-flex; align-items: center; gap: 5px; height: 23px; padding: 0 8px 0 5px; border-radius: 5px; font-size: 12px; font-weight: 750; white-space: nowrap; }
 .pb-card .pb-c-vb.pb-fail { background: rgba(229, 72, 77, 0.15); color: #ff8a8d; box-shadow: inset 0 0 0 1px rgba(229, 72, 77, 0.55); }
 .pb-card .pb-c-vb.pb-warn { background: rgba(238, 138, 31, 0.14); color: #ffb46b; box-shadow: inset 0 0 0 1px rgba(238, 138, 31, 0.5); }
@@ -5405,7 +5454,11 @@ body.pb-docked .db-placement-instructions { display: none !important; }
 .pb-card .pb-c-n { font-weight: 600; color: #f7f8fa; }
 .pb-card .pb-c-n span { color: #c3cbd3; font-weight: 400; }
 .pb-card .pb-c-x { grid-column: 2; color: #b8c1ca; }
-.pb-card .pb-c-open { margin-left: 102px; }
+/* the open row: its race (or lines) and its Why / Fix side by side when the column has the room, else one under the other */
+.pb-card .pb-c-open { display: flex; flex-wrap: wrap; gap: 0 24px; align-items: flex-start; }
+.pb-card .pb-c-open > .pb-c-race, .pb-card .pb-c-open > .pb-c-items { flex: 1 1 320px; min-width: 0; }
+.pb-card .pb-c-open > .pb-c-wf { flex: 1.4 1 220px; min-width: 0; margin-top: 8px; }
+.pb-card .pb-c-open > .pb-c-race { column-gap: 8px; }
 /* the race: own move against the En, minutes; grey own, red how late, the tick the En */
 .pb-card .pb-c-race { display: grid; grid-template-columns: max-content minmax(56px, 1fr) max-content max-content; gap: 6px 10px; align-items: center; margin-top: 8px; }
 .pb-card .pb-c-rh { grid-column: 3 / 5; font-size: 12px; color: #c3cbd3; text-align: right; }
@@ -5434,12 +5487,15 @@ body.pb-docked .db-placement-instructions { display: none !important; }
 .pb-card .pb-c-wf ol li > b { font-size: 12px; color: #c3cbd3; font-weight: 700; line-height: 19px; }
 .pb-card .pb-c-wf .more { display: block; margin-top: 1px; }
 /* the rest counted, the Gr moves, the layouts here, the task's own line, the keys */
-.pb-card .pb-c-sum { padding: 9px 14px; border-top: 1px solid rgba(255, 255, 255, 0.1); display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: #c3cbd3; }
-.pb-card .pb-c-sum > span { display: inline-flex; gap: 5px; align-items: center; }
+/* the passes and the checks not done, counted, at the foot of the rest column (the J line under them) */
+.pb-card .pb-c-sum { margin-top: auto; padding: 9px 16px; border-top: 1px solid rgba(255, 255, 255, 0.08); display: grid; gap: 5px; font-size: 12px; color: #c3cbd3; }
+/* nothing else to list: the counts lead the column instead of sinking to its foot */
+.pb-card .pb-c-rest > .pb-c-sum:first-child { border-top: 0; margin-top: 0; }
+.pb-card .pb-c-sum > span { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; align-items: start; }
+.pb-card .pb-c-sum > span > .pb-ic { margin-top: 1px; }
 .pb-card .pb-c-sum b { color: #f7f8fa; }
-.pb-card .pb-c-sum .pb-c-mv { color: #b8c1ca; }
-.pb-card .pb-c-lays > span { display: inline; }
-.pb-card .pb-c-line { padding: 0 14px 9px; }
+.pb-card .pb-c-sum .pb-c-mv { display: block; color: #b8c1ca; }
+.pb-card .pb-c-line { padding: 0 16px 10px; }
 .pb-card .pb-c-keys { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 8px 14px 9px; background: #14181d; border-top: 1px solid rgba(255, 255, 255, 0.1); font-size: 12px; color: #c3cbd3; }
 .pb-card .pb-c-keys > span { white-space: nowrap; }
 

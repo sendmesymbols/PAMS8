@@ -111,6 +111,44 @@ export function delayGroundRows(items: Item[], recipe: Recipe, doc: DoctrineSet,
   return rows;
 }
 
+/**
+ * The delay on alternate posns (MIB s28 para 5 b p 233; SZ Battle (C&SC) pp 15-16 para 27 b, Fig 3): the force divided
+ * into two groups; Gp 1 (A, B Coys) occupies DP 1 while Gp 2 (C, D Coys) occupies and improves DP 2; Gp 1 fights back
+ * through DP 2, hands the fight over and occupies DP 3. It needs forces enough for two posns at once (MIB para 6 a p 233),
+ * suits a narrow sector or a reinforced force (SZB p 15 para 27 b (1)). Successive posns (the recipe as written) stay the
+ * default: the Bn's normal method on the wide frontages of a delay (MIB para 5 a pp 232-233).
+ */
+export function withDelayTechnique(base: Recipe, tech: 'successive' | 'alternate'): Recipe {
+  if (tech !== 'alternate' || base.layout !== 'delay') return base;
+  const at = (role: string, acrossM: number, label: string) => {
+    const s = base.slots.find((x) => x.role === role);
+    return s ? { ...s, label, seed: s.seed ? { ...s.seed, acrossM } : s.seed } : null;
+  };
+  const route = (role: string, x: number) => {
+    const s = base.slots.find((r) => r.role === role);
+    const pts = (s?.shape as any)?.pts as [number, number][] | undefined;
+    return s && pts ? { ...s, shape: { ...(s.shape as any), pts: pts.map(([, y]) => [x, y] as [number, number]) } } : null;
+  };
+  const slots = base.slots
+    .filter((s) => !['fwdR', 'res', 'rtC'].includes(s.role))
+    .map((s) => (s.role === 'fwdL' ? at('fwdL', -1000, 'A Coy (Gp 1)')
+      : s.role === 'fwdC' ? at('fwdC', 1000, 'B Coy (Gp 1)')
+        : s.role === 'rtA' ? route('rtA', -1000)
+          : s.role === 'rtB' ? route('rtB', 1000)
+            : s.role === 'dp2' ? { ...s, planned: false, label: 'DP 2: Gp 2 (C, D Coys)' }
+              : s.role === 'dp3' ? { ...s, label: 'DP 3: Gp 1 (planned)' }
+                : s))
+    .filter((s): s is NonNullable<typeof s> => !!s);
+  return {
+    ...base,
+    id: `${base.id}-alt`,
+    name: base.name.replace(/successive posns/i, 'alternate posns'),
+    delayTech: 'alternate',
+    slots,
+    note: `A Bn delaying on alternate posns (MIB s28 para 5 b p 233; SZ Battle (C&SC) pp 15-16 para 27 b, Fig 3): Gp 1 (A, B Coys) holds DP 1 while Gp 2 (C, D Coys) occupies and improves DP 2; Gp 1 fights back through DP 2, hands over the fight and occupies DP 3, and so on. It needs forces enough for two posns at once (MIB para 6 a p 233) and suits a narrow sector or a reinforced force (SZB p 15); greater numbers on each line, more delay, shorter gaps, less fatigue, less danger of being outflanked (SZB p 16). ${base.note ?? ''}`.trim(),
+  };
+}
+
 /** The delay's rows: the posns' spacing, all Coys forward, the gaps, the reserve, the echelons, the time. */
 export function delayRows(items: Item[], recipe: Recipe, doc: DoctrineSet): { rows: Check[]; confirm: string[] } {
   const rows: Check[] = [];
@@ -136,7 +174,13 @@ export function delayRows(items: Item[], recipe: Recipe, doc: DoctrineSet): { ro
   const res = items.filter((i) => kindOf(i.role) === 'res' && i.pts.length >= 3), depth = items.filter((i) => kindOf(i.role) === 'depth' && i.pts.length >= 3);
   const xs = fwd.flatMap((i) => i.pts.map((p) => p.x));
   const width = Math.max(...xs) - Math.min(...xs);
-  rows.push({ name: 'Coys forward', st: fwd.length >= 3 && depth.length === 0 && res.length <= 1 ? 'pass' : 'warn', reason: `${fwd.length} Coys forward on ${fmtM(width)}, ${res.length} in reserve${depth.length ? `, ${depth.length} in depth` : ''}: on the wide frontage of a delay the Bn deploys all Coys forward with a small reserve, a shallow posn (MIB s28 para 13 a-b pp 238-239)` });
+  const alt = recipe.delayTech === 'alternate';
+  const dp2it = item('dp2');
+  if (alt) {
+    rows.push({ name: 'Technique', st: fwd.length >= 2 && !!dp2it ? 'pass' : 'warn', reason: `alternate posns: Gp 1 (${fwd.map((i) => i.label ?? i.role).join(', ')}) on DP 1 on ${fmtM(Math.max(...fwd.flatMap((i) => i.pts.map((p) => p.x))) - Math.min(...fwd.flatMap((i) => i.pts.map((p) => p.x))))}, Gp 2 (C, D Coys) occupying and improving DP 2; Gp 1 fights back through DP 2, hands over the fight and occupies DP 3 (MIB s28 para 5 b p 233; SZ Battle (C&SC) pp 15-16 para 27 b, Fig 3): more troops on each line, more delay, shorter gaps between teams, less fatigue, less danger of being outflanked (SZB p 16); it needs forces enough for two posns at once, else successive posns (MIB para 6 a p 233)` });
+    rows.push({ name: 'Handover', st: 'unchecked', reason: 'confirm on the map: Gp 1 passes through Gp 2 on DP 2 by passage lanes and contact points, Gp 2 taking over the fight as Gp 1 passes (SZ Battle p 15 para 27 b (3)); continuous delay, at least a portion of the force in contact throughout (MIB para 7 p 234)' });
+  } else rows.push({ name: 'Technique', st: 'pass', reason: 'successive posns: the major portion disengages and occupies the next posn, elements left in contact, which then join it; the Bn\'s normal method on the wide frontages of a delay (MIB s28 para 5 a pp 232-233); beside it SZ Battle (C&SC) pp 14-15 para 27 a: lack of depth on each line, wider gaps, fatigue, a smaller reserve, more own cas, less delay, the danger of being outflanked; alternate posns (the Technique chip) when the sector is narrow or the Bn is reinforced (MIB para 6 a p 233; SZB p 15)' });
+  if (!alt) rows.push({ name: 'Coys forward', st: fwd.length >= 3 && depth.length === 0 && res.length <= 1 ? 'pass' : 'warn', reason: `${fwd.length} Coys forward on ${fmtM(width)}, ${res.length} in reserve${depth.length ? `, ${depth.length} in depth` : ''}: on the wide frontage of a delay the Bn deploys all Coys forward with a small reserve, a shallow posn (MIB s28 para 13 a-b pp 238-239)` });
   // the gaps: patrols, OPs and LPs (MIB p 239 para 13 a)
   const ops = items.filter((i) => /^op/i.test(i.role) && i.pts.length);
   rows.push({ name: 'Gaps covered', st: ops.length >= fwd.length - 1 ? 'pass' : 'warn', reason: `${ops.length} OP / patrol point${ops.length === 1 ? '' : 's'} for ${Math.max(0, fwd.length - 1)} gap${fwd.length - 1 === 1 ? '' : 's'} between the Coys: the gaps are covered by patrols, OPs, LPs and fire (MIB p 239)` });

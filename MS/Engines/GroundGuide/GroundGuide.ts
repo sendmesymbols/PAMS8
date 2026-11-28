@@ -106,6 +106,7 @@ import { arrowHeadFrac, arrowTail, attackArrow, findCorridors, mountainApproach,
 import { assaultFrontage, echelonUp, groundKindAt, groundTestsFrom, objectiveFrontage, type AssaultFrontage, type ObjFrontage } from './GroundGuideFrontage';
 import { ipbAreas } from './GroundGuideIpbShapes';
 import { fireCoverage } from './GroundGuideIpbFire';
+import { dharTestFrom } from './GroundGuideDhar';
 import { compareLeftRight } from './GroundGuideIpbCompare';
 import { formsOfManoeuvre } from './GroundGuideIpbForms';
 import { pfKey, proforma, type PfGroupIn, type PfMeasures, type PfSign } from './GroundGuideIpbProforma';
@@ -3214,7 +3215,7 @@ export default class GroundGuide {
   }
 
   /** The fire on one reading's avenues from the other side's Posns. */
-  private _ipbFireFor(a: { view: IpbApchView; grid: OcokaGrid }, posnSide: 'own' | 'enemy'): IpbFireView | null {
+  private _ipbFireFor(a: { view: IpbApchView; grid: OcokaGrid; coding?: IpbCoding | null }, posnSide: 'own' | 'enemy'): IpbFireView | null {
     const m = this._manifest;
     if (!m) return null;
     const g = a.grid, v = a.view;
@@ -3235,7 +3236,9 @@ export default class GroundGuide {
       return { id: aa.id, pts, alongM, narrows: aa.narrows.map((n) => { const [x, y] = toPx(n.at); return { x, y, alongM: alongOnLine(pts, alongM, x, y), widthM: n.widthM, kind: n.kind }; }) };
     });
     const month = resolveMonth(this._opts.going.month);
-    const r = fireCoverage({ grid: g, posns: posns.map((p) => ({ ...(() => { const [x, y] = toPx(p.at); return { x, y }; })(), eyeM: p.eyeM, effM: p.effM, obsM: p.obsM, label: p.label })), lines, tables: sightTables(OCOKA_DOCTRINE, month, g.res), targetM: v.mover === 'dismounted' ? 1.7 : 2.4 });
+    const r = fireCoverage({ grid: g, posns: posns.map((p) => ({ ...(() => { const [x, y] = toPx(p.at); return { x, y }; })(), eyeM: p.eyeM, effM: p.effM, obsM: p.obsM, label: p.label })), lines, tables: sightTables(OCOKA_DOCTRINE, month, g.res), targetM: v.mover === 'dismounted' ? 1.7 : 2.4,
+      // in the desert the killing areas round the dhars first (SZ Battle p 13 para 25 c; GroundGuideDhar)
+      dhar: a.coding && this._ipbDesert({ view: v, coding: a.coding, grid: g }) ? dharTestFrom(IPB_DOCTRINE) : null });
     return {
       posns: posns.map((p) => ({ at: p.at, label: p.label, effM: p.effM, obsM: p.obsM, spot: p.spot, assumed: p.assumed })),
       lines: r.lines.map((c) => {
@@ -3258,7 +3261,7 @@ export default class GroundGuide {
         const endM = ln?.alongM[ln.alongM.length - 1] ?? aa?.endM ?? 0;
         return { id: c.id, coveredPct: c.coveredPct, screenedPct: c.screenedPct, deadPct: c.deadPct, outPct: c.outPct, seenPct: c.seenPct, gaps: c.gaps, segs, startM: aa?.startM ?? 0, endM, nearestM: c.nearestM, nearestPosn: c.nearestPosn };
       }),
-      killing: r.killing.map((k2) => ({ on: k2.on, at: toM(k2.x, k2.y), alongM: k2.alongM, kind: k2.kind, widthM: k2.widthM, lengthM: k2.lengthM, text: k2.text })),
+      killing: r.killing.map((k2) => ({ on: k2.on, at: toM(k2.x, k2.y), alongM: k2.alongM, kind: k2.kind, widthM: k2.widthM, lengthM: k2.lengthM, text: k2.text, dhar: k2.dhar })),
       posnSide,
       ms: r.ms,
     };
@@ -3392,7 +3395,7 @@ export default class GroundGuide {
       this._pfUser = {};
       this._apchOther = null;
     }
-    const fire = this._ipbFireFor({ view: v, grid: a.grid }, defender);
+    const fire = this._ipbFireFor({ view: v, grid: a.grid, coding: a.coding }, defender);
     v.fire = ip.fire ? fire : undefined;
     v.decision = ip.decision ? this._ipbDecisionFor(a) : undefined;
     v.wx = this._ipbWxFor(v, a);
@@ -4406,6 +4409,17 @@ export default class GroundGuide {
     const ll = point === null ? null : this._lngLatOf(point);
     this._aorAnchor = ll ? (lngLatToMercator(ll[0], ll[1]) as MercXY) : null;
     this._scopeSoon(0, true);
+  }
+
+  /**
+   * The bundle's IB / WB / LoC lines (boundaries.geojson) in Web Mercator, for hosts: the Intelligent Deployment tab runs
+   * a Div defence's SZ from its near edge to the IB (SZ Battle p 3 para 7). Null while they load (the first call starts
+   * the read) or with no bundle; [] when the bundle has none.
+   */
+  borderLinesMerc(): Array<Array<[number, number]>> | null {
+    const ls = this._aorBorderLines();
+    if (!ls) return null;
+    return ls.map((l) => { const out: Array<[number, number]> = []; for (let i = 0; i + 1 < l.xy.length; i += 2) out.push([l.xy[i], l.xy[i + 1]]); return out; });
   }
 
   /**

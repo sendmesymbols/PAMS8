@@ -1071,7 +1071,7 @@ const ad = M.newDoc('attk');
 
   // N6: the En attk by the ground (MW pp 164-165; DW p 13)
   const vm = X.visDef(Lm, mtn, { hMin: 360, night: null }), vd = X.visDef(Ld, des, { hMin: 360, night: null }), v0 = X.visDef(X.layoutDef(reading, {}, 'Bn'), reading, { hMin: 360, night: null });
-  check('five N6: in mountains the En punishes selected posts, multidirectional, infiltrating (MW pp 164-165)', vm.steps.some((x) => /punish selected posts first and attk the feature covering the Lt apch from multiple dirs, infiltrating/.test(x.en)) && vm.basis.some((b) => /MW pp 164-165/.test(b.text)) && vm.steps.length === v0.steps.length + 1);
+  check('five N6: in mountains the En punishes selected posts, multidirectional, infiltrating (MW pp 164-165)', vm.steps.some((x) => /punish selected posts first and attk the feature covering the Lt apch from multiple dirs, infiltrating/.test(x.en)) && vm.basis.some((b) => /MW pp 164-165/.test(b.text)) && vm.steps.length === v0.steps.length + 1 - 2 * Math.min(2, Lm.ahead.length) && !vm.steps.some((x) => /protective dets/.test(x.en)));
   check('five N6: in desert the En outflanks the def, fight the battle outflanked (DW p 13)', vd.steps.some((x) => /by-pass the localities and outflank the def/.test(x.en) && /Fight the battle outflanked/.test(x.own)) && vd.basis.some((b) => /DW p 13 para a/.test(b.text)) && !v0.basis.some((b) => /MW pp 164-165|DW p 13/.test(b.text)));
 
   // F4 / N7: the Time Req's mines and guns by ground
@@ -1111,7 +1111,33 @@ const ad = M.newDoc('attk');
   const two = { ...wet, lines: wet.lines.map((l) => (l.id === 'X' ? { ...l, buas: ['Kot Jaimal', null, 'Dhok Rai'] } : l)) };
   const crT = X.courseDef(X.layoutDef(two, {}, 'Bn'), two, { check: null, prepFrom: null, readyBy: null });
   check('five F1: Course A takes the Coys up of DP 1 when the BUAs on the line are fewer (3 up along the canal, 2 BUAs)', /FDLs comprising 3 Coys, a Coy each in area Kot Jaimal and Dhok Rai and one more on Line X\./.test(crT.text) && /FDLs comprising 3 Coys, a Coy each in area Kot Jaimal, Nurpur and Dhok Rai\./.test(X.courseDef(X.layoutDef(reading, {}, 'Bn'), reading, { check: null, prepFrom: null, readyBy: null }).text), crT.text);
-  check('five: groundKind takes the AOR\'s country', B.groundKind('Mountains') === 'mountains' && B.groundKind('Desert') === 'desert' && B.groundKind('Canal plains') === 'plains' && B.groundKind(null) === 'plains');
+  // SZB_Review.md I2 / I3 / I5 / U7: the SZ by its ground (SZ Battle (C&SC) p 3 paras 5-7, p 19, pp 7-8)
+  {
+    const szB = (pp) => pp.basis.some((b) => /SZ Battle \(C&SC\) p 3 paras 5-7/.test(b.text));
+    const p0a = P0('gr.ded.dp1.adv'), pma = Pm('gr.ded.dp1.adv'), pda = Pd('gr.ded.dp1.adv');
+    const L0z = X.layoutDef(reading, {}, 'Bn');
+    check('szb I2: plains, the SZ under 5 km leaves no room for a C Tps battle on DLs (SZ Battle p 3)', new RegExp(`The SZ is ${L0z.fdlKm.toFixed(1).replace('.0', '')} km: the plains' none or 2-5 km leaves no room for a C Tps battle on several DLs`).test(p0a.draft) && szB(p0a) && p0a.basis[0].text.includes('OoW Vol I p 14'), p0a.draft);
+    check('szb I3: mountains, no SZ battle, OPs / screens / link ptls only, no protective dets (SZ Battle p 3; MW s12 p 164)', /^No SZ battle in the mountains/.test(pma.draft) && Lm.detsWhere === null && szB(pma) && hasB(pma, /MW s12 p 164/), pma.draft);
+    check('szb I2: desert, the C Tps on the lines ahead as DLs across the SZ, shallower than 20-50 km here (SZ Battle pp 3, 10)', /DLs across the SZ/.test(pda.draft) && /shallower than the desert's 20-50 km: room for fewer DLs/.test(pda.draft) && hasB(pda, /SZ Battle p 10 para 20 b/) && /covering tps rather than an adv posn/.test(pda.draft), pda.draft);
+    const far = (r, k) => ({ ...r, lines: r.lines.map((l) => ({ ...l, depthM: l.depthM != null ? l.depthM * k : l.depthM })), apchs: r.apchs.map((a) => ({ ...a, pastM: a.pastM * k })) });
+    const desFar = far(des, 7);
+    const Ldf = X.layoutDef(desFar, {}, 'Bn');
+    const vdf = X.visDef(Ldf, desFar, { hMin: 360, night: null });
+    check('szb I5: a desert SZ over 10 km, the En clears it by daylight (SZ Battle pp 7-8) beside DW 24-48 h and the guide\'s 1 km/h', Ldf.fdlKm > 10 && vdf.basis.some((b) => /SZ Battle pp 7-8/.test(b.text) && /DW pp 10-12/.test(b.text) && /15-20 min before H/.test(b.text)) && !vd.basis.some((b) => /SZ Battle pp 7-8/.test(b.text)), `${Ldf.fdlKm}`);
+    check('szb U7: the En\'s shallow mnvr round a DL 10-15 km in 3 h, deep 20-25 km in 6 h, beside the guide\'s 4 h (SZ Battle p 19)', v0.basis.some((b) => /SZ Battle p 19 para 31/.test(b.text)) && !vm.basis.some((b) => /SZ Battle p 19/.test(b.text)) && vm.basis.some((b) => /no SZ battle in Kashmir/.test(b.text)));
+    // U10: a C Tps msn in the Limitations box (SZ Battle p 4 para 8; pp 26-27 para 41 f-g)
+    const aimP = (lim) => X.writeAim('def', lim, { place: 'X', hMin: null, lastLt: null, turn: null, readyDerived: null }).flatMap((p) => p.children ?? []).find((k) => k.id === 'aim.delay');
+    const a1 = aimP({ delayH: 48, casPct: 30, viable: true }), a2 = aimP({ casPct: 20 }), a3 = aimP({ delayH: 12 });
+    check('szb U10: the aim "Delay the En for 48 hrs inflicting 30% cas on the En, while remaining a viable force." cites SZ Battle', a1?.draft === 'Delay the En for 48 hrs inflicting 30% cas on the En, while remaining a viable force.' && a1.basis.some((b) => /SZ Battle p 4 para 8/.test(b.text)) && a2?.draft === 'Inflict 20% cas on the En.' && a3?.draft === 'Delay the En for 12 hrs.', JSON.stringify([a1?.draft, a2?.draft, a3?.draft]));
+    check('szb U10: casPct and viable survive a file, a cas over 100 % is dropped', (() => { const l = M.normLimits({ casPct: 30, viable: true }); const l2 = M.normLimits({ casPct: 150 }); return l?.casPct === 30 && l?.viable === true && l2 === undefined; })());
+    // E6 / U5 / U6 / U8 / U9: the handout's heads as prompts in the def outline
+    const ddz = M.newDoc('def');
+    check('szb E6: DP 1 Adv Posn prompts the SZ by sector, the C Tps msn, technique, KGs at dhars, BHOL, passage and grouping', hasP(M.find(ddz, 'gr.ded.dp1.adv'), /SZ Battle \(C&SC\) p 3 para 5/) && hasP(M.find(ddz, 'gr.ded.dp1.adv'), /pp 14-16 para 27/) && hasP(M.find(ddz, 'gr.ded.dp1.adv'), /pp 12-13 paras 23-24/) && hasP(M.find(ddz, 'gr.ded.dp1.adv'), /pp 21-22 para 35/));
+    check('szb U5 / U8 / U9: arty, AD and engrs in the SZ; 2-2.5 second line lifts in Adm and Log', hasP(M.find(ddz, 'gr.ded.common'), /SZ Battle pp 24-25/) && hasP(M.find(ddz, 'plan.adm'), /2-2\.5 lifts.*SZ Battle p 25 para 38 f/));
+    check('szb U6: the En\'s SZ clearance, feint 50-60 km and para / heliborne up to a Bde (SZ Battle pp 7-8)', hasP(M.find(ddz, 'en.ded.common'), /Flight Path Bde/) && hasP(M.find(ddz, 'en.ded.common'), /feint by the Holding Corps 50-60 km away/));
+    check('szb I7: the sketch names the BHOL beside the BHL', /BHL \(BHOL\)/.test(fs.readFileSync(new URL('../../MS/Engines/GroundAppreciation/AprcMechs.ts', import.meta.url), 'utf8')));
+  }
+  check('five: groundKind takes the AOR\'s country',B.groundKind('Mountains') === 'mountains' && B.groundKind('Desert') === 'desert' && B.groundKind('Canal plains') === 'plains' && B.groundKind(null) === 'plains');
 }
 
 function dClockOf(X, m) {

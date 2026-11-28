@@ -118,7 +118,7 @@ export function aorWords(r: AorReading, f: Pick<AorFrame, 'season' | 'month' | '
       ? [ranked.map((a) => a.side).join(' › '), `${first.side}: ${km(first.pastM)} km past ${border ?? 'the front'}, ${first.through.length} BUAs, ${first.obstacles.length ? `${first.obstacles.length} water obs` : 'no water obs'}`]
       : ['None found', 'The going blocks every way from the threat side'],
     // the line of denial given (guide.setAorDenial, the Aprc's limitations) named beside the roles
-    line: [`${roles.map((l) => `${l.role} ${l.id}`).join(' · ') || 'No line found'}${f.denial && r.lines.some((l) => l.id === f.denial) ? ` · Denial ${f.denial}` : ''}`, fdl ? `${fdl.id} ${fdl.name} · ${km(fdl.frontM)} km` : ''],
+    line: [`${roles.map((l) => `${l.role} ${l.id}`).join(' · ') || 'No line found'}${f.denial && r.lines.some((l) => l.id === f.denial) ? ` · Denial ${f.denial}` : ''}`, fdl ? `${fdl.id} ${fdl.name} · ${km(fdl.frontM)} km${r.sz ? ` · ${r.sz.sector === 'none' ? 'no SZ battle' : `SZ ${r.sz.fromBorder ? '' : 'over '}${r.sz.depthM === null ? '?' : km(r.sz.depthM)} km${r.sz.dls.length ? `, DLs ${r.sz.dls.join(' ')}` : ''}`}` : ''}` : ''],
     itg: [`${r.mitg.name} · ${meet} apch${meet === 1 ? '' : 's'} meet`, [r.thruRoad ? `Rd ${aorName(r.thruRoad.name)} ${r.thruRoad.cls ?? ''} through it`.replace(/\s+through/, ' through') : '', r.msr ? `MSR ${km(r.msr.distM)} km` : ''].filter(Boolean).join(' · ')],
     dml: d0 ? [`Br over ${d0.water}, ${d0.side} apch${r.dml.length > 1 ? ` (+${r.dml.length - 1})` : ''}`, `${km(d0.bridgeM)} km off the crossing · class not recorded`] : ['No water across the apchs', ''],
     msr: [r.msr ? `${aorName(r.msr.name)} ${r.msr.cls ?? ''} · ${km(r.msr.distM)} km off MITG` : 'No MSR within 1.5 km of the MITG', lat ? `Laterals: ${lat}` : 'No metalled lateral between apchs'],
@@ -209,6 +209,7 @@ export function aorText(r: AorReading, f: Pick<AorFrame, 'season' | 'month' | 'u
   r.lines.forEach((l, i) => L.push(`      (${i + 1}) Line ${l.id}${f.denial === l.id ? ' (Line of Denial, given by the higher comd: OoW Vol I pp 17-18)' : ''}. ${l.name}, ${km(l.frontM)} km between bdys${l.obstacle ? ` (along ${l.obstacle})` : ''}${l.desert ? `; ${l.desert}` : ''}.`));
   const pri = ['FDLs', 'Depth', 'Screen'].map((role) => r.lines.find((l) => l.role === role)).filter(Boolean) as AorDefLine[];
   if (pri.length) L.push(`      Pri: ${pri.map((l) => `Line ${l.id}`).join(', ')}.`);
+  if (r.sz) L.push(`      SZ. ${r.sz.text}.`);
   if (w.dp) L.push(`   d. DP 1 (without premises). ${w.dp}. Bias of def ${w.ranked[0]?.side ?? '—'}.`);
   if (w.sub) L.push(`   e. Frontage. ${w.sub.replace(/^Frontage /, '')}.`);
   if (r.dml.length) L.push(`   f. Prelim dml. ${r.dml.map((d) => `Br over ${d.water} on the ${d.side} apch (${Math.round(d.bridgeM)} m off the crossing, class not recorded)`).join('; ')}. Blowing an important bridge needs the higher commander's approval, with the counter-attack in mind (OoW Vol I p 43); keep as reserve demolitions the bridges own counter-attack and SZ troops need to come back over (IDD p 6, by analogy: your decision).`);

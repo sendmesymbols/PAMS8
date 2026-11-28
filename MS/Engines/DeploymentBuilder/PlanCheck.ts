@@ -36,6 +36,7 @@ import { defTankRows, tankGoingRow } from './PlanTanks';
 import { artyRows } from './PlanArty';
 import { adRows } from './PlanAD';
 import { layoutRows, rearAreaRow } from './PlanMountain';
+import { ctpsOverride } from './PlanCtps';
 import type { Recipe } from './PlanRecipes';
 import { airLiftOf, airLiftRow } from './PlanAvn';
 
@@ -858,7 +859,9 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
   ];
   const unclear = [...mp.unclear];
   if (terrain.source === 'assumed') unclear.push(`Ground taken as plains (${terrain.why}): set it if the plan stands on an obstacle, desert or mountains, which allow wider frontages`);
-  return { task: 'defence', title, planEch, read, unclear, posns, slots, rows: groundNotes([...rows, ...mountainRowsOf(mp, doc, opts, frame), ...(terrain.kind === 'mountain' ? [rearAreaRow(mp.syms.filter((s) => s.side === 'own' && s.pbRole).map((s) => ({ role: s.pbRole!, label: s.label, pts: s.pts })))].filter((r): r is Check => !!r) : [])], doc, terrain.kind, 'defence', planEch ?? '16', null), groups: [], enemy, terrain, threat: mp.threat, frame, fit, whatIf: whatIfRes, confirm, assumptions, mapped: mp };
+  // a built C Tps plan: the main-defence rows that do not apply dropped (PlanCtps.ctpsOverride)
+  const builtRecipe = mp.built?.recipe ? (opts.recipes?.[mp.built.recipe] as unknown as Recipe | undefined) : undefined;
+  return { task: 'defence', title, planEch, read, unclear, posns, slots, rows: ctpsOverride(groundNotes([...rows, ...mountainRowsOf(mp, doc, opts, frame), ...(terrain.kind === 'mountain' ? [rearAreaRow(mp.syms.filter((s) => s.side === 'own' && s.pbRole).map((s) => ({ role: s.pbRole!, label: s.label, pts: s.pts })))].filter((r): r is Check => !!r) : [])], doc, terrain.kind, 'defence', planEch ?? '16', null), builtRecipe), groups: [], enemy, terrain, threat: mp.threat, frame, fit, whatIf: whatIfRes, confirm, assumptions, mapped: mp };
 }
 
 function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): CheckReport {

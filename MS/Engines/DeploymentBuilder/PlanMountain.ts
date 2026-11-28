@@ -23,6 +23,7 @@ import { doctrineAt, resolveRange } from './PlanRecipes';
 import type { Check, XY } from './PlanSolve';
 import { buaAttackRows, buaDefRows, fixingRows, mobileRows } from './PlanBua';
 import { infilRows } from './PlanInfil';
+import { ctpsRows, isCtpsLayout } from './PlanCtps';
 
 type Item = { role: string; label?: string; pts: XY[] };
 const P = (x: number, y: number): XY => ({ x, y });
@@ -63,6 +64,8 @@ export function layoutRows(items: Item[], recipe: Recipe, doc: DoctrineSet, elev
   if (recipe.layout === 'fixing') return fixingRows(items, recipe, doc);
   if (recipe.layout === 'mobile') return mobileRows(items, recipe, doc);
   if (recipe.layout === 'infiltration') return infilRows(items, recipe, doc);
+  // the covering troops battle in the SZ (PlanCtps; SZ Battle, C&SC)
+  if (isCtpsLayout(recipe.layout)) return ctpsRows(items, recipe, doc);
   if (!isMountainRecipe(recipe)) return [];
   if (recipe.task === 'attack') return recipe.layout === 'salient' ? salientAttackRows(items, doc, elevAt) : recipe.layout === 'salient-wedge' ? wedgeAttackRows(items, doc, elevAt) : mtnAttackRows(items, doc, elevAt);
   return mtnDefRows(items, recipe, doc, elevAt);
@@ -271,7 +274,7 @@ function mtnDefRows(items: Item[], recipe: Recipe, doc: DoctrineSet, elevAt?: El
     const reach = num(doc, 'mountain.divValleys.groupBehindM', 6000);
     const far = res.filter((r) => { const f = fwd.filter((x) => Math.sign(ctr(x).x) === Math.sign(ctr(r).x)).sort((a, b) => dist(ctr(a), ctr(r)) - dist(ctr(b), ctr(r)))[0]; return !f || dist(ctr(f), ctr(r)) > reach; });
     rows.push({ name: 'Launch at once', st: far.length ? 'warn' : 'pass', reason: `${res.map((r) => { const f = fwd.filter((x) => Math.sign(ctr(x).x) === Math.sign(ctr(r).x)).sort((a, b) => dist(ctr(a), ctr(r)) - dist(ctr(b), ctr(r)))[0]; return f ? `${nameOf(r)} ${fmtM(dist(ctr(f), ctr(r)))} from ${nameOf(f)}` : `${nameOf(r)}: no Bde on its side`; }).join(', ')} (within ${fmtM(reach)}, E): the reserves are so positioned that they can be launched immediately as well as concentrated quickly (GSP s39 para 11 p 176); on foot in the mountains (armour confined to roads and tracks, MW p 238)` });
-    rows.push({ name: 'Security zone', st: 'unchecked', reason: 'none laid: along the LoC in Kashmir and the Northern Areas no Security Zone exists, and the En softens up selected posts first (MW s12 p 164); where one can be had, the Div Def two up lays it' });
+    rows.push({ name: 'Security zone', st: 'unchecked', reason: 'none laid: along the LoC in Kashmir and the Northern Areas no Security Zone exists, and the En softens up selected posts first (MW s12 p 164); an exaggerated forward posture is a compulsion in Kashmir and the north, so no SZ battle is contemplated (SZ Battle, C&SC, p 3 para 5); where one can be had, the Div Def two up lays it' });
   }
   // every mountain defence: strong points and tiers (p 152 paras 8-9)
   const spRule = 'each Coy posn with at least a Pl strong point on its most dominating feature, difficult to reduce, 30 days\' staying power, the rallying point and the pivot for counter-attack by the reserves; one third of its force always in it (MW s12 para 9 p 152; s13 p 176); posns held in tiers from the foothills or valleys to the ridge line, the final battle on the ridge; night posns in the valleys, day posns on the heights (para 8 p 152)';

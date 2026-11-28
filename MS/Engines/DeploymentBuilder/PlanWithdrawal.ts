@@ -626,7 +626,7 @@ export function findWithdrawal(res: SolveResult, f: FitFrame, g: PlanGround, doc
     out.rows.push(...r2.rows);
     if (delay) out.rows.push(...delayGroundRows(res.items, res.recipe, doc, g.sight ? (a, b) => { const p = W(a), q = W(b); return g.sight!(p.x, p.y, 2, q.x, q.y, 2); } : null, clsAt, WATER));
     if (opts.terrain === 'desert') out.rows.push(delay
-      ? { name: 'Desert', st: 'pass', reason: 'in the desert the covering troops fight from successive delaying posns or leap-frog back from alternate posns, deflecting the En from the En axis or canalising the En into a killing ground (DW s7 para 9 b p 25); armour based, mounted: no move back on foot for any distance (DW s9 pp 32-33)' }
+      ? { name: 'Desert', st: 'pass', reason: 'in the desert the covering troops fight from successive delaying posns or leap-frog back from alternate posns, deflecting the En from the En axis or canalising the En into a killing ground (DW s7 para 9 b p 25); armour based, mounted: no move back on foot for any distance (DW s9 pp 32-33); SZ Battle (C&SC) pp 14-16 para 27 agrees: successive DLs on a wide sector with too few troops for more than one line, alternate DLs on a narrow sector or when reinforced; it engages at 1200-1500 m (p 12 para 22 b) or 800-1200 m (p 26 para 41 d) beside DW\'s long range' }
       : desertWdrRow(out.routes, doc, !!item('intPosn')));
     out.confirm.push(...r2.confirm);
     if (byDay) out.confirm.push('Bridges on the routes back: reserve demolitions, specifically controlled, with demolition guards and firing parties, fired only after the last troops are over, covered by the artillery (OOW3 pp 55, 63-64); AD, AT and a security detachment at the defiles and bridges on the routes back (OOW3 pp 12, 28)', 'The intermediate posn: a complete Coy group under one commander, AT weapons and some armour if available (IBB s74 para 4 b-c p 373)');
@@ -870,7 +870,7 @@ export function checkWithdrawal(inp: FitLayoutInput, drawn: Record<string, { pts
   const base = { recipe, items } as SolveResult;
   inp.begin?.();
   const read = findWithdrawal(base, f, ground, ctx.doc, { enFieldArtyM: inp.enFieldArtyM ?? null, enFieldArtySrc: inp.enFieldArtySrc ?? null, threat: inp.threat ?? null, terrain: inp.terrain && inp.terrain !== 'auto' ? inp.terrain : 'plains', enemy: inp.enemy?.type ?? null });
-  const need = recipe.layout === 'delay' ? ['hq', 'fwdL', 'fwdR', 'res', 'dp2', 'dp3']
+  const need = recipe.layout === 'delay' ? (recipe.delayTech === 'alternate' ? ['hq', 'fwdL', 'fwdC', 'dp2', 'dp3'] : ['hq', 'fwdL', 'fwdR', 'res', 'dp2', 'dp3'])
     : recipe.layout === 'by-day' ? ['hq', 'fwdL', 'fwdR', 'depth', 'res', 'freshA', 'freshB', 'ppA', 'ppB', 'intPosn', 'newMain']
       : isFmnWithdrawal(recipe) ? ['hq', 'fwdL', 'fwdR', ...['res', 'resNew', 'intPosn', 'intPosn2'].filter((r) => recipe.slots.some((s) => s.role === r)), 'newMain']
       : ['hq', 'fwdL', 'fwdR', 'rvA', 'rvB', 'bnRv', 'epA', 'epB', 'rvRp', 'epRp', 'intPosn', 'newMain'];

@@ -1654,6 +1654,8 @@ class SymbolEngine implements Evented {
           selected: () => this._selectionEngine?.selectedGraphics ?? [],
           // the Ground Guide's threat marker (lon, lat), the one Gun Deployment and Admin Area default to
           threat: () => this._threatLngLat(),
+          // the bundle's IB / WB / LoC lines (Web Mercator) while the guide is on: a Div defence's SZ runs to the IB
+          borders: () => (this._groundGuide as any)?.borderLinesMerc?.() ?? null,
         },
       });
       this._deploymentBuilderEngine!.enable();

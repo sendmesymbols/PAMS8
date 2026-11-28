@@ -35,6 +35,9 @@ import { fitWithdrawal, type WithdrawalFind } from './PlanWithdrawal';
 import { findReverseSlope, type RevSlopeFind } from './PlanRevSlope';
 import type { PlFootSpeeds } from '../PlatoonGuide/PlatoonGuideRead';
 import { layoutRows, rearAreaRow } from './PlanMountain';
+import { borderAheadM, szRows } from './PlanSz';
+import { ctpsOverride } from './PlanCtps';
+import { dharAt, DHAR_DEFAULT } from '../GroundGuide/GroundGuideDhar';
 import { footKmh, approachCarries, applyContext, groundNotes, echelonLabel, enemyCorridorM, enemyFupM, enemyProfile, levelOf, type EnemySpec, type TerrainKind, type TerrainSpec } from './PlanContext';
 
 export interface GroundAvenue {
@@ -700,7 +703,11 @@ export function fitPlan(inp: FitInput): FitResult {
     // killing ground: on the main approach, 400-1000 m ahead of the FDL (a Coy / Pl plan: IC's 300-500 m), inside the forward posns' reach
     const kb = bn ? TH.killBand : TH.killBandCoy;
     const main = out.approaches.find((a) => a.main) ?? out.approaches[0];
-    let best: { p: XY; score: number } | null = null;
+    let best: { p: XY; score: number; dhar: boolean } | null = null;
+    // in the desert the KG round a dhar: open flat ground ringed by dominating dunes (SZ Battle (C&SC) p 13 para 25 c;
+    // GroundGuideDhar, the IpbDoctrine killingAreas.dhar figures)
+    const desertKg = kindT === 'desert';
+    const dharW = (w: XY) => dharAt((dx, dy) => ({ cls: g.cls(w.x + dx * f.k, w.y + dy * f.k), elev: g.elev(w.x + dx * f.k, w.y + dy * f.k) }), DHAR_DEFAULT, 60);
     for (const w of main.path) {
       const l = toLocal(f, w);
       const ahead = l.y - frontY;
@@ -708,10 +715,16 @@ export function fitPlan(inp: FitInput): FitResult {
       const inRange = fwdBoxes.filter((b) => boxDist(b, l) <= reach).length;
       if (!inRange) continue;
       const choke = main.chokes.some((c) => Math.hypot(c.at.x - w.x, c.at.y - w.y) / f.k < TH.chokeM) ? 1 : 0;
-      const sc = inRange + choke * 2;
-      if (!best || sc > best.score) best = { p: l, score: sc };
+      // at a dhar: its middle first (the most of the core flat)
+      const dr = desertKg ? dharW(w) : null;
+      const dhar = !!dr?.dhar;
+      const sc = inRange + choke * 2 + (dhar ? 3 + (dr!.flat ?? 0) : 0);
+      if (!best || sc > best.score) best = { p: l, score: sc, dhar };
     }
     out.killingGr = best?.p ?? null;
+    if (desertKg && best) out.rows.push(best.dhar
+      ? { name: 'KG at a dhar', st: 'pass', reason: 'the killing ground on the main approach is at a dhar, open flat ground ringed by dominating dunes: in the desert KGs are normally selected round the dhars, the posns ahead and astride it (SZ Battle (C&SC) p 13 para 25 c, e; read from the firm flat class and the 30 m elevation, E)' }
+      : { name: 'KG at a dhar', st: 'unchecked', reason: 'no dhar (open flat ground ringed by dunes) read on the main approach in the killing ground\'s band: in the desert KGs are normally selected round the dhars (SZ Battle (C&SC) p 13 para 25 c); confirm one on the ground, or deflect the En into one with mines (p 11 para 22)' });
   }
 
   // 3b. the main approach the responsibility of one forward posn: "responsibility of defending an approach is not divided
@@ -1236,6 +1249,8 @@ export interface FitLayoutInput {
   itgAt?: { at: XY; label: string }[] | null;
   /** Ambush, patrol, recce (PlanSmallOps): the aim point (a patrol's Obj, a recce's NAI), Web Mercator. */
   cursor?: XY | null;
+  /** The IB / WB / LoC lines the Ground Guide reads from the bundle (Web Mercator): an SZ runs from its near edge to the IB (PlanSz, SZB p 3 para 7). */
+  borders?: XY[][] | null;
   /** MovementDoctrine rules (rulesFrom) and PlatoonDoctrine rules (plRulesFrom); the foot speeds (MovementSpeeds.json). */
   movRules?: Record<string, any> | null;
   plRules?: Record<string, any> | null;
@@ -1386,7 +1401,16 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   const unit = inp.unit ?? null;
   // the reserve's pace on foot: the ground's in desert and mountains (IBB p 18, MW p 81), else cpen.footKmPerH (as Check my plan)
   const reserveKmh = terrain.kind === 'desert' || terrain.kind === 'mountain' ? footKmh(ctx.doc, terrain.kind).go : undefined;
-  const solveOpts = { ...inp.opts, nudges: addNudges(manual, fit.nudges), placed: fit.killingGr ? { killingGr: fit.killingGr } : undefined, outlines: fit.outlines, turns: fit.turns, plShift: fit.plShift, paths: fit.paths, mountedReserve: !!unit?.mounted, reserveKmh, geom: find?.geom ?? (rs ? { ...(inp.opts.geom ?? {}), ...rs.geom } : inp.opts.geom) };
+  // an SZ slot (Div defences): its depth from the ground and, where the borders are read, the IB ahead (PlanSz)
+  let szBorderM: number | null = null;
+  if (inp.borders?.length && recipe.slots.some((s) => s.sym === '00000161')) {
+    const fwdSl = fitBase.slots.filter((x) => x.kind === 'fwd');
+    if (fwdSl.length) {
+      const fromY = Math.max(...fwdSl.map((x) => x.centre.y + x.hM / 2));
+      szBorderM = borderAheadM(inp.borders.map((ln) => ln.map((w) => toLocal(frame, w))), fwdSl.map((x) => x.centre.x), fromY);
+    }
+  }
+  const solveOpts = { ...inp.opts, ground: terrain.kind, szBorderM, nudges: addNudges(manual, fit.nudges), placed: fit.killingGr ? { killingGr: fit.killingGr } : undefined, outlines: fit.outlines, turns: fit.turns, plShift: fit.plShift, paths: fit.paths, mountedReserve: !!unit?.mounted, reserveKmh, geom: find?.geom ?? (rs ? { ...(inp.opts.geom ?? {}), ...rs.geom } : inp.opts.geom) };
   let raw = solveRecipe(recipe, ctx, solveOpts);
   // the unit's other ATGM pairs (ORBAT) on the tank approaches: uncovered ones first, then the main one (density)
   fit.atExtras = recipe.task === 'attack' ? [] : atgmExtras(raw, recipe, unit, fit.approaches, frame, ctx.doc);
@@ -1401,6 +1425,8 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   // a Div on an obstacle: no more than two Div-size major approaches without more resources (GSP 1947 s26 para 5 p 119)
   const dva = divApproachesRow(recipe, terrain.kind, fit.approaches, ctx.doc, levelOf);
   if (dva) merged.rows.push(dva);
+  // the SZ by its ground (SZB p 3): depth, the IB, the desert's DLs and BHOL
+  if (raw.sz) merged.rows.push(...szRows(raw.sz, terrain.source));
   // tank Sqns grouped to a defence: their leaguers on the ground
   if (recipe.defTanks) merged.rows.push(...defTankRows(raw.items, recipe, frame, ground, ctx.doc, fit.from ?? null));
   // the artillery's gun area: its reach (his FUP for his type in defence) and its ground
@@ -1460,7 +1486,7 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   const elevAt = (p: XY) => { const w = toWorld(frame, p); return ground.elev(w.x, w.y); };
   for (const r of layoutRows(raw.items, recipe, ctx.doc, elevAt)) { const i = merged.rows.findIndex((m) => m.name === r.name); if (i >= 0) merged.rows[i] = r; else merged.rows.push(r); }
   // what the ground's books add to the rows (mountains, desert, night: PlanContext.groundNotes)
-  merged.rows = groundNotes(merged.rows, ctx.doc, terrain.kind, recipe.task, recipe.echelon, recipe.task === 'attack' ? !!inp.night : null);
+  merged.rows = ctpsOverride(groundNotes(merged.rows, ctx.doc, terrain.kind, recipe.task, recipe.echelon, recipe.task === 'attack' ? !!inp.night : null), recipe);
   // the desert defence's siting measured on the ground's roads and BUAs (DW s7 para 5 a p 22), in place of the grey row
   if (terrain.kind === 'desert' && recipe.task === 'defence') {
     const posns = raw.items.filter((i) => ['fwd', 'depth', 'res', 'round'].includes(recipe.slots.find((s) => s.role === i.role)?.kind ?? '') && i.pts.length >= 3);

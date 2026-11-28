@@ -612,7 +612,7 @@ export interface IpbFireView {
     nearestM?: number | null;
     nearestPosn?: number;
   }>;
-  killing: Array<{ on: string; at: MercXY; alongM: number; kind: 'narrows' | 'stretch'; widthM: number | null; lengthM: number; text: string }>;
+  killing: Array<{ on: string; at: MercXY; alongM: number; kind: 'narrows' | 'stretch' | 'dhar'; widthM: number | null; lengthM: number; text: string; dhar?: boolean }>;
   /** Whose Posns: own (defending against the enemy's avenues) or the enemy's. */
   posnSide: 'own' | 'enemy';
   ms: number;

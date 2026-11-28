@@ -1480,7 +1480,7 @@ export interface AprcFireIn {
   /** Some posns had no range in the catalogue (small arms' 300 m taken). */
   assumedRange: boolean;
   lines: Array<{ id: string; coveredPct: number; screenedPct: number; deadPct: number; outPct: number; seenPct: number; gaps: Array<{ fromM: number; toM: number; kind: 'd' | 's' | 'o' }> }>;
-  killing: Array<{ on: string; kind: 'narrows' | 'stretch'; widthM: number | null; lengthM: number; alongM: number; where: string | null }>;
+  killing: Array<{ on: string; kind: 'narrows' | 'stretch' | 'dhar'; widthM: number | null; lengthM: number; alongM: number; where: string | null; dhar?: boolean }>;
 }
 
 const GAP_WORD: Record<string, string> = { d: 'dead', s: 'screened', o: 'out of range' };
@@ -1497,9 +1497,9 @@ export function writeFire(f: AprcFireIn): AprcWritten {
   if (k.length)
     patches.push({
       id: 'gr.ded.dp1.killing',
-      draft: `${cap1(list(k.map((x) => `${x.kind === 'narrows' ? `the narrows${x.widthM ? ` (${km(x.widthM)} km wide)` : ''}` : `a ${km(x.lengthM)} km stretch under fire`} on ${x.on}, ${km(x.alongM)} km along${x.where ? ` (${x.where})` : ''}`)))}.`,
+      draft: `${cap1(list(k.map((x) => `${x.kind === 'narrows' ? `the narrows${x.widthM ? ` (${km(x.widthM)} km wide)` : ''}` : x.kind === 'dhar' ? 'a dhar under fire' : `a ${km(x.lengthM)} km stretch under fire`}${x.dhar && x.kind !== 'dhar' ? ' at a dhar' : ''} on ${x.on}, ${km(x.alongM)} km along${x.where ? ` (${x.where})` : ''}`)))}.`,
       state: 'judge',
-      basis: [fireData, rule("Killing area candidates: an avenue's narrows under fire, and covered stretches of 1 km or more (OoW Vol I pp 42-45); the comd designates the killing areas")],
+      basis: [fireData, rule("Killing area candidates: an avenue's narrows under fire, and covered stretches of 1 km or more (OoW Vol I pp 42-45); the comd designates the killing areas"), ...(k.some((x) => x.dhar) ? [rule('In desert / semi-desert the KGs are normally selected round the dhars: open flat ground surrounded by dominating sand dunes (SZ Battle (C&SC) p 13 para 25 c); read from the firm flat class and the 30 m elevation (dunes rising 10 m within 1.5 km on 3 of 8 sides, E)')] : [])],
     });
   const gaps = f.lines.flatMap((l) => l.gaps.map((g) => ({ ...g, on: l.id }))).filter((g) => g.toM - g.fromM >= 300);
   const dead = gaps.filter((g) => g.kind !== 'o').sort((a, b) => b.toM - b.fromM - (a.toM - a.fromM)).slice(0, 6);

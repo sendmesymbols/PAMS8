@@ -139,6 +139,8 @@ export interface Recipe {
   wdrNewPosnBy?: 'fresh' | 'res';
   /** A withdrawal: the delay the higher Comd orders, hours (PlanWithdrawalFmn.timeSpaceRow; OOW3 p 10 para 6 c); unset = the new posn's prep. */
   wdrDelayH?: number | null;
+  /** A Bn delay on alternate posns (PlanDelay.withDelayTechnique; MIB s28 para 5 b p 233; SZ Battle pp 15-16): two groups leap-frog; absent = successive. */
+  delayTech?: 'alternate';
   /** A formation withdrawal with its delay means laid: stay-behind parties, subsidiary belts, a road denial band (withWdrOptions). */
   wdrMeans?: boolean;
 }
@@ -147,7 +149,7 @@ export interface Recipe {
 export const SMALL_TASKS: readonly string[] = ['ambush', 'patrol', 'recce'];
 
 export const TASKS = ['defence', 'attack', 'crossing', 'advance', 'ambush', 'patrol', 'recce', 'withdrawal'] as const;
-export const LAYOUTS = ['two-up', 'three-up', 'one-up', 'all-round', 'canal', 'rev-slope', 'frontal', 'left-flank', 'right-flank', 'two-phase', 'night', 'line', 'l', 'v', 'patrol', 'two-ops', 'three-ops', 'four-bn', 'two-bde', 'area', 'screen', 'armd-lead', 'three-axes', 'delay', 'by-day', 'ridge', 'penetrant', 'lateral', 'pass', 'valley', 'mtn', 'bua', 'fixing', 'extended', 'canal-three-up', 'ditch', 'main-left', 'main-right', 'relief', 'passage', 'anti-hb', 'inf-div', 'salient', 'mobile', 'valleys', 'salient-wedge', 'infiltration'] as const;
+export const LAYOUTS = ['ctps-two-up', 'ctps-three-up', 'ctps-narrow', 'ctps-cbtgp-1', 'ctps-cbtgp-2', 'ctps-cbtgp-3', 'two-up', 'three-up', 'one-up', 'all-round', 'canal', 'rev-slope', 'frontal', 'left-flank', 'right-flank', 'two-phase', 'night', 'line', 'l', 'v', 'patrol', 'two-ops', 'three-ops', 'four-bn', 'two-bde', 'area', 'screen', 'armd-lead', 'three-axes', 'delay', 'by-day', 'ridge', 'penetrant', 'lateral', 'pass', 'valley', 'mtn', 'bua', 'fixing', 'extended', 'canal-three-up', 'ditch', 'main-left', 'main-right', 'relief', 'passage', 'anti-hb', 'inf-div', 'salient', 'mobile', 'valleys', 'salient-wedge', 'infiltration'] as const;
 /** A defence laid along a canal by PlanCrossing.canalPrep (IBB Annex V p 483 / App 8 p 484): two up, or three up as the annex draws it. */
 export const isCanalLayout = (layout: string | undefined | null): boolean => layout === 'canal' || layout === 'canal-three-up';
 export const ECHELONS = ['13', '14', '15', '16', '17', '18', '21'] as const;
@@ -157,7 +159,7 @@ export const CHECK_NAMES = ['approaches', 'facingThreat', 'gaps', 'depth', 'flan
 export const GEOMETRY_RULES = [
   'distM', 'behind', 'ahead', 'side', 'squareTo', 'gapTo', 'frontage', 'depth', 'withinRangeOf', 'outOfRangeOf', 'bearingFromAxis',
   'inRangeOf', 'mutualSupport', 'coversGap', 'backBlastClear', 'minRange', 'fireLift', 'reach', 'beforeEnemy',
-  'inFrontOf', 'depthM', 'joins', 'edge', 'perSlot', 'of', 'centre',
+  'inFrontOf', 'depthM', 'joins', 'edge', 'perSlot', 'of', 'centre', 'sz',
 ] as const;
 export const TERRAIN_RULES = [
   'onGround', 'notIn', 'vehicleAccess', 'sees', 'unseenFrom', 'fieldOfFireM', 'deadGroundFront', 'notOverlookedFrom',
@@ -269,7 +271,7 @@ export function validateRecipe(r: Recipe, ctx: ValidateCtx): RecipeIssue[] {
   if (r.frontageRow != null && !frontageRow(doc, r.frontageRow)) fail(`frontageRow "${r.frontageRow}" is not a row of OcokaDoctrine.frontage`);
   // a crossing's frontages and depths are PlanDoctrine.crossing.bridgehead (IBB S46), not an OcokaDoctrine row; a Div attack's is
   // its Bdes' and the gap between them (GSP 1947 Inf Div in Battle s19 para 12 d p 86), judged by PlanDivAttack
-  if (r.frontageRow == null && r.basis === 'D' && r.task !== 'crossing' && !(r.task === 'attack' && r.echelon === '21') && r.layout !== 'anti-hb' && r.task !== 'advance' && r.task !== 'withdrawal' && !isCanalLayout(r.layout) && !SMALL_TASKS.includes(r.task)) warn('basis D but no frontage row');
+  if (r.frontageRow == null && r.basis === 'D' && r.task !== 'crossing' && !(r.task === 'attack' && r.echelon === '21') && r.layout !== 'anti-hb' && r.task !== 'advance' && r.task !== 'withdrawal' && !isCanalLayout(r.layout) && !r.layout.startsWith('ctps-') && !SMALL_TASKS.includes(r.task)) warn('basis D but no frontage row');
   if (r.assaultRow && !frontageRow(doc, r.assaultRow)) fail(`assaultRow "${r.assaultRow}" is not a row of OcokaDoctrine.frontage`);
   if (r.subRow && !frontageRow(doc, r.subRow)) fail(`subRow "${r.subRow}" is not a row of OcokaDoctrine.frontage`);
   if (r.depthRow && !frontageRow(doc, r.depthRow)) fail(`depthRow "${r.depthRow}" is not a row of OcokaDoctrine.frontage`);

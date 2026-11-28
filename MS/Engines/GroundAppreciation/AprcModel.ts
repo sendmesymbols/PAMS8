@@ -46,6 +46,10 @@ export interface AprcLimits {
   attrition?: boolean;
   /** Def: delay the En for this many hours. Wdr: delay the En fwd of the new def posn for this many hours (OoW Vol III p 10 para 6c). */
   delayH?: number | null;
+  /** Def: inflict this % of cas on the En (a C Tps msn, SZ Battle p 4 para 8 c, p 26 para 41 f: "delay the en for 48 hrs inflicting 30% cas"). */
+  casPct?: number | null;
+  /** Def: while remaining a viable force, judged against its later tasks (SZ Battle p 27 para 41 g). */
+  viable?: boolean;
   /** Def: the def of a salient (def at its base). */
   salient?: boolean;
   /** Def: the En has pen the defs (the line of max pen taken as the border). */
@@ -267,6 +271,10 @@ export const DP_PROMPTS: Record<string, string[]> = {
   adv: [
     'Protective elms never so large as to weaken the main def (OoW Vol I p 13); posns held by covering tps and adv posns will not be reinforced (GSP-1947 p 105 para 10)',
     'In desert: covering tps preferred to adv posns, more screens, stay-behind parties (OoW Vol I p 71); covering tps move by ni, canalise the En into a killing gr, a handover line (DW pp 24-25)',
+    'The room for them is the SZ\'s: none in Kashmir and the north, 2-5 km in the Punjab plains, 20-50 km in the desert (SZ Battle (C&SC) p 3 para 5)',
+    'In a desert SZ: the C Tps msn, delay- or attrition-oriented, the other inbuilt (SZ Battle p 6 para 11); attraction (lure into KGs) or deflection (no pen, deflect into KGs / M fds) (p 11 para 22); in depth on the thrust lines, a line pattern rather than linear (para 22 a); ambush at 1200-1500 m (p 12), or 800-1200 m (p 26)',
+    'Technique: successive DLs on a wide sec with too few tps for more than one line, alternate DLs on a narrow sec or when rft (SZ Battle pp 14-16 para 27); a KG in each sec along each DL, round the dhars in desert, battle posns ahead and astride it (p 13 para 25); a mask posn ahead of DL 1 (p 17); the BHOL, the C Tps rear bdry (p 5 para 9 h); their passage through the main def: junc pt, passage pts, lanes and guides, RV, conc area (pp 21-22 para 35)',
+    'Grouping (SZ Battle pp 12-13 paras 23-24): a Cbt Gp (Armd Bde + 1-2 HAT Bns, or Mech Bde + HAT Bn + Armr Regt) on 60-70 km; a BG (armr, MIB or HAT heavy) on 20-25 km; a CAT (tk, MIB or HAT heavy) on 8-10 km, 6-8 km within a DL (p 17); recce elms by the Corps Recce Regt or the Div LAT Bn, onto the flks when pushed back (p 10 para 19)',
   ],
   cpen: [
     'A number of C pen posns planned and prepared right at the outset (GSP-1947 p 109 para 22); occupied within a Bn not later than 1.5-2 h after the En H, within a Bde 3 h (IBB p 310)',
@@ -309,6 +317,7 @@ const DEF_GR_MIB = [
 ];
 /** The def's echelons and its main / secondary effort (GSP-1947 Inf Div in Battle; Aprc_Review.md, 28 Nov 2026). */
 const DEF_GR_IDB = [
+  'In the SZ (SZ Battle pp 24-25): arty fwd, 2/3 of the range toward own AOR, frontages wider near the fwd DL and compact near the BHOL, SP med / hy for close sp; AD first over the mech elms on the DLs, then the fall back, gun posns, HQ; engrs lay mines on the thrust lines along the DLs to cover gaps and lure the En into KGs, anti-trawl / tk ditches if time, tk posns, stay-behind posns, water, laterals',
   'Three echelons: the protective dets, the main posn and the res, resources allotted to each (GSP-1947 p 104 para 5)',
   'A main and a secondary def effort and adequate res; gaps accepted, covered by surveillance and counter-mobility measures (GSP-1947 p 104 para 4)',
 ];
@@ -325,6 +334,7 @@ const DEF_ADM = [
   "1st line holdings: ammo as the unit estb; rations 3 days in reserve, the next day's and an emergency pack a man; POL tanks full with 80 km for A and B vehs, 100 l a C veh, gen sets 3 days at 16 h a day (lsf p 23)",
   'Cas evac: CAP, RAP, ADS, FTC, base hospital (lsf Annex L pp 81-82); never more than 4 h without expert treatment, surgery within 12 h (lsf p 47)',
   'In desert: def posns logistically self contained, able to fight for a pre-determined time without replenishment (DW p 21); str pts stocked with amn to fight on when isolated (DW p 85)',
+  'SZ battle: arty ammo for the engagements along each DL worked out in second line lifts, generally 2-2.5 lifts, dumped on selected gun posns along each DL (SZ Battle p 25 para 38 f)',
 ];
 /** The attack's Time Calc (R69, R70 / R82, R85): guns, the quick attk, the uphill assault. */
 const ATTK_TS_BOOKS = [
@@ -393,7 +403,7 @@ function outlineDef(): AprcPart[] {
           yours('en.vis', 'Vis of En Op', ['The logical unfolding of the En op, stage by stage with timings: "En is likely to", never "En will"', 'A logical success to the En at every stage; no own response in it; the decisive actions only', 'Worst to yourself, best to the En', UA('9-11')]),
           headOnly('en.ded', 'Deductions', [
             yours('en.ded.dp', 'DP', ['Each DP confirmed, modified or refined', 'Cfm of the basic deductions (pri of apchs, ITGs, lines of def, DPs): "stands cfm", or the change', UA(9)]),
-            yours('en.ded.common', 'Common Deductions', ['Use of fire sp', 'Clearance of SZ and BOPs', 'Use of air', 'En likely FAA / Assy A', 'Heliborne / infiltration force', 'En deception and surprise', 'En air superiority: passive and active AA measures', 'A tk plan; separating armr from inf', 'Delay', 'Anti-infil measures', 'Pri of C attk objs', 'Denial of the MSR', 'Const of a str pt (if applicable)', UA(1, 'V'), UA('4-5', 'II', true)]),
+            yours('en.ded.common', 'Common Deductions', ['Use of fire sp', 'Clearance of SZ and BOPs', 'Clearance of the SZ: in the Punjab by the holding fmn; in desert by daylight, a Flight Path Bde on the BOPs then an Armd / Mech Bde ex RAPID(D) on 20-25 km, its lean-on unit into the M fd 15-20 min before H (SZ Battle pp 3, 7-8); his shallow mnvr round a DL 10-15 km in 3 h, a deep one 20-25 km in 6 h (p 19)', 'Use of air', 'En likely FAA / Assy A', 'Heliborne / infiltration force', 'In desert his offn: two efforts 40-90 km wide, a feint by the Holding Corps 50-60 km away, para / heliborne forces up to a Bde at a time into the intmed depth (SZ Battle p 7)', 'En deception and surprise', 'En air superiority: passive and active AA measures', 'A tk plan; separating armr from inf', 'Delay', 'Anti-infil measures', 'Pri of C attk objs', 'Denial of the MSR', 'Const of a str pt (if applicable)', UA(1, 'V'), UA('4-5', 'II', true)]),
           ]),
         ] },
         { id: 'own', title: 'Own Sit', paras: [
@@ -1454,7 +1464,7 @@ export function normLimits(x: any): AprcLimits | undefined {
   const s = (v: any): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null);
   const n = (v: any): number | null => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : null);
   const l: AprcLimits = {
-    fwd: !!x.fwd || undefined, noPen: s(x.noPen), allCosts: s(x.allCosts), attrition: !!x.attrition || undefined, delayH: n(x.delayH),
+    fwd: !!x.fwd || undefined, noPen: s(x.noPen), allCosts: s(x.allCosts), attrition: !!x.attrition || undefined, delayH: n(x.delayH), casPct: n(x.casPct) !== null && n(x.casPct)! <= 100 ? n(x.casPct) : null, viable: !!x.viable || undefined,
     salient: !!x.salient || undefined, penetrated: !!x.penetrated || undefined, maxCoys: n(x.maxCoys), by: s(x.by),
     destr: !!x.destr || undefined, night: !!x.night || undefined, bunkers: !!x.bunkers || undefined,
     denial: s(x.denial), quick: !!x.quick || undefined, climbM: n(x.climbM),

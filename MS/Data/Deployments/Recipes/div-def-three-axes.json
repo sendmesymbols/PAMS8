@@ -219,6 +219,26 @@
       }
     },
     {
+      "role": "dl",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "DL",
+      "order": 6,
+      "rule": {
+        "sz": "dl"
+      }
+    },
+    {
+      "role": "bhol",
+      "kind": "line",
+      "sym": "25141902",
+      "label": "BHOL",
+      "order": 6,
+      "rule": {
+        "sz": "bhol"
+      }
+    },
+    {
       "role": "killingGr",
       "kind": "area",
       "sym": "25242300",

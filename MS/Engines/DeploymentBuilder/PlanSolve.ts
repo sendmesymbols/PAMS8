@@ -19,6 +19,8 @@ import { dcbRows } from './PlanDcb';
 import { passageRows, reliefRows } from './PlanRelief';
 import { antiHbRows, isAntiHb } from './PlanAntiHb';
 import { fupFromObjCheck } from './PlanContext';
+import { szPlan } from './PlanSz';
+import type { SzGround, SzPlan } from './PlanSz';
 
 export type CheckState = 'pass' | 'warn' | 'fail' | 'unchecked';
 /** A check laid out for the reader (the cursor card, the Check step, Copy as Text): what was measured, why, what fixes it. */
@@ -113,6 +115,10 @@ export interface SolveOptions {
   reserveKmh?: number;
   /** A shape slot laid afresh by the fit (plan metres): its points and base line (a BOF re-sited round the objective). */
   geom?: Record<string, { pts: XY[]; base?: { start: XY; mid: XY; end: XY }; label?: string }>;
+  /** The plan's ground kind, when known (the user's or the bundle's, or plains assumed): an SZ slot takes its depth from it (PlanSz). */
+  ground?: SzGround;
+  /** The FDL to the IB along the plan's facing (m), from the Ground Guide's borders; null / absent when not read. */
+  szBorderM?: number | null;
 }
 
 export interface SolveResult {
@@ -131,6 +137,8 @@ export interface SolveResult {
   /** Item the map click lands on (the HQ, or the target on the objective). */
   pivotId: string | null;
   alternates: { of: string; ofLabel: string; label: string; centre: XY; min: number }[];
+  /** The SZ laid by the ground (PlanSz), when the recipe has an SZ slot and the ground was given. */
+  sz?: SzPlan;
 }
 
 export interface SolveCtx {
@@ -268,6 +276,17 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     return want;
   };
 
+  // the SZ by the ground (PlanSz, SZB p 3): its near edge as the recipe draws it, its depth from the ground or the IB
+  const szSlot = recipe.slots.find((s) => s.sym === '00000161' && (s.shape as any)?.rect);
+  const fwdFront = boxes.filter((b) => recipe.slots.find((s) => s.role === b.role)?.kind === 'fwd').reduce((m, b) => Math.max(m, front(b)), -Infinity);
+  const szX: [number, number] | null = szSlot ? (() => { const rc = (szSlot.shape as any).rect; const w = num(rc.wM); return [rc.acrossM - w / 2, rc.acrossM + w / 2] as [number, number]; })() : null;
+  let sz: SzPlan | undefined;
+  if (szSlot && opts.ground && Number.isFinite(fwdFront)) {
+    const rc = (szSlot.shape as any).rect;
+    const nearY = -rc.backM - num(rc.hM) / 2;
+    sz = szPlan(doc, opts.ground, nearY - fwdFront, opts.szBorderM ?? null);
+  }
+
   // 2. the other slots, by their rules or shapes
   let pivotId: string | null = null;
   let tgtN = 0;
@@ -296,6 +315,12 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
         // laid afresh by the fit (a BOF re-sited round the objective, facing it; an ambush's groups on the road read)
         const it = add(s.role, s.sym, label, gm.pts.map((p) => ({ ...p })), { base: gm.base, extra: sh.base ? { BK_LN_DIST_RATIO: 5, BK_LN_ANGL_RATIO: 5, FRNT_LN_ANGL_RATIO: 5 } : undefined, drawType: sh.rect ? s.drawType ?? 2 : sh.pts && !sh.widthM ? s.drawType ?? 1 : undefined, echelon: sh.at ? s.echelon : undefined, planned: s.planned || undefined });
         if (it && sh.at && (recipe.pivot ? s.role === recipe.pivot : s.role === 'objTgt')) pivotId = it.id;
+      } else if (sh.rect && sz && szX && s === szSlot) {
+        // the SZ by the ground: none in the mountains, else from its near edge to the IB or the drawn depth (PlanSz)
+        if (!sz.none) {
+          const y0 = fwdFront + sz.nearM, y1 = fwdFront + sz.farM;
+          add(s.role, s.sym, label, [P(szX[0], y1), P(szX[1], y1), P(szX[1], y0), P(szX[0], y0)], { drawType: s.drawType ?? 2 });
+        }
       } else if (sh.rect) {
         const c = mv(fromRecipe([sh.rect.acrossM, sh.rect.backM])), w = num(sh.rect.wM), h = num(sh.rect.hM);
         add(s.role, s.sym, label, [P(c.x - w / 2, c.y + h / 2), P(c.x + w / 2, c.y + h / 2), P(c.x + w / 2, c.y - h / 2), P(c.x - w / 2, c.y - h / 2)], { drawType: s.drawType ?? 2 });
@@ -349,6 +374,19 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
       } else {
         for (const b of bs) add(s.role, s.sym, label, [boxPt(b.c, -0.4 * b.w, b.h / 2 + d, b.turn), boxPt(b.c, 0.4 * b.w, b.h / 2 + d, b.turn)], { drawType: 1 });
       }
+      continue;
+    }
+    if (r.sz) {
+      // the desert SZ's DLs and BHOL (PlanSz): laid across the SZ's width; none off the desert or without the ground
+      if (!sz || sz.none || !szX) continue;
+      const at = r.sz === 'bhol' ? (sz.bholM != null ? [sz.bholM] : []) : sz.dls;
+      at.forEach((d, i) => add(s.role, s.sym, r.sz === 'bhol' ? label : `${label} ${i + 1}`.trim(), [P(szX[0], fwdFront + d), P(szX[1], fwdFront + d)], { drawType: 1 }));
+      continue;
+    }
+    if (r.perSlot && sz && s.role === 'ctps') {
+      // the C Tps by the SZ: none in the mountains; on DL 1 in the desert; else inside the SZ (PlanSz)
+      if (sz.none) continue;
+      for (const b of fwdBoxes(r.perSlot)) add(s.role, s.sym, label, [P(b.c.x, fwdFront + sz.ctpsAheadM)], { echelon: s.echelon });
       continue;
     }
     if (r.perSlot) {
@@ -867,7 +905,7 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     isAttack ? 'The objective is ahead, where the plan is aimed.' : 'The threat is ahead, where the plan is aimed.',
     'Ranges from the ORBAT (SO\'s Hbk 2019); frontages from the own rows (IBB Annex U / V, IBB S47 p 248 for the assault; the Foxland rows of IC s113-114 are the En\'s).',
   ];
-  return { recipe, mode: 'geometry', items, slots, rows, dropped, frontageM, depthM, confirm: conf, assumptions, pivotId, alternates: alts };
+  return { recipe, mode: 'geometry', items, slots, rows, dropped, frontageM, depthM, confirm: conf, assumptions, pivotId, alternates: alts, sz };
 }
 
 /**

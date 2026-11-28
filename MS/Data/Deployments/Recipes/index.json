@@ -309,6 +309,30 @@
       ]
     },
     {
+      "id": "bg-ctps",
+      "name": "C Tps Battle (BG)",
+      "task": "defence",
+      "echelon": "16",
+      "unit": "armr-regt",
+      "recipes": [
+        "bg-ctps-two-up",
+        "bg-ctps-three-up",
+        "bg-ctps-narrow"
+      ]
+    },
+    {
+      "id": "cbtgp-ctps",
+      "name": "C Tps Battle (Cbt Gp)",
+      "task": "defence",
+      "echelon": "18",
+      "unit": "armr-iabg",
+      "recipes": [
+        "cbtgp-ctps-opt1",
+        "cbtgp-ctps-opt2",
+        "cbtgp-ctps-opt3"
+      ]
+    },
+    {
       "id": "bde-def-mtn",
       "name": "Bde Def (Mtn)",
       "task": "defence",

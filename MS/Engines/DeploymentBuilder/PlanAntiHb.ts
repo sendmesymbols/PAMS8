@@ -71,7 +71,7 @@ export function antiHbRows(items: PlanItem[], recipe: Recipe, doc: DoctrineSet, 
     rows.push({ name: 'Immediate action', st: 'pass', m: far, reason: `${iag.label || 'the immediate action group'}, mobile: ${fmtM(far)} to the farthest landing area, about ${Math.round((far / 1000) * (60 / kmh))} min mounted (IPB p 18 vehicle rate), straight line: it goes to the landing at once and engages with its own weapons, the artillery, aircraft and helicopters, the force engaged in flight and while it lands (${G} s28 para 5 e p 129, para 13 a pp 132); no time is printed` });
   }
   rows.push(dag
-    ? { name: 'Deliberate action', st: 'pass', reason: `${dag.label || 'the deliberate action group'}: a combined arms mobile force, strong, with armour, its actions pre-planned on the map study and recce of the likely targets and landing sites; it destroys the landed force once its concentration is confirmed (${G} s28 para 10 p 131, para 13 b pp 132-133)` }
+    ? { name: 'Deliberate action', st: 'pass', reason: `${dag.label || 'the deliberate action group'}: a combined arms mobile force, strong, with armour, its actions pre-planned on the map study and recce of the likely targets and landing sites; it destroys the landed force once its concentration is confirmed (${G} s28 para 10 p 131, para 13 b pp 132-133); the En may drop para / heliborne forces of up to a Bde at a time into the intermediate depth, to take ITG or hold up the reserves (SZ Battle (C&SC) p 7 para 14): size it against that` }
     : { name: 'Deliberate action', st: 'warn', reason: `no deliberate action group: a strong mobile reserve with armour earmarked to counter-attack and destroy the landed En (${G} s28 para 10 p 131)` });
   return {
     rows,

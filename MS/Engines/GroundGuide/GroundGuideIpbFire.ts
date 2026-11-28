@@ -22,6 +22,7 @@
  */
 
 import { analyseSight, bearingsFor, fineStep, sightRuns, type OcokaGrid, type SightTables } from './GroundGuideOcoka';
+import { dharAt, type DharTest } from './GroundGuideDhar';
 
 export interface IpbFirePosn {
   /** Grid pixels. */
@@ -56,6 +57,11 @@ export interface IpbFireArgs {
   capM?: number;
   /** Also trace the fans' dead and screened ground for the map (runs per position). */
   fans?: boolean;
+  /**
+   * In the desert: the dhar test (GroundGuideDhar). Killing area candidates at a dhar rank first and say so, and a dhar
+   * under fire on an avenue that no candidate names is added (SZ Battle (C&SC) p 13 para 25 c). Absent off the desert.
+   */
+  dhar?: DharTest | null;
 }
 
 /** 'c' under fire, 's' screened, 'd' dead, 'o' out of range. */
@@ -82,12 +88,14 @@ export interface IpbKillingArea {
   x: number;
   y: number;
   alongM: number;
-  kind: 'narrows' | 'stretch';
+  kind: 'narrows' | 'stretch' | 'dhar';
   widthM: number | null;
   lengthM: number;
   /** Positions that cover it. */
   by: number[];
   text: string;
+  /** At a dhar: open flat ground ringed by dunes, the desert's killing ground (SZ Battle p 13 para 25 c). */
+  dhar?: boolean;
 }
 export interface IpbFireFan {
   posn: number;
@@ -251,8 +259,32 @@ export function fireCoverage(a: IpbFireArgs): IpbFire {
       }
     }
   }
-  // Narrows first (canalised under fire), then the longest stretches; at most three per avenue.
-  killing.sort((p, q) => (p.kind === q.kind ? (p.kind === 'narrows' ? q.by.length - p.by.length : q.lengthM - p.lengthM) : p.kind === 'narrows' ? -1 : 1));
+  // In the desert: the candidates at a dhar, and dhars under fire on an avenue that no candidate names (SZ Battle p 13
+  // para 25 c: KGs normally round the dhars, open flat ground surrounded by dominating sand dunes).
+  if (a.dhar) {
+    const t = a.dhar;
+    const step = Math.max(res, 60);
+    const at = (x0: number, y0: number) => (dx: number, dy: number) => {
+      const x = Math.round(x0 + dx / res), y = Math.round(y0 - dy / res);
+      if (x < 0 || y < 0 || x >= g.w || y >= g.h) return { cls: null, elev: NaN };
+      const i = y * g.w + x;
+      return { cls: g.cls[i], elev: g.elev[i] };
+    };
+    const NOTE = ' · at a dhar: open flat ground ringed by dunes, the desert\'s KG (SZ Battle p 13 para 25 c)';
+    for (const k of killing) if (dharAt(at(k.x, k.y), t, step).dhar) ((k.dhar = true), (k.text += NOTE));
+    const every = Math.max(1, Math.round(500 / stepM));
+    for (const c of lines) {
+      for (let i = 0; i < c.samples.length; i += every) {
+        const s = c.samples[i];
+        if (s.state !== 'c' || killing.some((k) => k.on === c.id && Math.abs(k.alongM - s.alongM) < 1000)) continue;
+        const r = dharAt(at(s.x, s.y), t, step);
+        if (r.dhar) killing.push({ on: c.id, x: s.x, y: s.y, alongM: s.alongM, kind: 'dhar', widthM: null, lengthM: 0, by: s.by >= 0 ? [s.by] : [], text: `Dhar under fire, dunes rising on ${r.rising} of 8 sides${NOTE}`, dhar: true });
+      }
+    }
+  }
+  // At a dhar first (desert), then narrows (canalised under fire), then the longest stretches; at most three per avenue.
+  const rank = (k: IpbKillingArea) => (k.kind === 'narrows' ? 0 : k.kind === 'dhar' ? 1 : 2);
+  killing.sort((p, q) => Number(!!q.dhar) - Number(!!p.dhar) || rank(p) - rank(q) || (p.kind === 'narrows' ? q.by.length - p.by.length : q.lengthM - p.lengthM));
   const per = new Map<string, number>();
   const kept = killing.filter((k) => {
     const c = per.get(k.on) ?? 0;

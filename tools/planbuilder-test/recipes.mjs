@@ -134,7 +134,11 @@ for (const r of recipes) for (const s of r.slots) {
     const extended = s.pls === 'three-up';
     // a BUA locality is 'of a limited size' (IC s52 para 1 c p 203): bua.locality (E), not the open-ground Coy posn
     const buaLoc = r.layout === 'bua' && r.task === 'defence';
-    if (buaLoc) check(`${r.id} ${s.role}: Coy locality in a BUA, bua.locality 400 x 300 m (IC s52 para 1 c p 203: limited size)`, !!z && z.wM === 400 && z.hM === 300, JSON.stringify(z));
+    // a CAT in the SZ (an Armr Sqn or MIB Coy with 2-3 tp / pl teams) holds 6-8 km within a DL (SZ Battle p 17 para 28 c
+    // (1)), the BG's reserve CAT 4-8 km; 2 km deep (securityZone.ctps.catDepthM, E): not the main defence's Coy posn
+    const cat = String(r.layout).startsWith('ctps-');
+    if (cat) check(`${r.id} ${s.role}: CAT 4-8 km wide, 2 km deep (SZ Battle p 17; catDepthM)`, !!z && z.wM >= 4000 && z.wM <= 8000 && z.hM === 2000, JSON.stringify(z));
+    else if (buaLoc) check(`${r.id} ${s.role}: Coy locality in a BUA, bua.locality 400 x 300 m (IC s52 para 1 c p 203: limited size)`, !!z && z.wM === 400 && z.hM === 300, JSON.stringify(z));
     else if (obstacle) check(`${r.id} ${s.role}: Coy on the obstacle, narrower than 1500 m (Annex V)`, !!z && z.wM <= 1500 && z.wM >= 900 && z.hM === 700, JSON.stringify(z));
     else if (extended) check(`${r.id} ${s.role}: Coy of three Pls up, 2400 x 500 m (Annex U App 7)`, !!z && z.wM === 2400 && z.hM === 500, JSON.stringify(z));
     else check(`${r.id} ${s.role}: Coy posn 1500 x 700 m`, !!z && (turned ? z.hM === 1500 && z.wM === 700 : z.wM === 1500 && z.hM === 700), JSON.stringify(z));

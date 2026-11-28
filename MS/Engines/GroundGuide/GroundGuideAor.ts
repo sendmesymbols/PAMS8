@@ -224,6 +224,11 @@ export interface AorReading {
   country: AorCountry;
   /** How far the ground within 5 km of the MITG rises, m (the bundle's elevation); null when not read. */
   reliefM?: number | null;
+  /**
+   * The SZ, between the IB and the FDLs (SZ Battle (C&SC) p 3 paras 5-7, `aorSz`): its depth on the approaches, the sector
+   * it reads as, the lines ahead of the FDLs that serve as DLs in the desert, and a line of words. Null with no FDLs.
+   */
+  sz?: AorSz | null;
   apchs: AorApproach[];
   lines: AorDefLine[];
   laterals: Array<{ a: AorSide; b: AorSide; n: number }>;
@@ -246,6 +251,42 @@ export interface AorReading {
   ms: number;
   /** Time per stage, ms (cells, apchs, lines, rest). */
   msParts: Record<string, number>;
+}
+
+export interface AorSz {
+  /** The FDLs past the border (or the AOR's front), m; null when not measured. */
+  depthM: number | null;
+  /** Measured from the border (true) or from the AOR's front edge (false). */
+  fromBorder: boolean;
+  sector: 'none' | 'plains' | 'desert';
+  /** Lines ahead of the FDLs that serve as DLs (the desert, deep enough), front first. */
+  dls: string[];
+  text: string;
+}
+
+/**
+ * The SZ by sector (SZ Battle (C&SC) p 3 para 5): Kashmir and the north (Mountains) none, an exaggerated forward posture;
+ * the Punjab plains none or 2-5 km, too little for a C Tps battle on several DLs (para 6); the desert and semi-desert
+ * 20-50 km, the classical SZ battle, the C Tps on a series of DLs (p 10 para 20 b). Pure.
+ */
+export function aorSz(country: AorCountry, lines: AorDefLine[], fromBorder: boolean): AorSz | null {
+  const fdl = lines.find((l) => l.role === 'FDLs');
+  if (!fdl) return null;
+  const d = fdl.depthM;
+  const km = (m: number) => (m / 1000).toFixed(m >= 10000 ? 0 : 1);
+  if (country === 'Mountains') return { depthM: d, fromBorder, sector: 'none', dls: [], text: 'No SZ battle: an exaggerated fwd posture in Kashmir and the north (SZ Battle p 3 para 5); OPs and screens only' };
+  const ahead = lines.filter((l) => l.id !== 'Z' && l.depthM !== null && d !== null && l.depthM < d).sort((a, b) => (a.depthM ?? 0) - (b.depthM ?? 0));
+  const book = country === 'Desert' ? 'the desert gives 20-50 km' : 'the Punjab plains none or 2-5 km';
+  // the IB not inside the AOR: the depth runs only to the AOR's front, the SZ is at least that; no judgement on the band
+  if (!fromBorder) {
+    const dls = country === 'Desert' ? ahead.map((l) => l.id) : [];
+    return { depthM: d, fromBorder, sector: country === 'Desert' ? 'desert' : 'plains', dls, text: `FDLs ${d === null ? '?' : km(d)} km behind the front of the AOR; the IB lies beyond it, so the SZ is deeper; ${book} (SZ Battle p 3)${dls.length ? `; DLs: ${dls.join(', ')}` : ''}` };
+  }
+  if (country === 'Desert') {
+    const dls = d !== null && d >= 5000 ? ahead.map((l) => l.id) : [];
+    return { depthM: d, fromBorder, sector: 'desert', dls, text: `SZ ${d === null ? '?' : km(d)} km to the border${d !== null && d < 20000 ? ', short of the 20-50 km a desert SZ gives' : ', within the 20-50 km a desert SZ gives'} (SZ Battle p 3)${dls.length ? `: C Tps on DLs ${dls.join(', ')}, KGs round the dhars (p 13)` : ': no line ahead for a DL'}` };
+  }
+  return { depthM: d, fromBorder, sector: 'plains', dls: [], text: `SZ ${d === null ? '?' : km(d)} km to the border${d !== null && d > 5000 ? ', deeper than the 2-5 km of the plains: room for DLs' : ': none or 2-5 km in the plains, screens and an adv posn'} (SZ Battle p 3)` };
 }
 
 // ── geometry in ground metres ───────────────────────────────────────────────────────────────────────────────────────
@@ -997,6 +1038,7 @@ export function readAor(inp: AorInput): AorReading {
     frontLimit: inp.frontLimit,
     country,
     reliefM: inp.reliefM ?? null,
+    sz: aorSz(country, defLines, apchs.some((a) => !!a.cross)),
     apchs,
     lines: defLines,
     laterals,

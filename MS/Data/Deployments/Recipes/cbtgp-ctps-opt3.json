@@ -1,0 +1,314 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": false
+  },
+  "basis": "D",
+  "frontageRow": null,
+  "subRow": null,
+  "alternates": [],
+  "id": "cbtgp-ctps-opt3",
+  "family": "cbtgp-ctps",
+  "layout": "ctps-cbtgp-3",
+  "echelon": "18",
+  "unit": "armr-iabg",
+  "name": "C Tps Cbt Gp: HAT gp on DL 1, tk hy gp in rear (option 3)",
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "flanks",
+    "reserveReach"
+  ],
+  "note": "Cbt Gp option 3: within the sector the HAT gp deployed on the first DL while the tank heavy gp is held in rear; it can be moved to any threatened flank, but the softer vehicles of the HAT would be vulnerable to En arty and air attacks (p 17 para 28 a (3)). Concept and Conduct of SZ Battle (C&SC handout, SZB): a Cbt Gp is an all-arms group on an Armd or Mech Bde HQ, armour heavy with at least two Armr Regts or mech heavy with at least two MIBs (p 5 para 9 g); for the C Tps an Armd Bde with 1-2 HAT Bns, or a Mech Bde with a HAT Bn and an Armr Regt (p 12 para 23 a). The SZ is divided into sectors, a BG to each (p 4 para 9 a); a Cbt Gp on 60-70 km (p 13 para 24 a). The options assume air, arty and AD support (p 16 para 28). The DLs 9 km apart, the BHOL 6 km behind the last DL, a BG's posn 3 km deep: a decision (E: the handout draws no scale).",
+  "slots": [
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "HAT Hy BG",
+      "echelon": "16",
+      "order": 1,
+      "size": {
+        "wM": 22000,
+        "hM": 3000
+      },
+      "seed": {
+        "acrossM": -15000,
+        "backM": 0
+      },
+      "rule": {
+        "side": "L"
+      },
+      "terrainRule": {
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "HAT Hy BG",
+      "echelon": "16",
+      "order": 1,
+      "size": {
+        "wM": 22000,
+        "hM": 3000
+      },
+      "seed": {
+        "acrossM": 15000,
+        "backM": 0
+      },
+      "rule": {
+        "side": "R"
+      },
+      "terrainRule": {
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "Tk Hy BG (Res)",
+      "echelon": "16",
+      "order": 2,
+      "size": {
+        "wM": 15000,
+        "hM": 3000
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": 8000
+      },
+      "mounted": true,
+      "rule": {
+        "reach": {
+          "slots": [
+            "fwdL",
+            "fwdR"
+          ]
+        }
+      }
+    },
+    {
+      "role": "kg1",
+      "kind": "area",
+      "sym": "25242300",
+      "label": "KG 1",
+      "order": 3,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -1000,
+          "wM": 4000,
+          "hM": 4000
+        }
+      }
+    },
+    {
+      "role": "mfL",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "inFrontOf": [
+          "fwdL"
+        ],
+        "distM": {
+          "doctrine": "standoff.obstacleInFrontM"
+        },
+        "depthM": {
+          "doctrine": "standoff.protectiveMinefieldDepthM"
+        }
+      }
+    },
+    {
+      "role": "mfR",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "inFrontOf": [
+          "fwdR"
+        ],
+        "distM": {
+          "doctrine": "standoff.obstacleInFrontM"
+        },
+        "depthM": {
+          "doctrine": "standoff.protectiveMinefieldDepthM"
+        }
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Cbt Gp HQ",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          4000
+        ]
+      }
+    },
+    {
+      "role": "rtA",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -15000,
+            1500
+          ],
+          [
+            -15000,
+            9000
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rtB",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            15000,
+            1500
+          ],
+          [
+            15000,
+            9000
+          ]
+        ]
+      }
+    },
+    {
+      "role": "dl1",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "DL 1",
+      "order": 5,
+      "rule": {
+        "joins": [
+          "fwdL",
+          "fwdR"
+        ],
+        "edge": "front"
+      }
+    },
+    {
+      "role": "dl2",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "DL 2",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            -32000,
+            9000
+          ],
+          [
+            32000,
+            9000
+          ]
+        ]
+      }
+    },
+    {
+      "role": "dl3",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "DL 3",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            -32000,
+            18000
+          ],
+          [
+            32000,
+            18000
+          ]
+        ]
+      }
+    },
+    {
+      "role": "bhol",
+      "kind": "line",
+      "sym": "25141902",
+      "label": "BHOL",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            -32000,
+            24000
+          ],
+          [
+            32000,
+            24000
+          ]
+        ]
+      }
+    },
+    {
+      "role": "ppA",
+      "kind": "point",
+      "sym": "25131200",
+      "label": "PP 1",
+      "order": 6,
+      "shape": {
+        "at": [
+          -16000,
+          24000
+        ]
+      }
+    },
+    {
+      "role": "ppB",
+      "kind": "point",
+      "sym": "25131200",
+      "label": "PP 2",
+      "order": 6,
+      "shape": {
+        "at": [
+          16000,
+          24000
+        ]
+      }
+    },
+    {
+      "role": "rv",
+      "kind": "point",
+      "sym": "25131400",
+      "label": "Cbt Gp RV",
+      "order": 6,
+      "shape": {
+        "at": [
+          0,
+          27000
+        ]
+      }
+    }
+  ]
+}

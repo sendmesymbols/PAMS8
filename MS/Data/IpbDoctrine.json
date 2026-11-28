@@ -17,6 +17,7 @@
     "MIB": { "title": "The Mechanised Infantry Battalion in Battle", "file": "Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf", "cite": "printed page" },
     "IDD": { "title": "Indian Defensive Doctrine (a short unsigned, undated paper)", "file": "Material/Literature/1. Books/Misc/Indian Defensive Doctrine.pdf", "cite": "the paper's own page numbers 1-8" },
     "GSP": { "title": "GSP 1947, Infantry Division in Battle (2001)", "file": "Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf", "cite": "printed page (= PDF page)" },
+    "SZB": { "title": "Concept and Conduct of SZ Battle, Command and Staff College Quetta handout (2010)", "file": "Material/Literature/1. Books/10. Concept and Conduct of Security Zone Battle.pdf", "cite": "printed page (= PDF page)" },
     "FM 3-09 (2024)": { "title": "FM 3-09 Fire Support and Field Artillery Operations (2024)", "file": "Material/Literature/2. Online/FM 3-09 (2024).txt", "cite": "paragraph / page as printed (B-27 = para B-27)" }
   },
   "basisCodes": { "D": "doctrine, cited", "T": "typical public figure, to confirm", "E": "my estimate or proposal, to confirm", "U": "the user's decision" },
@@ -474,6 +475,16 @@
       "flankNogoMaxPct": { "value": 30, "basis": "E" },
       "flankEnemyMinM": { "value": 1000, "basis": "D", "src": "IDD p 3", "note": "A Coy locality's own frontage: closer, the flank is tied to it. 1000 m is the Indian Coy frontage's upper figure (650-1000 m) and the gap between Bns (IDD p 3 table).", "refs": [{ "book": "IDD", "page": "3", "quote": "Frontages, Depth and Gaps", "role": "rule", "checked": { "status": "ok", "pdfPage": 3, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/Misc/Indian Defensive Doctrine.pdf" } }] },
       "unwatchedMaxPct": { "value": 30, "basis": "E" }
+    }
+  },
+
+  "killingAreas": {
+    "note": "Killing area candidates on the avenues (GroundGuideIpbFire): narrows under fire and covered stretches of 1 km or more (OoW Vol I pp 42-45); in the desert those at a dhar rank first and say so, and a dhar under fire that no candidate names is added (GroundGuideDhar).",
+    "dhar": {
+      "classes": [12], "coreM": 300, "share": 0.5, "ringM": 1500, "riseM": 10, "dirs": 3,
+      "basis": "E",
+      "src": "SZ Battle (C&SC) p 13 para 25 c: in desert / semi-desert terrain KGs will normally be selected round dhars, which provide open and flat ground surrounded by dominating sand dunes; DW p 66: dhars are firm inter-dune flats (the bundle's bare desert class, air.lz.firmFlat). The rule is the book's; the core 300 m half of it the flat class, and dunes rising 10 m or more within 1.5 km on 3 of 8 bearings are E (no figure printed; the Thar's dunes stand 50-300 ft, DW pp 2-3). Off the desert (IpbTemplates desertTest) nothing is tested.",
+      "refs": [{ "book": "SZB", "page": "13", "quote": "KGs will normally be sel around dhars", "role": "rule", "checked": { "status": "ok", "pdfPage": 13, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/10. Concept and Conduct of Security Zone Battle.pdf" } }]
     }
   },
 

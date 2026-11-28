@@ -163,6 +163,7 @@ export class GroundGuideAorSheet {
       add('Pri of Apchs', `${w.ranked.map((x) => x.side).join(', ') || '—'} (shortest past the border, least terrain friction).`);
       add('Pri of Comb', r.laterals.length ? r.laterals.map((l) => `${l.a} and ${l.b} (${l.n} laterals)`).join('; ') : 'No metalled lateral joins the apchs.');
       for (const l of r.lines) add(`Line ${l.id}${l.role ? ` · ${l.role}` : ''}${f.denial === l.id ? ' · Line of Denial' : ''}`, `${l.name}, ${(l.frontM / 1000).toFixed(1)} km between bdys${l.obstacle ? ` (along ${l.obstacle})` : ''}${l.lateral ? '; a metalled Rd runs along it' : ''}${l.desert ? `; ${l.desert}` : ''}.`);
+      if (r.sz) add('Security zone', `${r.sz.text}.`);
       if (w.dp) add('DP 1', `${w.dp}. Bias of def ${w.ranked[0]?.side ?? '—'}.`);
       if (w.sub) add('Frontage', w.sub.replace(/^Frontage /, ''), w.sub.includes('over') ? 'ms-ggas-warn' : undefined);
       add('Prelim dml', r.dml.length ? r.dml.map((d) => `Br over ${d.water} on the ${d.side} apch, ${Math.round(d.bridgeM)} m off the crossing; class not recorded`).join('; ') + '. Blowing an important bridge needs approval by the higher commander, with the counter-attack in mind (OoW Vol I p 43); keep as reserve demolitions the bridges own counter-attack and SZ troops need to come back over (IDD p 6, by analogy: your decision).' : 'No water obstacle across the apchs.');

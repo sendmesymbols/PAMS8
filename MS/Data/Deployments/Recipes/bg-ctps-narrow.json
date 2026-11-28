@@ -1,0 +1,269 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": false
+  },
+  "basis": "D",
+  "frontageRow": null,
+  "subRow": null,
+  "alternates": [],
+  "id": "bg-ctps-narrow",
+  "family": "bg-ctps",
+  "layout": "ctps-narrow",
+  "echelon": "16",
+  "unit": "armr-regt",
+  "name": "C Tps BG: narrow sector, CATs on successive lines (option 3)",
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "flanks",
+    "reserveReach"
+  ],
+  "note": "BG option 3: defending a narrow sector, two CATs on successive lines and the third in reserve (p 17 para 28 b (3)): A CAT fights on DL 1 and falls back through B CAT on DL 2, which takes over the fight. Concept and Conduct of SZ Battle (C&SC handout, SZB): the C Tps fight a series of DLs between the IB and the BHOL, the C Tps rear boundary (p 5 para 9 h; p 10 para 20 b), causing attrition and delay without becoming inextricably involved (p 4 para 8, p 6 para 10 d). A BG is an all-arms group on an Armr Regt or an MIB (p 4 para 9 f); a CAT an Armr Sqn or MIB Coy with 2-3 tp / pl teams (para 9 e). BG 20-25 km, a CAT 8-10 km (p 13 para 24), 6-8 km within a DL (p 17 para 28 c (1)); a tk tp / HAT pl on 1200-1500 m, 500-1000 m between tps / pls (paras 28 c (2)-(3)); one tk tp in a mask posn ahead of the DL (para 28 c (4)); battle posns ahead and astride each KG (p 13 para 25 e), behind a minefield (p 14 para 26 a); the passage at the BHOL by passage points, lanes and guides to an RV (pp 21-22 para 35, Fig 4). The DLs 7 km apart, the BHOL 4 km behind the last DL, the CAT 2 km deep: a decision (E: the handout draws no scale).",
+  "slots": [
+    {
+      "role": "fwdC",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "A CAT (DL 1)",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "wM": {
+          "doctrine": "securityZone.ctps.catWithinDlM"
+        },
+        "hM": {
+          "doctrine": "securityZone.ctps.catDepthM"
+        }
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": 0
+      },
+      "terrainRule": {
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "depth",
+      "kind": "depth",
+      "sym": "25151200",
+      "label": "B CAT (DL 2)",
+      "echelon": "15",
+      "order": 2,
+      "size": {
+        "wM": {
+          "doctrine": "securityZone.ctps.catWithinDlM"
+        },
+        "hM": {
+          "doctrine": "securityZone.ctps.catDepthM"
+        }
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": 7000
+      },
+      "rule": {
+        "behind": "fwdC"
+      }
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "C CAT (Res)",
+      "echelon": "15",
+      "order": 2,
+      "size": {
+        "wM": 4000,
+        "hM": 2000
+      },
+      "seed": {
+        "acrossM": 5500,
+        "backM": 3500
+      },
+      "mounted": true,
+      "rule": {
+        "reach": {
+          "slots": [
+            "fwdC"
+          ]
+        }
+      }
+    },
+    {
+      "role": "kg1",
+      "kind": "area",
+      "sym": "25242300",
+      "label": "KG 1",
+      "order": 3,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -2500,
+          "wM": 3000,
+          "hM": 2000
+        }
+      }
+    },
+    {
+      "role": "mask",
+      "kind": "point",
+      "sym": "10120500",
+      "label": "Mask posn (Tk Tp)",
+      "order": 3,
+      "echelon": "14",
+      "shape": {
+        "at": [
+          0,
+          -4500
+        ]
+      }
+    },
+    {
+      "role": "mfC",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "inFrontOf": [
+          "fwdC"
+        ],
+        "distM": {
+          "doctrine": "standoff.obstacleInFrontM"
+        },
+        "depthM": {
+          "doctrine": "standoff.protectiveMinefieldDepthM"
+        }
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "BG HQ",
+      "order": 3,
+      "shape": {
+        "at": [
+          -3000,
+          3500
+        ]
+      }
+    },
+    {
+      "role": "rtA",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            0,
+            1000
+          ],
+          [
+            -5000,
+            6000
+          ]
+        ]
+      }
+    },
+    {
+      "role": "dl1",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "DL 1",
+      "order": 5,
+      "rule": {
+        "joins": [
+          "fwdC"
+        ],
+        "edge": "front"
+      }
+    },
+    {
+      "role": "dl2",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "DL 2",
+      "order": 5,
+      "rule": {
+        "joins": [
+          "depth"
+        ],
+        "edge": "front"
+      }
+    },
+    {
+      "role": "dl3",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "DL 3",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            -5000,
+            14000
+          ],
+          [
+            5000,
+            14000
+          ]
+        ]
+      }
+    },
+    {
+      "role": "bhol",
+      "kind": "line",
+      "sym": "25141902",
+      "label": "BHOL",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            -5000,
+            18000
+          ],
+          [
+            5000,
+            18000
+          ]
+        ]
+      }
+    },
+    {
+      "role": "ppA",
+      "kind": "point",
+      "sym": "25131200",
+      "label": "PP 1",
+      "order": 6,
+      "shape": {
+        "at": [
+          0,
+          18000
+        ]
+      }
+    },
+    {
+      "role": "rv",
+      "kind": "point",
+      "sym": "25131400",
+      "label": "BG RV",
+      "order": 6,
+      "shape": {
+        "at": [
+          0,
+          20500
+        ]
+      }
+    }
+  ]
+}

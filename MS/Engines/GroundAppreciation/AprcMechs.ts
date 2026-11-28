@@ -25,7 +25,7 @@ import type { AorDefLine, AorReading, AorSide } from '../GroundGuide/GroundGuide
 import { moonState } from '../GroundGuide/GroundGuideOcoka';
 import { BACKWARD_EVENTS, MA, UA, para, walk, type AprcBasis, type AprcConfirm, type AprcDoc, type AprcKind, type AprcLimits, type AprcPara, type AprcPatch, type AprcTable } from './AprcModel';
 import { BATTLE_PROC_H, attkFirst, clockAt, hplus, lightTimes, type AprcAttkIn, type AprcAttkPlanIn, type AprcCheckIn, type AprcHSumIn, type AprcLight, type AprcSymbolIn, type AprcWritten } from './AprcWrite';
-import { BDE_DCB_TEXT, BDE_FRONT, BDE_FRONT_TEXT, BN_FRONT, BN_FRONT_TEXT, BN_OBS_TEXT, GROUND_DEF, GUN_DEPL, QUICK_ATTK, QUICK_TEXT, groundKind, gunUnitFor, mtnAssault, type AprcGroundKind } from './AprcBooks';
+import { BDE_DCB_TEXT, BDE_FRONT, BDE_FRONT_TEXT, BN_FRONT, BN_FRONT_TEXT, BN_OBS_TEXT, GROUND_DEF, GUN_DEPL, QUICK_ATTK, QUICK_TEXT, SZ_BAND, SZ_TEXT, CTPS_MSN_TEXT, groundKind, gunUnitFor, mtnAssault, type AprcGroundKind } from './AprcBooks';
 
 const km = (m: number): string => (m / 1000).toFixed(1);
 const list = (a: string[], and = 'and'): string => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} ${and} ${a[a.length - 1]}`);
@@ -335,6 +335,10 @@ export function layoutDef(r: AorReading, lim: AprcLimits = {}, echelon = 'Bn'): 
   } else if (lim.fwd) {
     if (screenKm && screenKm[0] > 2) detsWhere = `1.5-2 km past ${border}`;
   } else if (ahead.length) detsWhere = `on ${list(ahead.map((l) => `Line ${l.id}${l.obstacle ? ` (${l.obstacle})` : ''}`))}`;
+  // the SZ by its ground (SZ Battle p 3 para 5): no protective dets fighting delay lines in the mountains (an exaggerated
+  // fwd posture, no SZ battle; MW s12 p 164); in the desert the C Tps on the lines ahead, DLs across the SZ (p 10 para 20 b)
+  if (ground === 'mountains') detsWhere = null;
+  else if (ground === 'desert' && ahead.length) detsWhere = `on ${list(ahead.map((l) => `Line ${l.id}${l.obstacle ? ` (${l.obstacle})` : ''}`))}, DLs across the SZ`;
   if (fdl) {
     if (fdl.obstacle) reasons.push(`it draws str from the gr: along ${fdl.obstacle}`);
     const b = uniq(fdl.buas);
@@ -401,17 +405,31 @@ export function writeLayoutDef(L: AprcDefLayout, r: AorReading): AprcPatch[] {
   );
   const obs = L.ahead.filter((l) => l.obstacle);
   const desert = L.ground === 'desert';
+  // the SZ's depth by its ground beside the guide's figures (SZ Battle p 3 paras 5-7)
+  const sk = L.fdlKm;
+  const szWord = sk === null ? ''
+    : L.ground === 'mountains' ? ''
+      : desert
+        ? ` The SZ is ${h1(sk)} km, ${sk < SZ_BAND.desert[0] ? `shallower than the desert's ${SZ_BAND.desert[0]}-${SZ_BAND.desert[1]} km: room for fewer DLs` : `within the desert's ${SZ_BAND.desert[0]}-${SZ_BAND.desert[1]} km`}: the C Tps fight on DLs across it, a KG in each sector along each DL round the dhars, a BHOL fwd of the screens.`
+        : sk <= SZ_BAND.plains[1]
+          ? ` The SZ is ${h1(sk)} km: the plains' none or ${SZ_BAND.plains[0]}-${SZ_BAND.plains[1]} km leaves no room for a C Tps battle on several DLs; screens and an adv posn.`
+          : ` The SZ is ${h1(sk)} km, deeper than the plains' ${SZ_BAND.plains[0]}-${SZ_BAND.plains[1]} km: room for the protective dets on the lines ahead.`;
   out.push({
     id: 'gr.ded.dp1.adv',
-    draft: L.detsWhere
-      ? `Protective dets ${L.detsWhere}${obs.length && !desert ? `; an adv posn on ${list(obs.map((l) => `${l.obstacle} (Line ${l.id})`), 'or')}, a natural obs, within own arty's reach from the main posn` : ''}${desert && G?.adv ? `; ${G.adv}` : ''}. Never so large as to weaken the main def, and not reinforced.`
-      : 'No room for protective dets ahead of the FDLs.',
+    draft: L.ground === 'mountains'
+      ? `No SZ battle in the mountains: an exaggerated fwd posture; OPs, screens and link ptls ahead of Line ${L.fdl.id} only, no protective dets fighting delay lines. Never so large as to weaken the main def, and not reinforced.`
+      : L.detsWhere
+        ? `Protective dets ${L.detsWhere}${obs.length && !desert ? `; an adv posn on ${list(obs.map((l) => `${l.obstacle} (Line ${l.id})`), 'or')}, a natural obs, within own arty's reach from the main posn` : ''}${desert && G?.adv ? `; ${G.adv}` : ''}. Never so large as to weaken the main def, and not reinforced.${szWord}`
+        : `No room for protective dets ahead of the FDLs.${szWord}`,
     state: 'judge',
     basis: [
       rule('The adv posn usually stands on a natural obs, preferably within arty range of the main posn; it opens fire at long range and falls back before the main attk (OoW Vol I p 14)'),
       rule('Protective elms not so large as to weaken the resistance of the main def (OoW Vol I p 13); posns held by covering tps and adv posns will not be reinforced (GSP-1947 p 105 para 10)'),
       ...(desert ? gRules.slice(1, 2) : []),
       rule(`Recce elms 25-100 km out, covering tps 15-25 km, an adv posn 5-10 km, screens 1-1.5 km ahead of the FDLs; on def terrain or an obs they are an adv posn, else covering tps (${UA(2)})`),
+      rule(SZ_TEXT),
+      ...(L.ground === 'mountains' ? [rule('Along the LoC in Kashmir no SZ exists; the En softens up selected posts first (MW s12 p 164)')] : []),
+      ...(desert ? [rule('In desert the C Tps achieve their msn on a series of DLs (SZ Battle p 10 para 20 b); KGs round the dhars, battle posns ahead and astride each (p 13 para 25); the BHOL fwd enough for the C Tps to get into colm, close enough for the holding unit to help (p 5 para 9 h)')] : []),
     ],
     src: 'gr',
   });
@@ -495,7 +513,7 @@ export function analysisDef(L: AprcDefLayout, r: AorReading, lim: AprcLimits): {
     const held = [L.fdl, L.depth, L.strPt].some((l) => l && (l.buas.some((b) => b && b.toLowerCase() === nm) || (l === L.strPt && r.mitg.name.toLowerCase() === nm)));
     if (held) adv.push(`${lim.allCosts} def eff, the FDLs ahead of it or made a str pt (Aim)`);
   }
-  if (lim.attrition || lim.delayH) {
+  if (lim.attrition || lim.delayH || lim.casPct) {
     if (L.ahead.length >= 2) adv.push(`Max attrition: the protective dets fight on successive lines (${L.ahead.map((l) => `Line ${l.id}`).join(', ')}) (Aim)`);
     else if (!L.ahead.length) dis.push('Max attrition difficult: no line ahead of the FDLs for the protective dets (Aim)');
   }
@@ -591,7 +609,8 @@ export function visDef(L: AprcDefLayout, r: AorReading, o: { hMin: number | null
   steps.push({ ph: 'prep', en: 'En is likely to complete the assy before H', own: 'Bring HF on the En conc and gather max info on the En intentions' });
   steps.push({ ph: 'prep', en: `En is likely to cross ${L.border} ${ranked.length > 1 ? `on a broad front, on the ${list(ranked)} apchs,` : `on the ${main} apch`} at ${T(0)}`, own: 'Subj the En to arty DFs' });
   let t = 0, prev = 0;
-  const dl = L.ahead.slice(0, 2);
+  // no protective dets fighting delay lines in the mountains (SZ Battle p 3 para 5; MW s12 p 164)
+  const dl = L.ground === 'mountains' ? [] : L.ahead.slice(0, 2);
   dl.forEach((l, i) => {
     const dk = (l.depthM ?? 0) / 1000;
     t += Math.max(0, dk - prev) * 60;
@@ -654,6 +673,9 @@ export function visDef(L: AprcDefLayout, r: AorReading, o: { hMin: number | null
     rule("Beside the guide's phases: an En Bn's Ph 1 is not yet complete 1.5-2 h after H, a Bde's Ph 1 not over 3 h after H (IBB S57 para 11 p 310); an En Bde attk goes in at least two phases to a depth of 2,000-3,000 m, with time between them for own C attk or C pen (IBB S57 para 17 p 312)"),
     ...(L.ground === 'mountains' ? [rule('In mountains the En is likely to resort to selective punishment of certain posts; multidirectional attks on the important features, supported by infiltration to cut off own rft and C attk (MW pp 164-165); link ptls between the posts, the routes to them secured (MW p 164)')] : []),
     ...(L.ground === 'desert' ? [rule('In desert the defender should be prepared to fight the battle outflanked (DW p 13 para a); the res employed as early as possible, within 2-6 h (DW p 27); str pts adm self-sufficient (DW p 28)')] : []),
+    ...(dl.length ? [rule("Beside the guide's 4 h a line: the En's shallow mnvr round a DL is 10-15 km deep in 3 h, a deep one by a second Cbt Gp 20-25 km in 6 h, failing which he pens (SZ Battle p 19 para 31)")] : []),
+    ...(L.ground === 'mountains' ? [rule('No protective dets fighting delay lines: no SZ battle in Kashmir and the north (SZ Battle p 3 para 5; MW s12 p 164)')] : []),
+    ...(L.ground === 'desert' && L.fdlKm > 10 ? [rule("Beside the guide's 1 km/h (the books differ): in desert the En means to clear the SZ by daylight with a Flight Path Bde on the BOPs, then an Armd / Mech Bde ex RAPID(D) on 20-25 km, its lean-on unit into the M fd 15-20 min before H (SZ Battle pp 7-8); an Armd Div clears it in 24-48 h (DW pp 10-12)")] : []),
     ...(o.hMin !== null ? [input('H: the En crosses the border; the Vis counts from it (the en options count from the Threat marker)')] : []),
     calc("Distances: each line's distance past the border along the apchs (the AOR reading); the screens 1.25 km ahead of the FDLs"),
   ];
@@ -926,7 +948,11 @@ export function writeAim(kind: AprcKind, lim: AprcLimits, o: { place: string; hM
     if (lim.denial) kid('aim.denial', `Integrity of Line ${lim.denial}, the line of denial, to be preserved.`, 'map', [given, rule('The line of denial is spelt out when assigning the msn; the subordinate comds are responsible to preserve its integrity (OoW Vol I pp 17-18)')]);
     if (lim.allCosts) kid('aim.allcosts', `${lim.allCosts} to be def at all costs.`);
     if (lim.attrition) kid('aim.attr', 'Cause max attrition / delay onto the En.');
-    if (lim.delayH) kid('aim.delay', `Delay the En for ${lim.delayH} hrs.`);
+    if (lim.delayH || lim.casPct) {
+      // a C Tps msn: the delay for a time, a % of cas, "while remaining a viable force" (SZ Battle p 4 para 8; pp 26-27 para 41 f-g)
+      const msn = [lim.delayH ? `Delay the En for ${lim.delayH} hrs` : null, lim.casPct ? `${lim.delayH ? 'inflicting' : 'Inflict'} ${lim.casPct}% cas on the En` : null].filter(Boolean).join(' ');
+      kid('aim.delay', `${msn}${lim.viable ? ', while remaining a viable force' : ''}.`, 'map', [given, rule(CTPS_MSN_TEXT)]);
+    } else if (lim.viable) kid('aim.delay', 'Remain a viable force for the later tasks.', 'map', [given, rule(CTPS_MSN_TEXT)]);
     if (lim.maxCoys) kid('aim.coys', `Not more than ${lim.maxCoys} Coys to be used.`);
     if (by !== null) kid('aim.by', `Def to be ready by ${dClock(by)}.`);
     else if (o.readyDerived !== null && o.hMin !== null) kid('aim.by', `Def to be ready by ${dClock(o.readyDerived)}, the last lt before the En attk.`, 'judge', [rule(`No time given for the def to be ready, the En attk's given: def ready by the last lt before it (${UA(8)})`)]);
@@ -1282,7 +1308,7 @@ const SKETCH: Record<AprcKind, SketchItem[]> = {
     { what: 'C pen posns (dotted)', re: /c pen/i, kinds: ['cpen'], remark: '1,500 m of front on the most threatened apch, 1,500 m behind the FDLs' },
     { what: 'Res, composn and loc (dotted)', re: /\bres\b|reserve/i, kinds: ['res'] },
     { what: 'Adv posns and protective dets (flashes at Bn lvl)', re: /covering tps|guard|adv(ance)? pos/i },
-    { what: 'Delay lines, fall back posns of the SZ elms, BHL, SBPs', re: /delay|battle handover|\bbhol?\b|stay behind/i },
+    { what: 'Delay lines, fall back posns of the SZ elms, BHL (BHOL), SBPs', re: /delay|battle handover|\bbhol?\b|stay behind/i, remark: 'BHOL: the C Tps rear bdry, fwd enough for them to get into colm, close enough for the holding unit to help (SZ Battle p 5)' },
     { what: 'The En FUP (dotted)', re: /\bFUP\b|forming up/i, remark: 'At least 1,000 m from the FDLs' },
     { what: 'Bias of def / A tk def: by the forces, automatics and A tk wpns sited toward it', how: 'eye' },
   ],

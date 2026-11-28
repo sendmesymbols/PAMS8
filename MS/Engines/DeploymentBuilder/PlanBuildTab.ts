@@ -70,8 +70,11 @@ import movementSpeeds from '../../Data/MovementSpeeds.json';
 import { waterRulesFrom } from '../MovementGuide/MovementGuideWater';
 import { checkCrossing, hRel as hClock, withMinefield, type Light } from './PlanCrossing';
 import { withdrawalGeom, checkWithdrawal } from './PlanWithdrawal';
+import { withDelayTechnique } from './PlanDelay';
 import { isFmnWithdrawal, withWdrOptions } from './PlanWithdrawalFmn';
 import { layoutRows } from './PlanMountain';
+import { szRows } from './PlanSz';
+import { ctpsOverride, isCtpsLayout } from './PlanCtps';
 import type { PlanEntry, PlacementHooks, PlacementEnd, DrawnRead } from './DeploymentBuilderEngine';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import { GeoTools } from '../../Support/GeoTools';
@@ -82,6 +85,8 @@ export interface BuildTabHost {
   place(entry: PlanEntry, doc: any, opts?: { replaceLast?: boolean }): void;
   /** The Ground Guide's threat marker (Web Mercator) while the guide is on and has one; else null. */
   threat?(): XY | null;
+  /** The IB / WB / LoC lines the Ground Guide read from the bundle (Web Mercator); null while the guide is off or still loading. */
+  borders?(): XY[][] | null;
   /** The last built plan this session, while some of it is still on the map; else null. */
   lastBuilt?(): { name: string; count: number } | null;
   /** How many symbols are selected on the map (Check my plan's default scope). */
@@ -141,7 +146,7 @@ const footSpeeds = (): PlFootSpeeds => {
   return { ground: f.ground ?? { open: [4, 3] }, road: f.road?.track ?? [4, 3], toblerA: Array.isArray(f.slope?.a) ? f.slope.a[0] : 3.5, toblerB: typeof f.slope?.b === 'number' ? f.slope.b : 0.05 };
 };
 /** A recipe id without the two-phase suffix (PlanPhase.twoPhaseRecipe adds -2ph). */
-const baseId = (id: string) => id.replace(/-ad$/, '').replace(/-gun$/, '').replace(/-inu$/, '').replace(/-rcs$/, '').replace(/-en$/, '').replace(/-mf$/, '').replace(/-tk[cf]$/, '').replace(/-tkd\d$/, '').replace(/-amf$/, '').replace(/-2ph1?$/, '').replace(/-pre$/, '').replace(/-w[012]r?m?$/, '');
+const baseId = (id: string) => id.replace(/-ad$/, '').replace(/-gun$/, '').replace(/-inu$/, '').replace(/-rcs$/, '').replace(/-en$/, '').replace(/-mf$/, '').replace(/-tk[cf]$/, '').replace(/-tkd\d$/, '').replace(/-amf$/, '').replace(/-2ph1?$/, '').replace(/-pre$/, '').replace(/-w[012]r?m?$/, '').replace(/-alt$/, '');
 const WORD: Record<CheckState, string> = { pass: 'Pass', warn: 'Warn', fail: 'Fail', unchecked: 'Not checked' };
 const RGB: Record<CheckState, [number, number, number]> = { pass: [47, 168, 98], warn: [238, 138, 31], fail: [229, 72, 77], unchecked: [127, 136, 147] };
 const esc = (s: unknown) => Utils.escapeHtml(String(s ?? ''));
@@ -276,6 +281,8 @@ const ledgerRow = (c: Check & { name: string }, open: boolean): string => {
   const fix = d.fix?.length ? `<span class="k">Fix</span><div class="v"><ol>${d.fix.slice(0, 2).map((x, i) => `<li><b>${i + 1}</b><span>${esc(x)}</span></li>`).join('')}</ol>${d.fix.length > 2 ? `<span class="more">${d.fix.length - 2} more in the Check step</span>` : ''}</div>` : '';
   return `<div class="pb-c-lr">${head}<div class="pb-c-open">${body}${why || fix ? `<div class="pb-c-wf">${why}${fix}</div>` : ''}</div></div>`;
 };
+/** The dock's count of the rows it does not show: "2 more fails and warns in the Check step". */
+const moreWord = (n: number) => `${n} more fail${n > 1 ? 's and warns' : ' or warn'} in the Check step`;
 const fmtM = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`);
 /** A fit move in words: out of NO-GO, or up to higher ground. */
 const slideWord = (s: { label: string; distM: number; why?: string; riseM?: number }) => (s.why === 'high' ? `${esc(s.label)} up ${fmtM(s.distM)} to ground ${s.riseM} m higher` : `${esc(s.label)} slid ${fmtM(s.distM)} out of NO-GO`);
@@ -452,6 +459,8 @@ export class PlanBuildTab {
   private _wdrDelayH: number | null = null;
   /** A Bde / Div withdrawal: lay the delay means (stay-behind parties, subsidiary belts, road denial band; withWdrOptions). */
   private _wdrMeans = false;
+  /** A Bn delay: successive posns (MIB's normal method) or alternate posns, two groups leap-frogging (PlanDelay.withDelayTechnique). */
+  private _delayTech: 'successive' | 'alternate' = 'successive';
   private _plRules = plRulesFrom(platoonDoctrine);
   private _speeds = footSpeeds();
   /** An ambush's target: wheeled, tanks or on foot (M walks it while placing). */
@@ -847,6 +856,20 @@ export class PlanBuildTab {
     // report lines' spacing and the march's H as set
     // a Bde / Div withdrawal: its intermediate posns and who prepares the new posn (PlanWithdrawalFmn.withWdrOptions), cached
     // and the delay the higher Comd orders (Recipe.wdrDelayH; OOW3 p 10 para 6 c)
+    // a C Tps battle with the delay the higher Comd orders (PlanCtps Delay row; SZ Battle p 26 para 41 f), cached
+    if (base && isCtpsLayout(base.layout) && this._wdrDelayH !== null) {
+      const key = `${base.id}:delay:${this._wdrDelayH}`;
+      let v = this._ph2.get(key);
+      if (!v) { v = { ...base, wdrDelayH: this._wdrDelayH }; this._ph2.set(key, v); }
+      return v;
+    }
+    // a Bn delay on alternate posns (PlanDelay.withDelayTechnique), cached
+    if (base?.layout === 'delay' && this._delayTech === 'alternate') {
+      const key = `${base.id}:alt`;
+      let v = this._ph2.get(key);
+      if (!v) { v = withDelayTechnique(base, 'alternate'); this._ph2.set(key, v); }
+      return v;
+    }
     if (base?.task === 'withdrawal' && base.layout !== 'delay' && base.layout !== 'by-day') {
       let v: Recipe = base;
       if (isFmnWithdrawal(base) && (this._wdrIntPosns !== 2 || this._wdrMeans || (this._wdrNewPosnBy === 'res' && base.echelon === '21'))) {
@@ -1079,7 +1102,7 @@ export class PlanBuildTab {
       this._result = res; this._lastFit = null; return;
     }
     const unit = this._unit(r), ctx = this._ctx(r);
-    const opts = { ...this._opts(), mountedReserve: !!unit?.mounted };
+    const opts = { ...this._opts(), mountedReserve: !!unit?.mounted, ground: this._ground !== 'auto' ? this._ground : 'plains' as const };
     let res = solveRecipe(r, ctx, opts);
     // the unit's other ATGM pairs (ORBAT): without the ground, on the open flanks of the FDL
     const extras = r.task === 'attack' ? [] : atgmExtras(res, r, unit, null, null, ctx.doc);
@@ -1140,11 +1163,13 @@ export class PlanBuildTab {
     const r = res.recipe;
     const t: TerrainSpec = this._ground !== 'auto' ? { kind: this._ground, source: 'user' } : { kind: 'plains', source: 'assumed', why: this._terrain ? 'read where the plan rests, once it is placed' : 'no terrain data' };
     const rows = applyContext(res.rows, this._doc, r.echelon, r.task, res.frontageM, r.slots.filter((s) => s.kind === 'fwd').length, this._enemyFor(r, t.kind), t, this._force(r, t.kind), r.task === 'attack' ? this._night : null);
+    // the SZ by its ground (SZB p 3): grey while the IB is not read
+    if (res.sz) rows.push(...szRows(res.sz, t.source));
     const h = r.task === 'attack' ? attackTimes(res, null, null, this._doc, t.kind, this._night, null) : null;
     const tk = h && r.tanks ? addTankTimes(h, res, null, null, this._doc, this._night, r.tanks, null) : [];
     const p2 = h ? phase2Row(h, this._doc) : null;
     const brR = r.task === 'attack' ? attackBreach(r as any, this._doc, this._night, this._orbat?.engrData, t.kind)?.row ?? null : null;
-    return { ...res, rows: groundNotes([...rows, ...layoutRows(res.items, r, this._doc), ...this._orbatRows(res), ...this._secondLineRows(res), ...(r.task === 'attack' ? this._artyGeomRows(res) : []), ...this._liftRows(res),...(brR ? [brR] : []), ...(h ? [hSumRow(h, this._doc)] : []), ...(p2 ? [p2] : []), ...tk], this._doc, t.kind, r.task, r.echelon, r.task === 'attack' ? this._night : null) };
+    return { ...res, rows: ctpsOverride(groundNotes([...rows, ...layoutRows(res.items, r, this._doc), ...this._orbatRows(res), ...this._secondLineRows(res), ...(r.task === 'attack' ? this._artyGeomRows(res) : []), ...this._liftRows(res),...(brR ? [brR] : []), ...(h ? [hSumRow(h, this._doc)] : []), ...(p2 ? [p2] : []), ...tk], this._doc, t.kind, r.task, r.echelon, r.task === 'attack' ? this._night : null), r) };
   }
 
   // ── terrain ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -1655,8 +1680,14 @@ export class PlanBuildTab {
       case 'enType': this._enType = (val as any) || 'auto'; this._solve(); if (this._mode === 'check' && this._checkRecs) this._runCheck(); break;
       case 'night': this._night = val === 'on'; this._solve(); break;
       case 'phases': this._setPhases(val === '3' ? 3 : val === '2' ? 2 : 1); break;
+      case 'delayTech': this._delayTech = val === 'alternate' ? 'alternate' : 'successive'; this._swapPlan(this._delayTech === 'alternate' ? 'Alternate posns: Gp 1 on DP 1, Gp 2 prepares DP 2, they leap-frog (MIB p 233; SZ Battle pp 15-16)' : 'Successive posns: the Bn\'s normal method on a wide front (MIB pp 232-233)'); break;
       case 'wdrIp': this._wdrIntPosns = val === '0' ? 0 : val === '1' ? 1 : 2; this._swapPlan(`Intermediate posns: ${this._wdrIntPosns}`); break;
-      case 'wdrDelay': this._wdrDelayH = val === 'prep' ? null : Number(val) || null; this._swapPlan(this._wdrDelayH === null ? 'Time and space against the new posn\'s preparation (OOW1 p 39)' : `Delay ordered: ${this._wdrDelayH} h (OOW3 p 10 para 6 c)`); break;
+      case 'wdrDelay': {
+        this._wdrDelayH = val === 'prep' ? null : Number(val) || null;
+        const ct = isCtpsLayout(this._rcp(this._recipeId)?.layout);
+        this._swapPlan(this._wdrDelayH === null ? (ct ? 'No delay set: the Delay row gives the hours the DLs buy (SZ Battle p 19)' : 'Time and space against the new posn\'s preparation (OOW1 p 39)') : `Delay ordered: ${this._wdrDelayH} h (${ct ? 'SZ Battle p 26 para 41 f' : 'OOW3 p 10 para 6 c'})`);
+        break;
+      }
       case 'wdrMeans': this._wdrMeans = val === 'on'; this._swapPlan(this._wdrMeans ? 'Delay means laid: stay-behind parties, subsidiary belts, a road denial band (OOW3 pp 36, 56-57)' : 'Delay means left to the confirm list'); break;
       case 'wdrNew': this._wdrNewPosnBy = val === 'res' ? 'res' : 'fresh'; this._swapPlan(this._wdrNewPosnBy === 'res' ? 'The reserve Bde prepares and holds the new posn (GSP 1947 p 145)' : 'Fresh troops prepare the new posn (OOW3 p 39)'); break;
       case 'prelim': this._divPrelim = val === 'on'; this._swapPlan(this._divPrelim ? 'Prelim op: his outposts on the ground of the FUPs cleared first by each leading Bde\'s Res Bn' : 'No preliminary operation'); break;
@@ -2156,6 +2187,8 @@ export class PlanBuildTab {
       enemyAt: (recipe.phases ?? 1) >= 2 ? this._enemyPosns() : null,
       // a defence's posns take in the ITG the user designated on the map (Vital / Imp Gr)
       itgAt: recipe.task === 'defence' ? this._itgPosns() : null,
+      // an SZ runs to the IB the Ground Guide reads (PlanSz, SZB p 3 para 7)
+      borders: recipe.slots.some((s) => s.sym === '00000161') ? this._host.borders?.() ?? null : null,
       // ambush, patrol, recce (PlanSmallOps): the aim point, the Movement / Platoon Guide rules, the foot speeds, the target
       cursor: this._cursor, movRules: this._movRules, plRules: this._plRules, speeds: this._speeds, mover: this._mover,
       // a crossing (PlanCrossing): the Water engine's rules, the light (Annex Q column), this month (the season)
@@ -2193,7 +2226,7 @@ export class PlanBuildTab {
     if (recipe.task === 'crossing') { const x = this._gunSections(fl, recipe, null); return { ...x, doc: this._docFor(x.raw) }; }
     // the what-if: Sup and C Pen posns, routes and times against the enemy (PlanWhatIf)
     const f0 = withMoves(fl, inp);
-    f0.res = { ...f0.res, rows: [...f0.res.rows, ...this._orbatRows(f0.res), ...this._secondLineRows(f0.res), ...this._liftRows(f0.res), ...gs] };
+    f0.res = { ...f0.res, rows: ctpsOverride([...f0.res.rows, ...this._orbatRows(f0.res), ...this._secondLineRows(f0.res), ...this._liftRows(f0.res), ...gs], recipe) };
     const f = this._gunSections(f0, recipe, gs[0] ?? null);
     return { ...f, doc: this._docFor(f.raw) };
   }
@@ -2871,10 +2904,70 @@ export class PlanBuildTab {
    * Platoon Guide's bar does, above the host's panels there; the CSS places it, this caps its height.
    */
   private _dockCard(el: HTMLElement, box: HTMLElement): void {
-    // at most about 40 % of the map: the plan stays in view above it (the ledger scrolls inside past that)
+    // at most about 40 % of the map: the plan stays in view above it
     el.style.maxHeight = `${Math.max(150, Math.round(box.clientHeight * 0.4))}px`;
     // the Mgr's floating "Click where ..." bar would sit on the dock: hidden while the dock is up, its words are in the dock
     document.body.classList.add('pb-docked');
+    this._fitDock(el);
+  }
+
+  /**
+   * The dock never scrolls (the user, 28 Nov 2026: the mouse is busy placing the plan, so there is no hand free to scroll
+   * and a scrollbar only hides what is below it). When its columns are taller than the room the cap leaves, it tightens
+   * in steps (reasons and notes to two lines, then one, the second fix and the layouts' legend left out), and past that
+   * takes up to 55 % of the map; a line cut short carries its whole text as a tooltip, and the Check step has every row.
+   */
+  private _fitDock(el: HTMLElement): void {
+    const body = el.querySelector<HTMLElement>('.pb-c-body');
+    if (!body) return;
+    const clear = () => { for (const t of body.querySelectorAll('.is-tight, .is-tighter')) t.classList.remove('is-tight', 'is-tighter'); };
+    clear();
+    if (el.classList.contains('is-folded')) return;
+    // column by column: only the one that runs past the room tightens (the Ground and the Layouts are one column when
+    // the dock is narrow and they share it)
+    const units = Array.from(body.children as HTMLCollectionOf<HTMLElement>).flatMap((c) => (c.classList.contains('pb-c-pick') && getComputedStyle(c).display === 'contents' ? Array.from(c.children as HTMLCollectionOf<HTMLElement>) : [c]));
+    // a column past its own height; with the columns wrapped (a narrow dock) the band itself runs over: all of them
+    const overs = () => {
+      const o = units.filter((u) => u.scrollHeight > u.clientHeight + 1);
+      return o.length || body.scrollHeight <= body.clientHeight + 1 ? o : units;
+    };
+    const tighten = () => {
+      for (const u of overs()) u.classList.add('is-tight');
+      for (const u of overs()) u.classList.add('is-tighter');
+      return overs().length > 0;
+    };
+    // still taller at one line a reason: the dock takes more of the map (to 55 %) rather than cut a row off, and the
+    // columns are fitted again in that room (a column tightened for the smaller dock may not need it now)
+    const box = this._host.container();
+    if (tighten() && box) {
+      el.style.maxHeight = `${Math.max(150, Math.round(box.clientHeight * 0.55))}px`;
+      clear();
+      tighten();
+    }
+    // last of all (a small map): the other rows that still do not fit are counted into "more in the Check step" rather
+    // than cut off unseen; the worst row stays
+    const rest = body.querySelector<HTMLElement>('.pb-c-rest');
+    if (rest) {
+      const grid = getComputedStyle(body).display === 'grid';
+      const restOver = () => (grid ? body.scrollHeight > body.clientHeight + 1 : rest.scrollHeight > rest.clientHeight + 1);
+      const rows = Array.from(rest.querySelectorAll<HTMLElement>(':scope > .pb-c-lr:not(.pb-c-more)'));
+      let hid = 0;
+      while (rows.length && restOver()) { rows.pop()!.hidden = true; hid++; }
+      if (hid) {
+        let more = rest.querySelector<HTMLElement>(':scope > .pb-c-more');
+        if (!more) {
+          more = document.createElement('div');
+          more.className = 'pb-c-lr pb-c-more';
+          rest.insertBefore(more, rest.querySelector(':scope > .pb-c-sum, :scope > .pb-c-line'));
+        }
+        more.textContent = moreWord(Number(more.dataset.more || 0) + hid);
+      }
+    }
+    // the whole text on the lines cut short (the browser clamps them; nothing else says they were cut)
+    for (const t of body.querySelectorAll<HTMLElement>('.pb-c-x, .pb-c-det, .pb-c-items li, .pb-c-wf .v, .pb-c-wf ol li > span, .pb-c-sum > span > span, .pb-c-sum > .pb-c-mv, .pb-c-line .pb-card-dim')) {
+      if (t.scrollHeight > t.clientHeight + 1 || t.scrollWidth > t.clientWidth + 1) t.title = t.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+      else t.removeAttribute('title');
+    }
   }
 
 
@@ -2985,7 +3078,6 @@ export class PlanBuildTab {
     const planNames = new Set(best.res.rows.map((c) => c.name));
     const bad = [...all.filter((c) => c.st === 'fail'), ...all.filter((c) => c.st === 'warn')]
       .filter((c) => !c.name.includes(': ') || !planNames.has(c.name.slice(c.name.indexOf(': ') + 2)));
-    const worst = bad[0];
     const nPass = all.filter((c) => c.st === 'pass').length, grey = all.filter((c) => c.st === 'unchecked');
     // the head: the plan, what it was fitted against, its score
     const ctx: string[] = [];
@@ -2995,23 +3087,35 @@ export class PlanBuildTab {
     if (best.fit.pending) ctx.push('Gr loading…');
     const score = Math.max(0, Math.min(100, Math.round(best.fit.score)));
     const autoNow = this._auto && this._autoOn && this._terrain;
-    // folded, the head says the verdict in a word (the ledger is hidden; the ground and the layouts stay)
+    // the head's tally, the answer in one line (folded too: the ledger is hidden, the ground and the layouts stay): the
+    // fails and warns, then the passes and the checks not done, each as icon, count and word
     const nf = best.fit.fails, nw = best.fit.warns;
-    const verdict = `<span class="pb-c-fv">${cardIcon(nf ? 'fail' : nw ? 'warn' : 'pass')}${nf || nw ? esc([nf ? `${nf} fail${nf > 1 ? 's' : ''}` : '', nw ? `${nw} warn${nw > 1 ? 's' : ''}` : ''].filter(Boolean).join(', ')) : 'all pass'}</span>`;
+    const tally = (st: CheckState, n: number, word: string) => `<span class="pb-c-tl pb-${st}">${cardIcon(st)}<b>${n}</b><span>${word}</span></span>`;
+    const verdict = `<span class="pb-c-fv">${nf ? tally('fail', nf, nf > 1 ? 'fails' : 'fail') : ''}${nw ? tally('warn', nw, nw > 1 ? 'warns' : 'warn') : ''}${tally('pass', nPass, 'pass')}${grey.length ? tally('unchecked', grey.length, 'not checked') : ''}</span>`;
     const head = `<div class="pb-c-h"><div class="pb-c-tt"><div class="pb-c-t">${esc(best.recipe.name)}${autoNow ? '<span class="pb-c-chip">Auto</span>' : ''}</div>${ctx.length ? `<div class="pb-c-ctx">${esc(ctx.join(' · '))}</div>` : ''}</div><span class="pb-c-status" role="status"></span>${verdict}<div class="pb-c-fit"><div><span>Fit</span><b>${score}</b><small>/100</small></div><i class="pb-c-bar"><b style="width:${score}%"></b></i></div><button type="button" class="pb-c-fold" data-dock="fold" title="Fold the ledger away (the ground and the layouts stay) / open it again" aria-label="Fold or open the ledger">${this._dockFolded ? '▴' : '▾'}</button></div>`;
     // the ledger: the worst open and two more (as the mockup), the rest counted
     const shown = bad.slice(0, 3);
     // the row that opens: the worst with something to lay out (its detail), else none
     const openAt = shown.findIndex((c) => !!c.detail);
-    const ledger = shown.length
-      ? `<div class="pb-c-lg">${shown.map((c, i) => ledgerRow(c, i === openAt)).join('')}${bad.length > shown.length ? `<div class="pb-c-lr pb-c-more">${bad.length - shown.length} more fail${bad.length - shown.length > 1 ? 's and warns' : ' or warn'} in the Check step</div>` : ''}</div>`
-      : `<div class="pb-c-lg"><div class="pb-c-lr"><div class="pb-c-lh"><span class="pb-c-vb pb-pass">${cardIcon('pass')}Pass</span><span class="pb-c-n">Nothing to fix here</span><span class="pb-c-x">${nPass} checks pass on this Gr${grey.length ? `; ${grey.length} not checked: confirm on the Gr` : ''}</span></div></div></div>`;
+    const rows = shown.map((c, i) => ledgerRow(c, i === openAt));
+    // the dock reads left to right as one band that never scrolls (the user, 28 Nov 2026: the mouse is busy placing the
+    // plan, so a scrollbar hides what is below it): the answer first, in the widest column (the rows down to the one
+    // that opens, in their order), then the other rows with the passes counted, then the Ground and the Layouts
+    const lead = Math.max(0, openAt) + 1;
+    const leadCol = shown.length
+      ? rows.slice(0, lead).join('')
+      : `<div class="pb-c-lr"><div class="pb-c-lh"><span class="pb-c-vb pb-pass">${cardIcon('pass')}Pass</span><span class="pb-c-n">Nothing to fix here</span><span class="pb-c-x">${nPass} checks pass on this Gr${grey.length ? `; ${grey.length} not checked: confirm on the Gr` : ''}</span></div></div>`;
+    const more = bad.length > shown.length ? `<div class="pb-c-lr pb-c-more" data-more="${bad.length - shown.length}">${moreWord(bad.length - shown.length)}</div>` : '';
     // the rest counted, the Gr moves the fit made
     const greyNames = [...new Set(grey.map((c) => c.name.replace(/^.*: /, '')))].slice(0, 3);
-    const sum = `<div class="pb-c-sum"><span>${cardIcon('pass')}<b>${nPass}</b> Pass</span>${grey.length ? `<span>${cardIcon('unchecked')}<b>${grey.length}</b> Not checked${greyNames.length ? `: ${esc(greyNames.join(', '))}${grey.length > greyNames.length ? '…' : ''}` : ''}</span>` : ''}${best.fit.slides.length ? `<span class="pb-c-mv">${best.fit.slides.map((s) => slideWord(s)).join(', ')}</span>` : ''}</div>`;
-    const line = this._jNote ? `<div class="pb-card-dim">${esc(this._jNote)}</div>` : best.fit.small ? this._smallCardLine(best) : best.fit.withdrawal ? this._wdrCardLine(best) : best.fit.crossing ? this._crossCardLine(best) : worst && best.recipe.task !== 'advance' ? '<div class="pb-card-dim">J moves the worst posn to better Gr nearby</div>' : '';
+    // (the counts are in the head's tally; here what was not checked and what the fit moved)
+    const sumIn = `${greyNames.length ? `<span>${cardIcon('unchecked')}<span>Not checked: ${esc(greyNames.join(', '))}${grey.length > greyNames.length ? '…' : ''}</span></span>` : ''}${best.fit.slides.length ? `<span class="pb-c-mv">${best.fit.slides.map((s) => slideWord(s)).join(', ')}</span>` : ''}`;
+    const sum = sumIn ? `<div class="pb-c-sum">${sumIn}</div>` : '';
+    const line = this._jNote ? `<div class="pb-card-dim">${esc(this._jNote)}</div>` : best.fit.small ? this._smallCardLine(best) : best.fit.withdrawal ? this._wdrCardLine(best) : best.fit.crossing ? this._crossCardLine(best) : '';
+    // (J's own hint, "worst posn to better Gr", is in the key row)
     const pick = `${this._hasGround ? this._dockGround(best) : ''}${this._hasLayouts ? this._dockLayouts(ranked) : ''}`;
-    return `${head}<div class="pb-c-body">${pick ? `<div class="pb-c-pick">${pick}</div>` : ''}<div class="pb-c-main">${ledger}${sum}${line ? `<div class="pb-c-line">${line}</div>` : ''}</div></div>`;
+    const rest = `${rows.slice(lead).join('')}${more}${sum}${line ? `<div class="pb-c-line">${line}</div>` : ''}`;
+    return `${head}<div class="pb-c-body"><div class="pb-c-col pb-c-lead">${leadCol}</div>${rest ? `<div class="pb-c-col pb-c-rest">${rest}</div>` : ''}${pick ? `<div class="pb-c-pick">${pick}</div>` : ''}</div>`;
   }
 
   /**
@@ -3038,7 +3142,7 @@ export class PlanBuildTab {
         : 'Set by you; the terrain here is not read yet';
       if (read && read.kind !== this._ground) det = `<span class="pb-c-off">${det}</span>`;
     }
-    return `<div class="pb-c-sec"><div class="pb-c-sl">Ground<span>${kbd('E')}</span></div><div class="pb-c-chips">${chips}</div><div class="pb-c-det">${det}</div></div>`;
+    return `<div class="pb-c-col pb-c-sec is-ground"><div class="pb-c-sl">Ground<span>${kbd('E')}</span></div><div class="pb-c-chips">${chips}</div><div class="pb-c-det">${det}</div></div>`;
   }
 
   /**
@@ -3064,9 +3168,9 @@ export class PlanBuildTab {
         : `${this._layoutWord(id)}: not fitted here (Auto fits at most planBuilder.auto.maxLayouts); click to lay it`;
       // the icon carries the count of its verdict (2 fails, or 3 warns when none fails): Auto ranks on those before the score
       const n = f ? f.fit.fails || f.fit.warns : 0;
-      return `<button type="button" class="pb-c-lay pb-${st}${on ? ' is-on' : ''}${star ? ' is-best' : ''}" data-dock="layout:${esc(id)}" title="${esc(tip)}">${f ? `<span class="pb-c-vn">${cardIcon(st)}${n ? `<em>${n}</em>` : ''}</span>` : ''}<span>${esc(this._layoutWord(id))}</span><b>${f ? Math.round(f.fit.score) : '–'}</b>${star ? '<i>Auto\'s pick</i>' : ''}</button>`;
+      return `<button type="button" class="pb-c-lay pb-${st}${on ? ' is-on' : ''}${star ? ' is-best' : ''}" data-dock="layout:${esc(id)}" title="${esc(tip)}">${f ? `<span class="pb-c-vn">${cardIcon(st)}${n ? `<em>${n}</em>` : ''}</span>` : ''}<span class="pb-c-ln">${esc(this._layoutWord(id))}</span>${star ? '<i>Auto\'s pick</i>' : ''}<b>${f ? Math.round(f.fit.score) : '–'}</b></button>`;
     }).join('');
-    return `<div class="pb-c-sec"><div class="pb-c-sl">Layouts here<span>${kbd('N')}</span></div><div class="pb-c-chips">${autoChip}${chips}</div><div class="pb-c-det">${autoNow ? 'Auto places the best: fewest fails, then fewest warns, then the higher score' : 'Chosen by hand; the others fitted beside it'} · ${cardIcon('fail')} 2 = two fails</div></div>`;
+    return `<div class="pb-c-col pb-c-sec is-layouts"><div class="pb-c-sl">Layouts here<span>${kbd('N')}</span></div><div class="pb-c-chips is-grid">${autoChip}${chips}</div><div class="pb-c-det">${autoNow ? 'Auto places the best: fewest fails, then fewest warns, then the higher score' : 'Chosen by hand; the others fitted beside it'} · ${cardIcon('fail')} 2 = two fails</div></div>`;
   }
 
   /** The card's last line for a crossing: the obstacle, the bridge, the tanks across, his observers. */
@@ -3164,7 +3268,9 @@ export class PlanBuildTab {
     // a Bde / Div withdrawal read as it was built: its int posns and who prepares the new posn from the id (-w0, -w1r ...)
     const wv = base0?.task === 'withdrawal' ? /-w([012])(r?)(m?)$/.exec(recipeId) : null;
     let base = base0?.task === 'advance' ? this._rcpBase(base0.id) ?? base0
-      : wv && base0 ? withWdrOptions(base0, this._doc, { intPosns: Number(wv[1]) as 0 | 1 | 2, newPosnBy: wv[2] ? 'res' : 'fresh', means: !!wv[3] }) : base0;
+      : wv && base0 ? withWdrOptions(base0, this._doc, { intPosns: Number(wv[1]) as 0 | 1 | 2, newPosnBy: wv[2] ? 'res' : 'fresh', means: !!wv[3] })
+        // a Bn delay built on alternate posns (-alt)
+        : base0?.layout === 'delay' && /-alt$/.test(recipeId) ? withDelayTechnique(base0, 'alternate') : base0;
     // the delay as now set in the tab (it is not carried on the plan's id)
     if (base?.task === 'withdrawal' && this._wdrDelayH !== null) base = { ...base, wdrDelayH: this._wdrDelayH };
     if (!base || !syms.length) { this._msg = 'Nothing of that plan to read.'; this._render(); return; }
@@ -3684,12 +3790,22 @@ export class PlanBuildTab {
           { on: !this._mfAttk, label: 'None', data: 'mf:off', title: 'No minefield known in front of the Obj' },
           { on: this._mfAttk, label: 'In front', data: 'mf:on', title: 'The En protective minefield about 200 m in front of the Obj, 250-300 m deep (IC s111.5, s107): a lane for each assault Coy, breached before H (Breach row; the engineers in the Engrs row)' }])))
       : '';
+    const ctpsDelay = isCtpsLayout(res.recipe.layout)
+      ? row('Delay', seg([
+        { on: this._wdrDelayH === null, label: 'Not set', data: 'wdrDelay:prep', title: 'No delay ordered: the Delay row gives the hours the DLs buy (SZ Battle p 19) and stays grey' },
+        ...[12, 24, 48, 72].map((h) => ({ on: this._wdrDelayH === h, label: `${h} h`, data: `wdrDelay:${h}`, title: `The higher Comd orders the En delayed ${h} h in the SZ (SZ Battle p 4 para 8, p 26 para 41 f: "delay the en for 48 hrs inflicting 30% cas")` }))]))
+      : '';
     const delayRow = res.recipe.task === 'withdrawal' && res.recipe.layout !== 'delay' && res.recipe.layout !== 'by-day'
       ? row('Delay', seg([
         { on: this._wdrDelayH === null, label: 'Prep', data: 'wdrDelay:prep', title: 'No delay ordered: time and space against the new posn\'s preparation, a Bn 36 working hours (OOW1 s8 para 7 p 39); a Bn withdrawal then shows no Time and space row' },
         ...[24, 48, 72, 96].map((h) => ({ on: this._wdrDelayH === h, label: `${h} h`, data: `wdrDelay:${h}`, title: `The higher Comd orders the En held forward of the new posn for ${h} h (OOW3 s2 para 6 c p 10; s6 para 6 a p 29)` }))]))
       : '';
-    const wdr = delayRow + (res.recipe.task === 'withdrawal' && isFmnWithdrawal(res.recipe)
+    const techRow = res.recipe.layout === 'delay'
+      ? row('Technique', seg([
+        { on: this._delayTech === 'successive', label: 'Successive', data: 'delayTech:successive', title: 'Successive posns: the major portion disengages to the next posn, elements left in contact; the Bn\'s normal method on the wide frontages of a delay (MIB s28 para 5 a pp 232-233)' },
+        { on: this._delayTech === 'alternate', label: 'Alternate', data: 'delayTech:alternate', title: 'Alternate posns: Gp 1 holds DP 1 while Gp 2 occupies and improves DP 2, then they leap-frog; needs forces enough for two posns at once, for a narrow sector or a reinforced Bn (MIB s28 para 5 b p 233; SZ Battle pp 15-16, Fig 3)' }]))
+      : '';
+    const wdr = ctpsDelay + techRow + delayRow + (res.recipe.task === 'withdrawal' && isFmnWithdrawal(res.recipe)
       ? row('Int posns', seg([
         { on: this._wdrIntPosns === 2, label: '2', data: 'wdrIp:2', title: 'Two intermediate posns as OoW Vol III Annex P draws them (p 75)' },
         { on: this._wdrIntPosns === 1, label: '1', data: 'wdrIp:1', title: 'One intermediate posn: their number by the Comd\'s appreciation (GSP 1947 s30 para 13 p 144; OOW3 p 33 para 17)' },

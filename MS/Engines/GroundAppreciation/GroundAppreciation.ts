@@ -1300,7 +1300,7 @@ export default class GroundAppreciation {
       posns: Array.isArray(f.posns) ? f.posns.length : 0,
       assumedRange: Array.isArray(f.posns) && f.posns.some((p: any) => p?.assumed),
       lines: f.lines.map((l: any) => ({ id: String(l.id), coveredPct: Number(l.coveredPct) || 0, screenedPct: Number(l.screenedPct) || 0, deadPct: Number(l.deadPct) || 0, outPct: Number(l.outPct) || 0, seenPct: Number(l.seenPct) || 0, gaps: Array.isArray(l.gaps) ? l.gaps : [] })),
-      killing: (Array.isArray(f.killing) ? f.killing : []).map((k: any) => ({ on: String(k.on), kind: k.kind === 'narrows' ? 'narrows' : 'stretch', widthM: Number.isFinite(k.widthM) ? Number(k.widthM) : null, lengthM: Number(k.lengthM) || 0, alongM: Number(k.alongM) || 0, where: Array.isArray(k.at) ? this._where(r, this._ground(r, k.at)) : null })),
+      killing: (Array.isArray(f.killing) ? f.killing : []).map((k: any) => ({ on: String(k.on), kind: k.kind === 'narrows' ? 'narrows' : k.kind === 'dhar' ? 'dhar' : 'stretch', dhar: !!k.dhar, widthM: Number.isFinite(k.widthM) ? Number(k.widthM) : null, lengthM: Number(k.lengthM) || 0, alongM: Number(k.alongM) || 0, where: Array.isArray(k.at) ? this._where(r, this._ground(r, k.at)) : null })),
     };
   }
 
@@ -2955,7 +2955,7 @@ export default class GroundAppreciation {
   /** A control of the Limitations box changed. */
   private _limitInput(t: HTMLInputElement): void {
     const k = t.dataset.lim as keyof AprcLimits;
-    const v: any = t.type === 'checkbox' ? t.checked : k === 'other' ? String(t.value).split(/\n+/) : k === 'delayH' || k === 'maxCoys' || k === 'climbM' ? (t.value ? Number(t.value) : null) : t.value.trim() || null;
+    const v: any = t.type === 'checkbox' ? t.checked : k === 'other' ? String(t.value).split(/\n+/) : k === 'delayH' || k === 'maxCoys' || k === 'climbM' || k === 'casPct' ? (t.value ? Number(t.value) : null) : t.value.trim() || null;
     if ((k === 'by' || k === 'deny' || k === 'noMovBefore' || k === 'clearBy') && v && parseDTime(v) === null) {
       this._msg = `${k === 'by' ? 'By' : k === 'deny' ? 'Denied until' : k === 'noMovBefore' ? 'No rearward mov before' : 'Clear by'}: type a D-time such as 0600 D+1`;
       return this._render();
@@ -2978,6 +2978,8 @@ export default class GroundAppreciation {
       h += txt('allCosts', l.allCosts, 'Def at all costs', 'a place');
       h += box('attrition', l.attrition, 'Cause max attrition / delay onto the En');
       h += num('delayH', l.delayH, 'Delay the En for (hrs)');
+      h += num('casPct', l.casPct, 'Inflicting cas on the En (%)');
+      h += box('viable', l.viable, 'While remaining a viable force');
       h += num('maxCoys', l.maxCoys, 'Not more than (Coys)');
       h += txt('by', l.by, 'Def to be ready by', '0600 D Day');
       h += box('salient', l.salient, 'Def of a salient');

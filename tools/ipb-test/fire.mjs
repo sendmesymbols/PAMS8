@@ -110,5 +110,31 @@ const m = (o) => ({ coveredPct: 50, coverPct: 10, obstacles: 2, itg: 1, rooms: 2
   check('two groups, at most four avenues (A-D) each; 12 rows (h split in two)', two.groups.length === 2 && two.groups[1].ids.length === 4 && two.rows.length === 12 && PF_ROWS.length === 12);
 }
 
+// SZB_Review.md E2: in the desert, killing areas round the dhars (SZ Battle (C&SC) p 13 para 25 c; GroundGuideDhar)
+{
+  const { dharAt, dharTestFrom, DHAR_DEFAULT } = await import('../../MS/Engines/GroundGuide/GroundGuideDhar.ts');
+  const ipb = JSON.parse(readFileSync(resolve(here, '../../MS/Data/IpbDoctrine.json'), 'utf8'));
+  const T = dharTestFrom(ipb);
+  check('dhar: the thresholds come from IpbDoctrine killingAreas.dhar (E, SZB p 13 ref)', JSON.stringify(T) === JSON.stringify(DHAR_DEFAULT) && ipb.killingAreas.dhar.basis === 'E' && ipb.killingAreas.dhar.refs[0].book === 'SZB' && ipb.killingAreas.dhar.refs[0].page === '13');
+  // a bare desert flat (class 12) 1.2 km across at the line's middle, ringed by a dune ridge 30 m high 700-1000 m out
+  const basin = grid(({ elev, cls }) => {
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const d = Math.hypot(x - 150, y - 150) * RES;
+      if (d <= 600) cls[y * N + x] = 12; else cls[y * N + x] = 13;
+      if (d >= 700 && d <= 1000) elev[y * N + x] = 230;
+    }
+  });
+  const at = (g, x0, y0) => (dx, dy) => { const x = Math.round(x0 + dx / RES), y = Math.round(y0 - dy / RES); return x < 0 || y < 0 || x >= N || y >= N ? { cls: null, elev: NaN } : { cls: g.cls[y * N + x], elev: g.elev[y * N + x] }; };
+  const inB = dharAt(at(basin, 150, 150), T), outB = dharAt(at(basin, 150, 40), T), flatPlain = dharAt(at(grid(({ cls }) => cls.fill(12)), 150, 150), T);
+  check('dhar: a firm flat ringed by dunes reads as a dhar; sand outside it and a flat with no dunes do not', inB.dhar && inB.rising === 8 && !outB.dhar && !flatPlain.dhar && flatPlain.rising === 0, `${inB.rising}/${outB.flat}/${flatPlain.rising}`);
+  // a Posn 400 m east of the basin's centre with a 2 km gun: the avenue through the basin
+  const posns = [posn(163, 150, 2000)];
+  const off = fireCoverage({ grid: basin, posns, lines: [line('A', 150)], tables: null, targetM: 2.4 });
+  const on = fireCoverage({ grid: basin, posns, lines: [line('A', 150)], tables: null, targetM: 2.4, dhar: T });
+  check('dhar: off the desert (no test) no candidate is marked a dhar', off.killing.every((k) => !k.dhar && k.kind !== 'dhar'));
+  const dk = on.killing.filter((k) => k.dhar);
+  check('dhar: in the desert a candidate at the dhar ranks first and cites SZB p 13 para 25 c', dk.length >= 1 && on.killing[0].dhar === true && /SZ Battle p 13 para 25 c/.test(on.killing[0].text) && Math.abs(on.killing[0].alongM - 4350) < 1200, on.killing.map((k) => `${k.kind}${k.dhar ? '*' : ''}@${Math.round(k.alongM)}`).join(' '));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -510,7 +510,17 @@ MS/
   Vol I Annex B (DCB: GSP-1947 p 119); a Bde's res not the guide's Bn res; the DP heads, the Vis and the Time Req by the AOR's
   country (`AprcBooks.groundKind` / `GROUND_DEF`: mountains MW, desert DW, M fd by hand in sand DW p 65 via `minesHours`); HAT
   in bulk on the main tk apch (IBB p 73); the attack's FUP / dir by ground (`AprcAttkIn.country`) and GSP-1947's attack,
-  En res and withdrawal heads. `node tools/aprc-test/run.mjs` 388 checks.
+  En res and withdrawal heads. `node tools/aprc-test/run.mjs` 400 checks.
+  **SZ Battle handout** (28 Nov 2026, `SZB_Review.md`; C&SC "Concept and Conduct of SZ Battle", ref SZB): the protective
+  dets by the SZ's sector (`SZ_TEXT`, `SZ_BAND`: Kashmir no SZ battle, Punjab 2-5 km screens and an adv posn, desert 20-50 km
+  C Tps on DLs), no delay lines in the mountains' Vis, the En's shallow 3 h / deep 6 h mnvr and his desert SZ clearance
+  beside the guide's figures; Limitations *Inflicting cas (%)* and *While remaining a viable force* (`casPct`, `viable`).
+  The Plan Builder lays a Div defence's SZ by its ground (`PlanSz.ts`, `securityZone.byGround`; to the IB from the guide's
+  `borderLinesMerc()` via the host `borders()` hook; desert DLs and a BHOL), a Bn delay's *Technique* chip
+  (Successive / Alternate, `bn-delay-alt`), desert KGs at dhars (`GroundGuideDhar.ts`, also the IPB fire's killing areas)
+  and the **C Tps battle** plans (`PlanCtps.ts`: `bg-ctps-*` BG options 1-3, `cbtgp-ctps-opt1..3` Cbt Gp options 1-3,
+  `ctpsOverride` drops the Bn main-defence rows); the AOR reading carries `sz` (`aorSz`), the templates `sz-desert`.
+  `node tools/planbuilder-test/szb.mjs` (79).
 - **Deployment Mgr Intelligent Deployment tab** (was "Build"; `PlanBuilder_Plan.md`; Phases 0–8 built 15 Nov 2026: geometry, terrain fit, Auto /
   Compare / J) — on by default (`features.planBuilder`; it loads nothing until the tab is opened), `planBuilder.*`.
   J while the plan rests moves the worst posn to better ground (never leaving the plan worse), Shift+J takes it back;

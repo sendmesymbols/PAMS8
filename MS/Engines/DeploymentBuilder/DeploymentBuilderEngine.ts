@@ -186,6 +186,11 @@ export interface DeploymentHost {
    * Deployment and Admin Area tools read). Not given: the Mgr reads `window.symbolEngine.groundGuide` itself.
    */
   threat?(): [number, number] | null;
+  /**
+   * The IB / WB / LoC lines the Ground Guide reads from the terrain bundle, Web Mercator [x, y] runs; null while the guide
+   * is off or loading. Not given: the Mgr reads `window.symbolEngine.groundGuide.borderLinesMerc()` itself.
+   */
+  borders?(): Array<Array<[number, number]>> | null;
 }
 
 /** What Check my plan reads: plan records (drawEss as Save Plan writes it) and a line saying where they came from. */
@@ -746,6 +751,7 @@ class DeploymentBuilderEngine {
         this._buildTab = new PlanBuildTab(box, {
           place: (entry, doc, opts) => this._placeBuiltPlan(entry, doc, opts),
           threat: () => this._guideThreat(),
+          borders: () => this._guideBorders(),
           lastBuilt: () => this._lastBuiltOnMap(),
           selectedCount: () => this._host?.selected?.().length ?? 0,
           log: (msg, ok) => (ok ? EngineLogger.success(ENGINE_NAME, msg) : EngineLogger.error(ENGINE_NAME, msg)),
@@ -808,6 +814,16 @@ class DeploymentBuilderEngine {
     } catch { ll = null; }
     if (!ll || !Number.isFinite(ll[0]) || !Number.isFinite(ll[1])) return null;
     return lonLatToMerc(ll[0], ll[1]);
+  }
+
+  /** The Ground Guide's IB / WB / LoC lines (Web Mercator) for a Div defence's SZ (PlanSz); null while off or loading. */
+  private _guideBorders(): XY[][] | null {
+    let runs: Array<Array<[number, number]>> | null = null;
+    try {
+      runs = this._host?.borders ? this._host.borders() : ((window as any).symbolEngine?.groundGuide?.borderLinesMerc?.() ?? null);
+    } catch { runs = null; }
+    if (!runs) return null;
+    return runs.map((r) => r.map(([x, y]) => ({ x, y })));
   }
 
   /** The last placement when it was a built plan (Intelligent Deployment) and some of it is still on the map; else null. */
