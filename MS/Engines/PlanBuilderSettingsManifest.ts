@@ -85,6 +85,14 @@ export const planBuilderSettingsManifest: SettingDescriptor[] = [
     help: 'While placing, a small card beside the cursor: the layouts ranked on the spot and the worst check.',
   },
   {
+    path: ['planBuilder', 'coyArrows'],
+    label: 'Coy arrows on a Bn attack',
+    group: 'Display',
+    type: 'boolean',
+    help: 'Each assault Coy its own Main Attack arrow, side by side in the Bn\'s assault frontage and onto its own part of the Obj, as the traces draw a two-up attack (IBB S47 para 17 a p 248). Off: one Bn axis a phase. The Coy arrows chips in the Task step switch it for a plan.',
+    keywords: ['arrow', 'main attack', 'coy', 'axis', 'two up'],
+  },
+  {
     path: ['planBuilder', 'labelSize'],
     label: 'Label size on built plans (pt)',
     group: 'Display',

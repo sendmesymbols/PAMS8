@@ -25,7 +25,7 @@ import type { AorReading, AorSide, AorXY } from '../GroundGuide/GroundGuideAor';
 import { dockBelowBar } from '../SiteScan/SitePanel';
 import { shortDate, sourceName } from '../SiteScan/SiteScan';
 import {
-  STALE_MARK, accept, acceptAll, addRow, applyPatches, aprcKinds, attkHeads, carryOver, cellTyped, counts, dropMoved, find, isStale, keepMoved, keepUnread, lines, markChanges, newDoc, normLimits, normalizeDoc, numberOf, restoreDiscarded, retime, setCell, setMine, shown, staleWhy, tableOf, toText, walk,
+  STALE_MARK, accept, acceptAll, addRow, applyPatches, aprcKinds, attkHeads, briefApchs, carryOver, cellTyped, counts, dropMoved, find, isStale, keepMoved, keepUnread, lines, markChanges, newDoc, normLimits, normalizeDoc, numberOf, restoreDiscarded, retime, setCell, setMine, shown, staleWhy, tableOf, toText, walk,
   type AprcConfirm, type AprcCopy, type AprcDoc, type AprcFigure, type AprcKind, type AprcLimits, type AprcPara, type AprcPatch, type AprcSrc,
 } from './AprcModel';
 import { nightOf, parseDTime, styleNotes, writeMechs, type AprcClimb, type AprcMechsIn, type AprcNight } from './AprcMechs';
@@ -970,6 +970,9 @@ export default class GroundAppreciation {
           const dw = writeAttkDir({ ...ipb.in, country: r.country });
           applyPatches(doc, dw.patches, 'en');
           doc.confirm.push(...tag(dw.confirm, 'en'));
+          // the Req: only the pri apch defined and explained, the others their definition and significance
+          const pri = attkFirst(ipb.in)?.first.onto;
+          briefApchs(doc, pri === 'left' ? 'lt' : pri === 'right' ? 'rt' : pri === 'frontal' ? 'cen' : null);
         } else {
           unread.add('en');
           notes.push('The dir of attk was not read (no apch onto the obj from own side).');

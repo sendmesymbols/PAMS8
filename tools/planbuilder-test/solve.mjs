@@ -48,8 +48,8 @@ for (const r of recipes) {
     check(`${tag}: SIDCs are 20 digits, friend (a hostile slot hostile)`, res.items.every((i, k) => /^\d{20}$/.test(sidcs[k]) && sidcs[k][3] === (hostileOf(i) ? '6' : '3')));
     const out = S.toPlanDocument(res, Plan.createSymbol, Plan.createOverlay, 1);
     const syms = out.doc.poObj.plnOrdrOverlay.flatMap((o) => o.plnOrdrSymbolSet);
-    check(`${tag}: Plan document holds every item`, Plan.isPlanDocument(out.doc) && syms.length === res.items.length);
-    check(`${tag}: pivot and roles carried`, out.pivotId === res.pivotId && Object.keys(out.roles).length === res.items.length);
+    check(`${tag}: Plan document holds every item (a Bn axis drawn as its Coys' arrows is not placed)`, Plan.isPlanDocument(out.doc) && syms.length === res.items.filter((i) => !i.noDraw).length);
+    check(`${tag}: pivot and roles carried`, out.pivotId === res.pivotId && Object.keys(out.roles).length === res.items.filter((i) => !i.noDraw).length);
     const des = syms.map((s) => JSON.parse(s.drawEss));
     // a Bde / Div withdrawal reaches 60 km back (two intermediate posns, OOW3 Annex P): within a degree of the anchor
     check(`${tag}: points in degrees near 0,0`, des.every((d) => [d.GEOM, ...(d.CTRL_PTS ?? [])].filter(Boolean).every((p) => Math.abs(p.x) < 1 && Math.abs(p.y) < 1)));
@@ -93,7 +93,25 @@ check('Bn two up: DF targets 8-12', (() => { const k = two.items.filter((i) => i
 const closeT = two.items.filter((i) => i.role === 'dfTgt').map((t) => Math.min(...fwdTops.map((y) => t.pts[0].y - y)));
 check('Bn two up: no DF target nearer the FDL than 550 m (IC s111.4)', closeT.every((d) => d >= 549), closeT.map(Math.round).join(','));
 check('Bn two up: LPs 300-400 m out', two.items.filter((i) => i.role === 'lp').every((l) => fwdTops.some((y) => l.pts[0].y - y >= 300 && l.pts[0].y - y <= 400)));
-check('Bn two up: AT minefield about 200 m in front', (() => { const m = two.items.find((i) => i.role === 'atMines'); const y0 = Math.min(...m.pts.map((p) => p.y)); return Math.abs(y0 - Math.max(...fwdTops) - 200) < 1; })());
+// the protective minefield wrapped round the localities (the user's trace, 28 Nov 2026; IC s74 paras 17-19 pp 394-395)
+{
+  const mf = two.items.filter((i) => i.role === 'atMines'), md = two.items.filter((i) => i.role === 'mfDepth');
+  const posnBoxes = two.slots.map((s) => ({ role: s.role, x0: s.centre.x - s.wM / 2, x1: s.centre.x + s.wM / 2, y0: s.centre.y - s.hM / 2, y1: s.centre.y + s.hM / 2 }));
+  const inBox = (p, b, pad = 0) => p.x > b.x0 - pad && p.x < b.x1 + pad && p.y > b.y0 - pad && p.y < b.y1 + pad;
+  const front = mf.filter((m) => Math.min(...m.pts.map((p) => p.y)) > Math.max(...fwdTops) - 200);
+  // the panels' near edge (the first half of the CTRL_PTS) in front of a posn follows its curved front (PlanObstacles.frontV,
+  // the BP outline) 200 m out
+  const fwdS = two.slots.filter((s) => s.kind === 'fwd');
+  const offs = front.flatMap((m) => m.pts.slice(0, m.pts.length / 2).flatMap((p) => { const s = fwdS.find((q) => Math.abs(p.x - q.centre.x) <= q.wM / 2); if (!s) return []; const u = p.x - s.centre.x; return [p.y - (s.centre.y + s.hM * (0.5 - 0.08 * (u / (0.46 * s.wM)) ** 2))]; }));
+  check('Bn two up: protective minefield panels round each forward Coy\'s curved front, 200 m out (IC s111 para 5 p 651), mixed AP + AT (25270707)', front.length === 4 && mf.every((m) => m.key === '25270707') && offs.length >= 8 && offs.every((d) => Math.abs(d - 200) < 1), `${front.length} front panels, ${offs.map(Math.round).join(',')}`);
+  check('Bn two up: the open flanks closed (A Coy\'s left, B Coy\'s right), the inner ones left to the gap belt', mf.length === 6 && mf.filter((m) => !front.includes(m)).length === 2 && (() => { const A = posnBoxes.find((b) => b.role === 'fwdL'), B = posnBoxes.find((b) => b.role === 'fwdR'); const fl = mf.filter((m) => !front.includes(m)); return fl.some((m) => m.pts.every((p) => p.x < A.x0)) && fl.some((m) => m.pts.every((p) => p.x > B.x1)); })(), `${mf.length} panels`);
+  check('Bn two up: the depth Coy\'s open flank closed to contain a penetration (IC s74 para 19 c p 395); none beside or round the reserve (its way out kept clear)', md.length === 1 && (() => { const C = posnBoxes.find((b) => b.role === 'depth'); return md[0].pts.every((p) => p.x < C.x0); })(), `${md.length} panels`);
+  { const bad = [...mf, ...md].flatMap((m) => m.pts.flatMap((p) => posnBoxes.filter((b) => inBox(p, b, 140)).map((b) => `${b.role}@${Math.round(p.x)},${Math.round(p.y)}`)));
+    check('Bn two up: no minefield panel inside a posn (200 m off its curved outline, 140 m clear of its box corners)', bad.length === 0, bad.join(' ')); }
+  check('Bn two up: patrol lanes between the front panels (IC s74 para 18 a p 394)', (() => { const xs = front.map((m) => [Math.min(...m.pts.map((p) => p.x)), Math.max(...m.pts.map((p) => p.x))]).sort((a, b) => a[0] - b[0]); return xs.every((x, i) => i === 0 || x[0] - xs[i - 1][1] >= 40); })());
+  const scr = two.items.find((i) => i.role === 'scr'), su = two.items.find((i) => i.role === 'scrUnit');
+  check('Bn two up: a screen (25342203) 1 km ahead of the FDLs (AMP p 1.2) across the forward Coys, a Pl of C Coy (the depth Coy) in its gap (IBB S54 para 4 c pp 284-285)', scr?.key === '25342203' && scr.pts.length === 3 && scr.pts.every((p) => Math.abs(p.y - Math.max(...fwdTops) - 1000) < 1) && su?.label === 'Scr Pl' && su.higher === 'C Coy' && Math.abs(su.pts[0].x - scr.pts[1].x) < 1, scr ? `${Math.round(scr.pts[0].y - Math.max(...fwdTops))} m` : 'none');
+}
 const alts = two.items.filter((i) => i.planned);
 // the two Coy alternates and the two RRs' alternatives (IBB p 41), all planned
 check('Bn two up: two alternates and two RR alternatives, planned (dashed)', alts.filter((a) => a.role === 'alt').length === 2 && alts.filter((a) => a.role === 'rrAlt').length === 2 && alts.length === 4 && alts.every((a) => S.sidcFor(a)[6] === '1'));

@@ -341,7 +341,11 @@ export function mapPlan(syms: DrawnSymbol[], doc: DoctrineSet, opts: MapOptions 
     // what points at the enemy: arcs of fire, covering troops / security zone, protective minefields, the FEBA; a DCB
     // or ditch only when nothing else is drawn (Demo 2 puts one in depth, on the Line of No Penetration)
     const cue = (s: DrawnSymbol) => s.key === '25152300' || s.key === '25342201' || s.key === '00000161' || isMinefield(s.key) || s.key === '25140400';
-    const cues = own.filter(cue);
+    const cues0 = own.filter(cue);
+    // minefields wrapped round the localities (front panels and the flanks', PlanObstacles) are read as one cue: their
+    // flank panels point sideways and cancel, the mass of them lies in front
+    const mines = cues0.filter((s) => isMinefield(s.key));
+    const cues = mines.length > 1 ? [...cues0.filter((s) => !isMinefield(s.key)), { ...mines[0], pts: mines.map((m) => centroid(m.pts)) }] : cues0;
     const use = cues.length ? cues : own.filter((s) => isObstacleLine(s.key));
     if (use.length) {
       // each cue from the centre of the posns held now (a planned D line far back would pull the centre off the front;
@@ -864,9 +868,49 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
   return { task: 'defence', title, planEch, read, unclear, posns, slots, rows: ctpsOverride(groundNotes([...rows, ...mountainRowsOf(mp, doc, opts, frame), ...(terrain.kind === 'mountain' ? [rearAreaRow(mp.syms.filter((s) => s.side === 'own' && s.pbRole).map((s) => ({ role: s.pbRole!, label: s.label, pts: s.pts })))].filter((r): r is Check => !!r) : [])], doc, terrain.kind, 'defence', planEch ?? '16', null), builtRecipe), groups: [], enemy, terrain, threat: mp.threat, frame, fit, whatIf: whatIfRes, confirm, assumptions, mapped: mp };
 }
 
+/**
+ * A phase's Coy arrows (PlanCoyArrows: the user's traces draw an arrow a Coy) read as the one Bn axis they make: built ones
+ * by their roles (axisL / axisR, axis2L / axis2R ...), hand-drawn ones when two arrows start within 800 m of each other,
+ * end within 1.5 km and run within 35 degrees of each other. The axis: the middle of the two lines (its tail and head the
+ * middles of theirs), its width across both arrows' tails, its label theirs joined.
+ */
+export function mergeCoyArrows(axes: DrawnSymbol[]): DrawnSymbol[] {
+  const out: DrawnSymbol[] = [];
+  const used = new Set<DrawnSymbol>();
+  const mid = (a: XY, b: XY) => P((a.x + b.x) / 2, (a.y + b.y) / 2);
+  const dirOf = (s: DrawnSymbol) => Math.atan2(s.pts[s.pts.length - 1].y - s.pts[0].y, s.pts[s.pts.length - 1].x - s.pts[0].x);
+  const merge = (a: DrawnSymbol, b: DrawnSymbol, role?: string): DrawnSymbol => {
+    const n = Math.min(a.pts.length, b.pts.length);
+    const pick = (s: DrawnSymbol, i: number) => s.pts[Math.round((i * (s.pts.length - 1)) / Math.max(1, n - 1))];
+    const pts = Array.from({ length: n }, (_, i) => mid(pick(a, i), pick(b, i)));
+    const wa = a.base ? dist(a.base.start, a.base.end) : 0, wb = b.base ? dist(b.base.start, b.base.end) : 0;
+    const ta = a.base?.mid ?? a.pts[0], tb = b.base?.mid ?? b.pts[0];
+    const gap = dist(ta, tb), L = gap || 1, u = P((tb.x - ta.x) / L, (tb.y - ta.y) / L);
+    const base = a.base || b.base ? { start: P(ta.x - (u.x * wa) / 2, ta.y - (u.y * wa) / 2), mid: mid(ta, tb), end: P(tb.x + (u.x * wb) / 2, tb.y + (u.y * wb) / 2) } : null;
+    return { ...a, id: `${a.id}+${b.id}`, pts, base, label: [a.label, b.label].filter(Boolean).join(', '), pbRole: role ?? a.pbRole };
+  };
+  for (const a of axes) {
+    if (used.has(a)) continue;
+    const m = a.pbRole ? /^(axis\d?)L$/.exec(a.pbRole) : null;
+    let b: DrawnSymbol | undefined;
+    if (m) b = axes.find((x) => !used.has(x) && x !== a && x.pbRole === `${m[1]}R`);
+    else if (!a.pbRole && !/^tks?\b/i.test(a.label ?? '')) {
+      b = axes.find((x) => {
+        if (used.has(x) || x === a || x.pbRole || /^tks?\b/i.test(x.label ?? '') || x.pts.length < 2) return false;
+        const k = kAt(a.pts[0].y);
+        let turn = Math.abs(dirOf(a) - dirOf(x)); if (turn > Math.PI) turn = 2 * Math.PI - turn;
+        return dist(a.pts[0], x.pts[0]) / k <= 800 && dist(a.pts[a.pts.length - 1], x.pts[x.pts.length - 1]) / k <= 1500 && (turn * 180) / Math.PI <= 35;
+      });
+    }
+    if (b) { used.add(a); used.add(b); out.push(merge(a, b, m ? m[1] : undefined)); }
+    else { used.add(a); out.push(a); }
+  }
+  return out;
+}
+
 function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): CheckReport {
   const own = mp.syms.filter((s) => s.side === 'own'), en = mp.syms.filter((s) => s.side === 'enemy');
-  const axes = own.filter((s) => isAxisKey(s.key) && s.pts.length >= 2);
+  const axes = mergeCoyArrows(own.filter((s) => isAxisKey(s.key) && s.pts.length >= 2));
   const fups = own.filter((s) => s.key === '25140302'), sls = own.filter((s) => s.key === '25140303'), bofs = own.filter((s) => s.key === '25152100' || s.key === '25152000');
   const objs = [
     ...en.filter((s) => isPosnKey(s.key) && s.pts.length >= 3).map((s) => ({ label: s.label || s.name, pts: s.pts })),
@@ -969,7 +1013,9 @@ function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Chec
     const tankAxis = isTankAxis(a) || (!!fupOk && !!objOk && m(setDist(fupOk.pts, objOk.pts)) >= 2000 && own.some((s) => isUnit(s) && isArmour(s) && m(dist(s.pts[0], centroid(fupOk.pts))) < 600));
     const axisDir = Math.atan2(head.x - tail.x, head.y - tail.y);
     const along = (p: XY) => ((p.x - tail.x) * Math.sin(axisDir) + (p.y - tail.y) * Math.cos(axisDir)) / Math.max(1, dist(tail, head));
-    const sl = sls.map((s) => ({ s, d: setDist(s.pts, [tail, head]), t: along(centroid(s.pts)) })).filter((x) => x.t > -0.3 && x.t < 1.0 && m(x.d) < 1500).sort((x, y) => x.d - y.d)[0]?.s ?? null;
+    // a later phase's start line may be the phase line beyond the Obj before it (PH-I: the user's traces, IC s66 para 8 h p 309)
+    const slCands = prev ? [...sls, ...own.filter((s) => s.key === '25140300')] : sls;
+    const sl = slCands.map((s) => ({ s, d: setDist(s.pts, [tail, head]), t: along(centroid(s.pts)) })).filter((x) => x.t > -0.3 && x.t < 1.0 && m(x.d) < 1500).sort((x, y) => x.d - y.d)[0]?.s ?? null;
     const oc = objOk ? centroid(objOk.pts) : head;
     const bof = bofs.map((b) => ({ b, d: dist(centroid(b.pts), oc) })).sort((x, y) => x.d - y.d)[0];
     const bofOk = bof && m(bof.d) <= 2500 ? bof.b : null;
@@ -1005,7 +1051,14 @@ function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Chec
       const o1 = prev.objOk, c1 = centroid(o1.pts), c2 = centroid(objOk.pts);
       const d12 = m(setDist(o1.pts, objOk.pts));
       let off = Math.abs(((Math.atan2(c2.x - c1.x, c2.y - c1.y) - axisDir) * 180) / Math.PI) % 360; if (off > 180) off = 360 - off;
-      gr.push({ name: 'Ph 2 fire base', st: d12 <= bofMax && off >= bofMin ? 'pass' : 'warn', reason: `${o1.label}, held as the firm base (IBB p189 para 23), ${fmtM(d12)} from ${objOk.label} (106 mm RR reaches ${fmtM(bofMax)}), firing ${Math.round(off)}° across this axis (wants ${bofMin}° or more)` });
+      // a BOF of its own for this phase (nearer this Obj than the one before it: the Req's "BOF for Ph 1 and Ph 2"), else Obj 1
+      const bof2 = bofOk && dist(centroid(bofOk.pts), c2) < dist(centroid(bofOk.pts), c1) ? bofOk : null;
+      if (bof2) {
+        const bp = centroid(bof2.pts);
+        let o2 = Math.abs(((Math.atan2(c2.x - bp.x, c2.y - bp.y) - axisDir) * 180) / Math.PI) % 360; if (o2 > 180) o2 = 360 - o2;
+        const d2 = m(inPoly(bp, objOk.pts) ? 0 : setDist([bp], objOk.pts));
+        gr.push({ name: 'Ph 2 fire base', st: d2 <= bofMax && o2 >= bofMin ? 'pass' : 'warn', reason: `${bof2.label || 'BOF'} for this phase, ${fmtM(d2)} from ${objOk.label}'s near edge (106 mm RR reaches ${fmtM(bofMax)}), firing ${Math.round(o2)}° off this axis (wants ${bofMin}° or more, E); ${o1.label} held as the firm base (IBB p189 para 23)` });
+      } else gr.push({ name: 'Ph 2 fire base', st: d12 <= bofMax && off >= bofMin ? 'pass' : 'warn', reason: `${o1.label}, held as the firm base (IBB p189 para 23), ${fmtM(d12)} from ${objOk.label} (106 mm RR reaches ${fmtM(bofMax)}), firing ${Math.round(off)}° across this axis (wants ${bofMin}° or more)` });
       const lineGap = (pts: XY[], poly: XY[]) => {
         let best = Infinity;
         for (let k = 1; k < pts.length; k++) {
@@ -1022,7 +1075,13 @@ function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Chec
       const pl = Math.max(1, dist(prev.tail, prev.head));
       const lane = m(Math.abs((tail.x - prev.tail.x) * (prev.head.y - prev.tail.y) - (tail.y - prev.tail.y) * (prev.head.x - prev.tail.x)) / pl);
       const newDir = turn >= bofMin || lane >= clear1 - 1;
-      gr.push({ name: 'Ph 2 direction', st: g1 >= clear1 - 1 && newDir ? 'pass' : 'warn', reason: `${fmtM(g1)} off ${o1.label} (wants ${clear1} m: not through the Coys reorganising on it); ${Math.round(turn)}° off the phase 1 axis${turn < bofMin ? `, its lane ${fmtM(lane)} from phase 1's` : ''} (a new direction, IBB p186: turned ${bofMin}° or more, or a lane of its own ${clear1} m or more aside, E)` });
+      // through Obj 1 over the phase line (the user's traces and the IE solution, attack.phase2.method): the arrow itself
+      // clear of Obj 1, starting beyond its far side toward this Obj, its start line a phase line
+      const u12 = P((c2.x - c1.x) / (dist(c1, c2) || 1), (c2.y - c1.y) / (dist(c1, c2) || 1));
+      const far1 = Math.max(...o1.pts.map((p) => (p.x - c1.x) * u12.x + (p.y - c1.y) * u12.y));
+      const through = m(lineGap(a.pts, o1.pts)) >= 50 && (tail.x - c1.x) * u12.x + (tail.y - c1.y) * u12.y >= far1 && sl?.key === '25140300';
+      if (through) gr.push({ name: 'Ph 2 direction', st: 'pass', reason: `through ${o1.label} once it is taken, over ${sl?.label || 'the phase line'} (its start line) onto ${objOk.label}: the arrow starts ${fmtM(m(lineGap(a.pts, o1.pts)))} beyond ${o1.label}, clear of the Coys reorganising on it (the user's traces; IBB p 176 c: at once when it falls; p 186 h (1): never through Coys the En has halted)` });
+      else gr.push({ name: 'Ph 2 direction', st: g1 >= clear1 - 1 && newDir ? 'pass' : 'warn', reason: `${fmtM(g1)} off ${o1.label} (wants ${clear1} m: not through the Coys reorganising on it); ${Math.round(turn)}° off the phase 1 axis${turn < bofMin ? `, its lane ${fmtM(lane)} from phase 1's` : ''} (a new direction, IBB p186: turned ${bofMin}° or more, or a lane of its own ${clear1} m or more aside, E; or from beyond it over a phase line, the traces' way)` });
     } else if (tankAxis) {
       // see above
     } else if (bofOk && objOk) {

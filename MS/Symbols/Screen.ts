@@ -262,11 +262,16 @@ export class Screen {
       // Midpoint and right wing construction
       let midPt = GeoTools.getMidPoint(firstPoint, secondPoint);
       let length = GeoTools._2PtLen(firstPoint, midPt) / 3;
-      let angleVal = GeoTools.toDegrees(16); // In Degrees (legacy: GeoTools.toDegrees(16))
+      // The kink's wing, turned with the line: the legacy angle (GeoTools.toDegrees(16), 196.7 degrees in the map frame)
+      // was drawn for a screen laid west to east, so it is taken relative to this half's direction; a west-to-east screen
+      // looks as before, and one laid on any other bearing (a plan aimed east) keeps the same shape instead of a kink
+      // thrown sideways
+      const half1 = GeoTools.angleInRadians(firstPoint, secondPoint);
+      let wingRad = half1 + this.toRad(Number(GeoTools.toDegrees(16)));
 
       const rightWing = new Point({
-        x: midPt.x + length * Math.cos(this.toRad(angleVal)),
-        y: midPt.y + length * Math.sin(this.toRad(angleVal)),
+        x: midPt.x + length * Math.cos(wingRad),
+        y: midPt.y + length * Math.sin(wingRad),
         spatialReference
       });
 
@@ -305,11 +310,14 @@ export class Screen {
 
         midPt = GeoTools.getMidPoint(thirdPt, secondPoint);
         length = GeoTools._2PtLen(thirdPt, midPt) / 3;
-        angleVal = GeoTools.toDegrees(-32); // In Degrees
+        // as the first half: the legacy angle (GeoTools.toDegrees(-32), -33.5 degrees) was drawn for this half laid east
+        // to west (180 degrees), so it is taken relative to this half's direction
+        const half2 = GeoTools.angleInRadians(thirdPt, secondPoint);
+        wingRad = half2 - Math.PI + this.toRad(Number(GeoTools.toDegrees(-32)));
 
         const leftWing = new Point({
-          x: midPt.x + length * Math.cos(GeoTools.toRad(angleVal)),
-          y: midPt.y + length * Math.sin(GeoTools.toRad(angleVal)),
+          x: midPt.x + length * Math.cos(wingRad),
+          y: midPt.y + length * Math.sin(wingRad),
           spatialReference
         });
 

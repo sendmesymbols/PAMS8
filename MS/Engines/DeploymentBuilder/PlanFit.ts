@@ -20,6 +20,7 @@ import { shapePosn, curveOf, type ShapeGround, type ShapeParams } from './PlanSh
 import { atgmPairs, type UnitBrief } from './PlanOrbat';
 import { attackBreach, attackFactors, attackTimes, atOnObj, counterAttack, findAttackSpots, findMsrChoke, hSumRow, nightBrief, nightRow, phase2Row, phase3Row, type AttackFind, type CounterApch, type Factor, type HSum, type MsrChoke, type NightBrief } from './PlanAttack';
 import { findPhase2, goingRow, type Phase2Find, findPhaseN } from './PlanPhase';
+import { phaseLinesOnGround, withPhaseTimes } from './PlanPhaseLine';
 import { addTankTimes, defTankRows, findTankSpots, type TankFind, type TankMode, tankFupVsEnAtgm } from './PlanTanks';
 import { artyRows } from './PlanArty';
 import { divApproachesRow } from './PlanDcb';
@@ -1396,6 +1397,11 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   const fit = fitPlan({ res: fitBase, recipe, doc: ctx.doc, frame, ground, threat: recipe.task === 'attack' ? null : inp.threat ?? null, enemy: recipe.task === 'attack' ? null : enemy, terrain, rowsOver: rs?.rows, itgAt: inp.itgAt ?? null, front: recipe.task === 'attack' ? null : inp.front ?? null });
   // an attack's axes, and the FDL laid along an En front
   fit.paths = paths || fit.frontPaths ? { ...(paths ?? {}), ...(fit.frontPaths ?? {}) } : undefined;
+  // a phased attack's phase lines on the ground: each control point onto the easily recognized line in reach (a road,
+  // track, canal, bund), so the line turns with it (PlanPhaseLine; IC s66 para 8 h p 309)
+  const phSlots = recipe.task === 'attack' ? recipe.slots.filter((s) => (s.rule as any)?.phaseLine != null) : [];
+  const phOnGr = phSlots.length ? phaseLinesOnGround(fitBase.items, phSlots as any, (p) => { const w = toWorld(frame, p); return ground.cls(w.x, w.y); }, ctx.doc) : null;
+  if (phOnGr && Object.keys(phOnGr.paths).length) fit.paths = { ...(fit.paths ?? {}), ...phOnGr.paths };
   if (find) fit.nudges = addNudges(fit.nudges, find.nudges);
   if (rs) { fit.nudges = addNudges(fit.nudges, rs.nudges); fit.revSlope = { crest: rs.crest, fdlBehindM: rs.fdlBehindM, crestRiseM: rs.crestRiseM }; }
   const unit = inp.unit ?? null;
@@ -1477,6 +1483,9 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
     const obj = raw.items.find((i) => i.role === 'obj');
     const nb = inp.night && inp.nmRules && route && obj ? nightBrief(route, P(obj.pts.reduce((a, p) => a + p.x, 0) / obj.pts.length, obj.pts.reduce((a, p) => a + p.y, 0) / obj.pts.length), frame, terrain.kind, inp.nmRules, ground.mov?.() ?? null) : null;
     if (nb) merged.rows.push(nightRow(nb));
+    // the phase lines: on the ground, and the times they are crossed and the phase is complete (DTG / EDTG)
+    if (phOnGr) merged.rows.push(...phOnGr.rows);
+    if (h) raw = { ...raw, items: withPhaseTimes(raw.items, h) };
     const af = attackFactors(recipe.layout, merged.rows, raw, frame, ground, h, choke, route, ctx.doc);
     fit.attack = { hSum: h, choke, factors: af.factors, night: nb, route, finder: find.rows, phase2: ph2 ? { route: ph2.route, side: ph2.side, offDeg: ph2.offDeg, obj2From: ph2.obj2From } : undefined, phase3: ph3 ? { route: ph3.route, side: ph3.side, offDeg: ph3.offDeg } : undefined, counter: ca ? { apchs: ca.apchs, mover: ca.mover } : undefined, tanks: recipe.tanks ? { mode: recipe.tanks, route: tk?.route ?? null, fieldM: tk?.fieldM ?? null } : undefined };
     fit.score = af.score;

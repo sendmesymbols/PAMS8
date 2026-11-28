@@ -14,7 +14,7 @@
   "name": "Bn Def: extended, two Coys and three Pls up",
   "frontageRow": "Battalion on extended frontages, two companies and three platoons up",
   "subRow": "Battalion on extended frontages, two companies and three platoons up",
-  "note": "As IBB Annex U App 7 (p 482 by the contents; the page is unnumbered, PDF 499) draws it: a Bn on extended frontages, 6300 m, with two Coys up, each with its three Pls up in a row (Pl localities 600 m, IBB Annex U App 5 p 480; 300 m between the Pls, 800 m between the Coys: 5600 m held, 350 m flanks inside the 6300 m, calc), the Pl localities 500 m deep (the annex's 500 m), and two Coys in depth, one behind each forward Coy; depth 3000-4000 m (laid at 3050 m, the short end, for the reserve's reach, E). Larger gaps only where a Bde reserve can close them (IBB S59 p 327); a Coy's own frontage is never extended (S59 para 6 b p 326): the Pls keep their 600 m, only the intervals open. Bn HQ (IBB S3 pp 22-24; p 23: placed centrally within the Bn locality, preferably behind the depth localities; a defended locality of 55 all ranks, concealed from the air, dug in, near the Bde axis with an alternative posn; laid about 500 m behind the depth Coys, between them (the distance a decision, E). The RRs, a section of two in each rifle Coy, sited first in the forward localities with an alternative each 200-300 m back (IBB S8 pp 38-42; IC p 367). Books differ: the forward Coys here hold no Pl in depth (IBB App 7); IC s84 para 7 c p 447 says depth at Coy and Bn level must always be retained, and para 11 p 448 gives its frontage options in Annex R, which Material/IC.pdf does not hold (no annex pages): IBB's drawing is kept, depth held by the two depth Coys.",
+  "note": "As IBB Annex U App 7 (p 482 by the contents; the page is unnumbered, PDF 499) draws it: a Bn on extended frontages, 6300 m, with two Coys up, each with its three Pls up in a row (Pl localities 600 m, IBB Annex U App 5 p 480; 300 m between the Pls, 800 m between the Coys: 5600 m held, 350 m flanks inside the 6300 m, calc), the Pl localities 500 m deep (the annex's 500 m), and two Coys in depth, one behind each forward Coy; depth 3000-4000 m (laid at 3050 m, the short end, for the reserve's reach, E). Larger gaps only where a Bde reserve can close them (IBB S59 p 327); a Coy's own frontage is never extended (S59 para 6 b p 326): the Pls keep their 600 m, only the intervals open. Bn HQ (IBB S3 pp 22-24; p 23: placed centrally within the Bn locality, preferably behind the depth localities; a defended locality of 55 all ranks, concealed from the air, dug in, near the Bde axis with an alternative posn; laid about 500 m behind the depth Coys, between them (the distance a decision, E). The RRs, a section of two in each rifle Coy, sited first in the forward localities with an alternative each 200-300 m back (IBB S8 pp 38-42; IC p 367). Books differ: the forward Coys here hold no Pl in depth (IBB App 7); IC s84 para 7 c p 447 says depth at Coy and Bn level must always be retained, and para 11 p 448 gives its frontage options in Annex R, which Material/IC.pdf does not hold (no annex pages): IBB's drawing is kept, depth held by the two depth Coys. Protective minefield (PlanObstacles, the user's trace of 28 Nov 2026): panels round the front of each forward Coy and its open flank, about 200 m out (IC s111 para 5 p 651), up to 250 m deep (IC s107 p 596), patrol lanes between them (IC s74 para 18 a p 394); the depth Coys' open flanks closed to contain a penetration (none beside the reserve: its way out kept clear) (IC s74 para 19 c p 395), their rear left open for the counter-attack. A screen 1 km ahead of the FDLs (AMP p 1.2) by a Pl of C Coy (IBB S54 para 4 c pp 284-285: its troops from the depth Coys).",
   "slots": [
     {
       "role": "fwdL",
@@ -193,11 +193,11 @@
     {
       "role": "atMines",
       "kind": "obstacle",
-      "sym": "25270703",
+      "sym": "25270707",
       "label": "",
       "order": 4,
       "rule": {
-        "inFrontOf": [
+        "wraps": [
           "fwdL",
           "fwdR"
         ],
@@ -206,11 +206,60 @@
         },
         "depthM": {
           "doctrine": "standoff.protectiveMinefieldDepthM"
-        }
+        },
+        "laneM": {
+          "doctrine": "standoff.mineLaneM"
+        },
+        "flanks": "outer"
       },
       "terrainRule": {
         "tieTo": "obstacle",
         "across": "approach.main"
+      }
+    },
+    {
+      "role": "mfDepth",
+      "kind": "obstacle",
+      "sym": "25270707",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "wraps": [
+          "depth"
+        ],
+        "front": false,
+        "flanks": "outer",
+        "distM": {
+          "doctrine": "standoff.obstacleInFrontM"
+        },
+        "depthM": {
+          "doctrine": "standoff.protectiveMinefieldDepthM"
+        },
+        "laneM": {
+          "doctrine": "standoff.mineLaneM"
+        },
+        "row": [
+          "depth",
+          "res"
+        ]
+      }
+    },
+    {
+      "role": "scr",
+      "kind": "line",
+      "sym": "25342203",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "screenOf": [
+          "fwdL",
+          "fwdR"
+        ],
+        "aheadM": {
+          "doctrine": "smallOps.screen.fwdM"
+        },
+        "unit": "Scr Pl",
+        "from": "C Coy"
       }
     },
     {

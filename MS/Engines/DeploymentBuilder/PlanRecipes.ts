@@ -107,6 +107,8 @@ export interface Recipe {
   phases?: number;
   /** The side phase 2 goes round Obj 1: 1 right, -1 left (as seen from the own side). */
   phase2Side?: 1 | -1;
+  /** How phase 2 goes in (PlanPhase): through Obj 1 over PH-I (the user's traces, the default), or round its flank. */
+  ph2Method?: 'through' | 'flank';
   /** A tank Sqn with the attack (PlanTanks.withTanks): in the fire support role, or in close support (armour heavy). */
   tanks?: 'fire' | 'close';
   /** Tank Sqns grouped to a Bn defence (PlanTanks.withDefTanks): their leaguers beside the reserve (MIB p 68), the C Pen force at the tank rate. */
@@ -160,13 +162,20 @@ export const GEOMETRY_RULES = [
   'distM', 'behind', 'ahead', 'side', 'squareTo', 'gapTo', 'frontage', 'depth', 'withinRangeOf', 'outOfRangeOf', 'bearingFromAxis',
   'inRangeOf', 'mutualSupport', 'coversGap', 'backBlastClear', 'minRange', 'fireLift', 'reach', 'beforeEnemy',
   'inFrontOf', 'depthM', 'joins', 'edge', 'perSlot', 'of', 'centre', 'sz',
+  // a phase line (PlanPhaseLine): its phase number
+  'phaseLine',
+  // protective minefield panels round posns (PlanObstacles.wrapMinefield): the posns, the row they stand in, the front
+  // belt on or off, which flanks, the patrol lane
+  'wraps', 'row', 'front', 'flanks', 'laneM',
+  // a screen across the front (PlanObstacles.screenAcross): the forward posns, how far ahead, past their sides, its unit
+  'screenOf', 'aheadM', 'overlapM', 'unit', 'unitEchelon', 'from',
 ] as const;
 export const TERRAIN_RULES = [
   'onGround', 'notIn', 'vehicleAccess', 'sees', 'unseenFrom', 'fieldOfFireM', 'deadGroundFront', 'notOverlookedFrom',
   'prefer', 'onObstacle', 'tieTo', 'on', 'across',
 ] as const;
 /** Rule values that name other slots. */
-const SLOT_REF_RULES = ['behind', 'inRangeOf', 'mutualSupport', 'coversGap', 'inFrontOf', 'joins', 'perSlot', 'of', 'sees'];
+const SLOT_REF_RULES = ['behind', 'inRangeOf', 'mutualSupport', 'coversGap', 'inFrontOf', 'joins', 'perSlot', 'of', 'sees', 'wraps', 'row', 'screenOf'];
 const PREFER = ['itg', 'highGround', 'reverseSlope', 'behindObstacle', 'bua', 'roadAccess'];
 const NOT_IN = ['noGo', 'slowGo', 'water', 'bua'];
 

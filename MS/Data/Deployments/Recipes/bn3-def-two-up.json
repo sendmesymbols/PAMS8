@@ -14,7 +14,7 @@
   "name": "Bn Def: two up, one back (3 Coys)",
   "frontageRow": "Battalion, two companies up",
   "subRow": "Company, battalion two up",
-  "note": "A three-Coy Bn (Lt Cdo, p 623): A and B Coys forward as in the four-Coy layout (1500 m wide, 500 m gap, IBB Annex U App 6 p481), C Coy the reserve 1350 m back, behind the gap. No Coy is left to hold the gap in depth. The book prints the two-up row for four Coys; the three-Coy layout is mine (E). Bn HQ (IBB S3 pp 22-24; p 23: placed centrally within the Bn locality, preferably behind the depth localities; a defended locality of 55 all ranks, concealed from the air, dug in, near the Bde axis with an alternative posn; laid about 500 m behind the rearmost depth / reserve Coy (the distance a decision, E). The RRs, a section of two in each rifle Coy, sited first in the forward localities with an alternative each 200-300 m back (IBB S8 pp 38-42; IC p 367).",
+  "note": "A three-Coy Bn (Lt Cdo, p 623): A and B Coys forward as in the four-Coy layout (1500 m wide, 500 m gap, IBB Annex U App 6 p481), C Coy the reserve 1350 m back, behind the gap. No Coy is left to hold the gap in depth. The book prints the two-up row for four Coys; the three-Coy layout is mine (E). Bn HQ (IBB S3 pp 22-24; p 23: placed centrally within the Bn locality, preferably behind the depth localities; a defended locality of 55 all ranks, concealed from the air, dug in, near the Bde axis with an alternative posn; laid about 500 m behind the rearmost depth / reserve Coy (the distance a decision, E). The RRs, a section of two in each rifle Coy, sited first in the forward localities with an alternative each 200-300 m back (IBB S8 pp 38-42; IC p 367). Protective minefield (PlanObstacles, the user's trace of 28 Nov 2026): panels round the front of each forward Coy and its open flank, about 200 m out (IC s111 para 5 p 651), up to 250 m deep (IC s107 p 596), patrol lanes between them (IC s74 para 18 a p 394). A screen 1 km ahead of the FDLs (AMP p 1.2) by a Pl of C Coy (IBB S54 para 4 c pp 284-285: its troops from the depth Coys).",
   "slots": [
     {
       "role": "fwdL",
@@ -160,11 +160,11 @@
     {
       "role": "atMines",
       "kind": "obstacle",
-      "sym": "25270703",
+      "sym": "25270707",
       "label": "",
       "order": 4,
       "rule": {
-        "inFrontOf": [
+        "wraps": [
           "fwdL",
           "fwdR"
         ],
@@ -173,11 +173,33 @@
         },
         "depthM": {
           "doctrine": "standoff.protectiveMinefieldDepthM"
-        }
+        },
+        "laneM": {
+          "doctrine": "standoff.mineLaneM"
+        },
+        "flanks": "outer"
       },
       "terrainRule": {
         "tieTo": "obstacle",
         "across": "approach.main"
+      }
+    },
+    {
+      "role": "scr",
+      "kind": "line",
+      "sym": "25342203",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "screenOf": [
+          "fwdL",
+          "fwdR"
+        ],
+        "aheadM": {
+          "doctrine": "smallOps.screen.fwdM"
+        },
+        "unit": "Scr Pl",
+        "from": "C Coy"
       }
     },
     {

@@ -37,7 +37,9 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const centre = (pts) => ({ x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length });
 const it = (res, role) => res.items.find((i) => i.role === role);
 const front = rec('bn-attk-frontal'), right = rec('bn-attk-right-flank'), left = rec('bn-attk-left-flank');
-const two = (r, side) => Ph.twoPhaseRecipe(r, doc, side);
+// the flank method (round Obj 1 onto Obj 2's flank, IBB p 186 h (1)): the checks below were written for it; the
+// through method (the default since 28 Nov 2026, the user's traces) has its own block at the end
+const two = (r, side) => Ph.twoPhaseRecipe(r, doc, side, undefined, 'flank');
 /** How far beyond a box's edge a point lies, along a direction from its centre. */
 const beyondAlong = (b, p, u) => {
   const L = Math.hypot(u.x, u.y), ux = u.x / L, uy = u.y / L;
@@ -54,7 +56,7 @@ for (const r of [front, right, left]) {
   const t = two(r);
   const fails2 = R.validateRecipe(t, { doc, symbols }).filter((i) => i.level === 'fail').map((i) => i.msg);
   check(`${r.layout}: the two-phase recipe validates`, !fails2.length, fails2.join('; '));
-  check(`...its own id and name, the one passed in unchanged`, t.id === `${r.id}-2ph` && /two phases/.test(t.name) && !r.slots.some((s) => s.role === 'obj2') && r.slots.some((s) => s.role === 'res'));
+  check(`...its own id and name, the one passed in unchanged`, t.id === `${r.id}-2phf` && /two phases/.test(t.name) && !r.slots.some((s) => s.role === 'obj2') && r.slots.some((s) => s.role === 'res'));
   const roles = new Set(t.slots.map((s) => s.role));
   check('...Obj 2, FUP 2, SL 2, the phase 2 axis, C and D Coys and the mortars\' step-up posn; no reserve', ['obj2', 'fup2', 'sl2', 'axis2', 'fu1', 'fu2', 'mor2'].every((x) => roles.has(x)) && !roles.has('res'));
   const res = S.solveRecipe(t, ctx, {});
@@ -91,17 +93,17 @@ for (const r of [front, right, left]) {
 {
   // one follow-up Coy (the Ph 2 by chips / R while placing, or attack.phase2.coys 1): C Coy goes, D Coy is the reserve
   for (const r of [front, right, left]) {
-    const t = Ph.twoPhaseRecipe(r, doc, undefined, 1);
+    const t = Ph.twoPhaseRecipe(r, doc, undefined, 1, 'flank');
     const sl = (role) => t.slots.find((s) => s.role === role);
     const fails1 = R.validateRecipe(t, { doc, symbols }).filter((i) => i.level === 'fail').map((i) => i.msg);
-    check(`${r.layout}, one follow-up Coy: C Coy onto Obj 2, D Coy kept as the reserve, the BOF the Spt Coy`, !fails1.length && t.id === `${r.id}-2ph1` && /D Coy res/.test(t.name) && sl('fu1')?.label === 'C Coy' && !sl('fu2') && sl('res')?.label === 'D Coy' && sl('bofCoy')?.label === 'Spt Coy', fails1.join('; ') || t.id);
+    check(`${r.layout}, one follow-up Coy: C Coy onto Obj 2, D Coy kept as the reserve, the BOF the Spt Coy`, !fails1.length && t.id === `${r.id}-2ph1f` && /D Coy res/.test(t.name) && sl('fu1')?.label === 'C Coy' && !sl('fu2') && sl('res')?.label === 'D Coy' && sl('bofCoy')?.label === 'Spt Coy', fails1.join('; ') || t.id);
     const res = S.solveRecipe(t, ctx, {});
     check('...no "no Bn reserve" warning; the reserve\'s reach is timed; the Phases row names it', !row(res.rows, 'Reserve') && !!row(res.rows, 'Reserve reach') && /D Coy the Bn reserve/.test(row(res.rows, 'Phases')?.reason ?? ''), row(res.rows, 'Phases')?.reason);
     check('...C Coy and D Coy side by side where the reserve was, not on one spot', dist(it(res, 'fu1').pts[0], it(res, 'res').pts[0]) >= 299);
   }
   const d1 = withPh2({ coys: { value: 1, basis: 'U' } });
   check('...the doctrine default (attack.phase2.coys) sets it when the user has not', Ph.twoPhaseRecipe(front, d1).id.endsWith('-2ph1') && Ph.twoPhaseRecipe(front, d1, undefined, 2).id.endsWith('-2ph'));
-  const fl1 = F.fitLayout(inpOf(Ph.twoPhaseRecipe(right, doc, undefined, 1), flatG));
+  const fl1 = F.fitLayout(inpOf(Ph.twoPhaseRecipe(right, doc, undefined, 1, 'flank'), flatG));
   check('...fitted on the ground, the reserve moves with the FUP and phase 2 still times H2', !!fl1.fit.attack?.hSum?.phase2 && !!row(fl1.res.rows, 'Reserve reach'), row(fl1.res.rows, 'Reserve reach')?.reason);
 }
 
@@ -203,14 +205,14 @@ const O1 = Ph.boxOf(it(b0, 'obj').pts), O2 = Ph.boxOf(it(b0, 'obj2').pts);
   // the plan document: the phase 2 symbols are placed (Obj 2, FUP 2, SL 2, the arrow, C and D Coys, the step-up mortars)
   const out = S.toPlanDocument(S.solveRecipe(two(front), ctx, {}), (pid, ov, id, de) => ({ id, de }), (pid, id, name, seq, syms) => ({ syms }), 1);
   const roles = new Set(Object.values(out.roles));
-  check('Plan document: the phase 2 symbols are placed with their roles', ['obj2', 'fup2', 'sl2', 'axis2', 'fu1', 'fu2', 'mor2'].every((r) => roles.has(r)), [...roles].join(', '));
+  check('Plan document: the phase 2 symbols are placed with their roles (the phase 2 axis drawn as the C and D Coy arrows)', ['obj2', 'fup2', 'sl2', 'axis2L', 'axis2R', 'fu1', 'fu2', 'mor2'].every((r) => roles.has(r)) && !roles.has('axis2'), [...roles].join(', '));
 }
 
 // ── Check my plan on a two-phase plan ────────────────────────────────────────────────────────────────────────────
 {
   const K = await import('../../MS/Engines/DeploymentBuilder/PlanCheck.ts');
-  const recsOf = (recipe, withRoles = true) => {
-    const out = S.toPlanDocument(S.solveRecipe(recipe, ctx, {}), (pid, ov, id, de) => ({ plnOrdrSymbolPK: { plnOrdrSymbolId: id }, drawEss: JSON.stringify(de) }), (pid, id, name, seq, syms) => ({ plnOrdrSymbolSet: syms }), 1);
+  const recsOf = (recipe, withRoles = true, coyArrows = false) => {
+    const out = S.toPlanDocument(S.solveRecipe(recipe, ctx, { coyArrows: coyArrows }), (pid, ov, id, de) => ({ plnOrdrSymbolPK: { plnOrdrSymbolId: id }, drawEss: JSON.stringify(de) }), (pid, id, name, seq, syms) => ({ plnOrdrSymbolSet: syms }), 1);
     return K.recordsFromPlanDoc(out.doc).map((r) => (withRoles ? { ...r, attrs: { ...(r.attrs ?? {}), pbRole: out.roles[r.id], pbRecipe: recipe.id } } : r));
   };
   const ph2Group = (rep) => rep.groups.find((g) => g.phase === 2);
@@ -222,7 +224,7 @@ const O1 = Ph.boxOf(it(b0, 'obj').pts), O2 = Ph.boxOf(it(b0, 'obj2').pts);
     check('...phase 1 still judged as before (FUP 1000-1200 m, the BOF)', rep.groups.find((g) => g.phase === 1)?.rows.some((x) => x.name === 'FUP from the Obj' && x.st === 'pass'));
     check('...both follow-up Coys: Reserve warns (tell Bde)', row(rep.rows, 'Reserve')?.st === 'warn' && /tell Bde/.test(row(rep.rows, 'Reserve')?.reason ?? ''));
   }
-  const rep1 = K.checkPlan(recsOf(Ph.twoPhaseRecipe(front, doc, undefined, 1)), doc, {});
+  const rep1 = K.checkPlan(recsOf(Ph.twoPhaseRecipe(front, doc, undefined, 1, 'flank')), doc, {});
   check('...C Coy following up, D Coy the reserve: Reserve passes', row(rep1.rows, 'Reserve')?.st === 'pass' && /D Coy/.test(row(rep1.rows, 'Reserve')?.reason ?? ''), row(rep1.rows, 'Reserve')?.reason);
   // drawn by hand (no roles): phase 2 found by where its arrow starts
   const drawn = K.checkPlan(recsOf(two(front), false), doc, {});
@@ -252,10 +254,10 @@ const O1 = Ph.boxOf(it(b0, 'obj').pts), O2 = Ph.boxOf(it(b0, 'obj2').pts);
 {
   const t3 = Ph.threePhaseRecipe(two(front), doc);
   const fl3 = R.validateRecipe(t3, { doc, symbols }).filter((i) => i.level === 'fail').map((i) => i.msg);
-  check('three phases: the recipe validates, phases 3, its own id', !fl3.length && t3.phases === 3 && t3.id === `${front.id}-2ph-3ph`, fl3.join('; '));
+  check('three phases: the recipe validates, phases 3, its own id', !fl3.length && t3.phases === 3 && t3.id === `${front.id}-2phf-3ph`, fl3.join('; '));
   const roles = new Set(t3.slots.map((s) => s.role));
   check('...Obj 3, FUP 3, SL 3, the phase 3 axis, the phase 3 Coys (A, B from Obj 1: no reserve was left) and the mortars\' second step-up', ['obj3', 'fup3', 'sl3', 'axis3', 'fu3', 'mor3'].every((x) => roles.has(x)) && t3.slots.find((s) => s.role === 'fu3').label.startsWith('A, B Coys'), [...roles].join(','));
-  const t3d = Ph.threePhaseRecipe(Ph.twoPhaseRecipe(front, doc, undefined, 1), doc);
+  const t3d = Ph.threePhaseRecipe(Ph.twoPhaseRecipe(front, doc, undefined, 1, 'flank'), doc);
   check('...with C Coy alone in phase 2, D Coy (the reserve) takes Obj 3 and the reserve slot goes', t3d.slots.find((s) => s.role === 'fu3')?.label === 'D Coy' && !t3d.slots.some((s) => s.role === 'res'));
   const res = S.solveRecipe(t3, ctx, {});
   const o2 = Ph.boxOf(it(res, 'obj2').pts), o3 = Ph.boxOf(it(res, 'obj3').pts), F2 = centre(it(res, 'fup2').pts), F3 = centre(it(res, 'fup3').pts);
@@ -278,6 +280,108 @@ const O1 = Ph.boxOf(it(b0, 'obj').pts), O2 = Ph.boxOf(it(b0, 'obj2').pts);
   const fln = F.fitLayout(inpOf(t2, flatG, { obj2At: near }));
   const rN = row(fln.res.rows, 'Obj 2');
   check('...a mark too near Obj 1: not taken, the Obj 2 row warns and says the mark was not taken (never silent)', fln.fit.attack.phase2.obj2From !== 'marked' && rN?.st === 'warn' && /your mark is [0-9.]+ k?m from the centre of Obj 1.* so it was not taken; mark it farther behind/.test(rN.reason), rN?.reason);
+}
+
+// ── through Obj 1 over PH-I, and the phase lines (the user's traces and the IE solution, 28 Nov 2026) ──────────────
+{
+  const PL = await import('../../MS/Engines/DeploymentBuilder/PlanPhaseLine.ts');
+  const tt = Ph.twoPhaseRecipe(front, doc);
+  const v = R.validateRecipe(tt, { doc, symbols }).filter((i) => i.level === 'fail').map((i) => i.msg);
+  const roles = new Set(tt.slots.map((s) => s.role));
+  check('Through (the default, attack.phase2.method): validates; Obj 2, FUP 2, the phase 2 axis, BOF (Ph 2), PH-I and PH-II; no SL 2 (PH-I is its start line)', !v.length && tt.id === `${front.id}-2ph` && tt.ph2Method === 'through' && ['obj2', 'fup2', 'axis2', 'bof2', 'ph1', 'ph2', 'fu1', 'fu2', 'mor2'].every((x) => roles.has(x)) && !roles.has('sl2'), v.join('; ') || [...roles].join(','));
+  const res = S.solveRecipe(tt, ctx, {});
+  const o1 = Ph.boxOf(it(res, 'obj').pts), o2 = Ph.boxOf(it(res, 'obj2').pts);
+  const far1 = o1.c.y + o1.h / 2, near2 = o2.c.y - o2.h / 2;
+  const F2 = centre(it(res, 'fup2').pts), ax = it(res, 'axis2').pts;
+  check('...FUP 2 on Obj 1\'s far side, 150 m inside its edge (on the firm base, E)', Math.abs(far1 - F2.y - 150) < 1 && Math.abs(F2.x - o1.c.x) < 1, `${Math.round(far1 - F2.y)} m inside`);
+  check('...the phase 2 axis from PH-I (200 m beyond Obj 1) straight on into Obj 2', Math.abs(ax[0].y - far1 - 200) < 1 && Ph.boxGap(o2, ax[ax.length - 1]) === 0 && Math.abs(ax[0].x - ax[ax.length - 1].x) < 1, `${Math.round(ax[0].y - far1)} m beyond Obj 1`);
+  const p1 = it(res, 'ph1'), p2 = it(res, 'ph2');
+  check('...PH-I and PH-II: Phase Line symbols (25140300), a curve through 5 CTRL_PTS (DRAW_TYPE 2), labelled as the traces write them', p1?.key === '25140300' && p2?.key === '25140300' && p1.drawType === 2 && p1.pts.length === 5 && p1.label === 'PH-I' && p2.label === 'PH-II' && p1.phase === 1 && p2.phase === 2);
+  check('...PH-I across the whole attack between Obj 1 and Obj 2: its middle 200 m beyond Obj 1, its ends bowed back 150 m, 400 m past both Objs\' sides, short of Obj 2', Math.abs(p1.pts[2].y - far1 - 200) < 1 && Math.abs(p1.pts[0].y - (far1 + 50)) < 1 && p1.pts.every((p) => p.y > far1 && p.y < near2) && p1.pts[0].x <= o1.c.x - o1.w / 2 - 399 && p1.pts[4].x >= o1.c.x + o1.w / 2 + 399, p1.pts.map((p) => `${Math.round(p.x)},${Math.round(p.y)}`).join(' '));
+  check('...square to the direction of advance (IC s66 para 8 h p 309): its ends level across a frontal attack', Math.abs(p1.pts[0].y - p1.pts[4].y) < 1 && Math.abs(p2.pts[0].y - p2.pts[4].y) < 1);
+  check('...PH-II 200 m beyond Obj 2, short of the LOE', Math.abs(p2.pts[2].y - (o2.c.y + o2.h / 2) - 200) < 1 && p2.pts[2].y < centre(it(res, 'loe').pts).y);
+  check('...the phase lines are not counted in the frontage the attack takes', res.frontageM < (p1.pts[4].x - p1.pts[0].x), `${Math.round(res.frontageM)} m`);
+  check('...rows: Phases names PH-I; FUP 2 on the firm base said, not judged on the night band; Ph 2 fire base is BOF (Ph 2) and passes', /over PH-I/.test(row(res.rows, 'Phases')?.reason ?? '') && row(res.rows, 'FUP 2 from Obj 2')?.st === 'pass' && !row(res.rows, 'FUP 2 clear of Obj 1') && row(res.rows, 'Ph 2 fire base')?.st === 'pass' && /BOF \(Ph 2\)/.test(row(res.rows, 'Ph 2 fire base')?.reason ?? ''), `${row(res.rows, 'Ph 2 fire base')?.reason}`);
+  // the H-hour sum: PH-I as phase 2's start line; the times on the phase lines
+  const h = A.attackTimes(res, null, null, doc, 'plains', false, null);
+  check('...H-hour sum: FUP 2 to PH-I, the assault from PH-I (H2)', h.steps.some((s) => s.label === 'FUP 2 to PH-I (Ph 2 SL)') && h.steps.some((s) => s.label === 'Assault: PH-I to Obj 2 (H2)') && h.phase2.h2At > h.phase2.obj1At, h.steps.map((s) => s.label).join(' | '));
+  const timed = PL.withPhaseTimes(res.items, h), t1 = timed.find((i) => i.role === 'ph1'), t2 = timed.find((i) => i.role === 'ph2');
+  check('...the phase lines carry their times: PH-I Comm H, Compl by Obj 1 taken; PH-II Comm H2, Compl by the op done (DTG / EDTG)', t1.amp?.DTG === 'Comm H' && t1.amp?.EDTG === `Compl by ${PL.hClock(h.phase2.obj1At)}` && t2.amp?.DTG === `Comm ${PL.hClock(h.phase2.h2At)}` && t2.amp?.EDTG === `Compl by ${PL.hClock(h.doneAt)}` && !res.items.find((i) => i.role === 'ph1').amp, `${t1.amp?.DTG} / ${t1.amp?.EDTG}; ${t2.amp?.DTG} / ${t2.amp?.EDTG}`);
+  const out = S.toPlanDocument({ ...res, items: timed }, (pid, ov, id, de) => ({ id, de }), (pid, id, name, seq, syms) => ({ syms }), 1);
+  const ph1Sym = out.doc.poObj.plnOrdrOverlay[0].syms.find((s) => out.roles[s.id] === 'ph1');
+  check('...placed: PH-I a Phase Line with DRAW_TYPE 2 and the times as its amplifiers', ph1Sym?.de.SID === '140300' && ph1Sym.de.DRAW_TYPE === 2 && ph1Sym.de.AMPLIFIER.UNIQUE_DESIG === 'PH-I' && ph1Sym.de.AMPLIFIER.DTG === 'Comm H' && /^Compl by H\+/.test(ph1Sym.de.AMPLIFIER.EDTG));
+  check('...the hand-written hClock: H, H+2:40, H-0:30', PL.hClock(0) === 'H' && PL.hClock(160) === 'H+2:40' && PL.hClock(-30) === 'H-0:30');
+  // on the ground
+  const fl = F.fitLayout(inpOf(tt, flatG));
+  check('Through, fitted: Ph 2 direction passes "over PH-I"; the follow-up Coys\' way onto Obj 1 and across it', row(fl.res.rows, 'Ph 2 direction')?.st === 'pass' && /over PH-I/.test(row(fl.res.rows, 'Ph 2 direction')?.reason ?? '') && Ph.pathGap(fl.fit.attack.phase2.route, Ph.boxOf(it(fl.raw, 'obj').pts)) === 0, row(fl.res.rows, 'Ph 2 direction')?.reason);
+  check('...open ground with no linear feature: PH-I on the ground warns (name it by features the Coys can recognise)', row(fl.res.rows, 'PH-I on the ground')?.st === 'warn' && /0 of 5/.test(row(fl.res.rows, 'PH-I on the ground')?.reason ?? ''), row(fl.res.rows, 'PH-I on the ground')?.reason);
+  check('...the fitted plan\'s phase lines carry the times (from the H-hour sum on the ground)', /^Comm H$/.test(it(fl.res, 'ph1')?.amp?.DTG ?? '') && /^Comm H\+/.test(it(fl.res, 'ph2')?.amp?.DTG ?? ''), `${it(fl.res, 'ph1')?.amp?.DTG}; ${it(fl.res, 'ph2')?.amp?.DTG}`);
+  check('...BOF (Ph 2) sited on the ground where it sees Obj 2', row(fl.res.rows, 'BOF (Ph 2)')?.st === 'pass', row(fl.res.rows, 'BOF (Ph 2)')?.reason);
+  // a road across 350 m beyond Obj 1, bending 100 m forward on the right: PH-I runs along it and turns with it
+  const b0t = S.solveRecipe(tt, ctx, {});
+  const O1t = Ph.boxOf(it(b0t, 'obj').pts);
+  const roadY = (x) => O1t.c.y + O1t.h / 2 + 350 + (x > O1t.c.x + 400 ? 100 : 0);
+  const fr = { ...fl.frame };
+  const road = 34;
+  const gR = { ...flatG, cls: (x, y) => { const l = F.toLocal(fr, { x, y }); return Math.abs(l.y - roadY(l.x)) < 15 ? road : 2; } };
+  const flR = F.fitLayout(inpOf(tt, gR));
+  const pr = it(flR.raw, 'ph1').pts;
+  check('...a road across beyond Obj 1: PH-I on the ground passes, its points moved onto the road and turning with its bend (CTRL_PTS)', row(flR.res.rows, 'PH-I on the ground')?.st === 'pass' && pr.filter((p) => Math.abs(p.y - roadY(p.x)) < 26).length >= 4 && Math.max(...pr.map((p) => p.y)) - Math.min(...pr.map((p) => p.y)) > 80, `${row(flR.res.rows, 'PH-I on the ground')?.reason}; ${pr.map((p) => `${Math.round(p.x)},${Math.round(p.y)}`).join(' ')}`);
+  // Check my plan on the built plan
+  const K = await import('../../MS/Engines/DeploymentBuilder/PlanCheck.ts');
+  const recs = (() => { const o = S.toPlanDocument(res, (pid, ov, id, de) => ({ plnOrdrSymbolPK: { plnOrdrSymbolId: id }, drawEss: JSON.stringify(de) }), (pid, id, name, seq, syms) => ({ plnOrdrSymbolSet: syms }), 1); return K.recordsFromPlanDoc(o.doc).map((r) => ({ ...r, attrs: { ...(r.attrs ?? {}), pbRole: o.roles[r.id], pbRecipe: tt.id } })); })();
+  const rep = K.checkPlan(recs, doc, {});
+  const g2 = rep.groups.find((g) => g.phase === 2), gr = (nm) => g2?.rows.find((x) => x.name === nm);
+  check('Check my plan, built through: phase 2 read from PH-I (its SL), the direction passes, BOF (Ph 2) its fire base', !!g2 && gr('Ph 2 direction')?.st === 'pass' && /over PH-I/.test(gr('Ph 2 direction')?.reason ?? '') && gr('Ph 2 fire base')?.st === 'pass' && /BOF \(Ph 2\)/.test(gr('Ph 2 fire base')?.reason ?? ''), g2?.rows.map((x) => `${x.name} [${x.st}] ${x.reason}`).join(' || '));
+  // three phases through: PH-III, phase 3 over PH-II
+  const t3 = Ph.threePhaseRecipe(tt, doc);
+  const r3 = S.solveRecipe(t3, ctx, {});
+  const o2b = Ph.boxOf(it(r3, 'obj2').pts), ax3 = it(r3, 'axis3').pts;
+  check('Three phases through: PH-III beyond Obj 3, no SL 3, phase 3 from PH-II', t3.slots.some((s) => s.role === 'ph3') && !t3.slots.some((s) => s.role === 'sl3') && Math.abs(ax3[0].y - (o2b.c.y + o2b.h / 2) - 200) < 1 && it(r3, 'ph3')?.label === 'PH-III');
+  // the flank method keeps its SL 2 and gets the phase lines too
+  const tf = S.solveRecipe(two(front), ctx, {});
+  check('Round the flank: SL 2 kept, PH-I and PH-II drawn too', !!it(tf, 'sl2') && !!it(tf, 'ph1') && !!it(tf, 'ph2') && !it(tf, 'bof2'));
+  // the Div attack's phase lines (PlanDivAttack.withDivOptions)
+  const DA = await import('../../MS/Engines/DeploymentBuilder/PlanDivAttack.ts');
+  const dv = S.solveRecipe(DA.withDivOptions(rec('div-attk-main-left'), doc, { phases: 2, prelim: false }), ctx, {});
+  const pa = it(dv, 'pl1'), pb = it(dv, 'pl2'), oc = Ph.boxOf(it(dv, 'objC').pts);
+  check('Div attack in two phases: PH-I beyond OBJ A and B, PH-II beyond OBJ C, curves (DRAW_TYPE 2)', pa?.label === 'PH-I' && pb?.label === 'PH-II' && pa.drawType === 2 && pb.drawType === 2 && Math.min(...pb.pts.map((p) => p.y)) > oc.c.y + oc.h / 2 - 1 && Math.max(...pa.pts.map((p) => p.y)) < oc.c.y - oc.h / 2, `${pa?.label}, ${pb?.label}`);
+}
+
+// ── Coy arrows (an arrow a Coy, as the traces draw a two-up attack; on by default, PlanCoyArrows) ──────────────────
+{
+  const CA = await import('../../MS/Engines/DeploymentBuilder/PlanCoyArrows.ts');
+  const K = await import('../../MS/Engines/DeploymentBuilder/PlanCheck.ts');
+  const tt = Ph.twoPhaseRecipe(front, doc);
+  const on = S.solveRecipe(tt, ctx, {}), off = S.solveRecipe(tt, ctx, { coyArrows: false });
+  const arr = (r, role) => on.items.find((i) => i.role === role);
+  const A = arr(on, 'axisL'), B = arr(on, 'axisR'), C = arr(on, 'axis2L'), D = arr(on, 'axis2R');
+  check('Coy arrows (on by default): A and B Coy arrows in Ph 1, C and D Coy in Ph 2, Main Attack (25151403); the Bn axes kept, not drawn', [A, B, C, D].every((x) => x?.key === '25151403') && A.label === 'A Coy' && B.label === 'B Coy' && C.label === 'C Coy' && D.label === 'D Coy' && it(on, 'axis').noDraw && it(on, 'axis2').noDraw && !off.items.some((i) => /^axis2?[LR]$/.test(i.role)) && !it(off, 'axis').noDraw);
+  check('...CTRL_PTS a centre line of 3 or more points (MainAttack then draws its curve), BASE_LN_PTS across the tail, HEAD_RATIO set', [A, B, C, D].every((x) => x.pts.length >= 3 && x.base && Number(x.extra?.HEAD_RATIO) > 0));
+  const ax = it(on, 'axis'), W = Math.hypot(ax.base.start.x - ax.base.end.x, ax.base.start.y - ax.base.end.y);
+  const wA = Math.hypot(A.base.start.x - A.base.end.x, A.base.start.y - A.base.end.y);
+  check('...side by side in the Bn\'s assault frontage at the tail (IBB S47 para 17 a p 248): each a little under half its width, their tails W/2 apart', Math.abs(wA - (W / 2) * (1 - 0.15)) < 1 && Math.abs(Math.hypot(A.pts[0].x - B.pts[0].x, A.pts[0].y - B.pts[0].y) - W / 2) < 1, `${Math.round(wA)} of ${Math.round(W)} m`);
+  const ob = Ph.boxOf(it(on, 'obj').pts);
+  const hA = A.pts[A.pts.length - 1], hB = B.pts[B.pts.length - 1];
+  check('...each ends on its own part of Obj 1 (fanned out to about a quarter of its width either side), both inside it', Ph.boxGap(ob, hA) === 0 && Ph.boxGap(ob, hB) === 0 && Math.hypot(hA.x - hB.x, hA.y - hB.y) > Math.hypot(A.pts[0].x - B.pts[0].x, A.pts[0].y - B.pts[0].y) * 1.5, `${Math.round(Math.hypot(hA.x - hB.x, hA.y - hB.y))} m apart at the heads`);
+  // which Coy on which side: A Coy's unit left of B Coy's as the recipe lays them
+  const left = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+  check('...each Coy on its own side of the axis (where its unit stands)', Math.sign(left(ax.pts[0], ax.pts[ax.pts.length - 1], A.pts[1])) === Math.sign(left(ax.pts[0], ax.pts[ax.pts.length - 1], it(on, 'asltL').pts[0])) || Math.abs(left(ax.pts[0], ax.pts[ax.pts.length - 1], it(on, 'asltL').pts[0])) < 1);
+  // the axis laid round NO-GO (a bend): the Coy arrows follow it
+  const bent = S.solveRecipe(tt, ctx, { paths: { axis: [ax.pts[0], { x: (ax.pts[0].x + ax.pts[1].x) / 2 + 300, y: (ax.pts[0].y + ax.pts[1].y) / 2 }, ax.pts[1]] } });
+  const bA = bent.items.find((i) => i.role === 'axisL');
+  check('...an axis laid round NO-GO: the Coy arrows turn with it (CTRL_PTS follow the bend)', bA.pts.length === 3 && Math.abs(bA.pts[1].x - ((ax.pts[0].x + ax.pts[1].x) / 2 + 300)) < 400 && bA.pts[1].x > (A.pts[1].x + 150));
+  check('...three phases: A, B Coys again from Obj 1 get two arrows; D Coy alone keeps the Bn axis', (() => { const r3 = S.solveRecipe(Ph.threePhaseRecipe(tt, doc), ctx, {}); const r3d = S.solveRecipe(Ph.threePhaseRecipe(Ph.twoPhaseRecipe(front, doc, undefined, 1), doc), ctx, {}); return r3.items.some((i) => i.role === 'axis3L' && i.label === 'A Coy') && !r3d.items.some((i) => i.role === 'axis3L') && !r3d.items.find((i) => i.role === 'axis3').noDraw; })());
+  check('...coysOf reads "A, B Coys (from Obj 1)" as two Coys and "D Coy" as one', CA.coysOf('A, B Coys (from Obj 1)').join('|') === 'A Coy|B Coy' && CA.coysOf('D Coy').join('|') === 'D Coy');
+  check('...a Coy or Bde attack keeps one arrow (the option is a Bn\'s)', !S.solveRecipe(rec('coy-attk-frontal'), ctx, {}).items.some((i) => /^axis[LR]$/.test(i.role)) && !S.solveRecipe(rec('bde-attk-two-up'), ctx, {}).items.some((i) => /^axis[LR]$/.test(i.role)));
+  // Check my plan on a plan built with Coy arrows: the pair read as the one Bn axis, phase by phase
+  const recs = (() => { const o = S.toPlanDocument(on, (pid, ov, id, de) => ({ plnOrdrSymbolPK: { plnOrdrSymbolId: id }, drawEss: JSON.stringify(de) }), (pid, id, name, seq, syms) => ({ plnOrdrSymbolSet: syms }), 1); return K.recordsFromPlanDoc(o.doc).map((r) => ({ ...r, attrs: { ...(r.attrs ?? {}), pbRole: o.roles[r.id], pbRecipe: tt.id } })); })();
+  const rep = K.checkPlan(recs, doc, {});
+  check('Check my plan, built with Coy arrows: two attack groups (Ph 1 A, B Coy; Ph 2 C, D Coy), not four; phase 2 over PH-I', rep.groups.length === 2 && rep.groups.some((g) => g.phase === 1 && /A Coy, B Coy/.test(g.label)) && rep.groups.some((g) => g.phase === 2 && /C Coy, D Coy/.test(g.label) && g.rows.find((x) => x.name === 'Ph 2 direction')?.st === 'pass'), rep.groups.map((g) => `${g.label}:${g.phase}`).join(', '));
+  const ph1 = rep.groups.find((g) => g.phase === 1);
+  check('...the Bn\'s assault frontage read across both arrows', ph1?.rows.find((x) => x.name === 'Assault frontage')?.st === 'pass', ph1?.rows.find((x) => x.name === 'Assault frontage')?.reason);
+  const drawn = K.checkPlan(recs.map((r) => ({ ...r, attrs: {} })), doc, {});
+  check('...drawn by hand (no roles): two arrows side by side onto one Obj read as one axis', drawn.groups.length === 2, drawn.groups.map((g) => `${g.label}:${g.phase}`).join(', '));
 }
 
 console.log(`\n${n - fails} of ${n} checks passed${fails ? `, ${fails} FAILED` : ''}`);

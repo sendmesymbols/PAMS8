@@ -998,6 +998,7 @@
     "alternates": { "show": false, "create": "hidden" },
     "map": { "ruleLines": "selected", "approachBands": true },
     "card": true,
+    "coyArrows": true,
     "labelSize": 7,
     "gmaDeg": null,
     "cacheTiles": 256,

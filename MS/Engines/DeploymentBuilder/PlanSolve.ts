@@ -21,6 +21,9 @@ import { antiHbRows, isAntiHb } from './PlanAntiHb';
 import { fupFromObjCheck } from './PlanContext';
 import { szPlan } from './PlanSz';
 import type { SzGround, SzPlan } from './PlanSz';
+import { layPhaseLine, phaseLineLabel } from './PlanPhaseLine';
+import { wrapMinefield, screenAcross, type WrapBox } from './PlanObstacles';
+import { coyArrowsFor } from './PlanCoyArrows';
 
 export type CheckState = 'pass' | 'warn' | 'fail' | 'unchecked';
 /** A check laid out for the reader (the cursor card, the Check step, Copy as Text): what was measured, why, what fixes it. */
@@ -80,6 +83,12 @@ export interface PlanItem {
   base?: { start: XY; mid: XY; end: XY };
   /** Fields copied onto the symbol's draw essentials (HEAD_RATIO, BK_LN_DIST_RATIO ...). */
   extra?: Record<string, unknown>;
+  /** A phase line's phase (PlanPhaseLine): 1 for PH-I ... */
+  phase?: number;
+  /** Amplifier fields added to the symbol's own (a phase line's DTG / EDTG: commencing, completing by). */
+  amp?: Record<string, string>;
+  /** Kept for the plan's sums but not drawn (a Bn axis drawn as its Coys' arrows, PlanCoyArrows). */
+  noDraw?: boolean;
 }
 
 export interface SlotResult {
@@ -119,6 +128,8 @@ export interface SolveOptions {
   ground?: SzGround;
   /** The FDL to the IB along the plan's facing (m), from the Ground Guide's borders; null / absent when not read. */
   szBorderM?: number | null;
+  /** A Bn attack's arrows drawn a Coy each (PlanCoyArrows; the user's traces): on unless false. */
+  coyArrows?: boolean;
 }
 
 export interface SolveResult {
@@ -290,8 +301,35 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
   // 2. the other slots, by their rules or shapes
   let pivotId: string | null = null;
   let tgtN = 0;
+  // phase lines are laid last, from the objectives and axes where they finally stand (PlanPhaseLine)
+  const phaseSlots: typeof recipe.slots = [];
+  // a posn's box as PlanObstacles takes it: turned as drawn (its recipe turn and any turn to face an En front)
+  const wrapBox = (b: Box): WrapBox => ({ role: b.role, c: b.c, w: b.w, h: b.h, turn: b.turn + (opts.turns?.[b.role] ?? 0) });
   for (const s of recipe.slots) {
     if (FOOTPRINT_KINDS.includes(s.kind)) continue;
+    const r0 = (s.rule ?? {}) as Record<string, any>;
+    if (r0.phaseLine != null) { phaseSlots.push(s); continue; }
+    if (r0.wraps) {
+      // protective minefield panels round each named posn: its front (lanes left) and its open flank, or both flanks
+      // (PlanObstacles.wrapMinefield; IC s74 paras 17-19 pp 394-395, s107 p 596, s111 p 651)
+      const targets = fwdBoxes(r0.wraps).map(wrapBox);
+      const row = fwdBoxes(r0.row ?? r0.wraps).map(wrapBox);
+      const panels = wrapMinefield(targets, row, {
+        distM: num(r0.distM, 200), depthM: range(r0.depthM)?.[0] ?? 250, laneM: num(r0.laneM, 60),
+        front: r0.front !== false, flanks: r0.flanks === 'both' || r0.flanks === 'none' ? r0.flanks : 'outer',
+      });
+      for (const pn of panels) add(s.role, s.sym, s.label ?? '', pn.pts, { drawType: s.drawType ?? 1 });
+      continue;
+    }
+    if (r0.screenOf) {
+      // a screen across the front, its unit in the gap (IBB S54 para 4 c pp 284-286; AMP p 1.2: 1-1.5 km ahead of the FDLs)
+      const sc = screenAcross(fwdBoxes(r0.screenOf).map(wrapBox), range(r0.aheadM)?.[0] ?? 1000, num(r0.overlapM, 300));
+      if (sc) {
+        add(s.role, s.sym, '', sc.pts, { drawType: 1 });
+        if (r0.unit) add(`${s.role}Unit`, '10121100', String(r0.unit), [sc.centre], { echelon: String(r0.unitEchelon ?? '14'), higher: r0.from ? String(r0.from) : undefined });
+      }
+      continue;
+    }
     if (s.terrainOnly) {
       // a line only the ground places (an advance's report line at a canal): laid by the fit, with its own label
       const tg = opts.geom?.[s.role];
@@ -441,6 +479,27 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     dropped.push({ role: s.role, label: label || s.role, why: 'no geometry rule places it without the terrain' });
   }
 
+  // 2a. the phase lines: square to the direction of advance beyond each phase's objectives, across the whole attack
+  // (IC s66 para 8 h p 309), a curve through its CTRL_PTS; laid on the ground by the fit (opts.paths), else by geometry
+  for (const s of phaseSlots) {
+    const n = Math.max(1, Math.round(Number((s.rule as any).phaseLine)));
+    const laid = opts.paths?.[s.role];
+    const pts = laid?.length ? laid.map((p) => ({ ...p })) : layPhaseLine(items, n, doc);
+    if (pts) add(s.role, s.sym, s.label || phaseLineLabel(n), pts, { drawType: s.drawType ?? 2, phase: n });
+    else dropped.push({ role: s.role, label: s.label || phaseLineLabel(n), why: `no objective for phase ${n}` });
+  }
+
+  // 2b. a Bn attack's arrows a Coy each (the user's traces, the IE solution): each phase's two assault Coys get their own
+  // Main Attack arrow (CTRL_PTS its curved centre line, BASE_LN_PTS its width, HEAD_RATIO its head); the Bn axis they stand
+  // for stays for the sums and is not drawn (PlanCoyArrows)
+  if (isAttack && recipe.echelon === '16' && opts.coyArrows !== false) {
+    for (const a of coyArrowsFor(items, doc)) {
+      const parent = items.find((i) => i.role === a.of);
+      if (parent) parent.noDraw = true;
+      add(a.role, '25151403', a.label, a.pts, { base: a.base, extra: { HEAD_RATIO: String(a.headRatio) } });
+    }
+  }
+
   // 3. the HQ (the click lands on it) for a defence
   // (a recipe that lays its own HQ, IBB S3 p 23 behind the depth localities, keeps it: one HQ, the click on it)
   if (!isAttack && boxes.length && !recipe.slots.some((s) => s.role === 'hq')) {
@@ -513,7 +572,8 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
   const conf: string[] = [];
   const fp = boxes.filter((b) => !b.role.startsWith('alt-'));
   const ext = (list: XY[]) => ({ x0: Math.min(...list.map((p) => p.x)), x1: Math.max(...list.map((p) => p.x)), y0: Math.min(...list.map((p) => p.y)), y1: Math.max(...list.map((p) => p.y)) });
-  const allPts = items.filter((i) => !i.planned).flatMap((i) => i.pts);
+  // a phase line runs out past the attack on both sides: not part of the frontage the attack takes
+  const allPts = items.filter((i) => !i.planned && i.phase == null).flatMap((i) => i.pts);
   let frontageM = 0, depthM = 0;
   const NT = 'needs terrain data';
 
@@ -840,22 +900,41 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
       const F2 = P(fup2.pts.reduce((a, p) => a + p.x, 0) / fup2.pts.length, fup2.pts.reduce((a, p) => a + p.y, 0) / fup2.pts.length);
       const aslt = items.filter((i) => i.role === 'asltL' || i.role === 'asltR').map((i) => i.label).join(', ');
       const side = F2.x >= c1.x ? 'right' : 'left';
-      rows.push({ name: 'Phases', st: 'pass', reason: `Ph 1 ${aslt || 'the assault Coys'} onto Obj 1; Ph 2 ${fus.map((i) => i.label).join(', ') || 'the follow-up Coys'} from FUP 2 round Obj 1's ${side} flank onto Obj 2, from a new direction (IBB p178: objectives and phases; p186: against the En flank, not through the Coys on Obj 1)${res ? `; ${res.label} the Bn reserve (p186 h(3): commit only what the task needs)` : ''}` });
+      // through Obj 1 over PH-I (the user's traces, attack.phase2.method) or round its flank (IBB p 186 h (1))
+      const through = (recipe.ph2Method ?? 'flank') === 'through';
+      const fuWho = fus.map((i) => i.label).join(', ') || 'the follow-up Coys';
+      rows.push({ name: 'Phases', st: 'pass', reason: through
+        ? `Ph 1 ${aslt || 'the assault Coys'} onto Obj 1; Ph 2 ${fuWho} from FUP 2 on Obj 1's far side over PH-I, its start line, onto Obj 2 in the direction of the attack (IBB p178: objectives and phases; p 176 c: at once when Obj 1 falls; the user's traces and the IE solution)${res ? `; ${res.label} the Bn reserve (p186 h(3): commit only what the task needs)` : ''}`
+        : `Ph 1 ${aslt || 'the assault Coys'} onto Obj 1; Ph 2 ${fuWho} from FUP 2 round Obj 1's ${side} flank onto Obj 2, from a new direction (IBB p178: objectives and phases; p186: against the En flank, not through the Coys on Obj 1)${res ? `; ${res.label} the Bn reserve (p186 h(3): commit only what the task needs)` : ''}` });
       const g2 = gapTo(e2, F2);
-      // a night band (IC s68 para 12 e (1) p 333): judged on it here, re-judged by the light in applyContext
-      rows.push(fupFromObjCheck(doc, g2, null, { which: 'fup2' }));
-      const clear = num(doctrineAt(doc, 'attack.phase2.clearObj1M'), 300);
-      const g1 = Math.min(...[F2, ...fup2.pts].map((p) => gapTo(e1, p)));
-      rows.push({ name: 'FUP 2 clear of Obj 1', st: g1 >= clear - 1 ? 'pass' : 'warn', reason: `${fmtM(g1)} off Obj 1 (wants ${clear} m: the follow-up Coys do not pass through the Coys reorganising on it, IBB p186)` });
-      // Obj 1, held as the firm base (IBB p189 para 23), fires for phase 2: in reach of Obj 2 and across its axis
       const reach = num(doctrineAt(doc, 'attack.bofRangeMaxM'), 1189);
-      const d12 = Math.hypot(Math.max(0, e2.x0 - e1.x1, e1.x0 - e2.x1), Math.max(0, e2.y0 - e1.y1, e1.y0 - e2.y1));
-      const a2 = axis2.pts[axis2.pts.length - 1], a1 = axis2.pts[Math.max(0, axis2.pts.length - 2)];
-      let off = Math.abs(((Math.atan2(c2.y - c1.y, c2.x - c1.x) - Math.atan2(a2.y - a1.y, a2.x - a1.x)) * 180) / Math.PI) % 360; if (off > 180) off = 360 - off;
       const minDeg = num(doctrineAt(doc, 'attack.bofFlankMinDeg'), 30);
-      rows.push({ name: 'Ph 2 fire base', st: d12 <= reach && off >= minDeg ? 'pass' : 'warn', reason: `Obj 1, held as the firm base (IBB p189 para 23), ${fmtM(d12)} from Obj 2 (106 mm RR reaches ${fmtM(reach)}), firing ${Math.round(off)}° across the phase 2 axis (wants ${minDeg}° or more)` });
+      const a2 = axis2.pts[axis2.pts.length - 1], a1 = axis2.pts[Math.max(0, axis2.pts.length - 2)];
+      const axDeg = Math.atan2(a2.y - a1.y, a2.x - a1.x);
+      if (through) {
+        // FUP 2 on the firm base: the night band is a first-objective figure (IC s68 para 12 e (1) p 333), here said, not judged
+        rows.push({ name: 'FUP 2 from Obj 2', st: 'pass', reason: `on Obj 1's far side, ${fmtM(g2)} from Obj 2: formed up on the firm base the assault Coys hold, sheltered by it, short of PH-I (attack.phase2.through.fupInObj1M, E); the night band of 1000-1200 m (IC s68 para 12 e (1) p 333) is for the FUP short of the first Obj` });
+        // its own BOF (the Req: "BOF for Ph 1 and Ph 2"), Obj 1 the firm base
+        const b2 = at('bof2');
+        if (b2) {
+          const bp = b2.base ? b2.base.mid : b2.pts[0];
+          const d = gapTo(e2, bp);
+          let off2 = Math.abs(((Math.atan2(c2.y - bp.y, c2.x - bp.x) - axDeg) * 180) / Math.PI) % 360; if (off2 > 180) off2 = 360 - off2;
+          rows.push({ name: 'Ph 2 fire base', st: d <= reach && off2 >= minDeg ? 'pass' : 'warn', reason: `${b2.label}, ${fmtM(d)} from Obj 2's near edge (106 mm RR reaches ${fmtM(reach)}), firing ${Math.round(off2)}° off the phase 2 axis (wants ${minDeg}° or more, E); Obj 1 held as the firm base (IBB p189 para 23)` });
+        }
+      } else {
+        // a night band (IC s68 para 12 e (1) p 333): judged on it here, re-judged by the light in applyContext
+        rows.push(fupFromObjCheck(doc, g2, null, { which: 'fup2' }));
+        const clear = num(doctrineAt(doc, 'attack.phase2.clearObj1M'), 300);
+        const g1 = Math.min(...[F2, ...fup2.pts].map((p) => gapTo(e1, p)));
+        rows.push({ name: 'FUP 2 clear of Obj 1', st: g1 >= clear - 1 ? 'pass' : 'warn', reason: `${fmtM(g1)} off Obj 1 (wants ${clear} m: the follow-up Coys do not pass through the Coys reorganising on it, IBB p186)` });
+        // Obj 1, held as the firm base (IBB p189 para 23), fires for phase 2: in reach of Obj 2 and across its axis
+        const d12 = Math.hypot(Math.max(0, e2.x0 - e1.x1, e1.x0 - e2.x1), Math.max(0, e2.y0 - e1.y1, e1.y0 - e2.y1));
+        let off = Math.abs(((Math.atan2(c2.y - c1.y, c2.x - c1.x) - axDeg) * 180) / Math.PI) % 360; if (off > 180) off = 360 - off;
+        rows.push({ name: 'Ph 2 fire base', st: d12 <= reach && off >= minDeg ? 'pass' : 'warn', reason: `Obj 1, held as the firm base (IBB p189 para 23), ${fmtM(d12)} from Obj 2 (106 mm RR reaches ${fmtM(reach)}), firing ${Math.round(off)}° across the phase 2 axis (wants ${minDeg}° or more)` });
+      }
       conf.push('Obj 2: the En depth posn where the plan puts it (by recce or air photo)');
-      conf.push('The follow-up Coys\' way round Obj 1 to FUP 2, walked or seen');
+      conf.push(through ? 'The follow-up Coys\' way onto Obj 1 and across it to FUP 2, and PH-I on the ground (a feature the Coys can recognise at night)' : 'The follow-up Coys\' way round Obj 1 to FUP 2, walked or seen');
     }
     // tanks (PlanTanks): FUP (Tks) out of his ATGMs' reach, their role; who leads needs his fields of fire (the ground)
     const tkFup = at('tkFup');
@@ -1038,6 +1117,8 @@ export function toPlanDocument(
   const main: any[] = [], alt: any[] = [];
   const hidden: string[] = [], roles: Record<string, string> = {};
   for (const it of res.items) {
+    // a Bn axis drawn as its Coys' arrows (PlanCoyArrows) is not placed
+    if (it.noDraw) continue;
     const sidc = sidcFor(it);
     const de: Record<string, unknown> = {
       SYM_GEO_TYPE: it.geo, SID: it.key.slice(2), SYM_NAME: it.name, SIDC: sidc, opacity: 1,
@@ -1050,7 +1131,7 @@ export function toPlanDocument(
       de.AMPLIFIER = {};
       de.UEI = '1';
     } else {
-      de.AMPLIFIER = { UNIQUE_DESIG: it.label || ' ', UNIQUE_DESIG_ID: '', HIGHER_FORM: it.higher ?? '', hfid: '', STAFF_COM: '', ADDL_INFO: '', MULTI_LINE_LABEL_TEXT: '', MULTI_LINE_LABEL_COLOR: '#000000', MULTI_LINE_LABEL_ALIGN: 'center' };
+      de.AMPLIFIER = { UNIQUE_DESIG: it.label || ' ', UNIQUE_DESIG_ID: '', HIGHER_FORM: it.higher ?? '', hfid: '', STAFF_COM: '', ADDL_INFO: '', MULTI_LINE_LABEL_TEXT: '', MULTI_LINE_LABEL_COLOR: '#000000', MULTI_LINE_LABEL_ALIGN: 'center', ...(it.amp ?? {}) };
       if (it.geo === 'Point') { de.GEOM = pt(it.pts[0]); de.SIZE = 25; de.ANGLE = 0; }
       else {
         de.CTRL_PTS = it.pts.map(pt);

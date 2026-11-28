@@ -22,6 +22,7 @@ import { doctrineAt, resolveRange } from './PlanRecipes';
 import type { Check, CheckState, SolveResult, XY } from './PlanSolve';
 import { toLocal, toWorld, type FitFrame, type PlanGround } from './PlanFit';
 import { simplify, type MsrChoke } from './PlanAttack';
+import { phaseLineLabel } from './PlanPhaseLine';
 
 const P = (x: number, y: number): XY => ({ x, y });
 const fmtM = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`);
@@ -110,6 +111,45 @@ export function layPhase2(o1: Box, o2: Box, fup: XY, side: 1 | -1, offDeg: numbe
   return { side, offDeg: deg, fup2: F, fupPts: across(F, 150), slPts: across(S, 200), axis: [S, head], loePts: across(L, 750), via, gap2: boxGap(o2, F), gap1: boxGap(o1, F) };
 }
 
+/**
+ * Phase 2 through Obj 1 (the user's traces and the IE solution, 28 Nov 2026): the attack goes on in its direction, from
+ * Obj 1 to Obj 2. FUP 2 on Obj 1's far side, `attack.phase2.through.fupInObj1M` inside its far edge (on the firm base,
+ * sheltered by it); its start line PH-I, `attack.phaseLine.beyondObjM` beyond that edge; the axis from PH-I to just inside
+ * Obj 2; the LOE beyond Obj 2. The follow-up Coys' way: from the FUP behind the assault onto Obj 1 and across it to FUP 2
+ * (they wait in the FUP until Obj 1 is taken, IBB p 204 (7)).
+ */
+export function layThrough(o1: Box, o2: Box, fup: XY, doc: DoctrineSet): Phase2Lay {
+  const inside = num(doc, 'attack.phase2.through.fupInObj1M', 150);
+  const beyond = num(doc, 'attack.phaseLine.beyondObjM', 200);
+  const loeBeyond = num(doc, 'attack.loeBeyondObjM', 600);
+  const u = unit(P(o2.c.x - o1.c.x, o2.c.y - o1.c.y)), n = P(u.y, -u.x);
+  const across = (c: XY, half: number) => [P(c.x - n.x * half, c.y - n.y * half), P(c.x + n.x * half, c.y + n.y * half)];
+  const far1 = along(o1, u), near2 = along(o2, u);
+  const F = P(o1.c.x + u.x * (far1 - inside), o1.c.y + u.y * (far1 - inside));
+  const S = P(o1.c.x + u.x * (far1 + beyond), o1.c.y + u.y * (far1 + beyond));
+  const head = P(o2.c.x - u.x * Math.max(0, near2 - 100), o2.c.y - u.y * Math.max(0, near2 - 100));
+  const L = P(o2.c.x + u.x * (near2 + loeBeyond), o2.c.y + u.y * (near2 + loeBeyond));
+  // onto Obj 1 where the assault went in (its near edge, toward the FUP), then across it to FUP 2
+  const toF = unit(P(fup.x - o1.c.x, fup.y - o1.c.y));
+  const entry = P(o1.c.x + toF.x * along(o1, toF), o1.c.y + toF.y * along(o1, toF));
+  return { side: 1, offDeg: 0, fup2: F, fupPts: across(F, 150), slPts: across(S, 200), axis: [S, head], loePts: across(L, 750), via: [fup, entry, F], gap2: boxGap(o2, F), gap1: 0 };
+}
+
+/**
+ * Phase 2's own BOF (the Req of the IE: "BOF for Ph 1 and Ph 2"; Soln Appx-I: 10r for Ph 1, 15r for Ph 2): off the
+ * phase 2 axis by `deg` on `side`, its base `attack.bofFromObjM` (the middle) from Obj 2's edge, firing at it; a base line
+ * 400 m across, the point it fires toward 300 m in front (the recipe BOF's shape). Plan metres.
+ */
+export function bofFor(o1: Box, o2: Box, side: 1 | -1, doc: DoctrineSet, deg = 70, gapM?: number): { base: { start: XY; mid: XY; end: XY }; ctrl: XY } {
+  const back = unit(P(o1.c.x - o2.c.x, o1.c.y - o2.c.y));
+  const dir = rot(back, (side * deg * Math.PI) / 180);
+  const gap = gapM ?? num(doc, 'attack.bofFromObjM', 850);
+  const R = along(o2, dir) + gap;
+  const mid = P(o2.c.x + dir.x * R, o2.c.y + dir.y * R);
+  const n = P(dir.y, -dir.x);
+  return { base: { start: P(mid.x - n.x * 200, mid.y - n.y * 200), mid, end: P(mid.x + n.x * 200, mid.y + n.y * 200) }, ctrl: P(mid.x - dir.x * 300, mid.y - dir.y * 300) };
+}
+
 /** The mortars' step-up posn for phase 2 (IBB p176 d): short of Obj 1, to the side away from the phase 2 way. */
 export function morStepUp(o1: Box, side: 1 | -1, doc: DoctrineSet): XY {
   const short = num(doc, 'attack.phase2.morStepUp.shortOfObj1M', 300), across = num(doc, 'attack.phase2.morStepUp.acrossM', 500);
@@ -139,7 +179,19 @@ export function defaultSide(r: Recipe): 1 | -1 {
  * only what the task needs). The recipe is new (id `-2ph`, or `-2ph1` for one Coy); the one passed in is not changed. A
  * recipe without an objective rect or an FUP is returned as it is.
  */
-export function twoPhaseRecipe(r: Recipe, doc: DoctrineSet, side?: 1 | -1, coysIn?: 1 | 2): Recipe {
+/** How phase 2 goes in by default (attack.phase2.method, the user's ruling of 28 Nov 2026: through). */
+export function defaultMethod(doc: DoctrineSet): 'through' | 'flank' {
+  return String(doctrineAt(doc, 'attack.phase2.method') ?? 'through') === 'flank' ? 'flank' : 'through';
+}
+
+/** The phase line slots for phases 1..n (PlanPhaseLine lays them from the objectives where they finally stand). */
+function phaseLineSlots(n: number): RecipeSlot[] {
+  const out: RecipeSlot[] = [];
+  for (let k = 1; k <= n; k++) out.push({ role: `ph${k}`, kind: 'line', sym: '25140300', label: phaseLineLabel(k), order: 5, rule: { phaseLine: k } });
+  return out;
+}
+
+export function twoPhaseRecipe(r: Recipe, doc: DoctrineSet, side?: 1 | -1, coysIn?: 1 | 2, methodIn?: 'through' | 'flank'): Recipe {
   if (r.task !== 'attack' || r.phases === 2) return r;
   const out: Recipe = JSON.parse(JSON.stringify(r));
   const S = (role: string) => out.slots.find((s) => s.role === role);
@@ -152,7 +204,9 @@ export function twoPhaseRecipe(r: Recipe, doc: DoctrineSet, side?: 1 | -1, coysI
   const o2: Box = { c: P(o1.c.x, o1.c.y + num(doc, 'attack.phase2.obj2BeyondM', 1500)), w, h };
   const fc = centre(fup.shape.pts.map(fromRecipe));
   const sd = side ?? defaultSide(r);
-  const lay = layPhase2(o1, o2, fc, sd, num(doc, 'attack.phase2.offDeg', 60), doc);
+  const method = methodIn ?? defaultMethod(doc);
+  const through = method === 'through';
+  const lay = through ? layThrough(o1, o2, fc, doc) : layPhase2(o1, o2, fc, sd, num(doc, 'attack.phase2.offDeg', 60), doc);
   const coys = coysIn ?? (Math.max(1, Math.min(2, Math.round(num(doc, 'attack.phase2.coys', 2)))) as 1 | 2);
   obj.label = 'OBJ 1';
   // the follow-up Coys where the reserve was (IBB p204 (7): 500-750 m behind the assault Coys); with one, D Coy stays
@@ -168,18 +222,34 @@ export function twoPhaseRecipe(r: Recipe, doc: DoctrineSet, side?: 1 | -1, coysI
   const add = (s: RecipeSlot) => out.slots.push(s);
   add({ role: 'obj2', kind: 'area', sym: '25151700', label: 'OBJ 2', order: 1, shape: { rect: { acrossM: Math.round(o2.c.x), backM: Math.round(-o2.c.y), wM: rect.wM, hM: rect.hM } } });
   add({ role: 'fup2', kind: 'area', sym: '25140302', label: 'FUP 2', order: 2, shape: { pts: lay.fupPts.map(toRecipe) }, terrainRule: { unseenFrom: 'threat', notIn: ['noGo', 'water'] } });
-  add({ role: 'sl2', kind: 'line', sym: '25140303', label: 'SL 2', order: 2, shape: { pts: lay.slPts.map(toRecipe) } });
+  // through: PH-I is phase 2's start line (no SL 2 of its own); round the flank: SL 2 at FUP 2's forward edge
+  if (!through) add({ role: 'sl2', kind: 'line', sym: '25140303', label: 'SL 2', order: 2, shape: { pts: lay.slPts.map(toRecipe) } });
   add({ role: 'axis2', kind: 'area', sym: '25151403', label: 'Ph 2', order: 3, shape: { pts: lay.axis.map(toRecipe), widthM: axisW } });
   add({ role: 'fu1', kind: 'point', sym: '10121100', label: 'C Coy', echelon: '15', order: 3, shape: { at: [resAt[0] - 150, resAt[1]] } });
   if (coys >= 2) add({ role: 'fu2', kind: 'point', sym: '10121100', label: 'D Coy', echelon: '15', order: 3, shape: { at: [resAt[0] + 150, resAt[1]] } });
   add({ role: 'mor2', kind: 'point', sym: '15111402', label: '81 mm Mor (Ph 2)', order: 4, planned: true, shape: { at: toRecipe(morStepUp(o1, sd, doc)) } });
+  if (through) {
+    // phase 2's own BOF on the flank nearer the phase 1 BOF (the Spt Coy steps up the shortest way): the Req's "BOF for Ph 1
+    // and Ph 2", the IE solution's 10r and 15r
+    const b1 = S('bof')?.shape?.base as [number, number][] | undefined;
+    const b1c = b1?.length ? centre(b1.map(fromRecipe)) : P(o1.c.x - sd * 1000, o1.c.y);
+    const cands = ([1, -1] as const).map((sg) => ({ sg, b: bofFor(o1, o2, sg, doc) }));
+    const pick = cands.sort((a, b) => dist(a.b.base.mid, b1c) - dist(b.b.base.mid, b1c))[0].b;
+    add({ role: 'bof2', kind: 'area', sym: '25152100', label: 'BOF (Ph 2)', order: 4, shape: { base: [toRecipe(pick.base.start), toRecipe(pick.base.end)], ctrl: toRecipe(pick.ctrl) }, terrainRule: { sees: 'obj2', prefer: ['highGround'] } });
+  }
+  // PH-I and PH-II across the attack, beyond each phase's objectives (IC s66 para 8 h p 309; the user's traces)
+  for (const s of phaseLineSlots(2)) add(s);
   const loe = S('loe');
   if (loe?.shape) loe.shape.pts = lay.loePts.map(toRecipe);
-  out.id = `${r.id}-2ph${coys >= 2 ? '' : '1'}`;
-  out.name = `${r.name}, two phases${coys >= 2 ? '' : ' (D Coy res)'}`;
+  out.id = `${r.id}-2ph${coys >= 2 ? '' : '1'}${through ? '' : 'f'}`;
+  out.name = `${r.name}, two phases${coys >= 2 ? '' : ' (D Coy res)'}${through ? '' : ', Ph 2 round the flank'}`;
   out.phases = 2;
   out.phase2Side = sd;
-  out.note = `${r.note ?? ''} Two phases (PlanPhase): Obj 2 ${fmtM(o2.c.y - o1.c.y)} behind Obj 1 (attack.phase2.obj2BeyondM, E); the follow-up ${coys >= 2 ? 'C and D Coys (no Bn reserve)' : 'C Coy (D Coy the reserve)'} wait in the FUP until Obj 1 is taken (IBB p204 (7)), go round its ${sideWord(sd)} flank to FUP 2 and attack Obj 2 ${lay.offDeg} degrees off the En front (IBB p186); Obj 1 the firm base (p189 para 23); the mortars step up to 300 m short of Obj 1 (p176 d); the LOE beyond Obj 2.`.trim();
+  out.ph2Method = method;
+  const how = through
+    ? `move up behind the assault onto Obj 1, form up on its far side (FUP 2, on the firm base) and cross PH-I, phase 2's start line, onto Obj 2 in the direction of the attack (the user's traces and the IE solution, 28 Nov 2026; IBB p 176 c: at once when Obj 1 falls)`
+    : `go round its ${sideWord(sd)} flank to FUP 2 and attack Obj 2 ${lay.offDeg} degrees off the En front (IBB p186)`;
+  out.note = `${r.note ?? ''} Two phases (PlanPhase): Obj 2 ${fmtM(o2.c.y - o1.c.y)} behind Obj 1 (attack.phase2.obj2BeyondM, E); the follow-up ${coys >= 2 ? 'C and D Coys (no Bn reserve)' : 'C Coy (D Coy the reserve)'} wait in the FUP until Obj 1 is taken (IBB p204 (7)), ${how}; Obj 1 the firm base (p189 para 23); the mortars step up to 300 m short of Obj 1 (p176 d); PH-I and PH-II across the attack beyond each phase's objectives (IC s66 para 8 h p 309); the LOE beyond Obj 2.`.trim();
   return out;
 }
 
@@ -187,8 +257,8 @@ export function twoPhaseRecipe(r: Recipe, doc: DoctrineSet, side?: 1 | -1, coysI
 export interface Phase2Find {
   /** Obj 2 moved (plan metres). */
   nudges: Record<string, XY>;
-  /** FUP 2, SL 2 and the LOE laid afresh for the side chosen. */
-  geom: Record<string, { pts: XY[] }>;
+  /** FUP 2, SL 2 and the LOE laid afresh for the side chosen (and phase 2's BOF, its base line). */
+  geom: Record<string, { pts: XY[]; base?: { start: XY; mid: XY; end: XY } }>;
   /** The phase 2 axis (PlanFit lays it round NO-GO). */
   paths: Record<string, XY[]>;
   /** The follow-up Coys' way from the FUP round Obj 1 to FUP 2, plan metres. */
@@ -270,6 +340,49 @@ export function findPhaseN(res: SolveResult, f: FitFrame, g: PlanGround, doc: Do
     for (let i = 1; i < pts.length; i++) { const L = dist(pts[i - 1], pts[i]), k = Math.max(1, Math.ceil(L / 50)); for (let s = 1; s < k; s++) if (bad(P(pts[i - 1].x + ((pts[i].x - pts[i - 1].x) * s) / k, pts[i - 1].y + ((pts[i].y - pts[i - 1].y) * s) / k))) n++; }
     return n;
   };
+  // ── through Obj 1 over the phase line (the user's traces, the default): no side to choose ─────────────────────────
+  if ((res.recipe.ph2Method ?? defaultMethod(doc)) === 'through') {
+    const lay = layThrough(o1, o2, F0, doc);
+    out.side = res.recipe.phase2Side ?? 1; out.offDeg = 0;
+    out.geom = { [R.fup]: { pts: lay.fupPts }, loe: { pts: lay.loePts } };
+    if (item(R.sl)) out.geom[R.sl] = { pts: lay.slPts };
+    out.paths = { [R.axis]: lay.axis };
+    const mt = item(R.mor);
+    if (mt) { const want = morStepUp(o1, out.side, doc); if (dist(want, mt.pts[0]) > 1) out.nudges[R.mor] = P(want.x - mt.pts[0].x, want.y - mt.pts[0].y); }
+    // the follow-up Coys' way on foot: behind the assault onto Obj 1, across the firm base to FUP n, each leg round NO-GO
+    const legs: XY[] = [lay.via[0]];
+    for (let i = 1; i < lay.via.length; i++) {
+      const p = g.avenues?.(W(lay.via[i - 1]), W(lay.via[i]), 300, 'dismounted')?.[0]?.path;
+      if (p && p.length > 2) legs.push(...p.slice(1, -1).map((q) => toLocal(f, q)));
+      legs.push(lay.via[i]);
+    }
+    out.route = simplify(legs, num(doc, 'attack.routeToleranceM', 75));
+    const ph = phaseLineLabel(n - 1);
+    const axisBad = badAlong(lay.axis);
+    out.rows.push({ name: `Ph ${n} direction`, st: axisBad ? 'warn' : 'pass', reason: `through Obj ${n - 1} (the firm base) and over ${ph}, its start line, onto Obj ${n} in the direction of the attack (the user's traces and the IE solution; IBB p 176 c: the follow-up Coys attack at once when Obj ${n - 1} falls); they wait in the FUP until it is taken (IBB p 204 (7)), so they never pass through Coys the En has halted (p 186 h (1)); ${fmtM(lenOf(out.route))} from ${n === 2 ? 'the FUP' : `FUP ${n - 1}`} to FUP ${n}${axisBad ? `; NO-GO on foot lies on the way to Obj ${n}: the axis is laid round it` : ''}` });
+    const seen = sight([lay.fup2, ...lay.fupPts]);
+    out.rows.push(seen === null
+      ? { name: `FUP ${n} unseen`, st: 'unchecked', reason: g.sight ? `the ground round FUP ${n} is not loaded` : 'no sight data' }
+      : { name: `FUP ${n} unseen`, st: seen < 0.5 ? 'pass' : 'warn', reason: seen < 0.5 ? `on Obj ${n - 1}'s far side, likely hidden from Obj ${n} (${Math.round(seen * 100)} % of it seen)` : `${Math.round(seen * 100)} % of FUP ${n} on Obj ${n - 1}'s far side likely seen from Obj ${n}: form up behind the crest of Obj ${n - 1}, by night or under smoke, or neutralise Obj ${n} while they form up` });
+    // phase 2's own BOF sited where it sees Obj 2 best, off NO-GO, off the axis 50-90°, near where the recipe put it
+    const bi = n === 2 ? item('bof2') : null;
+    if (bi?.base && g.sight) {
+      let best: { b: ReturnType<typeof bofFor>; cost: number; seen: number; deg: number } | null = null;
+      for (const sg of [1, -1] as const) for (const deg of [50, 60, 70, 80, 90]) for (const gap of [700, 850, 1000]) {
+        const b = bofFor(o1, o2, sg, doc, deg, gap);
+        if ([b.base.start, b.base.mid, b.base.end].filter(bad).length >= 2) continue;
+        const sn = sight([b.base.start, b.base.mid, b.base.end]);
+        if (sn === null) continue;
+        const cost = (1 - sn) * 10 + Math.abs(deg - 70) / 20 + dist(b.base.mid, bi.base.mid) / 1000;
+        if (!best || cost < best.cost) best = { b, cost, seen: sn, deg };
+      }
+      if (best) {
+        out.geom.bof2 = { pts: [best.b.ctrl], base: best.b.base };
+        out.rows.push({ name: 'BOF (Ph 2)', st: best.seen >= 0.5 ? 'pass' : 'warn', reason: best.seen >= 0.5 ? `sited ${best.deg}° off the phase 2 axis where it likely sees Obj 2 (${Math.round(best.seen * 100)} % of its line in view): the Spt Coy's weapons step up to it once Obj 1 falls (the Req's BOF for Ph 1 and Ph 2)` : `nowhere ${fmtM(700)}-${fmtM(1000)} out on either flank likely sees Obj 2 (${Math.round(best.seen * 100)} % at best): fire it from Obj 1, or site it on the ground` });
+      } else out.rows.push({ name: 'BOF (Ph 2)', st: 'unchecked', reason: 'the ground round Obj 2 is not loaded' });
+    }
+    return out;
+  }
   const off = num(doc, 'attack.phase2.offDeg', 60);
   type Cand = { lay: Phase2Lay; cost: number; seen: number | null; wayM: number; axisBad: number; chokeD: number | null };
   const cands: Cand[] = [];
@@ -336,14 +449,17 @@ export function threePhaseRecipe(r: Recipe, doc: DoctrineSet): Recipe {
   const o3: Box = { c: P(o2.c.x, o2.c.y + num(doc, 'attack.phase2.obj2BeyondM', 1500)), w, h };
   const f2 = centre(fup2.shape.pts.map(fromRecipe));
   const sd = (-(r.phase2Side ?? 1)) as 1 | -1;
-  const lay = layPhase2(o2, o3, f2, sd, num(doc, 'attack.phase2.offDeg', 60), doc);
+  const through = (r.ph2Method ?? defaultMethod(doc)) === 'through';
+  const lay = through ? layThrough(o2, o3, f2, doc) : layPhase2(o2, o3, f2, sd, num(doc, 'attack.phase2.offDeg', 60), doc);
   const res = S('res');
   const who = res ? 'D Coy' : 'A, B Coys (from Obj 1)';
   if (res) out.slots = out.slots.filter((s) => s.role !== 'res');
   const add = (s: RecipeSlot) => out.slots.push(s);
   add({ role: 'obj3', kind: 'area', sym: '25151700', label: 'OBJ 3', order: 1, shape: { rect: { acrossM: Math.round(o3.c.x), backM: Math.round(-o3.c.y), wM: rect.wM, hM: rect.hM } } });
   add({ role: 'fup3', kind: 'area', sym: '25140302', label: 'FUP 3', order: 2, shape: { pts: lay.fupPts.map(toRecipe) }, terrainRule: { unseenFrom: 'threat', notIn: ['noGo', 'water'] } });
-  add({ role: 'sl3', kind: 'line', sym: '25140303', label: 'SL 3', order: 2, shape: { pts: lay.slPts.map(toRecipe) } });
+  if (!through) add({ role: 'sl3', kind: 'line', sym: '25140303', label: 'SL 3', order: 2, shape: { pts: lay.slPts.map(toRecipe) } });
+  // PH-III beyond Obj 3 (PH-I and PH-II are there already)
+  if (!out.slots.some((s) => s.role === 'ph3')) add({ role: 'ph3', kind: 'line', sym: '25140300', label: phaseLineLabel(3), order: 5, rule: { phaseLine: 3 } });
   add({ role: 'axis3', kind: 'area', sym: '25151403', label: 'Ph 3', order: 3, shape: { pts: lay.axis.map(toRecipe), widthM: axis2?.shape?.widthM ?? 400 } });
   add({ role: 'fu3', kind: 'point', sym: '10121100', label: who, echelon: '15', order: 3, shape: { at: toRecipe(P(f2.x + 200, f2.y - 250)) } });
   add({ role: 'mor3', kind: 'point', sym: '15111402', label: '81 mm Mor (Ph 3)', order: 4, planned: true, shape: { at: toRecipe(morStepUp(o2, sd, doc)) } });
@@ -352,7 +468,7 @@ export function threePhaseRecipe(r: Recipe, doc: DoctrineSet): Recipe {
   out.id = `${r.id}-3ph`;
   out.name = `${r.name.replace(', two phases', ', three phases')}`;
   out.phases = 3;
-  out.note = `${r.note ?? ''} Phase 3 (PlanPhase): Obj 3 ${fmtM(o3.c.y - o2.c.y)} behind Obj 2 (E), taken by ${who} round Obj 2's ${sideWord(sd)} flank from FUP 3, Obj 2 the firm base (IBB p 189 para 23)${res ? '; no Bn reserve is left: tell Bde (IBB p 186 i)' : ''}; the mortars step up again; the LOE beyond Obj 3.`.trim();
+  out.note = `${r.note ?? ''} Phase 3 (PlanPhase): Obj 3 ${fmtM(o3.c.y - o2.c.y)} behind Obj 2 (E), taken by ${who} ${through ? 'through Obj 2 over PH-II' : `round Obj 2's ${sideWord(sd)} flank`} from FUP 3, Obj 2 the firm base (IBB p 189 para 23)${res ? '; no Bn reserve is left: tell Bde (IBB p 186 i)' : ''}; the mortars step up again; the LOE beyond Obj 3.`.trim();
   return out;
 }
 

@@ -68,8 +68,8 @@ export const DECK_IDS: Record<string, { decision: string[]; sand: string[] }> = 
     sand: ['gr.gen', 'gr.apchs', 'gr.itg', 'gr.obs', 'gr.cover', 'gr.ded'],
   },
   attk: {
-    decision: ['aim', 'gr.apchs', 'gr.ded', 'en.opts', 'en.ded', 'own.str', 'own.tasks', 'ts.calc', 'crs.a', 'crs.react', 'crs.an', 'crs.adopted', 'plan.exec'],
-    sand: ['gr.gen', 'gr.itg', 'gr.apchs', 'gr.obs', 'gr.cover', 'gr.ded'],
+    decision: ['aim', 'gr.apchs', 'gr.ded', 'en.opts', 'en.ded.basic', 'own.str', 'own.tasks', 'ts.calc', 'crs.a', 'crs.adopted', 'crs.react', 'plan.exec'],
+    sand: ['gr.itg', 'gr.apchs', 'gr.ded'],
   },
   // the withdrawal (OoW Vol III): the main decisions sit in the course and the plan, the timings in Time and Space
   wdr: {

@@ -512,7 +512,7 @@ export function secondLineRow(unit: UnitBrief | null, task: string, enType: Enem
  * The protective minefield along the front in time (engr.json p 439: an Engr Pl lays 780 mixed clusters in 24 h, an
  * Inf Pl half; a mixed field 1 ATM and 1 APM a metre of front, E reading) against the time to be ready.
  */
-export function minefieldRow(o: OrbatSet, doc: DoctrineSet, frontageM: number, own: UnitBrief | null, engr: EngrType | null = null): Check | null {
+export function minefieldRow(o: OrbatSet, doc: DoctrineSet, frontageM: number, own: UnitBrief | null, engr: EngrType | null = null, what = 'front'): Check | null {
   const t = (o.engrData ?? []).find((x: any) => /Mine Laying - Planning Data: Manual/i.test(String(x?.title)));
   const row = t?.rows?.find((r: any) => r.Condition === 'Engr Pl' && /mixed/i.test(String(r.Cluster)));
   const perPl = Number(row?.['Max in 24 hrs']);
@@ -526,7 +526,7 @@ export function minefieldRow(o: OrbatSet, doc: DoctrineSet, frontageM: number, o
   const ownH = rifles ? Math.round((clusters / (rifles * perPl * 0.5)) * 24) : null;
   const ownPart = ownH !== null ? `; the ${rifles} rifle Pls alone, at half that, about ${ownH} h` : '';
   const readyPart = bnUp && ready[0] === ready[1] ? `posns ready in ${ready[0]} h at the least (a Bn, OOW1 p 39)` : `posns ready in ${ready[0]}-${ready[1]} h (a Coy, depending on the degree of En interference: IC s75 para 1 p 399)`;
-  const head = `protective minefield along ${(frontageM / 1000).toFixed(1)} km of front, about ${clusters.toLocaleString('en-GB')} mixed clusters`;
+  const head = `protective minefield along ${(frontageM / 1000).toFixed(1)} km of ${what}, about ${clusters.toLocaleString('en-GB')} mixed clusters`;
   if (engr) {
     // the engineers grouped to the plan (ORBAT): their Pls by hand and, with a set of 6 MMLs, the ATMs by machine
     const m = minesByEngr(engr, clusters, perPl);

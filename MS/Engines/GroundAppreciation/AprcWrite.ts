@@ -596,9 +596,11 @@ function writeGroundAttk(g: AprcGroundIn): AprcWritten {
         }),
       }),
     ];
-    // his localities: the BUAs astride the apchs on the lines facing the attack (his likely FDLs, then depth)
+    // his localities: the BUAs astride the apchs on the lines facing the attack (his likely FDLs, then depth), listed
+    // under the MITG in order of pri as the Req asks ("list down rest of the ITGs in order of pri")
     const seen = new Set<string>([r.mitg.name]);
-    const used = new Set<string>(['gr.itg.mitg', 'gr.itg.more']);
+    const used = new Set<string>(['gr.itg.mitg', 'gr.itg.more', 'gr.itg.rest']);
+    const rest: AprcPara[] = [];
     for (const role of ['FDLs', 'Depth'] as const) {
       const l = r.lines.find((x) => x.role === role);
       if (!l) continue;
@@ -607,10 +609,13 @@ function writeGroundAttk(g: AprcGroundIn): AprcWritten {
         seen.add(b);
         const side = l.buas.length === 3 ? sideOf(SIDES[i]) : null;
         others.push({ name: b, line: l, side });
-        kids.push(para(uniqueId(used, `gr.itg.${slug(b)}`), b, { draft: `Astride the ${side ? `${side} ` : ''}apch on Line ${l.id}, the En likely ${role === 'FDLs' ? 'FDLs' : 'depth'} facing the attk.`, state: 'judge', basis: [featData, calc('A BUA within 800 m of an apch where a line across the apchs cuts it; the lines are the ones a defender of the MITG would hold')] }));
+        rest.push(para(uniqueId(used, `gr.itg.${slug(b)}`), b, { draft: `Astride the ${side ? `${side} ` : ''}apch on Line ${l.id}, the En likely ${role === 'FDLs' ? 'FDLs' : 'depth'} facing the attk.`, state: 'judge', basis: [featData, calc('A BUA within 800 m of an apch where a line across the apchs cuts it; the lines are the ones a defender of the MITG would hold')] }));
       });
     }
-    if (r.map.itg.length) kids.push(para('gr.itg.more', null, { draft: `${cap1(plural(r.map.itg.length, 'more candidate'))} in the area from the data (high ground, crossings, junctions): shown on the trace.`, state: 'judge', basis: [data('ITG candidates: the bundle features flagged as important ground')] }));
+    if (r.map.itg.length) rest.push(para('gr.itg.more', null, { draft: `${cap1(plural(r.map.itg.length, 'more candidate'))} in the area from the data (high ground, crossings, junctions): shown on the trace.`, state: 'judge', basis: [data('ITG candidates: the bundle features flagged as important ground')] }));
+    kids.push(rest.length
+      ? para('gr.itg.rest', 'Other ITGs in Order of Pri', { draft: 'My other ITGs in order of pri are:-', state: 'gr', basis: [featData, calc('The En likely FDLs first, then his depth, along the lines across the apchs')], children: rest })
+      : para('gr.itg.rest', 'Other ITGs in Order of Pri', { prompts: ['My other ITGs in order of pri are:- (1) __ (2) __ (3) __ (the IE solution)', MA(2)] }));
     patches.push({ id: 'gr.itg', draft: '', state: 'gr', children: kids });
     confirm.push({ text: `The En localities and the ITGs are read from the ground: confirm them against the En disposns (recce, int) before the APs are settled.`, paras: ['gr.itg', 'gr.ded.obj'] });
   }

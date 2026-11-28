@@ -1824,6 +1824,33 @@
         }
       ]
     },
+    "protectiveWrap": {
+      "basis": "D",
+      "src": "IC s74 para 17 p 394: obstacles in front and on the flanks of the defensive position; para 18 p 394: the protective minefield planned by the Bn commander, covered by small arms, lanes for the patrols and passages for the LPs left in it; para 19 c p 395: minefields in depth to contain penetration; IC s85 para 17 a (2) p 457: minefields in depth leaving areas for counter-attack",
+      "note": "Laid as the user's trace of a Bn defence draws it (28 Nov 2026): panels hugging the front of every forward Coy and closing its open flank (the outer flanks of the Bn), the depth Coy's flanks closed, lanes between the panels; the rear of each posn left open for the counter-attack (PlanObstacles.wrapMinefield).",
+      "refs": [
+        { "book": "IC", "page": "394", "quote": "Obstacles in front and on the flanks of the defensive position are planned and coordinated by the highest headquarters", "role": "rule", "checked": { "status": "ok", "pdfPage": 394, "on": "2026-11-28", "how": "pdftotext of Material/IC.pdf" } },
+        { "book": "IC", "page": "394", "quote": "protective mine field will be planned by the battalion commander", "role": "rule", "checked": { "status": "ok", "pdfPage": 394, "on": "2026-11-28", "how": "pdftotext of Material/IC.pdf" } },
+        { "book": "IC", "page": "394", "quote": "Requirement of patrol lanes, giving number width and location", "role": "rule", "checked": { "status": "ok", "pdfPage": 394, "on": "2026-11-28", "how": "pdftotext of Material/IC.pdf" } },
+        { "book": "IC", "page": "395", "quote": "Laying minefields in depth to contain penetration", "role": "rule", "checked": { "status": "ok", "pdfPage": 395, "on": "2026-11-28", "how": "pdftotext of Material/IC.pdf" } },
+        { "book": "IC", "page": "457", "quote": "in front of counter penetration positions, leaving areas for counter-attack", "role": "context", "checked": { "status": "ok", "pdfPage": 457, "on": "2026-11-28", "how": "pdftotext of Material/IC.pdf" } }
+      ]
+    },
+    "mineLaneM": {
+      "value": 60,
+      "basis": "M",
+      "src": "The patrol lane drawn between protective minefield panels, wide enough to show at map scale: IC s74 para 18 a p 394 asks for patrol lanes (their number, width and location) and prints no width; the lanes are fixed on the ground by the Bn. A drawing setting, not a military figure."
+    },
+    "screenInDefence": {
+      "basis": "D",
+      "src": "IBB S54 para 4 c (1) p 284: screens are Coy / Pl / Sec outposts laterally with intervals in front and / or on the exposed flanks of the main defensive posn, only as far forward as necessary to deny the En observation of it and its obstacles; (4) p 285: their troops drawn from the depth Coys; (6) p 286: mines in front and on their flanks. How far forward: smallOps.screen.fwdM (AMP p 1.2, 1-1.5 km ahead of the FDLs; the build lays the lower figure).",
+      "note": "A Bn defence lays a screen across its forward Coys' front with a Pl of the depth Coy in its gap, as the user's trace draws it (28 Nov 2026).",
+      "refs": [
+        { "book": "IBB", "page": "284", "quote": "Screens are company/platoon/section size outposts", "role": "rule", "checked": { "status": "ok", "pdfPage": 301, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf" } },
+        { "book": "IBB", "page": "285", "quote": "Troops for screens will be drawn from the depth", "role": "rule", "checked": { "status": "ok", "pdfPage": 302, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf" } },
+        { "book": "IBB", "page": "286", "quote": "Mines may also be laid in front and on the flanks of the", "role": "context", "checked": { "status": "ok", "pdfPage": 303, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf" } }
+      ]
+    },
     "minefieldInFrontM": { "value": [220, 550], "median": 430, "basis": "O", "src": "Demo2 (PlanBuilder_Plan.md 16.3)" },
     "maskPosnM": {
       "value": [300, 500],
@@ -3511,6 +3538,40 @@
       "searched": "IC, IBB, OoW I and II, MW, DW, GSP 1947 Inf Div in Battle, Amplification of Military Terms, SO's Hbk 2019 Secs 1, 2, 4, 6, 13 (19 and 23 Nov 2026): not printed for this quantity",
       "src": "Limit of exploitation about 600 m beyond the objective's far edge, inside the Bn mortars' cover. Nearest in the books (19 Nov 2026), not applied: IC s113 p 664, the Foxland Bn exploits 'up to 500 metres in depth' (the En doctrine); the Foxland Bn's LOE is laid down by its Bde Comd (IC s114 para 35 o p 684, also the En doctrine): no own figure is printed."
     },
+    "phaseLine": {
+      "basis": "D",
+      "src": "IC s66 para 8 h p 309: a phase line is an easily recognized terrain feature normally perpendicular to the direction of advance, used to control fires and unit movement and to limit the advance of attacking elements; the Coy reports arriving at it. Drawn in every phased attack as the IE solution (Soln Aprc Attk, Appx-I: Ph-1 / Ph-2 commencing and completing times) and the user's traces (28 Nov 2026) draw it: PH-I, PH-II across the whole attack beyond each phase's objectives, with the times it is crossed and the phase complete (PlanPhaseLine).",
+      "refs": [
+        { "book": "IC", "page": "309", "quote": "A phase line is an easily recognized terrain feature", "role": "rule", "checked": { "status": "ok", "pdfPage": 309, "on": "2026-11-28", "how": "pdftotext of Material/IC.pdf" } },
+        { "book": "IC", "page": "309", "quote": "normally perpendicular to the direction of advance", "role": "rule", "checked": { "status": "ok", "pdfPage": 309, "on": "2026-11-28", "how": "pdftotext of Material/IC.pdf" } }
+      ],
+      "beyondObjM": {
+        "value": 200,
+        "basis": "E",
+        "note": "The phase line this far beyond the far edge of the phase's objectives: past the Coys reorganising on them, and (with Obj 2 1.5 km on) about 600 m short of the next objective, outside its furthest fire lift (450 m, IC s66 para 7 e (1) pp 304-305), so it can be the next phase's start line.",
+        "decided": "2026-11-28",
+        "searched": "IC s66 para 8 h p 309 (the phase line: no distance), IC s66 paras 7-8 pp 304-309, IBB S40-S43 pp 176-192 (phases, reorganisation), the IE solution's Appx-I (drawn, no figure): not printed",
+        "src": "The phase line this far beyond the far edge of the phase's objectives (a decision, no book figure)."
+      },
+      "overlapM": { "value": 400, "basis": "M", "src": "How far the phase line runs out past the attack's objectives and the next phase's axis on each side, so every axis crosses it as the traces draw it: a drawing setting." },
+      "bowM": { "value": 150, "basis": "M", "src": "The phase line's ends drawn back this far from its middle: the curve round the objective the traces draw (DRAW_TYPE 2, a curve through the CTRL_PTS): a drawing setting." },
+      "points": { "value": 5, "basis": "M", "src": "Control points along a phase line (more: it can turn with more of a feature on the ground): a method setting." },
+      "snapM": { "value": 250, "basis": "M", "src": "On the ground each control point looks this far either way along the direction of advance for an easily recognized linear feature (IC s66 para 8 h p 309): a search setting." },
+      "minBeyondM": { "value": 100, "basis": "M", "src": "A control point moved onto a feature stays at least this far beyond the objective's far edge (the line never runs back onto the objective it limits): a search setting." }
+    },
+    "coyArrows": {
+      "basis": "D",
+      "src": "IBB S47 para 17 a p 248: each battalion assaulting with two companies up would attack a frontage of 450-650 metres. Drawn as the user's traces and the IE solution draw a two-up attack (28 Nov 2026; Appx-I: Ph 1 onto 23r and Gandhi Kot, an arrow and a Coy each): each assault Coy its own Main Attack arrow inside the Bn's frontage, onto its own part of the objective (the objective divided among those who assault it, as IC s66 para 8 j p 309 divides a Coy's among its Pls). On by default for a Bn attack (planBuilder.coyArrows; the Coy arrows chip).",
+      "refs": [
+        { "book": "IBB", "page": "248", "quote": "would attack a frontage of 450-650 metres", "role": "rule", "checked": { "status": "ok", "pdfPage": 265, "on": "2026-11-28", "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf" } },
+        { "book": "IC", "page": "309", "quote": "the objective is clearly divided into platoon objectives", "role": "context", "checked": { "status": "ok", "pdfPage": 309, "on": "2026-11-28", "how": "pdftotext of Material/IC.pdf" } }
+      ],
+      "gapShare": { "value": 0.15, "basis": "M", "src": "The gap between the two Coy arrows at the tail as a share of the Bn's assault frontage (two arrows side by side, not one over the other): a drawing setting." },
+      "headSpread": { "value": 0.25, "basis": "M", "src": "Each Coy arrow ends a quarter of the objective's width either side of the Bn axis, on its own half of it: a drawing setting." },
+      "maxFanDeg": { "value": 15, "basis": "M", "src": "A Coy arrow opens no more than this off the Bn axis (a short arrow, phase 2 from PH-I, stays nearly parallel to its neighbour, as the traces draw them): a drawing setting." },
+      "headRatio": { "value": 0.18, "basis": "M", "src": "MainAttack's HEAD_RATIO for a Coy arrow: the head's length as a share of the arrow's, so a Coy arrow of about a kilometre shows a head the size of the traces': a drawing setting." },
+      "bnFrontageM": { "value": 450, "basis": "M", "src": "The Bn's assault frontage when its axis carries no base line (the lower figure of IBB S47 para 17 a p 248, the recipes' axis width): a fallback setting." }
+    },
     "reserveToObjMin": {
       "value": 60,
       "basis": "E",
@@ -4157,6 +4218,23 @@
         "basis": "M",
         "note": "The default; the user switches it in the Task step (Ph 2 by) or with R while placing. 2: C and D Coys follow up onto Obj 2 (the En depth Coy locality) and no Bn reserve is left: tell Bde (IBB p186 i). 1: C Coy alone, D Coy kept as the Bn reserve (IBB p186 h(3): commit only what the task needs). Either way the BOF is the Spt Coy's weapons (MG, 106 mm RR).",
         "src": "The default the user switches (Ph 2 by chips, R while placing): a setting, not a rule."
+      },
+      "method": {
+        "value": "through",
+        "basis": "U",
+        "decided": "2026-11-28",
+        "src": "The user, 28 Nov 2026, with the IE solution (Soln Aprc Attk, Appx-I) and two phased-attack traces: phase 2 goes on from Obj 1 over PH-I in the direction of the attack, the follow-up Coys committed at once when Obj 1 falls (IBB S39 para c p 176). 'flank' (round Obj 1 onto Obj 2 from a new direction, IBB p 186 h (1)) is kept as the other choice (Ph 2 from chips, B while placing).",
+        "note": "through: the follow-up Coys wait in the FUP until Obj 1 is taken (IBB p 204 (7)), move up behind the assault onto Obj 1, form up on its far side (FUP 2, on the firm base) and cross PH-I, phase 2's start line, onto Obj 2. flank: round Obj 1's flank to FUP 2 and onto Obj 2's flank (the earlier build)."
+      },
+      "through": {
+        "fupInObj1M": {
+          "value": 150,
+          "basis": "E",
+          "note": "Phase 2 through: FUP 2's centre this far inside Obj 1's far edge, on the firm base the assault Coys hold, sheltered by it, short of PH-I (its start line).",
+          "decided": "2026-11-28",
+          "searched": "IBB p 204 (7) (the follow-up Coys stay in the FUP till the leading Coys complete their phase), IC s68 para 12 e (1) p 333 (the night FUP band 1000-1200 m: from the first objective, not between phases), IC s66 para 8 h p 309 (the phase line): no distance printed for a follow-through FUP",
+          "src": "Phase 2 through: FUP 2 on Obj 1's far side (a decision, no book figure)."
+        }
       },
       "obj2BeyondM": {
         "value": 1500,

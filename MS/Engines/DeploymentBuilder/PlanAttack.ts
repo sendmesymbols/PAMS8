@@ -507,8 +507,8 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
     if (l0) steps.push({ label: 'Follow-up Coys close up behind the assault', distM: Math.round(l0.m), min: m0, at: 0 });
     steps.push({ label: `Follow-up Coys: ${l0 ? 'on' : 'FUP'} to FUP 2${night ? ' (night)' : ''}`, distM: Math.round(l3.m), min: m2, at: go2 });
     steps.push({ label: 'Form up at FUP 2', distM: 0, min: fm2, at: go2 + m2 });
-    steps.push({ label: 'FUP 2 to SL 2', distM: Math.round(l4.m), min: Math.round(l4.min), at: go2 + m2 + fm2 });
-    steps.push({ label: `Assault: SL 2 to Obj 2 (H2)${upLbl(up2)}`, distM: slantM(D2, up2), min: at2(D2) - h2, at: h2 });
+    steps.push({ label: sl2 ? 'FUP 2 to SL 2' : 'FUP 2 to PH-I (Ph 2 SL)', distM: Math.round(l4.m), min: Math.round(l4.min), at: go2 + m2 + fm2 });
+    steps.push({ label: `Assault: ${sl2 ? 'SL 2' : 'PH-I'} to Obj 2 (H2)${upLbl(up2)}`, distM: slantM(D2, up2), min: at2(D2) - h2, at: h2 });
     steps.push({ label: 'Through Obj 2', distM: Math.round(depth2), min: at2(D2 + depth2) - at2(D2), at: at2(D2) });
     const obj3 = item('obj3'), axis3 = item('axis3'), fup3 = item('fup3'), sl3 = item('sl3');
     const loeDist2 = loe && !(obj3 && axis3 && fup3) ? Math.max(0, dist(centre(obj2.pts), centre(loe.pts)) - depth2 / 2) : null;
@@ -534,8 +534,8 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
       const at3 = (m: number) => h3 + c3.at(m);
       steps.push({ label: `Phase 3 Coys: Obj 2 to FUP 3${night ? ' (night)' : ''}`, distM: Math.round(l5.m), min: m3, at: t2 });
       steps.push({ label: 'Form up at FUP 3', distM: 0, min: fm2, at: t2 + m3 });
-      steps.push({ label: 'FUP 3 to SL 3', distM: Math.round(l6.m), min: Math.round(l6.min), at: t2 + m3 + fm2 });
-      steps.push({ label: `Assault: SL 3 to Obj 3 (H3)${upLbl(up3)}`, distM: slantM(D3, up3), min: at3(D3) - h3, at: h3 });
+      steps.push({ label: sl3 ? 'FUP 3 to SL 3' : 'FUP 3 to PH-II (Ph 3 SL)', distM: Math.round(l6.m), min: Math.round(l6.min), at: t2 + m3 + fm2 });
+      steps.push({ label: `Assault: ${sl3 ? 'SL 3' : 'PH-II'} to Obj 3 (H3)${upLbl(up3)}`, distM: slantM(D3, up3), min: at3(D3) - h3, at: h3 });
       steps.push({ label: 'Through Obj 3', distM: Math.round(depth3), min: at3(D3 + depth3) - at3(D3), at: at3(D3) });
       const loeDist3 = loe ? Math.max(0, dist(centre(obj3.pts), centre(loe.pts)) - depth3 / 2) : null;
       if (loeDist3 !== null) {

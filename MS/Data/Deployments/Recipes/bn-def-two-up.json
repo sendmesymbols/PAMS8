@@ -14,7 +14,7 @@
   "name": "Bn Def: two up, two back",
   "frontageRow": "Battalion, two companies up",
   "subRow": "Company, battalion two up",
-  "note": "As IBB Annex U App 6 p 481 draws it: A and B Coys 1500 m wide with a 500 m gap and 500 m flanks (4500 m), forward centres 1000 m either side of the axis; C and D Coys in depth, one behind EACH forward Coy (C behind A, D behind B), side by side with the same 500 m gap. Depth 3000-4000 m from the forward edge back; laid at 3050 m, the short end, so D Coy (the reserve) reaches the forward Coys within the half hour of a Coy counter-attack (IBB S53 para 12b p 279; the choice of the short end a decision, E). Bn HQ (IBB S3 pp 22-24; p 23: placed centrally within the Bn locality, preferably behind the depth localities; a defended locality of 55 all ranks, concealed from the air, dug in, near the Bde axis with an alternative posn; laid about 500 m behind the depth Coys, between them (the distance a decision, E). The RRs, a section of two in each rifle Coy, sited first in the forward localities with an alternative each 200-300 m back (IBB S8 pp 38-42; IC p 367).",
+  "note": "As IBB Annex U App 6 p 481 draws it: A and B Coys 1500 m wide with a 500 m gap and 500 m flanks (4500 m), forward centres 1000 m either side of the axis; C and D Coys in depth, one behind EACH forward Coy (C behind A, D behind B), side by side with the same 500 m gap. Depth 3000-4000 m from the forward edge back; laid at 3050 m, the short end, so D Coy (the reserve) reaches the forward Coys within the half hour of a Coy counter-attack (IBB S53 para 12b p 279; the choice of the short end a decision, E). Bn HQ (IBB S3 pp 22-24; p 23: placed centrally within the Bn locality, preferably behind the depth localities; a defended locality of 55 all ranks, concealed from the air, dug in, near the Bde axis with an alternative posn; laid about 500 m behind the depth Coys, between them (the distance a decision, E). The RRs, a section of two in each rifle Coy, sited first in the forward localities with an alternative each 200-300 m back (IBB S8 pp 38-42; IC p 367). Protective minefield (PlanObstacles, the user's trace of 28 Nov 2026): panels round the front of each forward Coy and its open flank, about 200 m out (IC s111 para 5 p 651), up to 250 m deep (IC s107 p 596), patrol lanes between them (IC s74 para 18 a p 394); the depth Coys' open flanks closed to contain a penetration (none beside the reserve: its way out kept clear) (IC s74 para 19 c p 395), their rear left open for the counter-attack. A screen 1 km ahead of the FDLs (AMP p 1.2) by a Pl of C Coy (IBB S54 para 4 c pp 284-285: its troops from the depth Coys).",
   "slots": [
     {
       "role": "fwdL",
@@ -191,11 +191,11 @@
     {
       "role": "atMines",
       "kind": "obstacle",
-      "sym": "25270703",
+      "sym": "25270707",
       "label": "",
       "order": 4,
       "rule": {
-        "inFrontOf": [
+        "wraps": [
           "fwdL",
           "fwdR"
         ],
@@ -204,11 +204,60 @@
         },
         "depthM": {
           "doctrine": "standoff.protectiveMinefieldDepthM"
-        }
+        },
+        "laneM": {
+          "doctrine": "standoff.mineLaneM"
+        },
+        "flanks": "outer"
       },
       "terrainRule": {
         "tieTo": "obstacle",
         "across": "approach.main"
+      }
+    },
+    {
+      "role": "mfDepth",
+      "kind": "obstacle",
+      "sym": "25270707",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "wraps": [
+          "depth"
+        ],
+        "front": false,
+        "flanks": "outer",
+        "distM": {
+          "doctrine": "standoff.obstacleInFrontM"
+        },
+        "depthM": {
+          "doctrine": "standoff.protectiveMinefieldDepthM"
+        },
+        "laneM": {
+          "doctrine": "standoff.mineLaneM"
+        },
+        "row": [
+          "depth",
+          "res"
+        ]
+      }
+    },
+    {
+      "role": "scr",
+      "kind": "line",
+      "sym": "25342203",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "screenOf": [
+          "fwdL",
+          "fwdR"
+        ],
+        "aheadM": {
+          "doctrine": "smallOps.screen.fwdM"
+        },
+        "unit": "Scr Pl",
+        "from": "C Coy"
       }
     },
     {

@@ -510,7 +510,15 @@ MS/
   Vol I Annex B (DCB: GSP-1947 p 119); a Bde's res not the guide's Bn res; the DP heads, the Vis and the Time Req by the AOR's
   country (`AprcBooks.groundKind` / `GROUND_DEF`: mountains MW, desert DW, M fd by hand in sand DW p 65 via `minesHours`); HAT
   in bulk on the main tk apch (IBB p 73); the attack's FUP / dir by ground (`AprcAttkIn.country`) and GSP-1947's attack,
-  En res and withdrawal heads. `node tools/aprc-test/run.mjs` 400 checks.
+  En res and withdrawal heads. `node tools/aprc-test/run.mjs` 407 checks.
+  **The attack laid out as the IE** (28 Nov 2026; `Material/Literature/Sample IEs/8. Aprc - Attk`: the Req "write gist of aprc to
+  incl fol" and its solution): REVIEW OF SIT 1-3, AIM 4, Gr and Weather 5 ITGs (the MITG with Definition ... Significance,
+  5b the other ITGs in order of pri), 6 Apchs (`briefApchs`: only the pri apch, the dir of attk's first, with every head, the
+  others Definition and Significance), 7 Deductions (a. basic, b. Attk Option-1 and Option-2 only the differences, c. common);
+  En Sit 8 Def Possibilities (DP-1 against Option-1, DP-2 only the differences), 9 Cfm / Modify Attk Options, 10 Common; Own
+  Sit 11-14 (str, assessment and aloc of tps for Option-1, common); Time and Space 15-18; Courses 19 A (adv, disadv), 20 B
+  only the differences, 21 adopted, 22 En reactions; Plan 23 Msn, 24 Exec (gen outline, grouping / tasks, coord instrs);
+  Anx P with the Req's eight items. Ids kept, so the writers fill the same paragraphs; the book's heads stay as prompts.
   **SZ Battle handout** (28 Nov 2026, `SZB_Review.md`; C&SC "Concept and Conduct of SZ Battle", ref SZB): the protective
   dets by the SZ's sector (`SZ_TEXT`, `SZ_BAND`: Kashmir no SZ battle, Punjab 2-5 km screens and an adv posn, desert 20-50 km
   C Tps on DLs), no delay lines in the mountains' Vis, the En's shallow 3 h / deep 6 h mnvr and his desert SZ clearance
@@ -580,7 +588,27 @@ MS/
   FUP 2 and onto Obj 2's flank (IBB p186), Obj 1 the firm base, the mortars stepped up, H2 timed from Obj 1 falling (Ph 2
   timing, IBB p176 c); **Ph 2 by** chips or **R** while placing: C, D Coys (no Bn reserve: tell Bde) or C Coy with D Coy the
   reserve; **P** while placing: one phase or two; Check my plan reads a later phase (an axis from beside another's Obj);
-  `node tools/planbuilder-test/phase2.mjs` (96). His **counter-attack** onto the last Obj (`PlanAttack.counterAttack`,
+  `node tools/planbuilder-test/phase2.mjs` (127). **Phase lines and Ph 2 through** (28 Nov 2026, the user's traces and the IE
+  solution): every phased attack (Bn, and a Div's PH-I / PH-II) draws PH-I, PH-II ... (`PlanPhaseLine.ts`, recipe slots
+  `rule.phaseLine`): the Phase Line symbol across the whole attack beyond each phase's objectives, square to the direction of
+  advance (IC s66 para 8 h p 309), a curve through 5 CTRL_PTS (DRAW_TYPE 2, `attack.phaseLine.*`), on the ground each point
+  traced onto the road / track / canal in reach so the line turns with it (row "PH-I on the ground"); the H-hour sum's times
+  ride on its ends (DTG "Comm H", EDTG "Compl by H+1:14"; `withPhaseTimes`). Phase 2 goes **through** Obj 1 by default
+  (`attack.phase2.method`, U): FUP 2 on Obj 1's far side, PH-I its start line (no SL 2), the axis on to Obj 2, a **BOF (Ph 2)**
+  of its own (`bof2`, the Req's "BOF for Ph 1 and Ph 2"); **round the flank** kept (Ph 2 from chips, **B** while placing,
+  id `-2phf`). Check my plan reads a phase line as a later phase's SL and accepts "through".
+  **Coy arrows** (on by default, `planBuilder.coyArrows`, the Coy arrows chips; `PlanCoyArrows.ts`): a Bn attack draws each
+  phase's two assault Coys as their own Main Attack arrows (A, B Coy; C, D Coy; A, B again in Ph 3), side by side in the Bn's
+  assault frontage (IBB S47 para 17 a p 248), each onto its own part of the Obj: CTRL_PTS a 3+ point centre line offset from
+  the Bn axis (so MainAttack draws its curve and turns where the axis is laid round NO-GO), BASE_LN_PTS the width,
+  HEAD_RATIO `attack.coyArrows.headRatio`; the Bn axis is kept for the sums (`noDraw`). Check my plan reads a pair as one axis
+  (`mergeCoyArrows`: roles axisL / axisR, or two hand-drawn arrows side by side).
+  **Bn defence obstacles as the user's trace** (28 Nov 2026, `PlanObstacles.ts`): the protective minefield (mixed AP + AT,
+  25270707) wrapped round each forward Coy's curved front 200 m out (IC s111 p 651), 250 m deep (IC s107 p 596), patrol
+  lanes between the panels (IC s74 para 18 a p 394), its open flank closed, the depth Coy's open flank too (para 19 c p 395),
+  never beside the reserve; DRAW_TYPE 1 bends each panel with the posn (rule `wraps`, `standoff.protectiveWrap`); a **Screen**
+  (25342203) 1 km ahead of the FDLs with a Pl of the depth Coy in its gap (rule `screenOf`; IBB S54 para 4 c pp 284-286, AMP
+  p 1.2). Mines in time counts the panels' length. Screen.ts's kink now turns with its line. His **counter-attack** onto the last Obj (`PlanAttack.counterAttack`,
   `attack.counter.*`, IBB p189): ways in from his depth, dead ground named (LP and DF), a DF target on each, drawn on the map;
   `attack.mjs` (42). Save Plan keeps a built plan's roles (drawEss `PB`, `SerializationEngine.planDocument()`). **Tanks**
   (`PlanTanks.ts`, Task step None / Fire sp / Close sp, **T** while placing, `attack.tanks.*`): FUP (Tks) 2.5-3 km out (IBB p214),

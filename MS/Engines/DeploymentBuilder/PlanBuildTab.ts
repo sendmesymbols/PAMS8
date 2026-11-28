@@ -45,6 +45,8 @@ import { PlanGroundProbe } from './PlanGroundProbe';
 import { applyContext, groundNotes, defaultEnemy, echelonLabel, enemyFupM, firstLayout, terrainLabel, ENEMY_TYPES, TERRAIN_KINDS, type EnemySpec, type EnemyType, type TerrainKind, type TerrainSpec } from './PlanContext';
 import { checkPlan, checkText, readSymbols, reportWorld, type CheckReport, type PosnKind } from './PlanCheck';
 import { twoPhaseRecipe, threePhaseRecipe } from './PlanPhase';
+import { withPhaseTimes } from './PlanPhaseLine';
+import { panelsLengthM } from './PlanObstacles';
 import { withDivOptions } from './PlanDivAttack';
 import { addTankTimes, defTankRows, withDefTanks, withTanks, type TankMode } from './PlanTanks';
 import { artyOnPlan, artyRows, gunRole, mountainGunRows, ownArtyTypes, ownDivArties, withArty, withGunSections, type ArtyDoctrine, type ArtyType, type GunSections } from './PlanArty';
@@ -146,7 +148,7 @@ const footSpeeds = (): PlFootSpeeds => {
   return { ground: f.ground ?? { open: [4, 3] }, road: f.road?.track ?? [4, 3], toblerA: Array.isArray(f.slope?.a) ? f.slope.a[0] : 3.5, toblerB: typeof f.slope?.b === 'number' ? f.slope.b : 0.05 };
 };
 /** A recipe id without the two-phase suffix (PlanPhase.twoPhaseRecipe adds -2ph). */
-const baseId = (id: string) => id.replace(/-ad$/, '').replace(/-gun$/, '').replace(/-inu$/, '').replace(/-rcs$/, '').replace(/-en$/, '').replace(/-mf$/, '').replace(/-tk[cf]$/, '').replace(/-tkd\d$/, '').replace(/-amf$/, '').replace(/-2ph1?$/, '').replace(/-pre$/, '').replace(/-w[012]r?m?$/, '').replace(/-alt$/, '');
+const baseId = (id: string) => id.replace(/-ad$/, '').replace(/-gun$/, '').replace(/-inu$/, '').replace(/-rcs$/, '').replace(/-en$/, '').replace(/-mf$/, '').replace(/-tk[cf]$/, '').replace(/-tkd\d$/, '').replace(/-amf$/, '').replace(/-3ph$/, '').replace(/-2ph1?f?$/, '').replace(/-pre$/, '').replace(/-w[012]r?m?$/, '').replace(/-alt$/, '');
 const WORD: Record<CheckState, string> = { pass: 'Pass', warn: 'Warn', fail: 'Fail', unchecked: 'Not checked' };
 const RGB: Record<CheckState, [number, number, number]> = { pass: [47, 168, 98], warn: [238, 138, 31], fail: [229, 72, 77], unchecked: [127, 136, 147] };
 const esc = (s: unknown) => Utils.escapeHtml(String(s ?? ''));
@@ -435,6 +437,10 @@ export class PlanBuildTab {
   private _tanks: TankMode = 'none';
   /** Phase 2 by both follow-up Coys (no Bn reserve) or by C Coy with D Coy kept as the reserve; null: the doctrine's default. R flips it while placing. */
   private _ph2Coys: 1 | 2 | null = null;
+  /** How phase 2 goes in, chosen by the user (null: attack.phase2.method). */
+  private _ph2Method: 'through' | 'flank' | null = null;
+  /** A Bn attack's arrows a Coy each (PlanCoyArrows), chosen by the user (null: planBuilder.coyArrows, on unless false). */
+  private _coyArrowsSet: boolean | null = null;
   private _ph2 = new Map<string, Recipe>();
   /** Hostile units and posns on the map (Web Mercator), read once per placement for a two-phase attack's Obj 2. */
   private _enemyAt: XY[] | null = null;
@@ -595,7 +601,10 @@ export class PlanBuildTab {
 
   public setSettings(settings: Record<string, any>): void {
     const prevOrbat = this._orbatUrl();
+    const prevArrows = this._coyArrows;
     this._settings = settings ?? {};
+    // planBuilder.coyArrows switched (and no chip chosen): the plan drawn again with or without the Coy arrows
+    if (this._loadState === 'ready' && this._coyArrows !== prevArrows) this._solve();
     const create = this._settings.alternates?.create;
     if (this._altFromSettings && (create === 'visible' || create === 'hidden' || create === 'none')) this._alternates = create;
     const url = String(this._settings.recipesUrl || DEFAULT_RECIPES_URL).replace(/\/+$/, '');
@@ -937,10 +946,10 @@ export class PlanBuildTab {
     const phases = base?.forCoys === 3 || (base && base.echelon !== '16') ? 1 : this._phases;
     if (!base || base.task !== 'attack' || (phases < 2 && this._tanks === 'none' && !this._mfAttk)) return base;
     const e = this._mfAttk ? this._engr : null;
-    const coys = this._coys, key = `${base.id}:${phases}:${coys}:${this._tanks}:${this._mfAttk}:${e?.id ?? ''}:${this._engrCoys}`;
+    const coys = this._coys, how = this._ph2How, key = `${base.id}:${phases}:${coys}:${how}:${this._tanks}:${this._mfAttk}:${e?.id ?? ''}:${this._engrCoys}`;
     let t = this._ph2.get(key);
     if (!t) {
-      t = phases === 2 ? twoPhaseRecipe(base, this._doc, undefined, coys) : phases === 3 ? threePhaseRecipe(twoPhaseRecipe(base, this._doc, undefined, coys), this._doc) : base;
+      t = phases === 2 ? twoPhaseRecipe(base, this._doc, undefined, coys, how) : phases === 3 ? threePhaseRecipe(twoPhaseRecipe(base, this._doc, undefined, coys, how), this._doc) : base;
       // his minefield in front of the Obj, then tanks with phase 1 (PlanTanks), after the second phase is laid
       if (this._mfAttk) t = withAttackMinefield(t, this._doc);
       t = withTanks(t, this._doc, this._tanks, this._tankSqn);
@@ -970,6 +979,27 @@ export class PlanBuildTab {
   }
 
   private _coysWord(c: 1 | 2 = this._coys): string { return c === 2 ? 'C, D Coys (no Bn reserve)' : 'C Coy, D Coy the reserve'; }
+
+  /** How phase 2 goes in: the user's choice, else attack.phase2.method (through Obj 1 over PH-I, the user's traces). */
+  private get _ph2How(): 'through' | 'flank' {
+    return this._ph2Method ?? (String(doctrineAt(this._doc, 'attack.phase2.method') ?? 'through') === 'flank' ? 'flank' : 'through');
+  }
+  private _howWord(m: 'through' | 'flank' = this._ph2How): string { return m === 'through' ? 'through Obj 1 over PH-I' : 'round Obj 1 onto the flank'; }
+
+  /** A Bn attack's arrows a Coy each: the user's choice, else planBuilder.coyArrows (on unless false). */
+  private get _coyArrows(): boolean { return this._coyArrowsSet ?? this._settings.coyArrows !== false; }
+
+  /** The Coy arrows chips: an arrow a Coy (the traces) or the one Bn axis. */
+  private _setCoyArrows(on: boolean): void {
+    this._coyArrowsSet = on;
+    this._swapPlan(on ? 'Coy arrows: an arrow a Coy' : 'Coy arrows off: one Bn axis a phase');
+  }
+
+  /** B while placing (or the Ph 2 from chips): phase 2 through Obj 1 over the phase line, or round its flank. */
+  private _setPh2How(m: 'through' | 'flank'): void {
+    this._ph2Method = m;
+    this._swapPlan(`B: phase 2 ${this._howWord(m)}`);
+  }
 
   /** An attack is being built (the P key applies). */
   private get _isAttack(): boolean { return this._recipes.get(baseId(this._recipeId))?.task === 'attack'; }
@@ -1061,7 +1091,7 @@ export class PlanBuildTab {
    * that do stay (Day / Night between two attacks, or an attack and a patrol; an attack's tanks between Bn families).
    */
   private _resetForTask(task: string, prevTask: string, familyChanged: boolean): void {
-    if (task !== 'attack') { this._tanks = 'none'; this._phases = 1; this._ph2Coys = null; this._mfAttk = false; this._divPrelim = false; }
+    if (task !== 'attack') { this._tanks = 'none'; this._phases = 1; this._ph2Coys = null; this._ph2Method = null; this._mfAttk = false; this._divPrelim = false; }
     if (task !== 'attack' && task !== 'patrol' && task !== 'ambush') this._night = false;
     if (task !== 'crossing') { this._light = 'dark'; this._mfCross = false; }
     if (task !== 'ambush') this._mover = 'wheeled';
@@ -1142,7 +1172,11 @@ export class PlanBuildTab {
   /** The rows the ORBAT adds to a defence: the protective minefield in time (engineer rates). */
   private _orbatRows(res: SolveResult): Check[] {
     if (!this._orbat || res.recipe.task === 'attack') return [];
-    const m0 = minefieldRow(this._orbat, this._doc, res.frontageM, this._unit(res.recipe), this._engr);
+    // the protective minefield wrapped round the localities (PlanObstacles): its panels' length, front and flanks
+    const panels = res.items.filter((i) => i.role === 'atMines' || i.role === 'mfDepth');
+    const wrapped = res.recipe.slots.some((s) => (s.rule as any)?.wraps);
+    const mfLen = wrapped && panels.length ? panelsLengthM(panels) : 0;
+    const m0 = minefieldRow(this._orbat, this._doc, mfLen || res.frontageM, this._unit(res.recipe), this._engr, mfLen ? 'front and flanks' : 'front');
     // the inundation belt in time (pp 452-453): beside the minefield, on the ground or not
     const inu = res.recipe.inund ? inundation(this._orbat.engrData ?? [], res.frontageM, this._engr, res.recipe.inund)?.row ?? null : null;
     const mm = [m0, inu].filter((x): x is Check => !!x);
@@ -1169,7 +1203,8 @@ export class PlanBuildTab {
     const tk = h && r.tanks ? addTankTimes(h, res, null, null, this._doc, this._night, r.tanks, null) : [];
     const p2 = h ? phase2Row(h, this._doc) : null;
     const brR = r.task === 'attack' ? attackBreach(r as any, this._doc, this._night, this._orbat?.engrData, t.kind)?.row ?? null : null;
-    return { ...res, rows: ctpsOverride(groundNotes([...rows, ...layoutRows(res.items, r, this._doc), ...this._orbatRows(res), ...this._secondLineRows(res), ...(r.task === 'attack' ? this._artyGeomRows(res) : []), ...this._liftRows(res),...(brR ? [brR] : []), ...(h ? [hSumRow(h, this._doc)] : []), ...(p2 ? [p2] : []), ...tk], this._doc, t.kind, r.task, r.echelon, r.task === 'attack' ? this._night : null), r) };
+    // a phased attack's phase lines carry the times from the H-hour sum (commencing, completing by)
+    return { ...res, items: h ? withPhaseTimes(res.items, h) : res.items, rows: ctpsOverride(groundNotes([...rows, ...layoutRows(res.items, r, this._doc),...this._orbatRows(res), ...this._secondLineRows(res), ...(r.task === 'attack' ? this._artyGeomRows(res) : []), ...this._liftRows(res),...(brR ? [brR] : []), ...(h ? [hSumRow(h, this._doc)] : []), ...(p2 ? [p2] : []), ...tk], this._doc, t.kind, r.task, r.echelon, r.task === 'attack' ? this._night : null), r) };
   }
 
   // ── terrain ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -1692,6 +1727,8 @@ export class PlanBuildTab {
       case 'wdrNew': this._wdrNewPosnBy = val === 'res' ? 'res' : 'fresh'; this._swapPlan(this._wdrNewPosnBy === 'res' ? 'The reserve Bde prepares and holds the new posn (GSP 1947 p 145)' : 'Fresh troops prepare the new posn (OOW3 p 39)'); break;
       case 'prelim': this._divPrelim = val === 'on'; this._swapPlan(this._divPrelim ? 'Prelim op: his outposts on the ground of the FUPs cleared first by each leading Bde\'s Res Bn' : 'No preliminary operation'); break;
       case 'ph2Coys': this._setCoys(val === '1' ? 1 : 2); break;
+      case 'ph2How': this._setPh2How(val === 'flank' ? 'flank' : 'through'); break;
+      case 'coyArrows': this._setCoyArrows(val !== 'off'); break;
       case 'tanks': this._setTanks(val === 'close' || val === 'fire' ? val : 'none'); break;
       case 'mover': this._setMover(MOVERS.includes(val as Mover) ? (val as Mover) : 'wheeled'); break;
       case 'mf': {
@@ -1755,7 +1792,7 @@ export class PlanBuildTab {
   };
 
   private _opts() {
-    return { detail: this._detail, alternates: this._alternates } as const;
+    return { detail: this._detail, alternates: this._alternates, coyArrows: this._coyArrows } as const;
   }
 
   /** The plan document for a solved layout, its pivot and roles. */
@@ -1861,6 +1898,7 @@ export class PlanBuildTab {
       if (!r?.forCoys && r?.echelon === '16') k.push(['P', this._phases === 1 ? '2 phases' : this._phases === 2 ? '3 phases' : '1 phase']);
       if (r?.echelon === '21' && /^main-/.test(r.layout)) k.push(['P', this._phases === 1 ? '2 phases' : '1 phase']);
       if (this._isPh2) k.push(['R', `Ph 2 by ${this._coys === 2 ? 'C Coy only' : 'C, D Coys'}`]);
+      if (this._isPh2) k.push(['B', `Ph 2 ${this._ph2How === 'through' ? 'round the flank' : 'through Obj 1'}`]);
       k.push(['T', this._tanks === 'none' ? 'tanks fire sp' : this._tanks === 'fire' ? 'tanks close sp' : 'no tanks']);
     }
     // E / N: the ground and the layout while armed (the dock's chips do the same)
@@ -1922,6 +1960,15 @@ export class PlanBuildTab {
         if (!this._isPh2) { this._keyWhy('R', 'for an attack in two phases (P first)'); return; }
         this._setCoys(this._coys === 2 ? 1 : 2);
         this._showNote({ mode: `Ph 2 by ${this._coysWord()}`, keys: this._keysFor() });
+        this._render();
+        return;
+      // B: phase 2 through Obj 1 over PH-I (the user's traces) or round its flank (IBB p 186 h (1))
+      case 'b':
+        take();
+        if (!this._isAttack) { this._keyWhy('B', 'Ph 2 from is for an attack'); return; }
+        if (!this._isPh2) { this._keyWhy('B', 'for an attack in two phases (P first)'); return; }
+        this._setPh2How(this._ph2How === 'through' ? 'flank' : 'through');
+        this._showNote({ mode: `Ph 2 ${this._howWord()}`, keys: this._keysFor() });
         this._render();
         return;
       case 't':
@@ -3775,11 +3822,17 @@ export class PlanBuildTab {
           : '')
         + (res.recipe.echelon === '21' ? '' : row('Phases', seg([
           { on: this._phases === 1 || !!res.recipe.forCoys || res.recipe.echelon !== '16', label: '1', data: 'phases:1', title: 'One phase: the assault Coys onto the Obj, a reserve kept' },
-          { on: this._phases === 2 && !res.recipe.forCoys && res.recipe.echelon === '16', label: '2', data: 'phases:2', disabled: !!res.recipe.forCoys || res.recipe.echelon !== '16', title: res.recipe.echelon !== '16' ? 'Phases are laid for a Bn attack (its follow-up Coys round Obj 1)' : res.recipe.forCoys ? 'A 3-Coy Bn has no Coy left for a second phase' : 'Obj 1, then the follow-up Coys round it onto Obj 2 behind, from a new direction (IBB p186); Obj 2 on a hostile posn drawn behind Obj 1, else the En high ground' },
+          { on: this._phases === 2 && !res.recipe.forCoys && res.recipe.echelon === '16', label: '2', data: 'phases:2', disabled: !!res.recipe.forCoys || res.recipe.echelon !== '16', title: res.recipe.echelon !== '16' ? 'Phases are laid for a Bn attack (its follow-up Coys onto Obj 2)' : res.recipe.forCoys ? 'A 3-Coy Bn has no Coy left for a second phase' : 'Obj 1, then the follow-up Coys onto Obj 2 behind it, over PH-I (Ph 2 from: through Obj 1 or round its flank); Obj 2 on a hostile posn drawn behind Obj 1, else the En high ground; PH-I and PH-II drawn across the attack with their times' },
           { on: this._phases === 3 && !res.recipe.forCoys && res.recipe.echelon === '16', label: '3', data: 'phases:3', disabled: !!res.recipe.forCoys || res.recipe.echelon !== '16', title: res.recipe.echelon !== '16' ? 'Phases are laid for a Bn attack (its follow-up Coys round Obj 1)' : res.recipe.forCoys ? 'A 3-Coy Bn has no Coy left for more phases' : 'Obj 1, Obj 2, then Obj 3 beyond it: by D Coy when C Coy alone took Obj 2 (no reserve left: tell Bde), else by A and B Coys from Obj 1 (IBB p 189 para 23: each Obj a firm base for the next)' }]) + keyHint('P')))
+        + (res.recipe.task === 'attack' && res.recipe.echelon === '16' ? row('Coy arrows', seg([
+          { on: this._coyArrows, label: 'An arrow a Coy', data: 'coyArrows:on', title: 'Each assault Coy its own Main Attack arrow, side by side in the Bn\'s assault frontage (IBB S47 para 17 a p 248: two Coys up, 450-650 m), each onto its own part of the Obj, as the traces draw a two-up attack; the arrows turn with the axis laid on the ground. The default (planBuilder.coyArrows).' },
+          { on: !this._coyArrows, label: 'One Bn axis', data: 'coyArrows:off', title: 'One Main Attack arrow a phase, the Bn\'s assault frontage wide' }])) : '')
         + (this._phases >= 2 && !res.recipe.forCoys && res.recipe.echelon === '16' ? row('Ph 2 by', seg([
           { on: this._coys === 2, label: 'C, D Coys', data: 'ph2Coys:2', title: 'Both follow-up Coys onto Obj 2; the BOF is the Spt Coy weapons; no Bn reserve is left: tell Bde (IBB p186 i). R flips it while placing.' },
           { on: this._coys === 1, label: 'C Coy, D res', data: 'ph2Coys:1', title: 'C Coy onto Obj 2, D Coy kept as the Bn reserve (IBB p186 h(3): commit only what the task needs); the BOF is the Spt Coy weapons. R flips it while placing.' }]) + keyHint('R')) : '')
+        + (this._phases >= 2 && !res.recipe.forCoys && res.recipe.echelon === '16' ? row('Ph 2 from', seg([
+          { on: this._ph2How === 'through', label: 'Through Obj 1', data: 'ph2How:through', title: 'The attack goes on in its direction: the follow-up Coys form up on Obj 1\'s far side and cross PH-I, their start line, onto Obj 2 (the user\'s traces and the IE solution; IBB p 176 c: at once when Obj 1 falls). B flips it while placing.' },
+          { on: this._ph2How === 'flank', label: 'Round the flank', data: 'ph2How:flank', title: 'Round Obj 1\'s flank to FUP 2 and onto Obj 2 from a new direction (IBB p 186 h (1)). B flips it while placing.' }]) + keyHint('B')) : '')
         + (this._phases >= 2 && !res.recipe.forCoys && res.recipe.echelon === '16' ? row('Obj 2', `${this._chip(!!this._armingObj2, this._obj2At ? 'Move Obj 2' : 'Mark Obj 2 on the map', 'obj2', 'Click where Obj 2 is: it stands over any En posn drawn behind Obj 1 and the high ground the finder would take')}${this._obj2At ? this._chip(false, 'Clear', 'clearObj2') : ''}`) : '')
         // tanks and his minefield are laid on a Bn attack (PlanTanks, PlanAttack.withAttackMinefield): a Div attack's Bdes build their own
         + (res.recipe.echelon === '21' ? '' : row('Tanks', seg([

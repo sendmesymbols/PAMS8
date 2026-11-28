@@ -169,7 +169,10 @@ export function withDivOptions(r: Recipe, doc: DoctrineSet, o: { phases: 1 | 2; 
       { role: 'fupC', kind: 'area', sym: '25140302', label: 'FUP C', order: 2, shape: { pts: [[mid - 700, fupBack + 200], [mid + 700, fupBack - 200]] } },
       { role: 'slC', kind: 'line', sym: '25140303', label: 'SL', order: 2, shape: { pts: [[mid - 750, fupBack - 250], [mid + 750, fupBack - 250]] } },
       { role: 'axisC', kind: 'area', sym: '25151403', label: '', order: 3, shape: { pts: [[mid, fupBack - 250], [mid, near + 100]], widthM: 1300 } },
-      { role: 'pl1', kind: 'line', sym: '25140300', label: 'PL 1', order: 5, shape: { pts: [[Math.min(ra.acrossM, rb.acrossM) - 1500, objBack - ra.hM / 2 - 150], [Math.max(ra.acrossM, rb.acrossM) + 1500, objBack - ra.hM / 2 - 150]] } },
+      // PH-I beyond the Ph 1 Objs and PH-II beyond OBJ C, across the whole attack (PlanPhaseLine; IC s66 para 8 h p 309;
+      // the user's Div / Bde phased trace, 28 Nov 2026: Ph 1 completion by ..., Ph 2 completion by ...)
+      { role: 'pl1', kind: 'line', sym: '25140300', label: 'PH-I', order: 5, rule: { phaseLine: 1 } },
+      { role: 'pl2', kind: 'line', sym: '25140300', label: 'PH-II', order: 5, rule: { phaseLine: 2 } },
     );
     const loe = slot('loe');
     if (loe?.shape?.pts) loe.shape.pts = loe.shape.pts.map(([x]) => [x, cBack - 500 - 1000] as [number, number]);
