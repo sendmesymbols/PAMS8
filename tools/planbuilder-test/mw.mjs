@@ -201,6 +201,8 @@ const assaultStep = (h) => h.steps.find((s) => /^Assault: SL to (the Obj|Obj 1)/
   check('...as laid: Reserves split passes (a group behind each forward Bde, GSP s27 para 4 p 122; MW s12 p 169)', row(drows, 'Reserves split')?.st === 'pass' && /GSP 1947 Inf Div in Battle s27 para 4 p 122/.test(row(drows, 'Reserves split').reason), row(drows, 'Reserves split')?.reason);
   check('...Launch at once passes (GSP s39 para 11 p 176); Security zone unchecked (none along the LoC, MW s12 p 164)', row(drows, 'Launch at once')?.st === 'pass' && row(drows, 'Security zone')?.st === 'unchecked' && /MW s12 p 164/.test(row(drows, 'Security zone').reason), row(drows, 'Launch at once')?.reason);
   check('...no Armd Regt, no SZ and no mounted reserve in the mountain Div (armour road-bound, MW p 238)', !dv.slots.some((s) => ['armrRes', 'sz', 'ctpsL', 'ctpsR'].includes(s.role)) && !dv.slots.some((s) => s.mounted));
+  const rrs = row(dres.rows, 'Reserve reach');
+  check('...Reserve reach times each reserve group to its own Bde (reach.slots), the slowest judged: passes', rrs?.st === 'pass' && /the reserve split 2 ways/.test(rrs.reason) && /to its own/.test(rrs.reason), rrs?.reason);
   const one2 = JSON.parse(JSON.stringify(dv)); one2.slots = one2.slots.filter((s) => s.role !== 'resR');
   const r1 = row(M.layoutRows(S.solveRecipe(one2, ctx, {}).items, one2, doc), 'Reserves split');
   check('...with the reserve in one place: Reserves split warns, its Fix a group behind each Bde', r1?.st === 'warn' && r1.detail?.fix?.length === 2, r1?.reason);

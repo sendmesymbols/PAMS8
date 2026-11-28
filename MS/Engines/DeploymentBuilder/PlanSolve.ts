@@ -612,10 +612,15 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     const res = resSlot && bySlot.get(resSlot.role);
     if (res && fwd.length) {
       const back = num(doctrineAt(doc, recipe.echelon === '16' ? 'cpen.behindFwdM.bn' : recipe.echelon === '18' || recipe.echelon === '21' ? 'cpen.behindFwdM.bde' : 'cpen.behindFwdM.coy'), 400);
-      const far = Math.max(...fwd.map((b) => dist(res.c, P(b.c.x, b.c.y - b.h / 2 - back))));
+      // each reserve slot to the forward posns it serves (its rule.reach.slots, else all of them): a reserve split to guard
+      // different valleys (GSP 1947 s27 para 4 p 122) is timed to its own; the row judges the slowest
+      const reachOf = (s: Recipe['slots'][number], b: Box) => { const want = (s.rule as any)?.reach?.slots as string[] | undefined; const t = want?.length ? fwd.filter((f) => want.includes(f.role)) : []; return Math.max(...(t.length ? t : fwd).map((f) => dist(b.c, P(f.c.x, f.c.y - f.h / 2 - back)))); };
+      const groups = recipe.slots.filter((s) => s.kind === 'res' && bySlot.get(s.role)).map((s) => ({ s, far: reachOf(s, bySlot.get(s.role)!) }));
+      const far = Math.max(...groups.map((g) => g.far));
       const mountedRes = !!opts.mountedReserve || resSlot?.mounted === true;
       const kmh = mountedRes ? num(doctrineAt(doc, 'moves.tankKmh.go'), 24) : opts.reserveKmh ?? num(doctrineAt(doc, 'cpen.footKmPerH'), 5), settle = num(doctrineAt(doc, 'cpen.settleMin'), 5);
       const min = Math.round((far / 1000) * (60 / kmh) + settle);
+      const each = groups.length > 1 ? `${groups.map((g) => `${g.s.label} ${Math.round((g.far / 1000) * (60 / kmh) + settle)} min to its own`).join(', ')}: ` : '';
       // the reserve's time: a Coy's local counter-attack within 30 min, a Bn's within an hour (IBB S56 para 24 c p 306), a Bde
       // and Div reserve as early as possible within 2-6 h, the check at 2 h (DW pp 26-27) (PlanDoctrine check.reserveMin)
       const want = num(doctrineAt(doc, `check.reserveMin.${recipe.echelon}`), recipe.echelon === '15' ? 30 : recipe.echelon === '16' ? 60 : 120);
@@ -628,7 +633,9 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
       const howMounted = resSlot?.mounted && !opts.mountedReserve
         ? (armrRes ? 'on tracks (IPB p 18 vehicle rate)' : 'mounted (transport from the Div\'s pool, GSP p 122; IPB p 18 vehicle rate)')
         : 'mounted (the unit\'s APCs, ORBAT; IPB p 18 vehicle rate)';
-      rows.push({ name: 'Reserve reach', st: min <= want ? 'pass' : 'warn', reason: `${resSlot!.label} to the C Pen posns in ${min} min ${mountedRes ? howMounted : 'on foot'}, straight line (wants ${want} min${wantSrc})${bdeFoot}` });
+      rows.push({ name: 'Reserve reach', st: min <= want ? 'pass' : 'warn', reason: groups.length > 1
+        ? `${each}the reserve split ${groups.length} ways, the slowest in ${min} min ${mountedRes ? howMounted : 'on foot'}, straight line (wants ${want} min${wantSrc})${bdeFoot}`
+        : `${resSlot!.label} to the C Pen posns in ${min} min ${mountedRes ? howMounted : 'on foot'}, straight line (wants ${want} min${wantSrc})${bdeFoot}` });
       conf.push(`${resSlot!.label}: walk the routes to the C Pen posns and time them`);
     }
     // a formation's reserve share: its reserve slots against its manoeuvre units (measured, judged on the ground by

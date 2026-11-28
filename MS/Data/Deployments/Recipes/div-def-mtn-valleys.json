@@ -83,8 +83,7 @@
       "rule": {
         "reach": {
           "slots": [
-            "fwdL",
-            "fwdR"
+            "fwdL"
           ]
         },
         "behind": [
@@ -109,7 +108,6 @@
       "rule": {
         "reach": {
           "slots": [
-            "fwdL",
             "fwdR"
           ]
         },
